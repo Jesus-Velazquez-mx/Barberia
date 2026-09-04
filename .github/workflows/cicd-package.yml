@@ -15,7 +15,7 @@ jobs:
     - name: Set up Node.js 20
       uses: actions/setup-node@v4
       with:
-        node-version: '20'
+        node-version: '24'
         cache: 'npm'
         cache-dependency-path: '**/package-lock.json'
         
@@ -32,6 +32,7 @@ jobs:
     - name: Test with npm
       env:
         DB_HOST: ${{ secrets.DB_HOST }}
+        DB_NAME: ${{ secrets.DB_NAME }}
         DB_USER: ${{ secrets.DB_USER }}
         DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
       run: |
@@ -49,7 +50,7 @@ jobs:
     - name: Set up Node.js 20
       uses: actions/setup-node@v4
       with:
-        node-version: '20'
+        node-version: '24'
         cache: 'npm'
         cache-dependency-path: '**/package-lock.json'
         
@@ -88,7 +89,7 @@ jobs:
     - name: Build & Push Docker image to Docker Hub
       uses: mr-smithers-excellent/docker-build-push@v5
       with:
-        image: jesusvelazquezmx/powertech
+        image: jesusvelazquezmx/barberia
         tags: latest
         registry: docker.io
         dockerfile: Dockerfile
@@ -108,13 +109,18 @@ jobs:
             key: ${{ secrets.AWS_SSH_KEY }} # La llave .pem de AWS
             script: |
               # 1. Descarga la imagen más reciente
-              sudo docker pull jesusvelazquezmx/powertech:latest
+              sudo docker pull jesusvelazquezmx/barberia:latest
               
               # 2. Borra el contenedor viejo
-              sudo docker rm -f powertech || true
+              sudo docker rm -f barberia || true
               
               # 3. Levanta el nuevo inyectando las contraseñas
-              sudo docker run --name powertech -d -p 3000:3000 jesusvelazquezmx/powertech:latest
+              sudo docker run --name barberia -d -p 3000:3000 \
+                -e DB_HOST=${{ secrets.DB_HOST }} \
+                -e DB_NAME=${{ secrets.DB_NAME }} \
+                -e DB_USER=${{ secrets.DB_USER }} \
+                -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
+                jesusvelazquezmx/barberia:latest
               
               # 4. Limpia la basura (imágenes viejas) para no llenar el disco duro
               sudo docker image prune -f
