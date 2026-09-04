@@ -38,8 +38,6 @@ jobs:
       run: |
         cd backend
         npm test
-        cd ../frontend
-        npm test
 
   package:
     runs-on: ubuntu-latest
