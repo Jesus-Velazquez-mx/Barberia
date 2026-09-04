@@ -1,50 +1,54 @@
-import sql from 'mssql';
 import 'dotenv/config';
+import { Pool } from 'pg';
+import fs from 'fs';
+import AWS from 'aws-sdk';
 
-/* Configuración de la conexión */
-const sqlConfig = {
-    user: process.env.DB_USER,
-    password: process.env.DB_PWD,
+AWS.config.update({ region: 'us-east-2' });
+
+/* Configuración de la conexión leyendo los secretos de GitHub */
+const dbConfig = {
+    host: process.env.DB_HOST,
+    port: 5432,
     database: process.env.DB_NAME,
-    server: 'localhost',
-    pool: {
-        max: 10,
-        min: 0,
-        idleTimeoutMillis: 30000
-    },
-    options: {
-        encrypt: true,
-        trustServerCertificate: true
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    ssl: {
+        rejectUnauthorized: false,
+        ca: fs.readFileSync('./global-bundle.pem').toString()
     }
-}
+};
 
 /* Aquí se guardará el pool de conexiones */
 let pool;
 
-/* Función para conectar con la base de datos*/
+/* Función para conectar con la base de datos */
 const connectDB = async () => {
     try {
-        pool = await sql.connect(sqlConfig); // Crea el pool
-        console.log('Conectado a SQL Server');
+        pool = new Pool(dbConfig); // Crea el pool de conexiones
+        const client = await pool.connect();
+        const res = await client.query('SELECT version()');
+        console.log('Conectado a PostgreSQL:', res.rows[0].version);
+        client.release();
         return pool;
     } catch (err) {
         console.error('Error al conectar con la base de datos:', err);
         throw err;
     }
-}
+};
 
 /* Función para obtener el pool de conexiones */
 const getPool = () => {
-    if (!pool)
-        throw new Error('No hay conexiones abiertas con la base de datos.')
+    if (!pool) {
+        throw new Error('No hay conexiones abiertas con la base de datos.');
+    }
     return pool;
 }
 
 /* Función para cerrar la conexión con la base de datos */
 const closeDB = async () => {
     if (pool) {
-        await pool.close();
-        console.log('Conexión a SQL Server cerrada');
+        await pool.end();
+        console.log('Conexión a PostgreSQL cerrada');
     }
 }
 

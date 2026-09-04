@@ -1,34 +1,34 @@
 import { Router } from 'express';
-import userController from '../controllers/userController.js';
+import testController from '../controllers/testController.js';
 
 /* Iniciamos el router*/
 const router = Router();
 
 /* Sacamos todas las funciones*/
-const { listarUsuarios, crearUsuario, actualizarUsuario, eliminarUsuario } = userController;
+const { listarTest, crearTest, editarTest, eliminarTest } = testController;
 
 /* Para documentar APIs se usa swagger-jsdoc */
 
 /**
  * @swagger
- * /api/listarUsuarios:
+ * /api/listarTests:
  *   get:
- *     summary: Obtiene la lista completa de usuarios
- *     description: Retorna un arreglo JSON con todos los usuarios registrados en SQL Server.
+ *     summary: Obtiene la lista completa de tests
+ *     description: Retorna un arreglo JSON con todos los tests registrados en SQL Server.
  *     responses:
  *       200:
- *         description: Éxito. Devuelve el arreglo de usuarios.
+ *         description: Éxito. Devuelve el arreglo de tests.
  *       500:
  *         description: Error interno de la base de datos.
  */
-router.get('/listarUsuarios', listarUsuarios);
+router.get('/listarTests', listarTest);
 
 /**
  * @swagger
- * /api/crearUsuario:
+ * /api/crearTest:
  *   post:
- *     summary: Crea un nuevo usuario
- *     description: Permite crear un nuevo usuario en la base de datos.
+ *     summary: Crea un nuevo test
+ *     description: Permite crear un nuevo test en la base de datos.
  *     requestBody:
  *       required: true
  *       content:
@@ -36,27 +36,27 @@ router.get('/listarUsuarios', listarUsuarios);
  *           schema:
  *             type: object
  *             properties:
- *               first_name:
- *                 type: string
- *               last_name:
+ *               id_test:
+ *                 type: integer
+ *               field_test:
  *                 type: string
  *               birthdate:
  *                 type: string
  *                 format: date
  *     responses:
  *       200:
- *         description: Éxito. Devuelve el arreglo de usuarios.
+ *         description: Éxito. Devuelve el arreglo de tests.
  *       500:
  *         description: Error interno de la base de datos.
  */
-router.post('/crearUsuario', crearUsuario);
+router.post('/crearTest', crearTest);
 
 /**
  * @swagger
- * /api/actualizarUsuario:
+ * /api/actualizarTest:
  *   put:
- *     summary: Actualiza un usuario existente
- *     description: Permite actualizar la información de un usuario en la base de datos.
+ *     summary: Actualiza un test existente
+ *     description: Permite actualizar la información de un test en la base de datos.
  *     parameters:
  *       - in: path
  *         name: id
@@ -70,27 +70,24 @@ router.post('/crearUsuario', crearUsuario);
  *           schema:
  *             type: object
  *             properties:
- *               first_name:
+ *               id_test:
+ *                 type: integer
+ *               field_test:
  *                 type: string
- *               last_name:
- *                 type: string
- *               birthdate:
- *                 type: string
- *                 format: date
  *     responses:
  *       200:
- *         description: Éxito. Devuelve el usuario cambiado.
+ *         description: Éxito. Devuelve el test cambiado.
  *       500:
  *         description: Error interno de la base de datos.
  */
-router.put('/actualizarUsuario', actualizarUsuario);
+router.put('/actualizarTest', editarTest);
 
 /**
  * @swagger
- * /api/eliminarUsuario:
+ * /api/eliminarTest:
  *   delete:
- *     summary: Elimina un usuario existente
- *     description: Permite eliminar un usuario de la base de datos.
+ *     summary: Elimina un test existente
+ *     description: Permite eliminar un test de la base de datos.
  *     parameters:
  *       - in: path
  *         name: id
@@ -104,19 +101,16 @@ router.put('/actualizarUsuario', actualizarUsuario);
  *           schema:
  *             type: object
  *             properties:
- *               first_name:
+ *               id_test:
+ *                 type: integer
+ *               field_test:
  *                 type: string
- *               last_name:
- *                 type: string
- *               birthdate:
- *                 type: string
- *                 format: date
  *     responses:
  *       200:
- *         description: Éxito. Devuelve el usuario eliminado.
+ *         description: Éxito. Devuelve el test eliminado.
  *       500:
  *         description: Error interno de la base de datos.
  */
-router.delete('/eliminarUsuario', eliminarUsuario);
+router.delete('/eliminarTest', eliminarTest);
 
 export default router;

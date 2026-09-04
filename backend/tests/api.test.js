@@ -19,49 +19,46 @@ afterAll(async () => {
     await closeDB();
 });
 
-/* Prueba 1 - Usuarios*/
-describe('Pruebas de los Endpoints de Usuarios', () => {
-    test('GET /api/listarUsuarios debe devolver status 200', async () => {
-        const response = await request(app).get('/api/listarUsuarios');
+/* Prueba 1 - Tests*/
+describe('Pruebas de los Endpoints de Tests', () => {
+    test('POST /api/crearTest debe devolver status 201', async () => {
+        const test = {
+            id_test: 'T0001',
+            field_test: 'Test 1'
+        }
+        /* Con superstest el body se manda dentro del .send */
+        const response = await request(app).post('/api/crearTest').send(test);
+        console.log(response.body);
+        expect(response.statusCode).toBe(201);
+        expect(response.body).toHaveProperty('Test creado');
+    });
+
+    test('GET /api/listarTests debe devolver status 200', async () => {
+        const response = await request(app).get('/api/listarTests');
         console.log(response.body);
         expect(response.statusCode).toBe(200);
         expect(Array.isArray(response.body)).toBeTruthy();
     });
 
-    test('POST /api/crearUsuario debe devolver status 201', async () => {
-        const userTest = {
-            first_name: 'Juan',
-            last_name: 'Pérez',
-            birthdate: '1990-01-01'
+    test('PUT /api/actualizarTest debe devolver status 200', async () => {
+        const test = {
+            id_test: 'T0001',
+            field_test: 'Test editado'
         }
-        /* Con superstest el body se manda dentro del .send */
-        const response = await request(app).post('/api/crearUsuario').send(userTest);
-        console.log(response.body);
-        expect(response.statusCode).toBe(201);
-        expect(response.body).toHaveProperty('Usuario creado');
-    });
-
-    test('PUT /api/actualizarUsuario debe devolver status 200', async () => {
-        const userTest = {
-            id: 2,
-            first_name: 'Joel',
-            last_name: 'Pérez',
-            birthdate: '1990-01-01'
-        }
-        const response = await request(app).put('/api/actualizarUsuario').send(userTest);
+        const response = await request(app).put('/api/actualizarTest').send(test);
         console.log(response.body);
         expect(response.statusCode).toBe(200);
-        expect(response.body).toHaveProperty('Usuario actualizado');
+        expect(response.body).toHaveProperty('Test actualizado');
     });
 
-    test('DELETE /api/eliminarUsuario debe devolver status 200', async () => {
-        const userTest = {
-            id: 3,
+    test('DELETE /api/eliminarTest debe devolver status 200', async () => {
+        const test = {
+            id_test: 'T0001'
         }
-        const response = await request(app).delete('/api/eliminarUsuario').send(userTest);
+        const response = await request(app).delete('/api/eliminarTest').send(test);
         console.log(response.body);
         expect(response.statusCode).toBe(200);
-        expect(response.body).toHaveProperty('Usuario eliminado');
+        expect(response.body).toHaveProperty('Test eliminado');
     });
 });
 
