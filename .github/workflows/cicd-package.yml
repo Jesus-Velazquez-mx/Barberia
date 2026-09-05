@@ -23,7 +23,12 @@ jobs:
       run: |
         cd backend
         npm install
-        
+
+    - name: Type-check Backend (TypeScript)
+      run: |
+        cd backend
+        npm run build
+
     - name: Install Frontend dependencies
       run: |
         cd frontend

@@ -1,4 +1,5 @@
 import express from 'express';
+import type { Pool } from 'pg';
 import connection from '../connection/connection.js';
 import router from '../routes/routes.js';
 import swaggerUi from 'swagger-ui-express';
@@ -22,14 +23,14 @@ const options = {
             description: 'Documentación de la API de órdenes'
         }
     },
-    apis: ['./routes/routes.js'] // Ruta al archivo donde se encuentran las rutas de la API
+    apis: ['./routes/routes.{ts,js}'] // Ruta al archivo donde se encuentran las rutas de la API (.ts en dev, .js compilado en producción)
 };
 
 const specs = swaggerJsdoc(options);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 
 /* Pool de conexiones */
-let pool;
+let pool: Pool | undefined;
 /* Permitir solicitudes desde cualquier origen (CORS) */
 app.use(cors());
 /* Retornar JSON en las respuestas */

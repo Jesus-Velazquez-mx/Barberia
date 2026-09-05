@@ -18,8 +18,8 @@ WORKDIR /app
 # Copiamos SOLO los archivos de configuración del backend
 COPY backend/package*.json ./
 
-# Instalamos las dependencias de Node.js 
-RUN npm install --omit=dev
+# Instalamos todas las dependencias (incluidas las de desarrollo, necesarias para compilar TypeScript)
+RUN npm install
 
 # Creamos la carpeta config y descargamos el certificado de AWS RDS directo en la imagen
 RUN mkdir -p config && \
@@ -27,6 +27,12 @@ RUN mkdir -p config && \
 
 # Copiamos todo el código fuente del backend
 COPY backend/ ./
+
+# Compilamos TypeScript a JavaScript (carpeta dist/)
+RUN npm run build
+
+# Eliminamos las dependencias de desarrollo, ya no se necesitan en tiempo de ejecución
+RUN npm prune --omit=dev
 
 # Copiamos el frontend compilado de React
 # Lo metemos en una carpeta "public" para que Express lo pueda mostrar
