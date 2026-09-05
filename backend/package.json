@@ -33,7 +33,7 @@
     }
   },
   "dependencies": {
-    "aws-sdk": "^2.1693.0",
+    "@aws-sdk/client-rds": "^3.1127.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
