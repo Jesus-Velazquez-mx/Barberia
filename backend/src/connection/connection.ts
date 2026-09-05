@@ -1,12 +1,12 @@
 import 'dotenv/config';
-import { Pool } from 'pg';
+import { Pool, type PoolConfig } from 'pg';
 import fs from 'fs';
 import AWS from 'aws-sdk';
 
 AWS.config.update({ region: 'us-east-2' });
 
 /* Configuración de la conexión leyendo los secretos de GitHub */
-const dbConfig = {
+const dbConfig: PoolConfig = {
     host: process.env.DB_HOST,
     port: 5432,
     database: process.env.DB_NAME,
@@ -23,10 +23,10 @@ if (process.env.ENV != "local") {
 }
 
 /* Aquí se guardará el pool de conexiones */
-let pool;
+let pool: Pool | undefined;
 
 /* Función para conectar con la base de datos */
-const connectDB = async () => {
+const connectDB = async (): Promise<Pool> => {
     try {
         pool = new Pool(dbConfig); // Crea el pool de conexiones
         const client = await pool.connect();
@@ -41,7 +41,7 @@ const connectDB = async () => {
 };
 
 /* Función para obtener el pool de conexiones */
-const getPool = () => {
+const getPool = (): Pool => {
     if (!pool) {
         throw new Error('No hay conexiones abiertas con la base de datos.');
     }
@@ -49,7 +49,7 @@ const getPool = () => {
 }
 
 /* Función para cerrar la conexión con la base de datos */
-const closeDB = async () => {
+const closeDB = async (): Promise<void> => {
     if (pool) {
         await pool.end();
         console.log('Conexión a PostgreSQL cerrada');
