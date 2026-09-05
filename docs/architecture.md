@@ -4,16 +4,16 @@ For the product/business context behind these decisions, see [`barbershop-app-ov
 
 ## 1. System Components & Tech Stack
 
-There will be three client apps (Next.js web, Kotlin Android, Swift iOS). They will talk to a single Express backend over a REST API. The backend is the source of truth for business logic and owns the PostgreSQL database. It delegates AI work (haircut recommendations) to a dedicated Python microservice, and delegates outbound communication (appointment reminders) to WhatsApp and email providers. Everything runs on AWS: EC2 for the three services, RDS for Postgres.
+There will be two client apps (Next.js web, Kotlin Android). They will talk to a single Express backend over a REST API. The backend is the source of truth for business logic and owns the PostgreSQL database. It delegates AI work (haircut recommendations) to a dedicated Python microservice, and delegates outbound communication (appointment reminders) to WhatsApp and email providers. Everything runs on AWS: EC2 for the three services, RDS for Postgres.
 
 ### 1.1 Client applications
 
 All three clients are "thin" — they hold UI state and call the backend API; they don't talk to the database or the AI microservice directly.
 
 - **Web (Next.js + Tailwind)**: serves clients, barbers, and managers/assistants through role-gated routes. Given three quite different personas, plan for three route groups behind one app. Next.js API routes will just proxy to the Express backend rather than duplicate logic.
-- **Android (Kotlin)** / **iOS (Swift)**: primarily client-facing (booking, recommendations, reminders, loyalty), though barbers may also want a lightweight mobile view of their schedule.
+- **Android (Kotlin)**: primarily client-facing (booking, recommendations, reminders, loyalty), though barbers may also want a lightweight mobile view of their schedule.
 
-All clients share one OpenAPI contract so the three teams (web, Android, iOS) don't drift.
+All clients share one OpenAPI contract so the three teams (web, Android) don't drift.
 
 ### 1.2 Backend (Express + PostgreSQL, EC2)
 

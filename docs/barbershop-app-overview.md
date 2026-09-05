@@ -2,7 +2,7 @@
 
 ## 1. Product Overview
 
-This project consists of building an app for a barber shop, available on web and mobile (both Android and iOS). Its main focus is managing appointments. Other core functionalities are:
+This project consists of building an app for a barber shop, available on web and mobile (Android). Its main focus is managing appointments. Other core functionalities are:
 
 - Give clients haircut suggestions based on their facial structure and preferences
 - Implement a fidelity program for clients to get free haircuts
