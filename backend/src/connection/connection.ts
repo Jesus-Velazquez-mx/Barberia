@@ -1,9 +1,11 @@
 import 'dotenv/config';
 import { Pool, type PoolConfig } from 'pg';
 import fs from 'fs';
-import AWS from 'aws-sdk';
+import { RDSClient } from '@aws-sdk/client-rds';
 
-AWS.config.update({ region: 'us-east-2' });
+/* A diferencia de v2, en el SDK v3 no existe un config global (AWS.config.update):
+cada cliente se configura por separado al crearlo */
+const rdsClient = new RDSClient({ region: 'us-east-2' });
 
 /* Configuración de la conexión leyendo los secretos de GitHub */
 const dbConfig: PoolConfig = {
@@ -56,4 +58,4 @@ const closeDB = async (): Promise<void> => {
     }
 }
 
-export default { connectDB, getPool, closeDB };
+export default { connectDB, getPool, closeDB, rdsClient };

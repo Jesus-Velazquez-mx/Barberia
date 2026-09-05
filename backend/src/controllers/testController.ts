@@ -1,24 +1,16 @@
 import type { Request, Response } from 'express';
-import connection from '../connection/connection.js';
+import testService from '../services/testService.js';
 
 /* Esto es una prueba. En el proyecto real, los datos se validarán con Zod */
 
-/* Obtenemos el pool de conexiones */
-const { getPool } = connection;
+/* Capa de controlador: sólo maneja req/res y delega la lógica al servicio */
 
 /* Función para listar test */
 const listarTest = async (req: Request, res: Response) => {
     try {
-        /* Obtenemos el pool de conexiones */
-        const pool = getPool();
+        const resultado = await testService.listarTest();
 
-        /* Query */
-        const sqlListarTest = 'SELECT * FROM TEST';
-        /* Para correr con query se usa pool.query */
-        const resultado = await pool.query(sqlListarTest);
-
-        /* El resultado se encuentra en resultado.rows */
-        res.status(200).json(resultado.rows);
+        res.status(200).json(resultado);
     } catch (err) {
         console.error('Error al listar test:', err);
         res.status(500).json({ error: 'Error al listar test' });
@@ -28,17 +20,13 @@ const listarTest = async (req: Request, res: Response) => {
 /* Función para crear test */
 const crearTest = async (req: Request, res: Response) => {
     try {
-        const pool = getPool();
-
         /* Sacar los datos del cuerpo de la solicitud */
         const { id_test, field_test } = req.body;
 
-        /* Se usa #N*/
-        const sqlCrearTest = 'INSERT INTO TEST (id_test, field_test) VALUES ($1, $2)';
-        const resultado = await pool.query(sqlCrearTest, [id_test, field_test]);
+        const rowCount = await testService.crearTest(id_test, field_test);
 
         /* rowCount regresa el número de filas afectadas */
-        res.status(201).json({ 'Test creado': resultado.rowCount });
+        res.status(201).json({ 'Test creado': rowCount });
     } catch (err) {
         console.error('Error al crear test:', err);
         res.status(500).json({ error: 'Error al crear test' });
@@ -48,14 +36,11 @@ const crearTest = async (req: Request, res: Response) => {
 /* Función para editar test*/
 const editarTest = async (req: Request, res: Response) => {
     try {
-        const pool = getPool();
-
         const { id_test, field_test } = req.body;
 
-        const sqlEditarTest = 'UPDATE TEST SET field_test = $1 WHERE id_test = $2';
-        const resultado = await pool.query(sqlEditarTest, [field_test, id_test]);
+        const rowCount = await testService.editarTest(id_test, field_test);
 
-        res.status(200).json({ 'Test actualizado': resultado.rowCount });
+        res.status(200).json({ 'Test actualizado': rowCount });
     } catch (err) {
         console.error('Error al editar test:', err);
         res.status(500).json({ error: 'Error al editar test' });
@@ -65,14 +50,11 @@ const editarTest = async (req: Request, res: Response) => {
 /* Función para eliminar test */
 const eliminarTest = async (req: Request, res: Response) => {
     try {
-        const pool = getPool();
-
         const { id_test } = req.body;
 
-        const sqlEliminarTest = 'DELETE FROM TEST WHERE id_test = $1';
-        const resultado = await pool.query(sqlEliminarTest, [id_test]);
+        const rowCount = await testService.eliminarTest(id_test);
 
-        res.status(200).json({ 'Test eliminado': resultado.rowCount });
+        res.status(200).json({ 'Test eliminado': rowCount });
     } catch (err) {
         console.error('Error al eliminar test:', err);
         res.status(500).json({ error: 'Error al eliminar test' });
