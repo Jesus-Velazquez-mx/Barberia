@@ -11,12 +11,16 @@ const dbConfig = {
     port: 5432,
     database: process.env.DB_NAME,
     user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    ssl: {
+    password: process.env.DB_PASSWORD
+};
+
+// SSL es requerido para cualquier environment, excepto local
+if (process.env.ENV != "local") {
+    dbConfig.ssl = {
         rejectUnauthorized: false,
         ca: fs.readFileSync('./global-bundle.pem').toString()
     }
-};
+}
 
 /* Aquí se guardará el pool de conexiones */
 let pool;

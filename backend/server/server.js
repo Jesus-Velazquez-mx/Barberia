@@ -36,13 +36,12 @@ app.use(cors());
 app.use(express.json());
 /* Usar las rutas definidas en router */
 app.use('/api', router);
-/* Buscamos el dist */
-const distPath = path.join(process.cwd(), 'public');
-/* Decimos a express que sirva en la carpeta 'dist', que es donde vivirá el React compilado*/
-app.use(express.static(distPath));
-/* Cualquier ruta que no esté aquí se la mandamos a React */
-app.get(/(.*)/, (req, res) => {
-    res.sendFile(path.join(distPath, 'index.html'));
+
+// Respuesta con error al no encontrar la ruta especificada
+app.use('/api', (req, res) => {
+  res.status(404).json({
+    error: 'API route not found'
+  });
 });
 
 
