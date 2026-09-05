@@ -21,15 +21,19 @@ const options = {
             description: 'Documentación de la API de la Barbería'
         }
     },
-apis: ['./src/routes/*.ts', './dist/routes/*.js']};
+    apis: ['./src/routes/*.ts', './dist/routes/*.js'] // Ruta al archivo donde se encuentran las rutas de la API
+};
 
 const specs = swaggerJsdoc(options);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 
 /* Pool de conexiones */
 let pool: Pool | undefined;
-/* Permitir solicitudes desde cualquier origen (CORS) */
-app.use(cors());
+/* Permitir solicitudes desde el dominio específico del front */
+app.use(cors({
+    origin: 'https://eirckdameeldominio', 
+    methods: ['GET', 'POST', 'PUT', 'DELETE']
+}));
 /* Retornar JSON en las respuestas */
 app.use(express.json());
 /* Usar las rutas definidas en router */
