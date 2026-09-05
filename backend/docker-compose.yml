@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: 'postgres:18'
+    restart: 'unless-stopped'
+    container_name: barberia_db
+    environment:
+      - 'POSTGRES_DB=${DB_NAME}'
+      - 'POSTGRES_PASSWORD=${DB_PASSWORD}'
+      - 'POSTGRES_USER=${DB_USER}'
+    ports:
+      - "5432:5432"
+    volumes:
+      - barberia_data:/var/lib/postgresql/18
+
+volumes:
+  barberia_data:

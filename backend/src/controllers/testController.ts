@@ -1,3 +1,4 @@
+import type { Request, Response } from 'express';
 import connection from '../connection/connection.js';
 
 /* Esto es una prueba. En el proyecto real, los datos se validarán con Zod */
@@ -6,7 +7,7 @@ import connection from '../connection/connection.js';
 const { getPool } = connection;
 
 /* Función para listar test */
-const listarTest = async (req, res) => {
+const listarTest = async (req: Request, res: Response) => {
     try {
         /* Obtenemos el pool de conexiones */
         const pool = getPool();
@@ -25,7 +26,7 @@ const listarTest = async (req, res) => {
 }
 
 /* Función para crear test */
-const crearTest = async (req, res) => {
+const crearTest = async (req: Request, res: Response) => {
     try {
         const pool = getPool();
 
@@ -45,7 +46,7 @@ const crearTest = async (req, res) => {
 }
 
 /* Función para editar test*/
-const editarTest = async (req, res) => {
+const editarTest = async (req: Request, res: Response) => {
     try {
         const pool = getPool();
 
@@ -62,7 +63,7 @@ const editarTest = async (req, res) => {
 }
 
 /* Función para eliminar test */
-const eliminarTest = async (req, res) => {
+const eliminarTest = async (req: Request, res: Response) => {
     try {
         const pool = getPool();
 

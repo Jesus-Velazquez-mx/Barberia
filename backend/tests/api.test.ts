@@ -1,8 +1,8 @@
 /* Para hacer pruebas de las peticiones */
 import request from 'supertest';
 import express from 'express';
-import router from '../routes/routes.js';
-import connection from '../connection/connection.js';
+import router from '../src/routes/routes.js';
+import connection from '../src/connection/connection.js';
 
 const { connectDB, closeDB } = connection;
 
@@ -61,5 +61,3 @@ describe('Pruebas de los Endpoints de Tests', () => {
         expect(response.body).toHaveProperty('Test eliminado');
     });
 });
-
-

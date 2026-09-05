@@ -1,4 +1,5 @@
-import express from 'express';
+import express, { type Request, type Response } from 'express';
+import type { Pool } from 'pg';
 import connection from '../connection/connection.js';
 import router from '../routes/routes.js';
 import swaggerUi from 'swagger-ui-express';
@@ -22,27 +23,26 @@ const options = {
             description: 'Documentación de la API de órdenes'
         }
     },
-    apis: ['./routes/routes.js'] // Ruta al archivo donde se encuentran las rutas de la API
+    apis: ['./src/routes/routes.ts'] // Ruta al archivo donde se encuentran las rutas de la API
 };
 
 const specs = swaggerJsdoc(options);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 
 /* Pool de conexiones */
-let pool;
+let pool: Pool | undefined;
 /* Permitir solicitudes desde cualquier origen (CORS) */
 app.use(cors());
 /* Retornar JSON en las respuestas */
 app.use(express.json());
 /* Usar las rutas definidas en router */
 app.use('/api', router);
-/* Buscamos el dist */
-const distPath = path.join(process.cwd(), 'public');
-/* Decimos a express que sirva en la carpeta 'dist', que es donde vivirá el React compilado*/
-app.use(express.static(distPath));
-/* Cualquier ruta que no esté aquí se la mandamos a React */
-app.get(/(.*)/, (req, res) => {
-    res.sendFile(path.join(distPath, 'index.html'));
+
+// Respuesta con error al no encontrar la ruta especificada
+app.use('/api', (req: Request, res: Response) => {
+  res.status(404).json({
+    error: 'API route not found'
+  });
 });
 
 
