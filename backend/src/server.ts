@@ -1,7 +1,7 @@
 import express, { type Request, type Response } from 'express';
 import type { Pool } from 'pg';
-import connection from '../connection/connection.js';
-import router from '../routes/routes.js';
+import connection from './connection/connection.js';
+import router from './routes/routes.js';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
 import cors from 'cors';
