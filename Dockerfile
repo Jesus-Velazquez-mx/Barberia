@@ -22,12 +22,11 @@ WORKDIR /app
 COPY backend/package*.json ./
 RUN npm install --omit=dev
 # Descargamos el certificado de AWS RDS
-RUN mkdir -p config && \
-    curl -o ./config/global-bundle.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
+RUN curl -o ./global-bundle.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
 # Extraemos únicamente el código ya compilado de la primer imagen
 COPY --from=builder /app/backend/dist ./dist
 # Abrimos el puerto 3000
 EXPOSE 3000
 
 # Ejecutamos el servidor 
-CMD ["node", "dist/server.js"]
+CMD ["npm", "start"]
