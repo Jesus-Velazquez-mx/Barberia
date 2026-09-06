@@ -11,9 +11,9 @@ jobs:
     runs-on: ubuntu-latest
     environment: QA
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Node.js 20
-      uses: actions/setup-node@v4
+    - uses: actions/checkout@v5
+    - name: Set up Node.js 24
+      uses: actions/setup-node@v5
       with:
         node-version: '24'
         cache: 'npm'
@@ -44,9 +44,9 @@ jobs:
     environment: Staging
     needs: [test]
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Node.js 20
-      uses: actions/setup-node@v4
+    - uses: actions/checkout@v5
+    - name: Set up Node.js 24
+      uses: actions/setup-node@v5
       with:
         node-version: '24'
         cache: 'npm'
@@ -63,7 +63,7 @@ jobs:
         npm run build
         
     - name: Upload a Build Artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: vue-build
         path: frontend/dist 
@@ -73,13 +73,13 @@ jobs:
     environment: Production
     needs: [package]
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     
     - name: Create dist directory
       run: mkdir -p frontend/dist
       
     - name: Download Vue Build
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: vue-build
         path: frontend/dist
@@ -97,28 +97,28 @@ jobs:
   deploy:
       runs-on: ubuntu-latest
       environment: Production
-      needs: [docker-hub] # Solo se ejecuta si la imagen se subió con éxito
+      needs: [docker-hub]
       steps:
         - name: Conectar a AWS y actualizar Docker
           uses: appleboy/ssh-action@master
           with:
-            host: ${{ secrets.AWS_HOST }} # La IP del servidor EC2
-            username: ubuntu # super usuario que viene con la imagen de AWS
-            key: ${{ secrets.AWS_SSH_KEY }} # La llave .pem de AWS
+            host: ${{ secrets.AWS_HOST }} 
+            username: ubuntu 
+            key: ${{ secrets.AWS_SSH_KEY }} 
             script: |
-              # 1. Descarga la imagen más reciente
+             # Descargar la última imagen 
               sudo docker pull jesusvelazquezmx/barberia:latest
-              
-              # 2. Borra el contenedor viejo
+
+              # Borrar la imagen vieja
               sudo docker rm -f barberia || true
-              
-              # 3. Levanta el nuevo inyectando las contraseñas
+
+              # Correr la nueva imagen con las variables de entorno
               sudo docker run --name barberia -d -p 3000:3000 \
                 -e DB_HOST=${{ secrets.DB_HOST }} \
                 -e DB_NAME=${{ secrets.DB_NAME }} \
                 -e DB_USER=${{ secrets.DB_USER }} \
                 -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
                 jesusvelazquezmx/barberia:latest
-              
-              # 4. Limpia la basura (imágenes viejas) para no llenar el disco duro
+
+              # Limpiar imágenes no utilizadas
               sudo docker image prune -f
