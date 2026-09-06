@@ -2,7 +2,7 @@ name: Node.js CI with Docker
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "dev" ]
   pull_request:
     branches: [ "main" ]
 
@@ -39,10 +39,10 @@ jobs:
         cd backend
         npm test
 
-  package:
+  frontend-deploy:
     runs-on: ubuntu-latest
-    environment: Staging
     needs: [test]
+    if: github.event_name == 'push'
     steps:
     - uses: actions/checkout@v4
     - name: Set up Node.js 20
@@ -51,39 +51,43 @@ jobs:
         node-version: '24'
         cache: 'npm'
         cache-dependency-path: '**/package-lock.json'
-        
+
     - name: Install Frontend dependencies
       run: |
         cd frontend
         npm install
-        
-    - name: Build Vue App
+
+    - name: Build Frontend
       run: |
         cd frontend
         npm run build
-        
-    - name: Upload a Build Artifact
-      uses: actions/upload-artifact@v4
+
+    - name: Deploy to Cloudflare (staging)
+      if: github.ref == 'refs/heads/dev'
+      uses: cloudflare/wrangler-action@v3
       with:
-        name: vue-build
-        path: frontend/dist 
-        
+        apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        workingDirectory: frontend
+        command: deploy --env staging
+
+    - name: Deploy to Cloudflare (production)
+      if: github.ref == 'refs/heads/main'
+      uses: cloudflare/wrangler-action@v3
+      with:
+        apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        workingDirectory: frontend
+        command: deploy
+
   docker-hub:
     runs-on: ubuntu-latest
     environment: Production
-    needs: [package]
+    needs: [test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
     - uses: actions/checkout@v4
-    
-    - name: Create dist directory
-      run: mkdir -p frontend/dist
-      
-    - name: Download Vue Build
-      uses: actions/download-artifact@v4
-      with:
-        name: vue-build
-        path: frontend/dist
-        
+
     - name: Build & Push Docker image to Docker Hub
       uses: mr-smithers-excellent/docker-build-push@v5
       with:
@@ -94,7 +98,7 @@ jobs:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
 
-  deploy:
+  backend-deploy:
       runs-on: ubuntu-latest
       environment: Production
       needs: [docker-hub] # Solo se ejecuta si la imagen se subió con éxito

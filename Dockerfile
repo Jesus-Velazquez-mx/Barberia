@@ -1,11 +1,3 @@
-# Construir el Frontend (React)
-FROM node:20-alpine AS frontend-builder
-WORKDIR /app/frontend
-COPY frontend/package*.json ./
-RUN npm install
-COPY frontend/ ./
-RUN npm run build
-
 # Imagen a utilizar como base para el contenedor
 FROM node:20-alpine
 
@@ -27,10 +19,6 @@ RUN mkdir -p config && \
 
 # Copiamos todo el código fuente del backend
 COPY backend/ ./
-
-# Copiamos el frontend compilado de React
-# Lo metemos en una carpeta "public" para que Express lo pueda mostrar
-COPY --from=frontend-builder /app/frontend/dist ./public
 
 # Exponemos el puerto en el que correrá el API de Express
 EXPOSE 3000
