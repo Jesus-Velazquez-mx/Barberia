@@ -86,7 +86,7 @@ jobs:
     needs: [test]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
     - name: Build & Push Docker image to Docker Hub
       uses: mr-smithers-excellent/docker-build-push@v5
