@@ -1,3 +1,11 @@
+# Compilar el backend (TypeScript -> dist/)
+FROM node:20-alpine AS backend-builder
+WORKDIR /app
+COPY backend/package*.json ./
+RUN npm install
+COPY backend/ ./
+RUN npm run build
+
 # Imagen a utilizar como base para el contenedor
 FROM node:20-alpine
 
@@ -10,15 +18,15 @@ WORKDIR /app
 # Copiamos SOLO los archivos de configuración del backend
 COPY backend/package*.json ./
 
-# Instalamos las dependencias de Node.js 
+# Instalamos las dependencias de Node.js
 RUN npm install --omit=dev
 
-# Creamos la carpeta config y descargamos el certificado de AWS RDS directo en la imagen
-RUN mkdir -p config && \
-    curl -o ./config/global-bundle.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
+# Descargamos el certificado de AWS RDS directo en la imagen
+# (debe vivir en el cwd del proceso: connection.ts lo lee como './global-bundle.pem')
+RUN curl -o ./global-bundle.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
 
-# Copiamos todo el código fuente del backend
-COPY backend/ ./
+# Copiamos el backend ya compilado
+COPY --from=backend-builder /app/dist ./dist
 
 # Exponemos el puerto en el que correrá el API de Express
 EXPOSE 3000
