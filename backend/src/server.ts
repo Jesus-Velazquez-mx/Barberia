@@ -5,8 +5,6 @@ import router from './routes/routes.js';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
 import cors from 'cors';
-import path from 'path';
-
 
 const { connectDB } = connection;
 
@@ -18,12 +16,12 @@ const options = {
     definition: {
         openapi: '3.0.0',
         info: {
-            title: 'API de Órdenes',
+            title: 'API de Barbería',
             version: '1.0.0',
-            description: 'Documentación de la API de órdenes'
+            description: 'Documentación de la API de la Barbería'
         }
     },
-    apis: ['./src/routes/routes.ts'] // Ruta al archivo donde se encuentran las rutas de la API
+    apis: ['./src/routes/*.ts', './dist/routes/*.js'] // Ruta al archivo donde se encuentran las rutas de la API
 };
 
 const specs = swaggerJsdoc(options);
@@ -31,8 +29,11 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 
 /* Pool de conexiones */
 let pool: Pool | undefined;
-/* Permitir solicitudes desde cualquier origen (CORS) */
-app.use(cors());
+/* Permitir solicitudes desde el dominio específico del front */
+app.use(cors({
+    origin: 'https://eirckdameeldominio', 
+    methods: ['GET', 'POST', 'PUT', 'DELETE']
+}));
 /* Retornar JSON en las respuestas */
 app.use(express.json());
 /* Usar las rutas definidas en router */
@@ -41,7 +42,7 @@ app.use('/api', router);
 // Respuesta con error al no encontrar la ruta especificada
 app.use('/api', (req: Request, res: Response) => {
   res.status(404).json({
-    error: 'API route not found'
+    error: 'Ruta de la API no encontrada.'
   });
 });
 
