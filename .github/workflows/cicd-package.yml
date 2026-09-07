@@ -27,7 +27,7 @@ jobs:
     - name: Install Frontend dependencies
       run: |
         cd frontend
-        npm install
+        npm install --legacy-peer-deps
         
     - name: Test with npm
       env:
@@ -122,6 +122,10 @@ jobs:
                 -e DB_NAME=${{ secrets.DB_NAME }} \
                 -e DB_USER=${{ secrets.DB_USER }} \
                 -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
+                -e AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }} \
+                -e AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }} \
+                -e AWS_REGION=${{ secrets.AWS_REGION }}\
+                -e AWS_S3_BUCKET_NAME=${{ secrets.AWS_S3_BUCKET_NAME }} \
                 jesusvelazquezmx/barberia:latest
 
               # Limpiar imágenes no utilizadas
