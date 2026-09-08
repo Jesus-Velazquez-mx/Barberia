@@ -1,0 +1,7 @@
+dist/
+node_modules/
+**/**.json
+**/**.yml
+**/*.md
+**/*.css
+.prettierrc

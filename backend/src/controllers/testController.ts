@@ -15,7 +15,7 @@ const listarTest = async (req: Request, res: Response) => {
         console.error('Error al listar test:', err);
         res.status(500).json({ error: 'Error al listar test' });
     }
-}
+};
 
 /* Función para crear test */
 const crearTest = async (req: Request, res: Response) => {
@@ -31,7 +31,7 @@ const crearTest = async (req: Request, res: Response) => {
         console.error('Error al crear test:', err);
         res.status(500).json({ error: 'Error al crear test' });
     }
-}
+};
 
 /* Función para editar test*/
 const editarTest = async (req: Request, res: Response) => {
@@ -45,7 +45,7 @@ const editarTest = async (req: Request, res: Response) => {
         console.error('Error al editar test:', err);
         res.status(500).json({ error: 'Error al editar test' });
     }
-}
+};
 
 /* Función para eliminar test */
 const eliminarTest = async (req: Request, res: Response) => {
@@ -59,7 +59,6 @@ const eliminarTest = async (req: Request, res: Response) => {
         console.error('Error al eliminar test:', err);
         res.status(500).json({ error: 'Error al eliminar test' });
     }
-}
-
+};
 
 export default { listarTest, crearTest, editarTest, eliminarTest };
