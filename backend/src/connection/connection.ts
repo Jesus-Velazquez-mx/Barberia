@@ -13,15 +13,15 @@ const dbConfig: PoolConfig = {
     port: 5432,
     database: process.env.DB_NAME,
     user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD
+    password: process.env.DB_PASSWORD,
 };
 
 // SSL es requerido para cualquier environment, excepto local
-if (process.env.ENV != "local") {
+if (process.env.ENV != 'local') {
     dbConfig.ssl = {
         rejectUnauthorized: false,
-        ca: fs.readFileSync('./global-bundle.pem').toString()
-    }
+        ca: fs.readFileSync('./global-bundle.pem').toString(),
+    };
 }
 
 /* Aquí se guardará el pool de conexiones */
@@ -48,7 +48,7 @@ const getPool = (): Pool => {
         throw new Error('No hay conexiones abiertas con la base de datos.');
     }
     return pool;
-}
+};
 
 /* Función para cerrar la conexión con la base de datos */
 const closeDB = async (): Promise<void> => {
@@ -56,6 +56,6 @@ const closeDB = async (): Promise<void> => {
         await pool.end();
         console.log('Conexión a PostgreSQL cerrada');
     }
-}
+};
 
 export default { connectDB, getPool, closeDB, rdsClient };

@@ -24,8 +24,8 @@ describe('Pruebas de los Endpoints de Tests', () => {
     test('POST /api/crearTest debe devolver status 201', async () => {
         const test = {
             id_test: 'T0001',
-            field_test: 'Test 1'
-        }
+            field_test: 'Test 1',
+        };
         /* Con superstest el body se manda dentro del .send */
         const response = await request(app).post('/api/crearTest').send(test);
         console.log(response.body);
@@ -43,8 +43,8 @@ describe('Pruebas de los Endpoints de Tests', () => {
     test('PUT /api/actualizarTest debe devolver status 200', async () => {
         const test = {
             id_test: 'T0001',
-            field_test: 'Test editado'
-        }
+            field_test: 'Test editado',
+        };
         const response = await request(app).put('/api/actualizarTest').send(test);
         console.log(response.body);
         expect(response.statusCode).toBe(200);
@@ -53,8 +53,8 @@ describe('Pruebas de los Endpoints de Tests', () => {
 
     test('DELETE /api/eliminarTest debe devolver status 200', async () => {
         const test = {
-            id_test: 'T0001'
-        }
+            id_test: 'T0001',
+        };
         const response = await request(app).delete('/api/eliminarTest').send(test);
         console.log(response.body);
         expect(response.statusCode).toBe(200);

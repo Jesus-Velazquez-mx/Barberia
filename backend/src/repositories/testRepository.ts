@@ -13,7 +13,7 @@ const findAll = async () => {
     const resultado = await pool.query(sqlListarTest);
 
     return resultado.rows;
-}
+};
 
 /* Inserta un nuevo registro en la tabla TEST */
 const create = async (idTest: number, fieldTest: string) => {
@@ -23,7 +23,7 @@ const create = async (idTest: number, fieldTest: string) => {
     const resultado = await pool.query(sqlCrearTest, [idTest, fieldTest]);
 
     return resultado.rowCount;
-}
+};
 
 /* Actualiza el field_test de un registro existente */
 const update = async (idTest: number, fieldTest: string) => {
@@ -33,7 +33,7 @@ const update = async (idTest: number, fieldTest: string) => {
     const resultado = await pool.query(sqlEditarTest, [fieldTest, idTest]);
 
     return resultado.rowCount;
-}
+};
 
 /* Elimina un registro de la tabla TEST */
 const remove = async (idTest: number) => {
@@ -43,6 +43,6 @@ const remove = async (idTest: number) => {
     const resultado = await pool.query(sqlEliminarTest, [idTest]);
 
     return resultado.rowCount;
-}
+};
 
 export default { findAll, create, update, remove };
