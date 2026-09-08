@@ -12,7 +12,7 @@ The system supports multiple barbershop locations, starting with 2 — this is a
 
 All three clients are "thin" — they hold UI state and call the backend API; they don't talk to the database or the AI microservice directly.
 
-- **Web (Vite + Tailwind)**: a client-side single-page app (no SSR, no server-side logic — e.g., auth session handling happens via tokens on the client, not a Node server). Serves clients, barbers, and managers/assistants through role-gated routes. Given three quite different personas, plan for either route groups within one app, or (if the manager/barber workload grows) a separate admin app later. Deployed as a Cloudflare Worker at `barberia.erickdh.com`.
+- **Web (Vite + Tailwind)**: a client-side single-page app (no SSR, no server-side logic — e.g., auth session handling happens via tokens on the client, not a Node server). Serves clients, barbers, receptionists, and managers/assistants through role-gated routes. Given four quite different personas, plan for either route groups within one app, or (if the manager/barber/receptionist workload grows) a separate admin app later. Deployed as a Cloudflare Worker at `barberia.erickdh.com`.
 - **Android (Kotlin)** / **iOS (Swift)**: primarily client-facing (booking, recommendations, reminders, loyalty), though barbers may also want a lightweight mobile view of their schedule. Deployment for both is **not yet configured or decided**.
 
 All clients share one OpenAPI contract (REST) so the three teams (web, Android, iOS) don't drift. Generating client SDKs from the OpenAPI spec will save a lot of pain later.
@@ -20,9 +20,9 @@ All clients share one OpenAPI contract (REST) so the three teams (web, Android, 
 ### 1.2 Backend (Express + PostgreSQL, EC2)
 
 Owns:
-- Auth & role-based access control (barber / manager-assistant / client)
-- Appointments: CRUD, scheduling rules, availability calendar. Walk-ins are supported alongside scheduled appointments (not appointment-only).
-- Services & products catalog
+- Auth & role-based access control (barber / manager-assistant / receptionist / client)
+- Appointments: CRUD, scheduling rules, availability calendar. Walk-ins are supported alongside scheduled appointments (not appointment-only). One appointment at a time per barber (no multiple chairs). Barbers work fixed 8-hour shifts with staggered start times set only by managers (barbers can't self-schedule their hours).
+- Services catalog (shared across shops) and each shop's supplies inventory (internal consumables — scissors, shampoo, conditioner, etc. — not customer-facing)
 - Loyalty/fidelity program logic and ledger
 - Reporting/analytics queries for managers
 - Orchestration: calls the AI microservice for recommendations, and triggers the notification pipeline for reminders
@@ -33,11 +33,12 @@ Runs on a single AWS EC2 instance (free tier), listening on **plain HTTP only** 
 Suggested internal module boundaries (even inside one Express app, keep these as separate modules with clear boundaries — you'll likely want to split them into services later):
 - `auth`
 - `appointments` (includes availability/scheduling engine)
-- `catalog` (services, products, pricing)
+- `catalog` (shared services catalog, pricing)
+- `inventory` (each shop's supplies stock — separate from `catalog` since it's per-shop, not shared, and never customer-facing)
 - `loyalty`
 - `notifications` (orchestrates the actual WhatsApp/email send, likely via a queue)
 - `reports`
-- `users` (barbers, managers, clients, profile data incl. facial-structure preference inputs)
+- `users` (barbers, managers, receptionists, clients, profile data incl. facial-structure preference inputs)
 
 > Note: the current backend code (`backend/controllers`, `backend/routes`) is an early scaffold and doesn't yet reflect this module breakdown — see `CLAUDE.local.md` for the code-level state.
 
@@ -51,12 +52,17 @@ The recommendation method is decided: computer-vision analysis of an uploaded ph
 
 ### 1.4 Database (PostgreSQL on RDS)
 
-Core entities to model (not exhaustive): `users` (with role), `barbers`, `clients`, `services`, `products`, `appointments`, `appointment_services`, `availability_slots`/`schedules`, `loyalty_accounts`, `loyalty_transactions`, `notifications_log`, `preferences`/`recommendation_history`.
+The initial schema is implemented in `backend/database/database.sql`. Core entities: `shops`, `users` (with role), `barbers`, `clients`, `managers`, `receptionists`, `services`, `supplies`, `appointments`, `appointment_services`, `availability_slots`, `availability_exceptions`, `loyalty_accounts`, `loyalty_transactions`, `notifications_log`, `recommendation_history`.
 
-Points to decide before schema design:
-- Multi-tenancy is confirmed (multiple barbershop locations, starting with 2) — still open is *how*: single database with a `shop_id` on relevant tables vs. schema-per-tenant.
+Decided:
+- **Multi-tenancy**: single database with a `shop_id` column on shop-scoped tables (`barbers`, `managers`, `receptionists`, `supplies`, `availability_slots`/`availability_exceptions`, `appointments`) rather than schema-per-tenant.
+- **Primary keys**: UUID (`gen_random_uuid()`, built into Postgres core since v13 — no extension needed).
+- The `services` catalog is shared/global across all shops. `supplies` — each shop's inventory of consumables used to deliver services (scissors, shampoo, conditioner, etc.), never sold to or attached to a client's appointment — is scoped **per-shop** instead.
+- Loyalty accounts/balances are shared across shops — one running balance per client, not per shop.
 - Facial photos are **not** stored in Postgres — they live in an S3 bucket (see §1.5), with only the URL/key referenced in the DB.
-- Audit/history requirements for reports (e.g. will historical snapshots of prices/services be needed for accurate past-revenue reporting?) — still open.
+
+Still open:
+- Audit/history requirements for reports beyond what's already captured — `appointment_services` snapshots price/duration at booking time so past revenue isn't distorted by later catalog price changes, but broader historical-reporting needs aren't finalized.
 
 ### 1.5 Static assets (S3)
 
@@ -80,7 +86,7 @@ Not a separate "service" in the current stack, but it needs its own design:
 
 **Reminder delivery**: Scheduler/worker picks up due reminder jobs → `notifications` module resolves client's preferred channel(s) → calls WhatsApp API and/or SES → logs delivery status to `notifications_log` (for retry/troubleshooting).
 
-**Redeeming a loyalty reward**: Client or barber/manager triggers redemption → `loyalty` module validates balance against program rules → deducts credit, creates `loyalty_transactions` entry → appointment marked as reward-redeemed for reporting.
+**Redeeming a loyalty reward**: Client, barber, receptionist, or manager triggers redemption → `loyalty` module validates balance against program rules → deducts credit, creates `loyalty_transactions` entry → appointment marked as reward-redeemed for reporting.
 
 ## 3. Deployment Infrastructure
 
@@ -153,7 +159,7 @@ This keeps TLS termination and cert management centralized in Apache, while Expr
 
 ## 4. Cross-Cutting Concerns to Design Explicitly
 
-- **Auth**: JWT-based session with role claims (barber/manager/client) is a natural fit for three heterogeneous clients, and is now the *only* option for the web client since there's no server-side session handling (no SSR). Decide token lifetime, refresh strategy, and whether mobile uses secure storage (Keychain/Keystore) for tokens; for the Vite SPA, decide where tokens are stored client-side (memory vs. localStorage vs. cookie) with XSS/CSRF trade-offs in mind.
+- **Auth**: JWT-based session with role claims (barber/manager/receptionist/client) is a natural fit for three heterogeneous clients, and is now the *only* option for the web client since there's no server-side session handling (no SSR). Decide token lifetime, refresh strategy, and whether mobile uses secure storage (Keychain/Keystore) for tokens; for the Vite SPA, decide where tokens are stored client-side (memory vs. localStorage vs. cookie) with XSS/CSRF trade-offs in mind.
 - **Background jobs**: reminders (and possibly AI processing, if recommendations aren't instant) still need a decision — see §1.6.
 - **Image handling**: uploads, resizing, and privacy/retention rules for facial photos — this touches both S3 design and legal/compliance (see §5).
 - **Rate limiting & abuse prevention**: especially around booking (prevent slot-spamming) and the AI endpoint (cost control) — more important now that backend and AI share one small instance's resources.
@@ -164,8 +170,7 @@ This keeps TLS termination and cert management centralized in Apache, while Expr
 
 **Business scope**
 - Does a client book with a specific barber, or with "the shop" and get assigned? Can they have a preferred/favorite barber?
-- Do appointments involve a single service, or multiple (e.g., haircut + beard trim in one slot)? Do different services take different durations?
-- Multi-tenancy is confirmed (multiple barbershops, starting with 2) — still open: single database with a `shop_id` column vs. schema-per-tenant (see §1.4).
+- Do appointments involve a single service, or multiple (e.g., haircut + beard trim in one slot)? (Different services do take different durations — decided, already modeled via `services.duration_minutes`.)
 
 **Haircut recommendations (AI microservice)**
 - The method is decided (photo in, text suggestion out — see §1.3). Still open: where photos are processed (in-house model vs. third-party API), how long they're retained, and what consent/disclosure is needed from clients (biometric data regulations vary by region — worth checking with whoever handles compliance).
@@ -173,13 +178,14 @@ This keeps TLS termination and cert management centralized in Apache, while Expr
 
 **Fidelity/loyalty program**
 - What's the actual rule — e.g., "1 free haircut after N paid visits," a points system, or tiered rewards? Does it vary by service type or price?
-- Do rewards expire? Are they shop-wide or tied to a specific barber?
+- Do rewards expire? Rewards are global — usable at any shop (decided), not tied to a specific barber.
 - Can rewards be combined with other promotions?
 
 **Appointments & scheduling**
-- Do barbers set their own available hours, or does the manager set hours for all barbers (or both, with manager able to override)?
+- Barber hours are decided: every barber works a fixed 8-hour shift, but start time varies per barber (e.g. 9:00–17:00 vs. 12:00–20:00); only a manager can set/change a barber's hours, not the barber themselves.
+- What are the shop's opening/closing hours? Assumed to be the same across all shops, but the actual hours still need to be set — this also bounds which barber shift start times are valid.
 - How are cancellations/no-shows/reschedules handled — cutoff windows, penalties, waitlists?
-- Multiple chairs per barber, or one appointment at a time per barber?
+- One appointment at a time per barber (decided) — no multiple chairs per barber.
 
 **Notifications**
 - Cron job vs. SQS + worker for reminder scheduling — see §1.6. Needs a decision.
