@@ -137,10 +137,11 @@ INSERT INTO shifts (name, start_time, end_time) VALUES
 -- ---------- role-specific extension tables (1:1 with users) ----------
 
 CREATE TABLE clients (
-    user_id                uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-    facial_structure_type  facial_structure_type,
-    created_at             timestamptz NOT NULL DEFAULT now(),
-    updated_at             timestamptz NOT NULL DEFAULT now()
+    user_id                    uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    facial_structure_type      facial_structure_type,
+    completed_services_count   integer NOT NULL DEFAULT 0 CHECK (completed_services_count >= 0), -- paid services since the last free reward; resets to 0 on redemption
+    created_at                 timestamptz NOT NULL DEFAULT now(),
+    updated_at                 timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE TRIGGER trg_clients_updated_at BEFORE UPDATE ON clients
@@ -280,6 +281,27 @@ CREATE INDEX idx_appointments_shop_start   ON appointments (shop_id, scheduled_s
 CREATE INDEX idx_appointments_status       ON appointments (status);
 CREATE TRIGGER trg_appointments_updated_at BEFORE UPDATE ON appointments
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- Loyalty: every completed, non-reward appointment counts as one paid service
+-- toward the client's next free service; completing a reward-redemption
+-- appointment resets the count back to 0 (see clients.completed_services_count).
+CREATE FUNCTION update_client_loyalty_count() RETURNS trigger AS $$
+BEGIN
+    IF NEW.is_reward_redemption THEN
+        UPDATE clients SET completed_services_count = 0 WHERE user_id = NEW.client_id;
+    ELSE
+        UPDATE clients SET completed_services_count = completed_services_count + 1 WHERE user_id = NEW.client_id;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_appointments_loyalty_count_insert AFTER INSERT ON appointments
+    FOR EACH ROW WHEN (NEW.status = 'completed')
+    EXECUTE FUNCTION update_client_loyalty_count();
+CREATE TRIGGER trg_appointments_loyalty_count_update AFTER UPDATE ON appointments
+    FOR EACH ROW WHEN (NEW.status = 'completed' AND OLD.status IS DISTINCT FROM 'completed')
+    EXECUTE FUNCTION update_client_loyalty_count();
 
 -- ---------- appointment_services (join + historical price/duration snapshot) ----------
 

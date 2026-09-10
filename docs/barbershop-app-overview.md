@@ -29,7 +29,7 @@ Clients submit a photo and/or facial-structure attributes, stated preferences, a
 
 ### 3.3 Loyalty / Fidelity Program
 
-Clients accumulate credit toward free haircuts. Rewards are global — earned and redeemable at any shop, not tied to a specific barber. The exact earning/redemption rule (visit-based, points-based, tiered) hasn't been decided yet — see open questions.
+Clients accumulate credit toward free haircuts: every 6 paid services earns a 7th one free. Each client has a running count of paid services since their last free redemption; it resets to 0 once the free service is completed. Rewards are global — earned and redeemable at any shop, not tied to a specific barber.
 
 ### 3.4 Appointment Reminders
 
@@ -63,7 +63,7 @@ These decisions materially affect the product and need to be settled up front.
 - A manager can't be deleted while still managing any shop — their shops must first be reassigned to another manager (decided).
 
 **Fidelity/loyalty program**
-- What's the actual rule — e.g., "1 free haircut after N paid visits," a points system, or tiered rewards? Does it vary by service type or price?
+- The rule is visit-based: every 6 paid services earns a free 7th, tracked as a running count that resets on redemption (decided). Does it vary by service type or price, or is every service worth the same toward the count?
 - Do rewards expire? Rewards are global — usable at any shop (decided), not tied to a specific barber.
 - Can rewards be combined with other promotions?
 
