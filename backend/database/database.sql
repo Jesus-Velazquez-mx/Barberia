@@ -3,6 +3,12 @@
 -- Postgres 18. gen_random_uuid() is built into core (no extension needed).
 -- ============================================================
 
+-- ---------- TESTING TABLE -----------
+CREATE TABLE test (
+	id_test CHAR(5),
+	field_test VARCHAR(50)
+);
+
 -- ---------- ENUMS ----------
 
 CREATE TYPE user_role AS ENUM ('client', 'barber', 'manager', 'receptionist');
