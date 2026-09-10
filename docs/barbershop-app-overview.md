@@ -15,13 +15,13 @@ The experience should be consistent across web and mobile — clients, barbers, 
 - **Clients**: book appointments, receive haircut recommendations, track and redeem loyalty rewards, receive reminders.
 - **Barbers**: manage their own schedule and appointments; may want a lightweight view while on the go.
 - **Receptionists**: manage day-to-day appointments at their shop — booking, check-in, walk-ins, cancellations/reschedules — as a dedicated role distinct from managers/assistants.
-- **Managers / Assistants**: manage the shared services catalog, oversee each shop's supplies inventory, staffing and availability, and review reporting/analytics.
+- **Managers / Assistants**: manage the shared services catalog, oversee each shop's supplies inventory, staffing and availability, and review reporting/analytics. Each shop has exactly one manager, but a manager can oversee multiple shops.
 
 ## 3. Core Features
 
 ### 3.1 Appointment Booking & Scheduling
 
-Clients book appointments against a barber's availability. Barbers manage their calendar and see upcoming bookings — one appointment at a time per barber (no multiple chairs). Every barber works a fixed 8-hour shift; start times can differ between barbers (e.g. one barber 9:00–17:00, another 12:00–20:00), and only a manager can set or change a barber's hours. Scheduling policy (cancellations, no-shows, reschedules, waitlists) still needs to be defined — see open questions.
+Clients book appointments against a barber's availability. Barbers manage their calendar and see upcoming bookings — one appointment at a time per barber (no multiple chairs). Every barber is assigned to one of two fixed shifts — morning (8:00–16:00) or afternoon (12:00–20:00) — and works Monday through Saturday; only a manager can set or change a barber's shift assignment. Scheduling policy (cancellations, no-shows, reschedules, waitlists) still needs to be defined — see open questions.
 
 ### 3.2 Haircut Recommendations
 
@@ -41,7 +41,7 @@ Managers need visibility into business performance — for example revenue, most
 
 ### 3.6 Shop Supplies (Internal)
 
-Each shop maintains its own inventory of the supplies used to deliver services (scissors, shampoo, conditioner, etc.) — these are never sold to clients and aren't part of any customer-facing catalog. Managers/assistants track stock levels per shop. Unlike the services menu, which is shared and identical across all shops, supplies inventory is independent per location.
+Each shop maintains its own inventory of the supplies used to deliver services (scissors, shampoo, conditioner, etc.) — these are never sold to clients and aren't part of any customer-facing catalog. Managers/assistants track stock levels per shop. Unlike the services menu, which is shared and identical across all shops, supplies inventory is independent per location. Each supply can have a reorder threshold; once stock drops to or below that threshold it's automatically flagged for reorder, and the flag clears automatically once it's restocked above the threshold.
 
 ## 4. Example User Journeys
 
@@ -58,14 +58,18 @@ These decisions materially affect the product and need to be settled up front.
 - Is this for a single barbershop location, or should the platform support multiple locations/franchises from day one (multi-tenancy)?
 - Are walk-ins supported, or is it appointment-only?
 
+**Shops & staffing**
+- Each shop has exactly one manager, assigned at shop creation, and a manager may oversee multiple shops (decided).
+- A manager can't be deleted while still managing any shop — their shops must first be reassigned to another manager (decided).
+
 **Fidelity/loyalty program**
 - What's the actual rule — e.g., "1 free haircut after N paid visits," a points system, or tiered rewards? Does it vary by service type or price?
 - Do rewards expire? Rewards are global — usable at any shop (decided), not tied to a specific barber.
 - Can rewards be combined with other promotions?
 
 **Appointments & scheduling**
-- Barbers work fixed 8-hour shifts, with staggered start times set only by managers (decided).
-- What are the shop's opening/closing hours? Assumed to be the same across all shops, but the actual hours still need to be set.
+- Barbers work one of two fixed shifts — 8:00–16:00 or 12:00–20:00 — Monday through Saturday; shift assignment is set only by managers (decided).
+- Shop hours are effectively 8:00–20:00, Monday through Saturday (closed Sunday), based on the two shift windows (decided) — still need to confirm whether every shop staffs both shifts.
 - One appointment at a time per barber, no multiple chairs (decided).
 - How are cancellations/no-shows/reschedules handled — cutoff windows, penalties, waitlists?
 
