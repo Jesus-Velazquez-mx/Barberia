@@ -8,6 +8,12 @@ create table test (
 -- Postgres 18. gen_random_uuid() is built into core (no extension needed).
 -- ============================================================
 
+-- ---------- TESTING TABLE -----------
+CREATE TABLE test (
+	id_test CHAR(5),
+	field_test VARCHAR(50)
+);
+
 -- ---------- ENUMS ----------
 
 CREATE TYPE user_role AS ENUM ('client', 'barber', 'manager', 'receptionist');
@@ -204,26 +210,39 @@ CREATE TRIGGER trg_services_updated_at BEFORE UPDATE ON services
 -- "Products" in the docs actually means each shop's own stock of consumables
 -- (scissors, shampoo, conditioner, etc.) used to deliver services — never sold to
 -- or attached to a client's appointment, hence no link to appointments/appointment_services.
+-- Split into identity (supplies: what the product is, rarely changes) and state
+-- (supply_stock: current stock levels, re-priced/re-ordered often) so the two
+-- change at different rates and can be updated independently.
 
 CREATE TABLE supplies (
-    id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    shop_id           uuid NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
-    name              varchar(150) NOT NULL,
-    description       text,
-    unit              varchar(30) NOT NULL DEFAULT 'unit', -- e.g. 'bottle', 'box', 'unit'
-    quantity_on_hand  integer NOT NULL DEFAULT 0 CHECK (quantity_on_hand >= 0),
-    reorder_threshold integer CHECK (reorder_threshold >= 0),
-    needs_reorder     boolean DEFAULT false NOT NULL,
-    unit_cost         numeric(10,2) CHECK (unit_cost >= 0),
-    sku               varchar(50),
-    is_active         boolean NOT NULL DEFAULT true,
-    created_at        timestamptz NOT NULL DEFAULT now(),
-    updated_at        timestamptz NOT NULL DEFAULT now(),
+    id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    shop_id     uuid NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
+    name        varchar(150) NOT NULL,
+    description text,
+    unit        varchar(30) NOT NULL DEFAULT 'unit', -- e.g. 'bottle', 'box', 'unit'
+    sku         varchar(50),
+    created_at  timestamptz NOT NULL DEFAULT now(),
+    updated_at  timestamptz NOT NULL DEFAULT now(),
     UNIQUE (shop_id, sku)
 );
 
 CREATE INDEX idx_supplies_shop ON supplies (shop_id);
 CREATE TRIGGER trg_supplies_updated_at BEFORE UPDATE ON supplies
+    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- 1:1 with supplies, same pattern as the role-extension tables (user_id as PK/FK).
+CREATE TABLE supply_stock (
+    supply_id         uuid PRIMARY KEY REFERENCES supplies(id) ON DELETE CASCADE,
+    quantity_on_hand  integer NOT NULL DEFAULT 0 CHECK (quantity_on_hand >= 0),
+    reorder_threshold integer CHECK (reorder_threshold >= 0),
+    needs_reorder     boolean DEFAULT false NOT NULL,
+    unit_cost         numeric(10,2) CHECK (unit_cost >= 0),
+    is_active         boolean NOT NULL DEFAULT true,
+    created_at        timestamptz NOT NULL DEFAULT now(),
+    updated_at        timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TRIGGER trg_supply_stock_updated_at BEFORE UPDATE ON supply_stock
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- needs_reorder is derived, not user-set: true once stock drops to/below the
@@ -236,7 +255,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trg_supplies_needs_reorder BEFORE INSERT OR UPDATE ON supplies
+CREATE TRIGGER trg_supply_stock_needs_reorder BEFORE INSERT OR UPDATE ON supply_stock
     FOR EACH ROW EXECUTE FUNCTION set_supplies_needs_reorder();
 
 -- ---------- barber availability ----------
