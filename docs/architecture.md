@@ -4,71 +4,112 @@ For the product/business context behind these decisions, see [`barbershop-app-ov
 
 ## 1. System Components & Tech Stack
 
-There will be two client apps (Next.js web, Kotlin Android). They will talk to a single Express backend over a REST API. The backend is the source of truth for business logic and owns the PostgreSQL database. It delegates AI work (haircut recommendations) to a dedicated Python microservice, and delegates outbound communication (appointment reminders) to WhatsApp and email providers. Everything runs on AWS: EC2 for the three services, RDS for Postgres.
+There will be three client apps (Vite web, Kotlin Android, Swift iOS). They will talk to a single Express backend over a REST API. The backend is the source of truth for business logic and owns the PostgreSQL database. It delegates AI work (haircut recommendations) to a dedicated microservice, and delegates outbound communication (appointment reminders) to WhatsApp and email providers. The frontend is deployed to Cloudflare Workers; the backend, AI microservice, and database run on AWS (EC2 + RDS).
+
+The system supports multiple barbershop locations, starting with 2 — this is a confirmed multi-tenancy requirement, not just a possibility, and affects the data model (see §1.4).
 
 ### 1.1 Client applications
 
 All three clients are "thin" — they hold UI state and call the backend API; they don't talk to the database or the AI microservice directly.
 
-- **Web (Next.js + Tailwind)**: serves clients, barbers, and managers/assistants through role-gated routes. Given three quite different personas, plan for three route groups behind one app. Next.js API routes will just proxy to the Express backend rather than duplicate logic.
-- **Android (Kotlin)**: primarily client-facing (booking, recommendations, reminders, loyalty), though barbers may also want a lightweight mobile view of their schedule.
+- **Web (Vite + Tailwind)**: a client-side single-page app (no SSR, no server-side logic — e.g., auth session handling happens via tokens on the client, not a Node server). Serves clients, barbers, receptionists, and managers/assistants through role-gated routes. Given four quite different personas, plan for either route groups within one app, or (if the manager/barber/receptionist workload grows) a separate admin app later. Deployed as a Cloudflare Worker at `barberia.erickdh.com`.
+- **Android (Kotlin)** / **iOS (Swift)**: primarily client-facing (booking, recommendations, reminders, loyalty), though barbers may also want a lightweight mobile view of their schedule. Deployment for both is **not yet configured or decided**.
 
-All clients share one OpenAPI contract so the three teams (web, Android) don't drift.
+All clients share one OpenAPI contract (REST) so the three teams (web, Android, iOS) don't drift. Generating client SDKs from the OpenAPI spec will save a lot of pain later.
 
 ### 1.2 Backend (Express + PostgreSQL, EC2)
 
 Owns:
-- Auth & role-based access control (barber / manager-assistant / client)
-- Appointments: CRUD, scheduling rules, availability calendar
-- Services & products catalog
+- Auth & role-based access control (barber / manager-assistant / receptionist / client)
+- Appointments: CRUD, scheduling rules, availability calendar. Walk-ins are supported alongside scheduled appointments (not appointment-only). One appointment at a time per barber (no multiple chairs). Barbers work fixed 8-hour shifts with staggered start times set only by managers (barbers can't self-schedule their hours).
+- Services catalog (shared across shops) and each shop's supplies inventory (internal consumables — scissors, shampoo, conditioner, etc. — not customer-facing)
 - Loyalty/fidelity program logic and ledger
 - Reporting/analytics queries for managers
 - Orchestration: calls the AI microservice for recommendations, and triggers the notification pipeline for reminders
 - It should NOT contain haircut-recommendation model logic — that's isolated in the AI microservice so it can be iterated on, scaled, and potentially swapped (or moved to a different provider) independently.
 
-Suggested internal module boundaries:
+Runs on a single AWS EC2 instance (free tier), listening on **plain HTTP only** — TLS is terminated upstream by Apache (see §3). Reachable externally at `barberia-api.erickdh.com`, a subdomain managed via Cloudflare DNS pointing at the EC2 instance.
+
+Suggested internal module boundaries (even inside one Express app, keep these as separate modules with clear boundaries — you'll likely want to split them into services later):
 - `auth`
 - `appointments` (includes availability/scheduling engine)
-- `catalog` (services, products, pricing)
+- `catalog` (shared services catalog, pricing)
+- `inventory` (each shop's supplies stock — separate from `catalog` since it's per-shop, not shared, and never customer-facing)
 - `loyalty`
 - `notifications` (orchestrates the actual WhatsApp/email send, likely via a queue)
 - `reports`
-- `users` (barbers, managers, clients, profile data incl. facial-structure preference inputs)
+- `users` (barbers, managers, receptionists, clients, profile data incl. facial-structure preference inputs)
 
 > Note: the current backend code (`backend/controllers`, `backend/routes`) is an early scaffold and doesn't yet reflect this module breakdown — see `CLAUDE.local.md` for the code-level state.
 
-### 1.3 AI microservice (EC2)
+### 1.3 AI microservice
 
-Single responsibility: take a client's inputs (photo and/or facial-structure attributes, stated preferences, maybe hair type/texture) and return haircut suggestions. Called asynchronously by the backend, not directly by clients — this keeps model credentials, provider choice, and scaling isolated from the main API, and makes the AI service replaceable without touching the client apps.
+Single responsibility: take a photo of the client and return haircut suggestions as a text response. Called **asynchronously** by the backend, not directly by clients — this keeps model credentials, provider choice, and scaling isolated from the main API, and makes the AI service replaceable without touching the client apps.
 
-The recommendation method (image-based ML model, a curated rules-engine, or an LLM-based service with prompt engineering) is not specified yet.
+The recommendation method is decided: computer-vision analysis of an uploaded photo, returning a text-based suggestion (rather than a rules-engine questionnaire or LLM-prompting flow). Open questions around where photos are processed, retention, and consent remain — see §5.
+
+**Runs on the same EC2 instance as the backend** (free-tier constraint), also over plain HTTP behind Apache. This is a departure from strict service isolation: on a single shared instance, a spike in AI workload (e.g., CV model inference) can affect backend responsiveness, since both share the instance's CPU/RAM. Worth monitoring, and worth splitting onto its own instance later if load becomes a problem.
 
 ### 1.4 Database (PostgreSQL on RDS)
 
-Core entities to model (not exhaustive): `users` (with role), `barbers`, `clients`, `services`, `products`, `appointments`, `appointment_services`, `availability_slots`/`schedules`, `loyalty_accounts`, `loyalty_transactions`, `notifications_log`, `preferences`/`recommendation_history`.
+The initial schema is implemented in `backend/database/database.sql`. Core entities: `shops`, `users` (with role), `barbers`, `clients`, `managers`, `receptionists`, `services`, `supplies`, `appointments`, `appointment_services`, `availability_slots`, `availability_exceptions`, `loyalty_accounts`, `loyalty_transactions`, `notifications_log`, `recommendation_history`.
 
-### 1.5 Notifications (WhatsApp / email)
+Decided:
+- **Multi-tenancy**: single database with a `shop_id` column on shop-scoped tables (`barbers`, `managers`, `receptionists`, `supplies`, `availability_slots`/`availability_exceptions`, `appointments`) rather than schema-per-tenant.
+- **Primary keys**: UUID (`gen_random_uuid()`, built into Postgres core since v13 — no extension needed).
+- The `services` catalog is shared/global across all shops. `supplies` — each shop's inventory of consumables used to deliver services (scissors, shampoo, conditioner, etc.), never sold to or attached to a client's appointment — is scoped **per-shop** instead.
+- Loyalty accounts/balances are shared across shops — one running balance per client, not per shop.
+- Facial photos are **not** stored in Postgres — they live in an S3 bucket (see §1.5), with only the URL/key referenced in the DB.
+
+Still open:
+- Audit/history requirements for reports beyond what's already captured — `appointment_services` snapshots price/duration at booking time so past revenue isn't distorted by later catalog price changes, but broader historical-reporting needs aren't finalized.
+
+### 1.5 Static assets (S3)
+
+Client photos and other static assets (mainly images) are stored in an S3 bucket, with only the URL/key referenced in Postgres.
+
+### 1.6 Notifications (WhatsApp / email)
 
 Not a separate "service" in the current stack, but it needs its own design:
 - **WhatsApp**: requires the WhatsApp Business Platform (via Meta directly or a BSP like Twilio, MessageBird, 360dialog). Needs pre-approved message templates for anything outside a 24-hour user-initiated session window — appointment reminders will need an approved template.
 - **Email**: AWS SES is the natural fit given we're already on AWS.
-- Reminders are time-triggered, not request-triggered, so we will need a scheduler — e.g., a cron-style job (node-cron, or an EC2 cron job) or, cleaner, an SQS queue plus a small worker, so a reminder isn't lost if the backend restarts. Given reliability matters here (a missed reminder is a bad experience), a queue-based approach is worth the extra setup.
+- Reminders are time-triggered, not request-triggered, so we need a scheduler. **Not yet set up.** At a target scale of ~100 users, the case for a full SQS-based queue is driven by *reliability* (not losing a reminder if the backend restarts), not scale — SQS's free tier would comfortably cover this volume regardless. Two realistic options:
+  - **Simple cron job** (node-cron in the Express app, or an EC2 cron) — least setup, but a reminder scheduled during a restart/deploy could be missed unless we add our own tracking/retry logic.
+  - **SQS + small worker** — more resilient, minimal added cost at this scale, more moving parts to operate.
+  - Given the single-EC2/free-tier posture elsewhere, a lightweight cron approach with a check-on-startup safeguard (querying `notifications_log`/pending reminders on boot) is a reasonable middle ground, but this is a judgment call on how tolerant the business is of an occasional missed reminder.
 
 ## 2. System Data Flows
 
 **Booking an appointment**: Client app → Backend `appointments` module checks barber availability against `availability_slots` and existing bookings → writes `appointments` row → enqueues a reminder job (e.g. "send 24h before, send 2h before") → returns confirmation to client.
 
-**Getting a haircut recommendation**: Client submits photo/preferences → Backend stores/validates input, calls AI microservice → AI microservice returns suggestions (+ confidence/explanation) → Backend persists to `recommendation_history` and returns to client.
+**Getting a haircut recommendation**: Client submits photo → Backend stores/validates input, calls AI microservice → AI microservice returns a text suggestion (+ confidence/explanation) → Backend persists to `recommendation_history` and returns to client.
 
 **Reminder delivery**: Scheduler/worker picks up due reminder jobs → `notifications` module resolves client's preferred channel(s) → calls WhatsApp API and/or SES → logs delivery status to `notifications_log` (for retry/troubleshooting).
 
-**Redeeming a loyalty reward**: Client or barber/manager triggers redemption → `loyalty` module validates balance against program rules → deducts credit, creates `loyalty_transactions` entry → appointment marked as reward-redeemed for reporting.
+**Redeeming a loyalty reward**: Client, barber, receptionist, or manager triggers redemption → `loyalty` module validates balance against program rules → deducts credit, creates `loyalty_transactions` entry → appointment marked as reward-redeemed for reporting.
 
-## 3. Deployment Infrastructure: AWS EC2 + Apache + Cloudflare + Express
+## 3. Deployment Infrastructure
+
+### 3.1 Topology overview
+
+- **Frontend**: Vite SPA deployed as a **Cloudflare Worker**, served at `barberia.erickdh.com`. No SSR, no server-side logic — pure static/client-side app.
+- **Backend + AI microservice**: co-located on a **single AWS EC2 instance** (free tier). Both listen on HTTP only.
+- **Reverse proxy**: **Apache** on the same EC2 instance, handling HTTP/HTTPS ingress, SSL/TLS termination, and internal routing (path- or subdomain-based) to the backend and AI microservice. No load balancer — judged unnecessary at current scale. Trade-off: no built-in health checks, failover, or horizontal scaling room; acceptable for now, worth revisiting if usage grows meaningfully.
+- **DNS**: Managed in **Cloudflare**. `barberia.erickdh.com` → Cloudflare Worker (frontend); `barberia-api.erickdh.com` → the EC2 instance (backend, via Apache).
+- **RDS**: PostgreSQL, single primary. No read replica yet — revisit once reporting queries start competing with transactional traffic.
+- **S3**: client photos and static assets.
+- **Networking**: with no load balancer and a single EC2 instance, the private/public subnet split from a multi-instance design is less relevant — Apache on the instance is the public-facing edge. RDS should still sit in a private subnet/security group reachable only from the backend's instance.
+- **CI/CD**: **GitHub CI/CD** handles deployment to both **Cloudflare** (frontend Worker) and **AWS** (backend + AI microservice on the shared EC2 instance). Mobile CI/CD (Android/iOS) is not yet configured or decided.
+- **Observability**: CloudWatch for the AWS side at minimum; still worth deciding on centralized error tracking (Sentry or similar) and how to monitor the Cloudflare Worker side too.
+- **Environments**: dev/staging/production as separate stacks is still an open decision — worth resolving given everything now runs on a single free-tier instance (e.g., would staging share the same instance, a separate one, or run locally?).
+
+> Note: `backend/` and `frontend/` are being decoupled into separately built/deployed artifacts — see `CLAUDE.local.md` for the current state of that migration.
+
+### 3.2 Backend/Apache setup: AWS EC2 + Apache + Cloudflare + Express
 
 **Goal:** Deploy an Express.js backend on an EC2 instance, publicly accessible via a custom domain, with Cloudflare proxying/terminating TLS and Apache acting as a local reverse proxy to the Node app.
 
-### 3.1 Components & Flow
+#### 3.2.1 Components & Flow
 
 ```
 Visitor → Cloudflare (proxy, TLS termination for visitors, orange cloud DNS)
@@ -77,7 +118,7 @@ Visitor → Cloudflare (proxy, TLS termination for visitors, orange cloud DNS)
         → Reverse proxy (mod_proxy) → Express app (localhost:3000, plain HTTP)
 ```
 
-### 3.2 Setup Completed So Far
+#### 3.2.2 Setup Completed So Far
 
 1. **DNS/Cloudflare**: EC2 instance's public IP registered as an **A record**, proxy enabled (orange cloud).
 
@@ -93,15 +134,15 @@ Visitor → Cloudflare (proxy, TLS termination for visitors, orange cloud DNS)
 
 6. Confirmed working: domain loads correctly over HTTPS through Cloudflare.
 
-### 3.3 Key Troubleshooting Notes
+#### 3.2.3 Key Troubleshooting Notes
 
 - **522 error** = Cloudflare couldn't reach the origin at all (TCP timeout) → almost always a Security Group / firewall issue.
 - **521 error** = Cloudflare reached the origin but the origin refused the connection → typically means nothing is properly listening/responding on the port/protocol Cloudflare expects (e.g., SSL/TLS mode set to Full but no valid TLS listener on port 443).
 - Cloudflare Origin Certificates are **only trusted by Cloudflare**. Direct requests to the EC2 IP over HTTPS (bypassing Cloudflare) will show a cert warning. This is expected and acceptable since the Security Group only needs to serve traffic that arrives via Cloudflare.
 
-### 3.4 Next Step (In Progress): Integrating Express
+#### 3.2.4 Integrating Express
 
-Decision made: **keep Apache in front as a reverse proxy** rather than having Express handle TLS directly. Planned steps:
+Decision made: **keep Apache in front as a reverse proxy** rather than having Express handle TLS directly. Steps:
 
 1. Express app runs as plain HTTP on an internal port (e.g., `localhost:3000`), no TLS logic in Node at all — Apache handles all TLS.
 2. Enable Apache proxy modules: `sudo a2enmod proxy proxy_http`.
@@ -114,20 +155,52 @@ Decision made: **keep Apache in front as a reverse proxy** rather than having Ex
 4. Restart Apache: `sudo systemctl restart apache2`.
 5. Run the Express app persistently via `pm2` (`pm2 start app.js`, `pm2 startup`, `pm2 save`) so it survives crashes/reboots.
 
-This keeps TLS termination and cert management centralized in Apache (already configured and working), while Express stays simple and only needs to handle HTTP internally.
+This keeps TLS termination and cert management centralized in Apache, while Express stays simple and only needs to handle HTTP internally. The AI microservice, co-located on the same instance (§1.3), is reached through the same Apache layer via its own routing rule (path- or subdomain-based).
 
-> Note: `backend/` and `frontend/` are being decoupled into separately built/deployed artifacts — see `CLAUDE.local.md` for the current state of that migration. The proxy/TLS layer above still applies to how traffic reaches the backend; how the frontend is served may change as part of that split.
+## 4. Cross-Cutting Concerns to Design Explicitly
 
-## 4. Technical Open Questions
+- **Auth**: JWT-based session with role claims (barber/manager/receptionist/client) is a natural fit for three heterogeneous clients, and is now the *only* option for the web client since there's no server-side session handling (no SSR). Decide token lifetime, refresh strategy, and whether mobile uses secure storage (Keychain/Keystore) for tokens; for the Vite SPA, decide where tokens are stored client-side (memory vs. localStorage vs. cookie) with XSS/CSRF trade-offs in mind.
+- **Background jobs**: reminders (and possibly AI processing, if recommendations aren't instant) still need a decision — see §1.6.
+- **Image handling**: uploads, resizing, and privacy/retention rules for facial photos — this touches both S3 design and legal/compliance (see §5).
+- **Rate limiting & abuse prevention**: especially around booking (prevent slot-spamming) and the AI endpoint (cost control) — more important now that backend and AI share one small instance's resources.
+- **CORS**: since the frontend (`barberia.erickdh.com`) and backend (`barberia-api.erickdh.com`) are on different subdomains, the backend/Apache config needs explicit CORS handling for API requests from the Worker.
+- **Single point of failure**: co-locating backend + AI microservice on one EC2 instance behind a single Apache process, with no load balancer or queue, means one instance failure or restart affects both services and any in-flight reminders. Acceptable trade-off at ~100 users; worth documenting as a known limitation rather than an oversight.
 
-**Database schema**
-- Single database vs. schema-per-tenant if it's decided to support multiple barbershop locations/franchises.
-- Store facial photos or not. If stored, we'll use an S3 bucket.
-- Audit/history requirements for reports (e.g. will historical snapshots of prices/services be needed for accurate past-revenue reporting?).
+## 5. Technical Open Questions
+
+**Business scope**
+- Does a client book with a specific barber, or with "the shop" and get assigned? Can they have a preferred/favorite barber?
+- Do appointments involve a single service, or multiple (e.g., haircut + beard trim in one slot)? (Different services do take different durations — decided, already modeled via `services.duration_minutes`.)
+
+**Haircut recommendations (AI microservice)**
+- The method is decided (photo in, text suggestion out — see §1.3). Still open: where photos are processed (in-house model vs. third-party API), how long they're retained, and what consent/disclosure is needed from clients (biometric data regulations vary by region — worth checking with whoever handles compliance).
+- Should recommendations be reusable/editable by barbers (e.g., barber overrides or annotates the AI's suggestion)?
+
+**Fidelity/loyalty program**
+- What's the actual rule — e.g., "1 free haircut after N paid visits," a points system, or tiered rewards? Does it vary by service type or price?
+- Do rewards expire? Rewards are global — usable at any shop (decided), not tied to a specific barber.
+- Can rewards be combined with other promotions?
+
+**Appointments & scheduling**
+- Barber hours are decided: every barber works a fixed 8-hour shift, but start time varies per barber (e.g. 9:00–17:00 vs. 12:00–20:00); only a manager can set/change a barber's hours, not the barber themselves.
+- What are the shop's opening/closing hours? Assumed to be the same across all shops, but the actual hours still need to be set — this also bounds which barber shift start times are valid.
+- How are cancellations/no-shows/reschedules handled — cutoff windows, penalties, waitlists?
+- One appointment at a time per barber (decided) — no multiple chairs per barber.
+
+**Notifications**
+- Cron job vs. SQS + worker for reminder scheduling — see §1.6. Needs a decision.
+- Can clients choose/opt out of channel (WhatsApp vs. email vs. both)? Required for consent/compliance either way.
+- Reminder timing — e.g., 24h and 2h before, configurable per shop?
+- Who owns the WhatsApp Business account/verification — has that process been started, since Meta's approval can take time?
+
+**Reporting**
+- What reports does the manager actually need — revenue, most-booked services, barber utilization, client retention/churn, loyalty redemption rates? This determines whether a simple SQL-based reporting layer or a proper analytics pipeline is needed.
 
 **Non-functional / operational**
-- Expected scale (number of shops, barbers, appointments/day) — affects RDS sizing and whether a single EC2 instance per service is even adequate to start.
-- CI/CD strategy for four codebases (web, backend, AI service, Android, iOS) plus infra — how are releases coordinated, especially given mobile app store review times differ from web deploy cadence?
-- Environments (dev/staging/prod) and how config/secrets are managed (AWS Secrets Manager / Parameter Store recommended over .env files in EC2).
+- Expected scale beyond the ~100-user, 2-shop starting target — affects whether the single free-tier EC2 instance remains adequate, and when it's worth splitting the backend and AI microservice onto separate instances or reintroducing a load balancer.
+- Data privacy/compliance requirements (GDPR, CCPA, or local equivalents) — especially relevant given facial photos and personal contact info for WhatsApp/email.
+- Payment processing — is payment/deposit handled in-app (Stripe et al.) or purely in-person at the shop? Worth ruling in or out explicitly.
+- CI/CD strategy for five codebases (web, backend, AI service, Android, iOS) plus infra — GitHub CI/CD now covers web (Cloudflare) and backend/AI (AWS); mobile CI/CD is still fully open, and mobile app-store review timelines will need to be coordinated separately from the web/backend deploy cadence.
+- Environments (dev/staging/prod) and how config/secrets are managed (AWS Secrets Manager / Parameter Store recommended over .env files on the EC2 instance) — worth deciding given the single-instance setup.
 
 For the business decisions driving these questions, see [`barbershop-app-overview.md`](./barbershop-app-overview.md).
