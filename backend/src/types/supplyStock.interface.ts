@@ -3,7 +3,7 @@ export interface SupplyStock {
     quantity_on_hand: number;
     reorder_threshold: number | null;
     needs_reorder: boolean;
-    unit_cost: string | null; // numeric(10,2)
+    unit_cost: number | null;
     is_active: boolean;
     created_at: Date;
     updated_at: Date;
