@@ -1,11 +1,16 @@
 import 'dotenv/config';
-import { Pool, type PoolConfig } from 'pg';
+import { Pool, types, type PoolConfig } from 'pg';
 import fs from 'fs';
 import { RDSClient } from '@aws-sdk/client-rds';
 
 /* A diferencia de v2, en el SDK v3 no existe un config global (AWS.config.update):
 cada cliente se configura por separado al crearlo */
 const rdsClient = new RDSClient({ region: 'us-east-2' });
+
+/* Por defecto, node-postgres devuelve NUMERIC/DECIMAL (OID 1700) como string para no
+perder precisión. Los tipos de dominio (Service.price, etc.) lo declaran como number,
+así que lo parseamos aquí para que el runtime coincida con esos tipos. */
+types.setTypeParser(types.builtins.NUMERIC, (value: string) => parseFloat(value));
 
 /* Configuración de la conexión leyendo los secretos de GitHub */
 const dbConfig: PoolConfig = {
@@ -16,7 +21,7 @@ const dbConfig: PoolConfig = {
     password: process.env.DB_PASSWORD,
 };
 
-// SSL es requerido para cualquier environment, excepto local
+// TLS es requerido para cualquier environment, excepto local
 if (process.env.ENV != 'local') {
     dbConfig.ssl = {
         rejectUnauthorized: false,
