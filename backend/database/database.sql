@@ -1,8 +1,3 @@
-create table test (
-	id_test CHAR(5),
-	field_test VARCHAR(50)
-)
-
 -- ============================================================
 -- Barbershop App — Core Schema
 -- Postgres 18. gen_random_uuid() is built into core (no extension needed).
