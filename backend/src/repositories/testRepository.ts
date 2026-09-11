@@ -1,5 +1,5 @@
 import connection from '../connection/connection.js';
-import { Test } from '../types/test.interface.js';
+import type { Test } from '../types/test.interface.js';
 /* Capa de datos: encapsula el acceso a la tabla TEST. No conoce Express ni reglas de negocio */
 
 /* Obtenemos el pool de conexiones */

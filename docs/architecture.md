@@ -30,17 +30,13 @@ Owns:
 
 Runs on a single AWS EC2 instance (free tier), listening on **plain HTTP only** — TLS is terminated upstream by Apache (see §3). Reachable externally at `barberia-api.erickdh.com`, a subdomain managed via Cloudflare DNS pointing at the EC2 instance.
 
-Suggested internal module boundaries (even inside one Express app, keep these as separate modules with clear boundaries — you'll likely want to split them into services later):
-- `auth`
-- `appointments` (includes availability/scheduling engine)
-- `catalog` (shared services catalog, pricing)
-- `inventory` (each shop's supplies stock — separate from `catalog` since it's per-shop, not shared, and never customer-facing)
-- `loyalty`
-- `notifications` (orchestrates the actual WhatsApp/email send, likely via a queue)
-- `reports`
-- `users` (barbers, managers, receptionists, clients, profile data incl. facial-structure preference inputs)
-
-> Note: the current backend code (`backend/controllers`, `backend/routes`) is an early scaffold and doesn't yet reflect this module breakdown — see `CLAUDE.local.md` for the code-level state.
+**Layered structure** — the team decided against per-feature module folders in favor of organizing the backend by technical layer, one flat directory per layer under `backend/src/`:
+- `routes/` — route definitions
+- `controllers/` — req/res handling only, delegates to `services`
+- `services/` — business logic/orchestration, framework-agnostic (no req/res)
+- `repositories/` — data access, parameterized SQL via the shared `pg` pool from `connection/`
+- `types/` — domain entity interfaces, one file per DB table
+- `connection/` — singleton `pg` Pool (`connectDB` / `getPool` / `closeDB`)
 
 ### 1.3 AI microservice
 
@@ -80,13 +76,13 @@ Not a separate "service" in the current stack, but it needs its own design:
 
 ## 2. System Data Flows
 
-**Booking an appointment**: Client app → Backend `appointments` module checks barber availability against `availability_slots` and existing bookings → writes `appointments` row → enqueues a reminder job (e.g. "send 24h before, send 2h before") → returns confirmation to client.
+**Booking an appointment**: Client app → Backend `appointment` controller/service checks barber availability against `availability_slots` and existing bookings → writes `appointments` row → enqueues a reminder job (e.g. "send 24h before, send 2h before") → returns confirmation to client.
 
 **Getting a haircut recommendation**: Client submits photo → Backend stores/validates input, calls AI microservice → AI microservice returns a text suggestion (+ confidence/explanation) → Backend persists to `recommendation_history` and returns to client.
 
-**Reminder delivery**: Scheduler/worker picks up due reminder jobs → `notifications` module resolves client's preferred channel(s) → calls WhatsApp API and/or SES → logs delivery status to `notifications_log` (for retry/troubleshooting).
+**Reminder delivery**: Scheduler/worker picks up due reminder jobs → `notificationLog` service resolves client's preferred channel(s) → calls WhatsApp API and/or SES → logs delivery status to `notifications_log` (for retry/troubleshooting).
 
-**Redeeming a loyalty reward**: Client, barber, receptionist, or manager triggers redemption → `loyalty` module validates balance against program rules → deducts credit, creates `loyalty_transactions` entry → appointment marked as reward-redeemed for reporting.
+**Redeeming a loyalty reward**: Client, barber, receptionist, or manager triggers redemption → `loyalty` service validates balance against program rules → deducts credit, creates `loyalty_transactions` entry → appointment marked as reward-redeemed for reporting.
 
 ## 3. Deployment Infrastructure
 
