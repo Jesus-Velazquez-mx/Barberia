@@ -1,6 +1,7 @@
 export interface Supply {
     id: string;
     shop_id: string;
+    category_id: string;
     name: string;
     description: string | null;
     unit: string;
