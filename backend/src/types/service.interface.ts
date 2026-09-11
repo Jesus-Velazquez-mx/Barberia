@@ -3,7 +3,7 @@ export interface Service {
     name: string;
     description: string | null;
     duration_minutes: number;
-    price: string; // numeric(10,2) es devuelto como string por pg
+    price: number;
     is_active: boolean;
     created_at: Date;
     updated_at: Date;

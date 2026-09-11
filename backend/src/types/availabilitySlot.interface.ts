@@ -2,7 +2,7 @@ export interface AvailabilitySlot {
     id: string;
     barber_id: string;
     shop_id: string;
-    day_of_week: number; // smallint (0-6)
+    day_of_week: number;
     start_time: string;
     end_time: string;
     is_active: boolean;
