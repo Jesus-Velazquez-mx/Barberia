@@ -117,7 +117,7 @@ jobs:
               sudo docker rm -f barberia || true
 
               # Correr la nueva imagen con las variables de entorno
-              sudo docker run --name barberia -d -p 3000:3000 \
+              sudo docker run --name barberia -d --network host \
                 -e DB_HOST=${{ secrets.DB_HOST }} \
                 -e DB_NAME=${{ secrets.DB_NAME }} \
                 -e DB_USER=${{ secrets.DB_USER }} \
