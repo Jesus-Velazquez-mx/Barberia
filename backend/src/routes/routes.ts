@@ -115,6 +115,6 @@ router.put('/actualizarTest', editarTest);
  */
 router.delete('/eliminarTest', eliminarTest);
 
-router.get('/recommendation/test', testAiService)
+router.get('/recommendation/test', testAiService);
 
 export default router;
