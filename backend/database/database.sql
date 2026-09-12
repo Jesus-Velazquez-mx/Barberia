@@ -187,8 +187,20 @@ CREATE TRIGGER trg_receptionists_check_role BEFORE INSERT OR UPDATE ON reception
 
 -- ---------- services catalog (shared/global across shops) ----------
 
+CREATE TABLE services_categories (
+    id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    name        varchar(100) NOT NULL UNIQUE,
+    description text,
+    created_at  timestamptz NOT NULL DEFAULT now(),
+    updated_at  timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TRIGGER trg_services_categories_updated_at BEFORE UPDATE ON services_categories
+    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
 CREATE TABLE services (
     id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    category_id       uuid NOT NULL REFERENCES services_categories(id) ON DELETE RESTRICT,
     name              varchar(150) NOT NULL,
     description       text,
     duration_minutes  integer NOT NULL CHECK (duration_minutes > 0),
@@ -198,6 +210,7 @@ CREATE TABLE services (
     updated_at        timestamptz NOT NULL DEFAULT now()
 );
 
+CREATE INDEX idx_services_category ON services (category_id);
 CREATE TRIGGER trg_services_updated_at BEFORE UPDATE ON services
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
@@ -209,9 +222,21 @@ CREATE TRIGGER trg_services_updated_at BEFORE UPDATE ON services
 -- (supply_stock: current stock levels, re-priced/re-ordered often) so the two
 -- change at different rates and can be updated independently.
 
+CREATE TABLE supplies_categories (
+    id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    name        varchar(100) NOT NULL UNIQUE,
+    description text,
+    created_at  timestamptz NOT NULL DEFAULT now(),
+    updated_at  timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TRIGGER trg_supplies_categories_updated_at BEFORE UPDATE ON supplies_categories
+    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
 CREATE TABLE supplies (
     id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     shop_id     uuid NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
+    category_id uuid NOT NULL REFERENCES supplies_categories(id) ON DELETE RESTRICT,
     name        varchar(150) NOT NULL,
     description text,
     unit        varchar(30) NOT NULL DEFAULT 'unit', -- e.g. 'bottle', 'box', 'unit'
@@ -222,6 +247,7 @@ CREATE TABLE supplies (
 );
 
 CREATE INDEX idx_supplies_shop ON supplies (shop_id);
+CREATE INDEX idx_supplies_category ON supplies (category_id);
 CREATE TRIGGER trg_supplies_updated_at BEFORE UPDATE ON supplies
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
