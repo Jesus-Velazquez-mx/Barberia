@@ -1,11 +1,13 @@
 import { Router } from 'express';
 import testController from '../controllers/testController.js';
+import recommendationController from '../controllers/recommendationController.js';
 
 /* Iniciamos el router*/
 const router = Router();
 
 /* Sacamos todas las funciones*/
 const { listarTest, crearTest, editarTest, eliminarTest } = testController;
+const { testAiService } = recommendationController;
 
 /* Para documentar APIs se usa swagger-jsdoc */
 
@@ -112,5 +114,7 @@ router.put('/actualizarTest', editarTest);
  *         description: Error interno de la base de datos.
  */
 router.delete('/eliminarTest', eliminarTest);
+
+router.get('/recommendation/test', testAiService)
 
 export default router;
