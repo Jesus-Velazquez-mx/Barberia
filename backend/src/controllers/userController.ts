@@ -3,7 +3,7 @@ import { z, ZodError } from 'zod';
 import { loginUser, registerUser } from '../services/userService.js';
 
 const loginSchema = z.object({
-    email: z.string().email(),
+    email: z.email(),
     password: z.string().min(1)
 });
 
