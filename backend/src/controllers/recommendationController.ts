@@ -1,13 +1,15 @@
-import type { Request, Response } from 'express';
 import aiService from '../services/aiService.js';
+import type { ApiHandler } from '../utils/apiResponse.js';
+import { sendSuccess, sendFail } from '../utils/apiResponse.js';
+import type { AiApiHealthResponse } from '../types/dto/aiApiHealthResponse.interface.js';
 
-const testAiService = async (red: Request, res: Response) => {
+const testAiService: ApiHandler<AiApiHealthResponse> = async (_req, res) => {
     try {
         const result = await aiService.testConnection();
-        res.status(200).json(result);
+        sendSuccess(res, result, 'Conexión con el servicio de recomendación exitosa', 200);
     } catch (error) {
         console.error('Error al conectar con el servicio de recomendación:', error);
-        res.status(500).json({ error: 'Error al conectar con el servicio de recomendación' });
+        sendFail(res, 'Error al conectar con el servicio de recomendación', [String(error)], 500);
     }
 };
 
