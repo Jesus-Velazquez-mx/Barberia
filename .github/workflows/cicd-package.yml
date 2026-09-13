@@ -4,12 +4,25 @@ on:
   push:
     branches: [ "main", "dev" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "dev" ]
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    environment: QA
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: barberia_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
     - uses: actions/checkout@v5
     - name: Set up Node.js 24
@@ -18,24 +31,30 @@ jobs:
         node-version: '24'
         cache: 'npm'
         cache-dependency-path: '**/package-lock.json'
-        
+
     - name: Install Backend dependencies
       run: |
         cd backend
         npm install
-        
+
     - name: Install Frontend dependencies
       run: |
         cd frontend
         npm install --legacy-peer-deps
-        
+
+    - name: Load schema into test database
+      env:
+        PGPASSWORD: postgres
+      run: psql -h localhost -U postgres -d barberia_test -f backend/database/database.sql
+
     - name: Test with npm
       env:
-        DB_HOST: ${{ secrets.DB_HOST }}
-        DB_NAME: ${{ secrets.DB_NAME }}
-        DB_USER: ${{ secrets.DB_USER }}
-        DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-        JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        ENV: local
+        DB_HOST: localhost
+        DB_NAME: barberia_test
+        DB_USER: postgres
+        DB_PASSWORD: postgres
+        JWT_SECRET: ci-test-secret
       run: |
         cd backend
         npm test
