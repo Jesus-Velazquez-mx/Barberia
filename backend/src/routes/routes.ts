@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import testController from '../controllers/testController.js';
 import recommendationController from '../controllers/recommendationController.js';
-import * as userController from '../controllers/userController.js';
+import { login, register } from '../controllers/userController.js';
 
 const router = Router();
 
@@ -9,8 +9,8 @@ const router = Router();
 const { listarTest, crearTest, editarTest, eliminarTest } = testController;
 const { testAiService } = recommendationController;
 
-router.post('/login', userController.login);
-router.post('/register', userController.register);
+router.post('/login', login);
+router.post('/register', register);
 
 /* Para documentar APIs se usa swagger-jsdoc */
 
