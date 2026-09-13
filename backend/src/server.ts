@@ -5,6 +5,7 @@ import router from './routes/routes.js';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
 import cors from 'cors';
+import { sendFail } from './utils/apiResponse.js';
 
 const { connectDB } = connection;
 
@@ -43,9 +44,10 @@ app.use('/api', router);
 
 // Respuesta con error al no encontrar la ruta especificada
 app.use('/api', (req: Request, res: Response) => {
-    res.status(404).json({
-        error: 'Ruta de la API no encontrada.',
-    });
+   // res.status(404).json({
+   //     error: 'Ruta de la API no encontrada.',
+   // });
+    sendFail(res, 'Ruta de la API no encontrada.', ['Ruta de la API no encontrada'], 404);
 });
 
 app.listen(port, async () => {
