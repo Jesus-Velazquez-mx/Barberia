@@ -1,13 +1,14 @@
 import { Router } from 'express';
 import testController from '../controllers/testController.js';
 import recommendationController from '../controllers/recommendationController.js';
-import * as userController from '../controllers/userController.js';
+import { login , register } from '../controllers/userController.js';
 
 const router = Router();
 
 /* Sacamos todas las funciones*/
 const { listarTest, crearTest, editarTest, eliminarTest } = testController;
 const { testAiService } = recommendationController;
+const userController = { login, register };
 
 router.post('/login', userController.login);
 router.post('/register', userController.register);
