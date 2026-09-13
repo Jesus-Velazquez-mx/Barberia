@@ -4,7 +4,7 @@ export interface LoginFormValues {
 }
 
 export interface User {
-  id: number;
+  id: string;
   email: string;
   name: string;
   lastname: string;

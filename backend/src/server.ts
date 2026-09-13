@@ -31,12 +31,18 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 /* Pool de conexiones */
 let pool: Pool | undefined;
 /* Permitir solicitudes desde el dominio específico del front */
+
+const allowedOrigin = process.env.ENV === 'local' 
+    ? 'http://localhost:5173' 
+    : 'https://eirckdameeldominio'; 
+
 app.use(
     cors({
-        origin: 'https://eirckdameeldominio',
+        origin: allowedOrigin,
         methods: ['GET', 'POST', 'PUT', 'DELETE'],
     })
 );
+
 /* Retornar JSON en las respuestas */
 app.use(express.json());
 /* Usar las rutas definidas en router */
