@@ -1,5 +1,5 @@
 import db from '../connection/connection.js';
-import { User } from '../types/user.interface.js';
+import type { User } from '../types/entities/user.interface.js';
 
 // Interfaz definida para evitar el uso del tipo 'any' en los parámetros
 export interface CreateUserInput {

@@ -1,6 +1,8 @@
-import { Request, Response } from 'express';
 import { z, ZodError } from 'zod';
 import { loginUser, registerUser } from '../services/userService.js';
+import type { ApiHandler } from '../utils/apiResponse.js';
+import { sendSuccess, sendFail } from '../utils/apiResponse.js';
+import type { AuthResponse } from '../types/dto/authResponse.interface.js';
 
 const loginSchema = z.object({
     email: z.email(),
@@ -19,31 +21,31 @@ const registerSchema = z.object({
  * Controlador para manejar las peticiones de inicio de sesión.
  * Analiza el cuerpo de la petición y gestiona las respuestas HTTP.
  */
-export const login = async (req: Request, res: Response): Promise<void> => {
+export const login: ApiHandler<AuthResponse> = async (req, res) => {
     try {
         // 1. Valida el cuerpo de la petición entrante usando Zod
         const validData = loginSchema.parse(req.body);
 
         // 2. Pasa los datos validados a la capa de servicios
         const result = await loginUser(validData);
-        
+
         // 3. Devuelve una respuesta HTTP 200 OK
-        res.status(200).json(result);
+        sendSuccess(res, result, 'Inicio de sesión exitoso', 200);
     } catch (error: any) {
         // Maneja los errores de validación generados por Zod
         if (error instanceof ZodError) {
-            res.status(400).json({ issues: error.issues });
+            sendFail(res, 'Error de validación', error.issues.map((issue) => issue.message), 400);
             return;
         }
 
         // Devuelve HTTP 404 Not Found para errores de autenticación para no revelar detalles exactos
         if (error.message === 'NOT_FOUND' || error.message === 'INVALID_CREDENTIALS') {
-            res.status(404).json({ message: 'User not found or invalid credentials' });
+            sendFail(res, 'User not found or invalid credentials', null, 404);
             return;
         }
 
         // Manejo general para errores inesperados del servidor
-        res.status(500).json({ message: 'Internal server error' });
+        sendFail(res, 'Internal server error', [String(error)], 500);
     }
 };
 
@@ -51,30 +53,30 @@ export const login = async (req: Request, res: Response): Promise<void> => {
  * Controlador para manejar las peticiones de registro.
  * Analiza el cuerpo de la petición y gestiona las respuestas HTTP.
  */
-export const register = async (req: Request, res: Response): Promise<void> => {
+export const register: ApiHandler<AuthResponse> = async (req, res) => {
     try {
         // 1. Valida el cuerpo de la petición entrante usando Zod
         const validData = registerSchema.parse(req.body);
 
         // 2. Pasa los datos validados a la capa de servicios
         const result = await registerUser(validData);
-        
+
         // 3. Devuelve una respuesta HTTP 201 Created
-        res.status(201).json(result);
+        sendSuccess(res, result, 'Usuario registrado correctamente', 201);
     } catch (error: any) {
         // Maneja los errores de validación generados por Zod
         if (error instanceof ZodError) {
-            res.status(400).json({ issues: error.issues });
+            sendFail(res, 'Error de validación', error.issues.map((issue) => issue.message), 400);
             return;
         }
 
         // Devuelve HTTP 409 Conflict si el correo electrónico ya está registrado en la base de datos
         if (error.message === 'USER_ALREADY_EXISTS') {
-            res.status(409).json({ message: 'Email is already registered' });
+            sendFail(res, 'Email is already registered', null, 409);
             return;
         }
 
         // Manejo general para errores inesperados del servidor
-        res.status(500).json({ message: 'Internal server error' });
+        sendFail(res, 'Internal server error', [String(error)], 500);
     }
 };

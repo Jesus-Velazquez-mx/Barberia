@@ -1,14 +1,6 @@
+import type { AiApiHealthResponse } from '../types/dto/aiApiHealthResponse.interface.js';
+
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL;
-
-// type AiApiResponse<T> = {
-//     data: T | null;
-//     message: string;
-//     errors: string[] | null;
-// };
-
-type AiApiHealthResponse = {
-    status: string;
-}
 
 const testConnection = async (): Promise<AiApiHealthResponse> => {
     let res: Response;

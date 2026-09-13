@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import type { ApiResponse } from '../types/apiResponse.interface.js';
+import type { ApiResponse } from '../types/dto/apiResponse.interface.js';
 
 // El tipo que utilizarán todos los controladores
 export type ApiHandler<T> = (req: Request, res: Response<ApiResponse<T>>) => Promise<void>;
