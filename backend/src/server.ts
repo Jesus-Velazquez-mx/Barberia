@@ -34,7 +34,7 @@ let pool: Pool | undefined;
 
 const allowedOrigin = process.env.ENV === 'local' 
     ? 'http://localhost:5173' 
-    : 'https://eirckdameeldominio'; 
+    : 'https://barberia.erickdh.com'; 
 
 app.use(
     cors({
