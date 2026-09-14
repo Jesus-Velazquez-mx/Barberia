@@ -1,12 +1,16 @@
 @import "tailwindcss";
+@import url('https://googleapis.com');
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@200..700&display=swap');
 
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
+  --text: #A0A0A0;
+  --text-h: #F5F5F5;
+  --labels: #F5F5F5;
+  --bg: #121212;
   --border: #e5e4e7;
   --code-bg: #f4f3ec;
-  --accent: #aa3bff;
+  --accent: #D2AC66;
+  --accent_secondary: #B8924A;
   --accent-bg: rgba(170, 59, 255, 0.1);
   --accent-border: rgba(170, 59, 255, 0.5);
   --social-bg: rgba(244, 243, 236, 0.5);
@@ -52,7 +56,7 @@
   }
 }
 
-#root {
+/* #root {
   width: 1126px;
   max-width: 100%;
   margin: 0 auto;
@@ -62,7 +66,7 @@
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-}
+} */
 
 body {
   margin: 0;
@@ -70,7 +74,7 @@ body {
 
 h1,
 h2 {
-  font-family: var(--heading);
+  font-family: 'Oswald', sans-serif;
   font-weight: 500;
   color: var(--text-h);
 }
@@ -94,6 +98,7 @@ h2 {
   }
 }
 p {
+  font-family: 'Inter', sans-serif;
   margin: 0;
 }
 

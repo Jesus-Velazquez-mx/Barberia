@@ -54,9 +54,10 @@ describe('Pruebas de los Endpoints de Auth', () => {
         };
         
         const response = await request(app).post('/api/register').send(invalidUser);
-        
+
         expect(response.statusCode).toBe(400);
-        expect(response.body).toHaveProperty('issues');
+        expect(response.body).toHaveProperty('error');
+        expect(Array.isArray(response.body.error)).toBe(true);
     });
 
     /* Prueba 2: Creación exitosa */
@@ -73,8 +74,9 @@ describe('Pruebas de los Endpoints de Auth', () => {
         const response = await request(app).post('/api/register').send(newUser);
 
         expect(response.statusCode).toBe(201);
-        expect(response.body).toHaveProperty('token'); // Verificamos que devuelva el token de auto-login
-        expect(response.body.email).toBe(uniqueEmail);
+        expect(response.body.data).toHaveProperty('token'); // Verificamos que devuelva el token de auto-login
+        expect(response.body.data.user.email).toBe(uniqueEmail);
+        expect(response.body.data.user).not.toHaveProperty('password_hash');
     });
 
     /* Prueba 3: Restricción de base de datos.
@@ -110,9 +112,11 @@ describe('Pruebas de los Endpoints de Auth', () => {
         };
 
         const response = await request(app).post('/api/login').send(credentials);
-        
+
         expect(response.statusCode).toBe(200);
-        expect(response.body).toHaveProperty('token');
+        expect(response.body.data).toHaveProperty('token');
+        expect(response.body.data.user.email).toBe(uniqueEmail);
+        expect(response.body.data.user).not.toHaveProperty('password_hash');
     });
 
     /* Prueba 5: Login incorrecto */
