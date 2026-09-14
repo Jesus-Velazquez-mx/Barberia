@@ -19,12 +19,11 @@ export function InputField({ label, error, registerProps, id, type, ...rest }: I
     <div className={styles.formGroup}>
       <label htmlFor={id}>{label}</label>
       
-      <div style={{ position: 'relative', width: '100%' }}>
+      <div className={styles.inputWrapper}>
         <input
           id={id}
           type={inputType}
-          className={error ? styles.inputError : undefined}
-          style={{ paddingRight: isPassword ? '2.5rem' : '10px' }}
+          className={`${error ? styles.inputError : ''} ${isPassword ? styles.inputPassword : ''}`}
           {...registerProps}
           {...rest}
         />
@@ -33,24 +32,13 @@ export function InputField({ label, error, registerProps, id, type, ...rest }: I
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            style={{
-              position: 'absolute',
-              right: '10px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              padding: '0',
-            }}
+            className={styles.passwordToggleBtn}
             tabIndex={-1}
           >
             <img 
               src={showPassword ? eyeClosedIcon : eyeOpenIcon} 
               alt={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'} 
-              style={{ width: '20px', height: '20px' }}
+              className={styles.eyeIcon}
             />
           </button>
         )}

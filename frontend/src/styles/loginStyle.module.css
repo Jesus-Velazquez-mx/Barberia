@@ -96,6 +96,33 @@
   box-shadow: 0 0 0 2px rgba(255, 77, 77, 0.2);
 }
 
+.inputWrapper {
+  position: relative;
+  width: 100%;
+}
+
+.inputPassword {
+  padding-right: 2.5rem !important;
+}
+
+.passwordToggleBtn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 0;
+}
+
+.eyeIcon {
+  width: 20px;
+  height: 20px;
+}
+
 .errorMessage {
   color: #ff4d4d;
   font-size: 0.8rem;
