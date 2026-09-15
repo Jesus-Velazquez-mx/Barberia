@@ -1,5 +1,6 @@
 import db from '../connection/connection.js';
 import type { User } from '../types/entities/user.interface.js';
+import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 
 // Interfaz definida para evitar el uso del tipo 'any' en los parámetros
 export interface CreateUserInput {
@@ -46,7 +47,7 @@ export const createNewUserTransaction = async (userData: CreateUserInput): Promi
         const checkResult = await client.query(checkQuery, [userData.email]);
         
         if (checkResult.rows.length > 0) {
-            throw new Error('USER_ALREADY_EXISTS'); // Dispara el rollback
+            throw new ApiError(ApiErrorCode.USER_ALREADY_EXISTS, 409, 'Email is already registered'); // Dispara el rollback
         }
 
         // 2. Crea el usuario devolviendo las columnas específicas
