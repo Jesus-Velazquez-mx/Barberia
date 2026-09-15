@@ -102,6 +102,7 @@ describe('Pruebas de los Endpoints de Auth', () => {
 
         expect(response.statusCode).toBe(409);
         expect(response.body.message).toBe('Email is already registered');
+        expect(response.body.error).toContain('USER_ALREADY_EXISTS');
     });
 
     /* Prueba 4: Login correcto */
@@ -130,5 +131,16 @@ describe('Pruebas de los Endpoints de Auth', () => {
         
         expect(response.statusCode).toBe(404);
         expect(response.body.message).toBe('User not found or invalid credentials');
+        expect(response.body.error).toContain('INVALID_CREDENTIALS');
+    });
+
+    /* Prueba 6: Login con correo inexistente */
+    test('POST /api/login debe devolver status 404 y code NOT_FOUND si el usuario no existe', async () => {
+        const response = await request(app)
+            .post('/api/login')
+            .send({ email: generateUniqueEmail(), password: testPassword });
+
+        expect(response.statusCode).toBe(404);
+        expect(response.body.error).toContain('NOT_FOUND');
     });
 });
