@@ -1,16 +1,17 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-
 import { login } from '../services/authService';
 import { ApiError } from '../types/api';
 import type { LoginFormValues } from '../types/auth';
-
-import { LoginForm } from '../components/loginFormComponent';
-
+import { LoginForm } from '../components/LoginFormComponent';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+
 
 export function LoginFormContainer() {
   const navigate = useNavigate();
+  /* Importación nombrada para evitar choques de nombres */
+  const { login: loginContext } = useAuth();
   const [serverError, setServerError] = useState('');
 
   const {
@@ -24,10 +25,7 @@ export function LoginFormContainer() {
 
     try {
       const response = await login(values);
-
-      localStorage.setItem('token', response.token);
-      localStorage.setItem('user', JSON.stringify(response.user));
-
+      loginContext(response); // Guardar token y user en el contexto
       navigate('/');
     } catch (error) {
       let errorMessage = 'No se pudo iniciar sesión';
@@ -35,7 +33,7 @@ export function LoginFormContainer() {
       if (error instanceof ApiError) {
         errorMessage =
           error.status === 404 ||
-          error.message === 'User not found or invalid credentials'
+            error.message === 'User not found or invalid credentials'
             ? 'Correo o contraseña incorrectos'
             : error.message;
       }
