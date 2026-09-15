@@ -4,6 +4,7 @@ import { getUserByEmail, createNewUserTransaction } from '../repositories/userRe
 import type { User, UserRole } from '../types/entities/user.interface.js';
 import type { UserResponse } from '../types/dto/userResponse.interface.js';
 import type { AuthResponse } from '../types/dto/authResponse.interface.js';
+import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
@@ -41,12 +42,12 @@ export const loginUser = async (data: LoginInput): Promise<AuthResponse> => {
 
     // Lanza errores específicos para que el controlador devuelva los códigos HTTP adecuados
     if (!user) {
-        throw new Error('NOT_FOUND');
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 404, 'User not found');
     }
 
     const validPassword = await bcrypt.compare(data.password, user.password_hash);
     if (!validPassword) {
-        throw new Error('INVALID_CREDENTIALS');
+        throw new ApiError(ApiErrorCode.INVALID_CREDENTIALS, 404, 'Invalid credentials');
     }
 
     // Genera un token válido por 8 horas
