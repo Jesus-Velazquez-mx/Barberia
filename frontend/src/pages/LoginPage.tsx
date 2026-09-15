@@ -1,4 +1,4 @@
-import { LoginFormContainer } from '../containers/loginContainer';
+import { LoginFormContainer } from '../containers/LoginContainer';
 import styles from '../styles/loginStyle.module.css';
 
 function LoginPage() {

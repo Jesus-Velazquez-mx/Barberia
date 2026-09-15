@@ -1,9 +1,10 @@
 import { Link } from 'react-router-dom';
 import type { FieldError, UseFormRegisterReturn } from 'react-hook-form';
-
-import { InputField } from './inputFieldComponent';
-import { Button } from './buttonComponent';
+import { InputField } from './InputFieldComponent';
+import { Button } from './ButtonComponent';
 import styles from '../styles/loginStyle.module.css';
+
+
 
 interface LoginFormProps {
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
