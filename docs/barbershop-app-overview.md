@@ -17,11 +17,13 @@ The experience should be consistent across web and mobile — clients, barbers, 
 - **Receptionists**: manage day-to-day appointments at their shop — booking, check-in, walk-ins, cancellations/reschedules — as a dedicated role distinct from managers/assistants.
 - **Managers / Assistants**: manage the shared services catalog, oversee each shop's supplies inventory, staffing and availability, and review reporting/analytics. Each shop has exactly one manager, but a manager can oversee multiple shops.
 
+Self-service sign-up always creates a **client** account (decided) — barber, receptionist, and manager accounts are provisioned by staff, not through public registration.
+
 ## 3. Core Features
 
 ### 3.1 Appointment Booking & Scheduling
 
-Clients book appointments against a barber's availability. Barbers manage their calendar and see upcoming bookings — one appointment at a time per barber (no multiple chairs). Every barber is assigned to one of two fixed shifts — morning (8:00–16:00) or afternoon (12:00–20:00) — and works Monday through Saturday; only a manager can set or change a barber's shift assignment. Scheduling policy (cancellations, no-shows, reschedules, waitlists) still needs to be defined — see open questions.
+Clients book appointments against a barber's availability. Walk-ins are also supported alongside scheduled bookings — the shop isn't appointment-only (decided). Barbers manage their calendar and see upcoming bookings — one appointment at a time per barber (no multiple chairs). Every barber is assigned to one of two fixed shifts — morning (8:00–16:00) or afternoon (12:00–20:00) — and works Monday through Saturday; only a manager can set or change a barber's shift assignment. Scheduling policy (cancellations, no-shows, reschedules, waitlists) still needs to be defined — see open questions.
 
 ### 3.2 Haircut Recommendations
 
@@ -56,7 +58,6 @@ These decisions materially affect the product and need to be settled up front.
 
 **Business scope**
 - Is this for a single barbershop location, or should the platform support multiple locations/franchises from day one (multi-tenancy)?
-- Are walk-ins supported, or is it appointment-only?
 
 **Shops & staffing**
 - Each shop has exactly one manager, assigned at shop creation, and a manager may oversee multiple shops (decided).
