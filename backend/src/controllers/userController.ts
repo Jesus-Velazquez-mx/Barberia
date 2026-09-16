@@ -3,7 +3,7 @@ import { loginUser, registerUser } from '../services/userService.js';
 import type { ApiHandler } from '../utils/apiResponse.js';
 import { sendSuccess, sendFail } from '../utils/apiResponse.js';
 import type { AuthResponse } from '../types/dto/authResponse.interface.js';
-import { ApiError } from '../errors/ApiError.js';
+import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 
 const loginSchema = z.object({
     email: z.email(),
@@ -40,8 +40,8 @@ export const login: ApiHandler<AuthResponse> = async (req, res) => {
         }
 
         // Devuelve HTTP 404 Not Found para errores de autenticación para no revelar detalles exactos
-        if (error instanceof ApiError && (error.code === 'NOT_FOUND' || error.code === 'INVALID_CREDENTIALS')) {
-            sendFail(res, 'User not found or invalid credentials', [error.code], 404);
+        if (error instanceof ApiError && (error.code === ApiErrorCode.NOT_FOUND || error.code === ApiErrorCode.INVALID_CREDENTIALS)) {
+            sendFail(res, 'User not found or invalid credentials', null, 404);
             return;
         }
 
@@ -72,8 +72,8 @@ export const register: ApiHandler<AuthResponse> = async (req, res) => {
         }
 
         // Devuelve HTTP 409 Conflict si el correo electrónico ya está registrado en la base de datos
-        if (error instanceof ApiError && error.code === 'USER_ALREADY_EXISTS') {
-            sendFail(res, 'Email is already registered', [error.code], 409);
+        if (error instanceof ApiError && error.code === ApiErrorCode.USER_ALREADY_EXISTS) {
+            sendFail(res, 'Email is already registered', null, 409);
             return;
         }
 
