@@ -1,11 +1,12 @@
 import { LoginFormContainer } from '../containers/LoginContainer';
 import styles from '../styles/loginStyle.module.css';
+import mrBarberLogo from '../assets/logos/MrBarberLogo.webp';
 
 function LoginPage() {
   return (
     <div className={styles.loginWrapper}>
       <img
-        src="/src/assets/logos/MrBarberLogo.png"
+        src={mrBarberLogo}
         alt="Logo MrBarber"
         className={styles.logo}
       />
