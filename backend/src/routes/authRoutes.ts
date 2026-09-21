@@ -77,7 +77,7 @@ const router = Router();
  *                 message: { type: string, example: Internal server error }
  *                 error: { type: array, items: { type: string }, example: ["detalle del error"] }
  */
-router.post('/login', login);
+router.post('/auth/login', login);
 
 /**
  * @swagger
@@ -156,6 +156,6 @@ router.post('/login', login);
  *                 message: { type: string, example: Internal server error }
  *                 error: { type: array, items: { type: string }, example: ["detalle del error"] }
  */
-router.post('/register', register);
+router.post('/auth/register', register);
 
 export default router;
