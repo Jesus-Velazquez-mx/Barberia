@@ -1,5 +1,5 @@
 import { z, ZodError } from 'zod';
-import { loginUser, registerUser } from '../services/userService.js';
+import { loginUser, registerUser } from '../services/authService.js';
 import type { ApiHandler } from '../utils/apiResponse.js';
 import { sendSuccess, sendFail } from '../utils/apiResponse.js';
 import type { AuthResponse } from '../types/dto/authResponse.interface.js';
