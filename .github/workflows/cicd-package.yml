@@ -45,7 +45,7 @@ jobs:
     - name: Load schema into test database
       env:
         PGPASSWORD: postgres
-      run: psql -h localhost -U postgres -d barberia_test -f backend/database/database.sql
+      run: psql -h localhost -U postgres -d barberia_test -f backend/database/init_database.sql
 
     - name: Test with npm
       env:

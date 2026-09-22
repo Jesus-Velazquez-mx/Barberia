@@ -17,13 +17,21 @@ export interface CreateUserInput {
  */
 export const getUserByEmail = async (email: string): Promise<User | null> => {
     const pool = db.getPool();
-    
+
+    // staff_deleted_at: only one of the three joins can ever match (role is
+    // exclusive), so COALESCE collapses whichever role table applies into one
+    // column; NULL for clients, who are hard-deleted instead of soft-deleted.
     const query = `
-        SELECT id, role, email, phone, password_hash, first_name, last_name, created_at, updated_at 
-        FROM users 
-        WHERE email = $1 
+        SELECT u.id, u.role, u.email, u.phone, u.password_hash, u.first_name, u.last_name,
+               u.created_at, u.updated_at,
+               COALESCE(b.deleted_at, m.deleted_at, r.deleted_at) AS staff_deleted_at
+        FROM users u
+        LEFT JOIN barbers b ON b.user_id = u.id
+        LEFT JOIN managers m ON m.user_id = u.id
+        LEFT JOIN receptionists r ON r.user_id = u.id
+        WHERE u.email = $1
     `;
-    
+
     const result = await pool.query(query, [email]);
     return result.rows.length ? result.rows[0] : null;
 };

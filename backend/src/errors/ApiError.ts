@@ -1,7 +1,8 @@
 export enum ApiErrorCode {
     NOT_FOUND,
     INVALID_CREDENTIALS,
-    USER_ALREADY_EXISTS
+    USER_ALREADY_EXISTS,
+    ACCOUNT_DEACTIVATED
 }
 
 export class ApiError extends Error {

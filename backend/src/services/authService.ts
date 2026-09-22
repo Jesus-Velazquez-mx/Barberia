@@ -29,7 +29,7 @@ export interface RegisterInput {
  * Elimina el hash de la contraseña antes de exponer el usuario en una respuesta.
  */
 const toUserResponse = (user: User): UserResponse => {
-    const { password_hash: _password_hash, ...userResponse } = user;
+    const { password_hash: _password_hash, staff_deleted_at: _staff_deleted_at, ...userResponse } = user;
     return userResponse;
 };
 
@@ -48,6 +48,12 @@ export const loginUser = async (data: LoginInput): Promise<AuthResponse> => {
     const validPassword = await bcrypt.compare(data.password, user.password_hash);
     if (!validPassword) {
         throw new ApiError(ApiErrorCode.INVALID_CREDENTIALS, 404, 'Invalid credentials');
+    }
+
+    // Checked after the password, not before, so a wrong-password attempt against a
+    // deactivated staff account still reads as invalid credentials, not a status leak.
+    if (user.staff_deleted_at) {
+        throw new ApiError(ApiErrorCode.ACCOUNT_DEACTIVATED, 403, 'Account is deactivated');
     }
 
     // Genera un token válido por 8 horas
