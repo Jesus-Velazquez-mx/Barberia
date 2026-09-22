@@ -39,8 +39,6 @@ const router = Router();
  *                         phone: { type: string, nullable: true }
  *                         first_name: { type: string }
  *                         last_name: { type: string }
- *                         is_active: { type: boolean }
- *                         deleted_at: { type: string, format: date-time, nullable: true }
  *                         created_at: { type: string, format: date-time }
  *                         updated_at: { type: string, format: date-time }
  *                     token: { type: string, example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... }
@@ -118,8 +116,6 @@ router.post('/auth/login', login);
  *                         phone: { type: string, nullable: true }
  *                         first_name: { type: string }
  *                         last_name: { type: string }
- *                         is_active: { type: boolean }
- *                         deleted_at: { type: string, format: date-time, nullable: true }
  *                         created_at: { type: string, format: date-time }
  *                         updated_at: { type: string, format: date-time }
  *                     token: { type: string, example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... }

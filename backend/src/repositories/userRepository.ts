@@ -13,17 +13,15 @@ export interface CreateUserInput {
 }
 
 /**
- * Busca un usuario activo por su dirección de correo electrónico.
+ * Busca un usuario por su dirección de correo electrónico.
  */
 export const getUserByEmail = async (email: string): Promise<User | null> => {
     const pool = db.getPool();
     
     const query = `
-        SELECT id, role, email, phone, password_hash, first_name, last_name, is_active, deleted_at, created_at, updated_at 
+        SELECT id, role, email, phone, password_hash, first_name, last_name, created_at, updated_at 
         FROM users 
         WHERE email = $1 
-        AND deleted_at IS NULL 
-        AND is_active = true
     `;
     
     const result = await pool.query(query, [email]);
@@ -54,7 +52,7 @@ export const createNewUserTransaction = async (userData: CreateUserInput): Promi
         const insertQuery = `
             INSERT INTO users (role, email, phone, password_hash, first_name, last_name)
             VALUES ($1, $2, $3, $4, $5, $6)
-            RETURNING id, role, email, phone, password_hash, first_name, last_name, is_active, deleted_at, created_at, updated_at
+            RETURNING id, role, email, phone, password_hash, first_name, last_name, created_at, updated_at
         `;
         
         const values = [

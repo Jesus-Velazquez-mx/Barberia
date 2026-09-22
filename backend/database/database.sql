@@ -72,8 +72,6 @@ CREATE TABLE users (
     password_hash   text NOT NULL,
     first_name      varchar(100) NOT NULL,
     last_name       varchar(100) NOT NULL,
-    is_active       boolean NOT NULL DEFAULT true,
-    deleted_at      timestamptz,
     created_at      timestamptz NOT NULL DEFAULT now(),
     updated_at      timestamptz NOT NULL DEFAULT now()
 );
@@ -279,6 +277,56 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER trg_supply_stock_needs_reorder BEFORE INSERT OR UPDATE ON supply_stock
     FOR EACH ROW EXECUTE FUNCTION set_supplies_needs_reorder();
 
+-- ---------- supply_movements (historical log of stock in/out) ----------
+-- Append-only ledger: rows are never updated, so no updated_at/trigger.
+-- performed_by is SET NULL because users are hard-deleted; the movement itself
+-- must survive as history. performed_by_name/role are snapshots filled by trigger
+-- at insert time so the author stays identifiable after the user is deleted.
+-- Every movement is made by a user (never by the system), so performed_by is
+-- required on insert and NULL afterwards only means "that user was deleted".
+
+CREATE TYPE supply_movement_type AS ENUM ('in', 'out');
+
+CREATE TABLE supply_movements (
+    id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    supply_id      uuid NOT NULL REFERENCES supplies(id) ON DELETE CASCADE,
+    movement_type  supply_movement_type NOT NULL,
+    quantity       integer NOT NULL CHECK (quantity > 0), -- always positive; direction comes from movement_type
+    unit_cost      numeric(10,2) CHECK (unit_cost >= 0),  -- cost at the time of the movement (relevant for 'in')
+    reason         varchar(255),                          -- e.g. 'purchase', 'used in service', 'damaged'
+    performed_by   uuid REFERENCES users(id) ON DELETE SET NULL,
+    performed_by_name varchar(201) NOT NULL, -- snapshot of "first_name last_name", set by trigger
+    performed_by_role user_role NOT NULL,    -- snapshot of users.role, set by trigger
+    created_at     timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_supply_movements_supply_created ON supply_movements (supply_id, created_at DESC);
+CREATE INDEX idx_supply_movements_performed_by   ON supply_movements (performed_by);
+
+-- Overwrites whatever the caller sent for the snapshot columns, so they can't be
+-- omitted or falsified. Fires on INSERT only: the SET NULL from a user deletion is
+-- an UPDATE and must leave the snapshot untouched.
+CREATE FUNCTION set_supply_movement_performer() RETURNS trigger AS $$
+BEGIN
+    IF NEW.performed_by IS NULL THEN
+        RAISE EXCEPTION 'supply_movements.performed_by is required';
+    END IF;
+
+    SELECT first_name || ' ' || last_name, role
+    INTO NEW.performed_by_name, NEW.performed_by_role
+    FROM users WHERE id = NEW.performed_by;
+
+    IF NEW.performed_by_name IS NULL THEN
+        RAISE EXCEPTION 'user % does not exist', NEW.performed_by;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_supply_movements_set_performer BEFORE INSERT ON supply_movements
+    FOR EACH ROW EXECUTE FUNCTION set_supply_movement_performer();
+
 -- ---------- barber availability ----------
 
 CREATE TABLE availability_slots (
@@ -302,8 +350,13 @@ CREATE TRIGGER trg_availability_slots_updated_at BEFORE UPDATE ON availability_s
 CREATE TABLE appointments (
     id                   uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     shop_id              uuid NOT NULL REFERENCES shops(id) ON DELETE RESTRICT,
-    client_id            uuid NOT NULL REFERENCES clients(user_id) ON DELETE RESTRICT,
-    barber_id            uuid REFERENCES barbers(user_id) ON DELETE RESTRICT, -- nullable: walk-in may be unassigned until check-in
+    -- client_id is NULL either for a guest booking, or for a registered client whose
+    -- account was later deleted (SET NULL keeps the appointment as history).
+    -- is_registered_client tells the two cases apart and never changes after creation.
+    client_id            uuid REFERENCES clients(user_id) ON DELETE SET NULL,
+    is_registered_client boolean NOT NULL,
+    guest_client_name    varchar(100), -- only name is captured for unregistered clients
+    barber_id            uuid REFERENCES barbers(user_id) ON DELETE RESTRICT, -- Should this remain nullable?
     is_walk_in           boolean NOT NULL DEFAULT false,
     status               appointment_status NOT NULL DEFAULT 'scheduled',
     scheduled_start      timestamptz NOT NULL,
@@ -317,7 +370,13 @@ CREATE TABLE appointments (
     created_at           timestamptz NOT NULL DEFAULT now(),
     updated_at           timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT chk_appointments_barber_required CHECK (is_walk_in = true OR barber_id IS NOT NULL),
-    CONSTRAINT chk_appointments_time_order CHECK (scheduled_end > scheduled_start)
+    CONSTRAINT chk_appointments_time_order CHECK (scheduled_end > scheduled_start),
+    -- registered: no guest name (client_id may be NULL after account deletion);
+    -- guest: no client_id, guest name required
+    CONSTRAINT chk_appointments_client_or_guest CHECK (
+        (is_registered_client AND guest_client_name IS NULL)
+        OR (NOT is_registered_client AND client_id IS NULL AND guest_client_name IS NOT NULL)
+    )
 );
 
 CREATE INDEX idx_appointments_barber_start ON appointments (barber_id, scheduled_start);
@@ -342,10 +401,10 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_appointments_loyalty_count_insert AFTER INSERT ON appointments
-    FOR EACH ROW WHEN (NEW.status = 'completed')
+    FOR EACH ROW WHEN (NEW.status = 'completed' AND NEW.client_id IS NOT NULL)
     EXECUTE FUNCTION update_client_loyalty_count();
 CREATE TRIGGER trg_appointments_loyalty_count_update AFTER UPDATE ON appointments
-    FOR EACH ROW WHEN (NEW.status = 'completed' AND OLD.status IS DISTINCT FROM 'completed')
+    FOR EACH ROW WHEN (NEW.status = 'completed' AND OLD.status IS DISTINCT FROM 'completed' AND NEW.client_id IS NOT NULL)
     EXECUTE FUNCTION update_client_loyalty_count();
 
 -- ---------- appointment_services (join + historical price/duration snapshot) ----------
@@ -387,7 +446,7 @@ CREATE TRIGGER trg_recommendation_history_updated_at BEFORE UPDATE ON recommenda
 CREATE TABLE notifications_log (
     id                   uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     appointment_id       uuid NOT NULL REFERENCES appointments(id) ON DELETE CASCADE,
-    client_id            uuid NOT NULL REFERENCES clients(user_id) ON DELETE RESTRICT,
+    client_id            uuid NOT NULL REFERENCES clients(user_id) ON DELETE CASCADE,
     status               notification_status NOT NULL DEFAULT ('pending'),
     trigger_type         varchar(50) NOT NULL DEFAULT 'reminder', -- e.g. 'reminder_24h','reminder_2h' — kept free-text since timing is still open/configurable
     scheduled_for        timestamptz NOT NULL,

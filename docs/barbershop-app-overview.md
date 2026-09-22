@@ -19,11 +19,15 @@ The experience should be consistent across web and mobile — clients, barbers, 
 
 Self-service sign-up always creates a **client** account (decided) — barber, receptionist, and manager accounts are provisioned by staff, not through public registration.
 
+Deleting a user is immediate and permanent (decided) — there is no deactivation or "soft delete" state. Deleting a client keeps their past appointments as history, but detaches them from the account; the appointments remain identifiable as having belonged to a registered client (see §3.1).
+
 ## 3. Core Features
 
 ### 3.1 Appointment Booking & Scheduling
 
 Clients book appointments against a barber's availability. Walk-ins are also supported alongside scheduled bookings — the shop isn't appointment-only (decided). Barbers manage their calendar and see upcoming bookings — one appointment at a time per barber (no multiple chairs). Every barber is assigned to one of two fixed shifts — morning (8:00–16:00) or afternoon (12:00–20:00) — and works Monday through Saturday; only a manager can set or change a barber's shift assignment. Scheduling policy (cancellations, no-shows, reschedules, waitlists) still needs to be defined — see open questions.
+
+Appointments can also be booked for **unregistered clients** (decided): staff record only the client's name, with no account, phone, or email. Every appointment is therefore either for a registered client or for a guest, and this is recorded explicitly so the two can always be told apart in reporting — even if a registered client's account is later deleted, their past appointments still count as registered-client appointments. Guest appointments don't earn loyalty credit and don't get reminders, since there is no account or contact info to attach them to.
 
 ### 3.2 Haircut Recommendations
 
@@ -31,11 +35,11 @@ Clients submit a photo and/or facial-structure attributes, stated preferences, a
 
 ### 3.3 Loyalty / Fidelity Program
 
-Clients accumulate credit toward free haircuts: every 6 paid services earns a 7th one free. Each client has a running count of paid services since their last free redemption; it resets to 0 once the free service is completed. Rewards are global — earned and redeemable at any shop, not tied to a specific barber.
+Clients accumulate credit toward free haircuts: every 6 paid services earns a 7th one free. Each client has a running count of paid services since their last free redemption; it resets to 0 once the free service is completed. Rewards are global — earned and redeemable at any shop, not tied to a specific barber. Only registered clients participate: appointments for unregistered clients never count toward a reward.
 
 ### 3.4 Appointment Reminders
 
-Clients are reminded ahead of their appointment via WhatsApp and/or email, to reduce no-shows and missed visits.
+Clients are reminded ahead of their appointment via WhatsApp and/or email, to reduce no-shows and missed visits. Reminders apply to registered clients only; appointments for unregistered clients have no contact info and are skipped.
 
 ### 3.5 Reporting (for Managers)
 
@@ -44,6 +48,8 @@ Managers need visibility into business performance — for example revenue, most
 ### 3.6 Shop Supplies (Internal)
 
 Each shop maintains its own inventory of the supplies used to deliver services (scissors, shampoo, conditioner, etc.) — these are never sold to clients and aren't part of any customer-facing catalog. Managers/assistants track stock levels per shop. Unlike the services menu, which is shared and identical across all shops, supplies inventory is independent per location. Each supply can have a reorder threshold; once stock drops to or below that threshold it's automatically flagged for reorder, and the flag clears automatically once it's restocked above the threshold.
+
+Every stock entry (e.g. a purchase) and exit (e.g. usage, damaged items) is also recorded as a movement in a permanent history log, with the quantity, an optional unit cost and reason, and who performed it. Every movement is made by a staff user — the system never records movements on its own. The log keeps the person's name and role as they were at the time of the movement, so it's still clear who did what after that person's account has been deleted (with the limitation that former employees with the same name can't be told apart).
 
 ## 4. Example User Journeys
 
@@ -62,6 +68,8 @@ These decisions materially affect the product and need to be settled up front.
 **Shops & staffing**
 - Each shop has exactly one manager, assigned at shop creation, and a manager may oversee multiple shops (decided).
 - A manager can't be deleted while still managing any shop — their shops must first be reassigned to another manager (decided).
+- Users are deleted immediately rather than deactivated (decided). Deleting a client keeps their appointments as history.
+- A barber can't be deleted while they have pending appointments — those must all be cancelled first, and only then can the barber be deleted (decided, not yet implemented). What happens to the barber's past (completed/cancelled) appointments on deletion is still to be settled.
 
 **Fidelity/loyalty program**
 - The rule is visit-based: every 6 paid services earns a free 7th, tracked as a running count that resets on redemption (decided). Does it vary by service type or price, or is every service worth the same toward the count?
