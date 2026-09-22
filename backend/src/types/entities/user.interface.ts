@@ -8,8 +8,10 @@ export interface User {
     password_hash: string;
     first_name: string;
     last_name: string;
-    is_active: boolean;
-    deleted_at: Date | null;
     created_at: Date;
     updated_at: Date;
+    // Set from barbers/managers/receptionists.deleted_at (whichever matches the
+    // user's role), never a real users column. Only meaningful for staff roles —
+    // always null for clients, who are hard-deleted instead of soft-deleted.
+    staff_deleted_at: Date | null;
 }

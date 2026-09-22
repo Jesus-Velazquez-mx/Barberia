@@ -4,6 +4,7 @@ import { getUserByEmail, createNewUserTransaction } from '../repositories/userRe
 import type { User, UserRole } from '../types/entities/user.interface.js';
 import type { UserResponse } from '../types/dto/userResponse.interface.js';
 import type { AuthResponse } from '../types/dto/authResponse.interface.js';
+import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
@@ -28,7 +29,7 @@ export interface RegisterInput {
  * Elimina el hash de la contraseña antes de exponer el usuario en una respuesta.
  */
 const toUserResponse = (user: User): UserResponse => {
-    const { password_hash: _password_hash, ...userResponse } = user;
+    const { password_hash: _password_hash, staff_deleted_at: _staff_deleted_at, ...userResponse } = user;
     return userResponse;
 };
 
@@ -41,12 +42,18 @@ export const loginUser = async (data: LoginInput): Promise<AuthResponse> => {
 
     // Lanza errores específicos para que el controlador devuelva los códigos HTTP adecuados
     if (!user) {
-        throw new Error('NOT_FOUND');
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 404, 'User not found');
     }
 
     const validPassword = await bcrypt.compare(data.password, user.password_hash);
     if (!validPassword) {
-        throw new Error('INVALID_CREDENTIALS');
+        throw new ApiError(ApiErrorCode.INVALID_CREDENTIALS, 404, 'Invalid credentials');
+    }
+
+    // Checked after the password, not before, so a wrong-password attempt against a
+    // deactivated staff account still reads as invalid credentials, not a status leak.
+    if (user.staff_deleted_at) {
+        throw new ApiError(ApiErrorCode.ACCOUNT_DEACTIVATED, 403, 'Account is deactivated');
     }
 
     // Genera un token válido por 8 horas

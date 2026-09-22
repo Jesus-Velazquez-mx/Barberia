@@ -1,8 +1,9 @@
 import { z, ZodError } from 'zod';
-import { loginUser, registerUser } from '../services/userService.js';
+import { loginUser, registerUser } from '../services/authService.js';
 import type { ApiHandler } from '../utils/apiResponse.js';
 import { sendSuccess, sendFail } from '../utils/apiResponse.js';
 import type { AuthResponse } from '../types/dto/authResponse.interface.js';
+import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 
 const loginSchema = z.object({
     email: z.email(),
@@ -30,16 +31,16 @@ export const login: ApiHandler<AuthResponse> = async (req, res) => {
         const result = await loginUser(validData);
 
         // 3. Devuelve una respuesta HTTP 200 OK
-        sendSuccess(res, result, 'Inicio de sesión exitoso', 200);
-    } catch (error: any) {
+        sendSuccess(res, result, 'Login successful', 200);
+    } catch (error: unknown) {
         // Maneja los errores de validación generados por Zod
         if (error instanceof ZodError) {
-            sendFail(res, 'Error de validación', error.issues.map((issue) => issue.message), 400);
+            sendFail(res, 'Validation error', error.issues.map((issue) => issue.message), 400);
             return;
         }
 
         // Devuelve HTTP 404 Not Found para errores de autenticación para no revelar detalles exactos
-        if (error.message === 'NOT_FOUND' || error.message === 'INVALID_CREDENTIALS') {
+        if (error instanceof ApiError && (error.code === ApiErrorCode.NOT_FOUND || error.code === ApiErrorCode.INVALID_CREDENTIALS)) {
             sendFail(res, 'User not found or invalid credentials', null, 404);
             return;
         }
@@ -62,16 +63,16 @@ export const register: ApiHandler<AuthResponse> = async (req, res) => {
         const result = await registerUser(validData);
 
         // 3. Devuelve una respuesta HTTP 201 Created
-        sendSuccess(res, result, 'Usuario registrado correctamente', 201);
-    } catch (error: any) {
+        sendSuccess(res, result, 'User registered successfully', 201);
+    } catch (error: unknown) {
         // Maneja los errores de validación generados por Zod
         if (error instanceof ZodError) {
-            sendFail(res, 'Error de validación', error.issues.map((issue) => issue.message), 400);
+            sendFail(res, 'Validation error', error.issues.map((issue) => issue.message), 400);
             return;
         }
 
         // Devuelve HTTP 409 Conflict si el correo electrónico ya está registrado en la base de datos
-        if (error.message === 'USER_ALREADY_EXISTS') {
+        if (error instanceof ApiError && error.code === ApiErrorCode.USER_ALREADY_EXISTS) {
             sendFail(res, 'Email is already registered', null, 409);
             return;
         }

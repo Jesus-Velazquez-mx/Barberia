@@ -1,5 +1,6 @@
 import db from '../connection/connection.js';
 import type { User } from '../types/entities/user.interface.js';
+import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 
 // Interfaz definida para evitar el uso del tipo 'any' en los parámetros
 export interface CreateUserInput {
@@ -12,19 +13,25 @@ export interface CreateUserInput {
 }
 
 /**
- * Busca un usuario activo por su dirección de correo electrónico.
+ * Busca un usuario por su dirección de correo electrónico.
  */
 export const getUserByEmail = async (email: string): Promise<User | null> => {
     const pool = db.getPool();
-    
+
+    // staff_deleted_at: only one of the three joins can ever match (role is
+    // exclusive), so COALESCE collapses whichever role table applies into one
+    // column; NULL for clients, who are hard-deleted instead of soft-deleted.
     const query = `
-        SELECT id, role, email, phone, password_hash, first_name, last_name, is_active, deleted_at, created_at, updated_at 
-        FROM users 
-        WHERE email = $1 
-        AND deleted_at IS NULL 
-        AND is_active = true
+        SELECT u.id, u.role, u.email, u.phone, u.password_hash, u.first_name, u.last_name,
+               u.created_at, u.updated_at,
+               COALESCE(b.deleted_at, m.deleted_at, r.deleted_at) AS staff_deleted_at
+        FROM users u
+        LEFT JOIN barbers b ON b.user_id = u.id
+        LEFT JOIN managers m ON m.user_id = u.id
+        LEFT JOIN receptionists r ON r.user_id = u.id
+        WHERE u.email = $1
     `;
-    
+
     const result = await pool.query(query, [email]);
     return result.rows.length ? result.rows[0] : null;
 };
@@ -46,14 +53,14 @@ export const createNewUserTransaction = async (userData: CreateUserInput): Promi
         const checkResult = await client.query(checkQuery, [userData.email]);
         
         if (checkResult.rows.length > 0) {
-            throw new Error('USER_ALREADY_EXISTS'); // Dispara el rollback
+            throw new ApiError(ApiErrorCode.USER_ALREADY_EXISTS, 409, 'Email is already registered'); // Dispara el rollback
         }
 
         // 2. Crea el usuario devolviendo las columnas específicas
         const insertQuery = `
             INSERT INTO users (role, email, phone, password_hash, first_name, last_name)
             VALUES ($1, $2, $3, $4, $5, $6)
-            RETURNING id, role, email, phone, password_hash, first_name, last_name, is_active, deleted_at, created_at, updated_at
+            RETURNING id, role, email, phone, password_hash, first_name, last_name, created_at, updated_at
         `;
         
         const values = [
