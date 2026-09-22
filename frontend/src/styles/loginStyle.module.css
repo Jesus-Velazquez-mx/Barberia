@@ -123,6 +123,11 @@
   height: 20px;
 }
 
+.formGroup input::-ms-reveal,
+.formGroup input::-ms-clear {
+  display: none;
+}
+
 .errorMessage {
   color: #ff4d4d;
   font-size: 0.8rem;
