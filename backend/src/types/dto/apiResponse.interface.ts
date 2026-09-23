@@ -1,5 +1,7 @@
+import { ValidationError } from "../../errors/ApiError.js";
+
 export interface ApiResponse<T> {
     data: T | null;
     message: string;
-    error: string[] | null;
+    error: string[] | ValidationError[] | null;
 }

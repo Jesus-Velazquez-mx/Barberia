@@ -42,18 +42,18 @@ export const loginUser = async (data: LoginInput): Promise<AuthResponse> => {
 
     // Lanza errores específicos para que el controlador devuelva los códigos HTTP adecuados
     if (!user) {
-        throw new ApiError(ApiErrorCode.NOT_FOUND, 404, 'User not found');
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'User not found');
     }
 
     const validPassword = await bcrypt.compare(data.password, user.password_hash);
     if (!validPassword) {
-        throw new ApiError(ApiErrorCode.INVALID_CREDENTIALS, 404, 'Invalid credentials');
+        throw new ApiError(ApiErrorCode.INVALID_CREDENTIALS, 'Invalid credentials');
     }
 
     // Checked after the password, not before, so a wrong-password attempt against a
     // deactivated staff account still reads as invalid credentials, not a status leak.
     if (user.staff_deleted_at) {
-        throw new ApiError(ApiErrorCode.ACCOUNT_DEACTIVATED, 403, 'Account is deactivated');
+        throw new ApiError(ApiErrorCode.ACCOUNT_DEACTIVATED, 'Account is deactivated');
     }
 
     // Genera un token válido por 8 horas

@@ -1,7 +1,7 @@
 import { z, ZodError } from 'zod';
 import { loginUser, registerUser } from '../services/authService.js';
 import type { ApiHandler } from '../utils/apiResponse.js';
-import { sendSuccess, sendFail } from '../utils/apiResponse.js';
+import { sendSuccess, sendFail, sendValidationError } from '../utils/apiResponse.js';
 import type { AuthResponse } from '../types/dto/authResponse.interface.js';
 import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 
@@ -35,13 +35,13 @@ export const login: ApiHandler<AuthResponse> = async (req, res) => {
     } catch (error: unknown) {
         // Maneja los errores de validación generados por Zod
         if (error instanceof ZodError) {
-            sendFail(res, 'Validation error', error.issues.map((issue) => issue.message), 400);
+            sendValidationError(res, error)
             return;
         }
 
         // Devuelve HTTP 404 Not Found para errores de autenticación para no revelar detalles exactos
-        if (error instanceof ApiError && (error.code === ApiErrorCode.NOT_FOUND || error.code === ApiErrorCode.INVALID_CREDENTIALS)) {
-            sendFail(res, 'User not found or invalid credentials', null, 404);
+        if (error instanceof ApiError) {
+            sendFail(res, 'User not found or invalid credentials', null, error.code);
             return;
         }
 
@@ -67,13 +67,13 @@ export const register: ApiHandler<AuthResponse> = async (req, res) => {
     } catch (error: unknown) {
         // Maneja los errores de validación generados por Zod
         if (error instanceof ZodError) {
-            sendFail(res, 'Validation error', error.issues.map((issue) => issue.message), 400);
+            sendValidationError(res, error)
             return;
         }
 
         // Devuelve HTTP 409 Conflict si el correo electrónico ya está registrado en la base de datos
         if (error instanceof ApiError && error.code === ApiErrorCode.USER_ALREADY_EXISTS) {
-            sendFail(res, 'Email is already registered', null, 409);
+            sendFail(res, 'Email is already registered', null, error.code);
             return;
         }
 
