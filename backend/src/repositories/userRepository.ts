@@ -53,7 +53,7 @@ export const createNewUserTransaction = async (userData: CreateUserInput): Promi
         const checkResult = await client.query(checkQuery, [userData.email]);
         
         if (checkResult.rows.length > 0) {
-            throw new ApiError(ApiErrorCode.USER_ALREADY_EXISTS, 409, 'Email is already registered'); // Dispara el rollback
+            throw new ApiError(ApiErrorCode.USER_ALREADY_EXISTS, 'Email is already registered'); // Dispara el rollback
         }
 
         // 2. Crea el usuario devolviendo las columnas específicas

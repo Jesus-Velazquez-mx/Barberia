@@ -1,18 +1,23 @@
 export enum ApiErrorCode {
-    NOT_FOUND,
-    INVALID_CREDENTIALS,
-    USER_ALREADY_EXISTS,
-    ACCOUNT_DEACTIVATED
+    UNAUTHORIZED = 401,
+    ACCOUNT_DEACTIVATED = 403,
+    NOT_FOUND = 404,
+    INVALID_CREDENTIALS = 404,
+    USER_ALREADY_EXISTS = 409,
 }
 
 export class ApiError extends Error {
     constructor(
         public readonly code: ApiErrorCode,
-        public readonly statusCode: number,
         message: string,
         public readonly details?: unknown
     ) {
         super(message);
         this.name = 'ApiError';
     }
+}
+
+export type ValidationError = {
+    field: string,
+    detail: string,
 }

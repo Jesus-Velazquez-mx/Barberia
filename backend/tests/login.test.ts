@@ -2,7 +2,9 @@ import request from 'supertest';
 import express from 'express';
 import router from '../src/routes/routes.js';
 import connection from '../src/connection/connection.js';
+import { loadConfig } from '../src/config/globalConfig.js';
 
+export const globalConfig = loadConfig();
 const { connectDB, closeDB, getPool } = connection;
 
 /* Montamos otro express exclusivo para pruebas */
@@ -64,8 +66,8 @@ describe('Pruebas de los Endpoints de Auth', () => {
     /* Prueba 2: Creación exitosa */
     test('POST /api/register debe devolver status 201 al registrar un cliente correctamente', async () => {
         const newUser = {
-            name: 'Test',
-            lastname: 'User',
+            firstName: 'Test',
+            lastName: 'User',
             phone: uniquePhone,
             email: uniqueEmail,
             password: testPassword
@@ -86,8 +88,8 @@ describe('Pruebas de los Endpoints de Auth', () => {
     test('POST /api/register debe devolver status 409 si el correo ya está registrado', async () => {
         const duplicateEmail = generateUniqueEmail();
         const duplicateUser = {
-            name: 'Test',
-            lastname: 'User',
+            firstName: 'Test',
+            lastName: 'User',
             phone: generateUniquePhone(),
             email: duplicateEmail,
             password: testPassword
