@@ -40,6 +40,7 @@ afterAll(async () => {
 
 /* Pruebas de los Endpoints de Autenticación */
 describe('Pruebas de los Endpoints de Auth', () => {
+    const baseAuthUrl = '/api/auth';
 
     // Generamos un correo y teléfono únicos para que la prueba no truene por duplicados al correrla varias veces
     const uniqueEmail = generateUniqueEmail();
@@ -53,7 +54,7 @@ describe('Pruebas de los Endpoints de Auth', () => {
             // Faltan campos obligatorios como name, lastname, password
         };
         
-        const response = await request(app).post('/api/register').send(invalidUser);
+        const response = await request(app).post(`${baseAuthUrl}/register`).send(invalidUser);
 
         expect(response.statusCode).toBe(400);
         expect(response.body).toHaveProperty('error');
@@ -71,7 +72,7 @@ describe('Pruebas de los Endpoints de Auth', () => {
         };
         createdEmails.push(uniqueEmail);
 
-        const response = await request(app).post('/api/register').send(newUser);
+        const response = await request(app).post(`${baseAuthUrl}/register`).send(newUser);
 
         expect(response.statusCode).toBe(201);
         expect(response.body.data).toHaveProperty('token'); // Verificamos que devuelva el token de auto-login
@@ -94,11 +95,11 @@ describe('Pruebas de los Endpoints de Auth', () => {
         createdEmails.push(duplicateEmail);
 
         // Registramos el usuario una primera vez para garantizar que el correo ya exista
-        const setupResponse = await request(app).post('/api/register').send(duplicateUser);
+        const setupResponse = await request(app).post(`${baseAuthUrl}/register`).send(duplicateUser);
         expect(setupResponse.statusCode).toBe(201);
 
         // Intentamos registrarlo de nuevo con el mismo correo
-        const response = await request(app).post('/api/register').send(duplicateUser);
+        const response = await request(app).post(`${baseAuthUrl}/register`).send(duplicateUser);
 
         expect(response.statusCode).toBe(409);
         expect(response.body.message).toBe('Email is already registered');
@@ -111,7 +112,7 @@ describe('Pruebas de los Endpoints de Auth', () => {
             password: testPassword
         };
 
-        const response = await request(app).post('/api/login').send(credentials);
+        const response = await request(app).post(`${baseAuthUrl}/login`).send(credentials);
 
         expect(response.statusCode).toBe(200);
         expect(response.body.data).toHaveProperty('token');
@@ -126,9 +127,18 @@ describe('Pruebas de los Endpoints de Auth', () => {
             password: 'clave_equivocada_123'
         };
 
-        const response = await request(app).post('/api/login').send(wrongCredentials);
+        const response = await request(app).post(`${baseAuthUrl}/login`).send(wrongCredentials);
         
         expect(response.statusCode).toBe(404);
         expect(response.body.message).toBe('User not found or invalid credentials');
+    });
+
+    /* Prueba 6: Login con correo inexistente */
+    test('POST /api/login debe devolver status 404 y code NOT_FOUND si el usuario no existe', async () => {
+        const response = await request(app)
+            .post(`${baseAuthUrl}/login`)
+            .send({ email: generateUniqueEmail(), password: testPassword });
+
+        expect(response.statusCode).toBe(404);
     });
 });

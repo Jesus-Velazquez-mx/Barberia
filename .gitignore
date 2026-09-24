@@ -5,3 +5,6 @@ CLAUDE.local.md
 dist
 postman/
 .postman/
+.claude
+CLAUDE.md
+graphify-out/

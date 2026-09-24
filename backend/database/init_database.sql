@@ -72,8 +72,6 @@ CREATE TABLE users (
     password_hash   text NOT NULL,
     first_name      varchar(100) NOT NULL,
     last_name       varchar(100) NOT NULL,
-    is_active       boolean NOT NULL DEFAULT true,
-    deleted_at      timestamptz,
     created_at      timestamptz NOT NULL DEFAULT now(),
     updated_at      timestamptz NOT NULL DEFAULT now()
 );
@@ -86,15 +84,17 @@ CREATE TRIGGER trg_users_updated_at BEFORE UPDATE ON users
 -- A manager is created before being assigned to a shop; a shop always has exactly
 -- one manager at creation time, and one manager may run multiple shops.
 
+-- deleted_at: soft delete instead of hard delete, so shops.manager_id (RESTRICT)
+-- keeps pointing at a real, named row instead of needing to be reassigned off a
+-- row that's about to disappear. NULL = active. See trg_managers_check_deletable
+-- below for the guard that blocks setting this while shops are still assigned.
 CREATE TABLE managers (
     user_id     uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     title       varchar(100),
-    created_at  timestamptz NOT NULL DEFAULT now(),
-    updated_at  timestamptz NOT NULL DEFAULT now()
+    deleted_at  timestamptz
 );
 
-CREATE TRIGGER trg_managers_updated_at BEFORE UPDATE ON managers
-    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE INDEX idx_managers_active ON managers (user_id) WHERE deleted_at IS NULL;
 CREATE TRIGGER trg_managers_check_role BEFORE INSERT OR UPDATE ON managers
     FOR EACH ROW EXECUTE FUNCTION check_user_role();
 
@@ -145,43 +145,43 @@ INSERT INTO shifts (name, start_time, end_time) VALUES
 CREATE TABLE clients (
     user_id                    uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     facial_structure_type      facial_structure_type,
-    completed_services_count   integer NOT NULL DEFAULT 0 CHECK (completed_services_count >= 0), -- paid services since the last free reward; resets to 0 on redemption
-    created_at                 timestamptz NOT NULL DEFAULT now(),
-    updated_at                 timestamptz NOT NULL DEFAULT now()
+    completed_services_count   integer NOT NULL DEFAULT 0 CHECK (completed_services_count >= 0) -- paid services since the last free reward; resets to 0 on redemption
 );
 
-CREATE TRIGGER trg_clients_updated_at BEFORE UPDATE ON clients
-    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 CREATE TRIGGER trg_clients_check_role BEFORE INSERT OR UPDATE ON clients
     FOR EACH ROW EXECUTE FUNCTION check_user_role();
 
+-- deleted_at: soft delete instead of hard delete, so appointments.barber_id
+-- (RESTRICT) keeps pointing at a real, named row instead of blocking deletion
+-- forever once any appointment (even a completed one) references the barber.
+-- NULL = active. See trg_barbers_check_deletable below for the guard that blocks
+-- setting this while the barber has pending (scheduled/checked_in) appointments.
 CREATE TABLE barbers (
     user_id                 uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     shop_id                 uuid NOT NULL REFERENCES shops(id) ON DELETE RESTRICT,
     shift_id                uuid NOT NULL REFERENCES shifts(id) ON DELETE RESTRICT,
     bio                     text,
     is_accepting_bookings   boolean NOT NULL DEFAULT true,
-    created_at              timestamptz NOT NULL DEFAULT now(),
-    updated_at              timestamptz NOT NULL DEFAULT now()
+    deleted_at              timestamptz
 );
 
 CREATE INDEX idx_barbers_shop ON barbers (shop_id);
 CREATE INDEX idx_barbers_shift ON barbers (shift_id);
-CREATE TRIGGER trg_barbers_updated_at BEFORE UPDATE ON barbers
-    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE INDEX idx_barbers_active ON barbers (shop_id) WHERE deleted_at IS NULL;
 CREATE TRIGGER trg_barbers_check_role BEFORE INSERT OR UPDATE ON barbers
     FOR EACH ROW EXECUTE FUNCTION check_user_role();
 
+-- deleted_at: soft delete for the same reason as barbers/managers, even though
+-- nothing currently has an FK pointing at receptionists.user_id (no guard trigger
+-- is needed here — a plain UPDATE ... SET deleted_at = now() is always safe).
 CREATE TABLE receptionists (
     user_id     uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     shop_id     uuid NOT NULL REFERENCES shops(id) ON DELETE RESTRICT, -- receptionist works at one specific shop
-    created_at  timestamptz NOT NULL DEFAULT now(),
-    updated_at  timestamptz NOT NULL DEFAULT now()
+    deleted_at  timestamptz
 );
 
 CREATE INDEX idx_receptionists_shop ON receptionists (shop_id);
-CREATE TRIGGER trg_receptionists_updated_at BEFORE UPDATE ON receptionists
-    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE INDEX idx_receptionists_active ON receptionists (shop_id) WHERE deleted_at IS NULL;
 CREATE TRIGGER trg_receptionists_check_role BEFORE INSERT OR UPDATE ON receptionists
     FOR EACH ROW EXECUTE FUNCTION check_user_role();
 
@@ -279,6 +279,28 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER trg_supply_stock_needs_reorder BEFORE INSERT OR UPDATE ON supply_stock
     FOR EACH ROW EXECUTE FUNCTION set_supplies_needs_reorder();
 
+-- ---------- supply_movements (historical log of stock in/out) ----------
+-- Append-only ledger: rows are never updated, so no updated_at/trigger.
+-- Every movement is made by a user either a receptionist or manager (never by the system), 
+-- so performed_by is required on insert. Set as NOT NULL as only clients are hard deleted,
+-- but they cannot perform a supply_movement
+
+CREATE TYPE supply_movement_type AS ENUM ('in', 'out');
+
+CREATE TABLE supply_movements (
+    id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    supply_id      uuid NOT NULL REFERENCES supplies(id) ON DELETE CASCADE,
+    movement_type  supply_movement_type NOT NULL,
+    quantity       integer NOT NULL CHECK (quantity > 0), -- always positive; direction comes from movement_type
+    unit_cost      numeric(10,2) CHECK (unit_cost >= 0),  -- cost at the time of the movement (relevant for 'in')
+    reason         varchar(255),                          -- e.g. 'purchase', 'used in service', 'damaged'
+    performed_by   uuid REFERENCES users(id) ON DELETE RESTRICT NOT NULL,
+    created_at     timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_supply_movements_supply_created ON supply_movements (supply_id, created_at DESC);
+CREATE INDEX idx_supply_movements_performed_by   ON supply_movements (performed_by);
+
 -- ---------- barber availability ----------
 
 CREATE TABLE availability_slots (
@@ -302,8 +324,13 @@ CREATE TRIGGER trg_availability_slots_updated_at BEFORE UPDATE ON availability_s
 CREATE TABLE appointments (
     id                   uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     shop_id              uuid NOT NULL REFERENCES shops(id) ON DELETE RESTRICT,
-    client_id            uuid NOT NULL REFERENCES clients(user_id) ON DELETE RESTRICT,
-    barber_id            uuid REFERENCES barbers(user_id) ON DELETE RESTRICT, -- nullable: walk-in may be unassigned until check-in
+    -- client_id is NULL either for a guest booking, or for a registered client whose
+    -- account was later deleted (SET NULL keeps the appointment as history).
+    -- is_registered_client tells the two cases apart and never changes after creation.
+    client_id            uuid REFERENCES clients(user_id) ON DELETE SET NULL,
+    is_registered_client boolean NOT NULL,
+    guest_client_name    varchar(100), -- only name is captured for unregistered clients
+    barber_id            uuid REFERENCES barbers(user_id) ON DELETE RESTRICT, -- Should this remain nullable?
     is_walk_in           boolean NOT NULL DEFAULT false,
     status               appointment_status NOT NULL DEFAULT 'scheduled',
     scheduled_start      timestamptz NOT NULL,
@@ -317,7 +344,13 @@ CREATE TABLE appointments (
     created_at           timestamptz NOT NULL DEFAULT now(),
     updated_at           timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT chk_appointments_barber_required CHECK (is_walk_in = true OR barber_id IS NOT NULL),
-    CONSTRAINT chk_appointments_time_order CHECK (scheduled_end > scheduled_start)
+    CONSTRAINT chk_appointments_time_order CHECK (scheduled_end > scheduled_start),
+    -- registered: no guest name (client_id may be NULL after account deletion);
+    -- guest: no client_id, guest name required
+    CONSTRAINT chk_appointments_client_or_guest CHECK (
+        (is_registered_client AND guest_client_name IS NULL)
+        OR (NOT is_registered_client AND client_id IS NULL AND guest_client_name IS NOT NULL)
+    )
 );
 
 CREATE INDEX idx_appointments_barber_start ON appointments (barber_id, scheduled_start);
@@ -342,11 +375,50 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_appointments_loyalty_count_insert AFTER INSERT ON appointments
-    FOR EACH ROW WHEN (NEW.status = 'completed')
+    FOR EACH ROW WHEN (NEW.status = 'completed' AND NEW.client_id IS NOT NULL)
     EXECUTE FUNCTION update_client_loyalty_count();
 CREATE TRIGGER trg_appointments_loyalty_count_update AFTER UPDATE ON appointments
-    FOR EACH ROW WHEN (NEW.status = 'completed' AND OLD.status IS DISTINCT FROM 'completed')
+    FOR EACH ROW WHEN (NEW.status = 'completed' AND OLD.status IS DISTINCT FROM 'completed' AND NEW.client_id IS NOT NULL)
     EXECUTE FUNCTION update_client_loyalty_count();
+
+-- ---------- staff soft-delete guards ----------
+-- Barbers/managers/receptionists are soft-deleted (deleted_at set) instead of
+-- removed, so appointments.barber_id / shops.manager_id keep pointing at a real,
+-- identifiable row. These triggers fire only on the NULL -> NOT NULL transition
+-- (the actual "delete") and block it if the row still has pending obligations.
+-- Terminal appointments (completed/cancelled/no_show) never block deletion.
+
+CREATE FUNCTION check_barber_deletable() RETURNS trigger AS $$
+BEGIN
+    IF OLD.deleted_at IS NULL AND NEW.deleted_at IS NOT NULL THEN
+        IF EXISTS (
+            SELECT 1 FROM appointments
+            WHERE barber_id = NEW.user_id
+              AND status IN ('scheduled', 'checked_in')
+        ) THEN
+            RAISE EXCEPTION 'barber % has pending appointments; cancel or reassign them first', NEW.user_id;
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_barbers_check_deletable BEFORE UPDATE ON barbers
+    FOR EACH ROW EXECUTE FUNCTION check_barber_deletable();
+
+CREATE FUNCTION check_manager_deletable() RETURNS trigger AS $$
+BEGIN
+    IF OLD.deleted_at IS NULL AND NEW.deleted_at IS NOT NULL THEN
+        IF EXISTS (SELECT 1 FROM shops WHERE manager_id = NEW.user_id) THEN
+            RAISE EXCEPTION 'manager % still has shops assigned; reassign them first', NEW.user_id;
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_managers_check_deletable BEFORE UPDATE ON managers
+    FOR EACH ROW EXECUTE FUNCTION check_manager_deletable();
 
 -- ---------- appointment_services (join + historical price/duration snapshot) ----------
 
@@ -387,7 +459,7 @@ CREATE TRIGGER trg_recommendation_history_updated_at BEFORE UPDATE ON recommenda
 CREATE TABLE notifications_log (
     id                   uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     appointment_id       uuid NOT NULL REFERENCES appointments(id) ON DELETE CASCADE,
-    client_id            uuid NOT NULL REFERENCES clients(user_id) ON DELETE RESTRICT,
+    client_id            uuid NOT NULL REFERENCES clients(user_id) ON DELETE CASCADE,
     status               notification_status NOT NULL DEFAULT ('pending'),
     trigger_type         varchar(50) NOT NULL DEFAULT 'reminder', -- e.g. 'reminder_24h','reminder_2h' — kept free-text since timing is still open/configurable
     scheduled_for        timestamptz NOT NULL,
