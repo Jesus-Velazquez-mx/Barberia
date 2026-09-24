@@ -1,16 +1,25 @@
 import jwt from 'jsonwebtoken';
-import { globalConfig } from '../server.js';
 import { User } from '../types/entities/user.interface.js';
+import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
+import { loadConfig } from '../config/globalConfig.js';
 
 const signToken = (user: User) => {
     return jwt.sign(
         { id: user.id, role: user.role, email: user.email },
-        globalConfig.JWT_SECRET,
+        loadConfig().JWT_SECRET,
         { expiresIn: '8h' }
     );
 }
 
-// TODO
-const decodeToken = (token: string) => jwt.verify(token, globalConfig.JWT_SECRET);
+const decodeToken = (token: string) => {
+    try {
+        jwt.verify(token, loadConfig().JWT_SECRET);
+    } catch (error) {
+        if (error instanceof jwt.TokenExpiredError) {
+            throw new ApiError(ApiErrorCode.UNAUTHORIZED, error.message);
+        }
+        throw error;
+    }
+}
 
 export { signToken, decodeToken };

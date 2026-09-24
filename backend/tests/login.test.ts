@@ -2,7 +2,9 @@ import request from 'supertest';
 import express from 'express';
 import router from '../src/routes/routes.js';
 import connection from '../src/connection/connection.js';
+import { loadConfig } from '../src/config/globalConfig.js';
 
+export const globalConfig = loadConfig();
 const { connectDB, closeDB, getPool } = connection;
 
 /* Montamos otro express exclusivo para pruebas */

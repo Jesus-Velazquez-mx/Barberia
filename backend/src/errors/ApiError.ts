@@ -1,8 +1,9 @@
 export enum ApiErrorCode {
+    UNAUTHORIZED = 401,
+    ACCOUNT_DEACTIVATED = 403,
     NOT_FOUND = 404,
     INVALID_CREDENTIALS = 404,
     USER_ALREADY_EXISTS = 409,
-    ACCOUNT_DEACTIVATED = 403
 }
 
 export class ApiError extends Error {

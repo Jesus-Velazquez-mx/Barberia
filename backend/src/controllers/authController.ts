@@ -1,7 +1,7 @@
 import { z, ZodError } from 'zod';
 import { LoginInput, loginUser, RegisterInput, registerUser } from '../services/authService.js';
 import type { ApiHandler } from '../utils/apiResponse.js';
-import { sendSuccess, sendFail, sendValidationError } from '../utils/apiResponse.js';
+import { sendSuccess, sendFail, sendValidationError, sendInternalServerError } from '../utils/apiResponse.js';
 import type { AuthResponse } from '../types/dto/authResponse.interface.js';
 import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 
@@ -41,12 +41,12 @@ export const login: ApiHandler<AuthResponse> = async (req, res) => {
 
         // Devuelve HTTP 404 Not Found para errores de autenticación para no revelar detalles exactos
         if (error instanceof ApiError) {
-            sendFail(res, 'User not found or invalid credentials', null, error.code);
+            sendFail(res, 'User not found or invalid credentials', error.code);
             return;
         }
 
         // Manejo general para errores inesperados del servidor
-        sendFail(res, 'Internal server error', [String(error)], 500);
+        sendInternalServerError(res, [String(error)]);
     }
 };
 
@@ -73,11 +73,11 @@ export const register: ApiHandler<AuthResponse> = async (req, res) => {
 
         // Devuelve HTTP 409 Conflict si el correo electrónico ya está registrado en la base de datos
         if (error instanceof ApiError && error.code === ApiErrorCode.USER_ALREADY_EXISTS) {
-            sendFail(res, 'Email is already registered', null, error.code);
+            sendFail(res, 'Email is already registered', error.code);
             return;
         }
 
         // Manejo general para errores inesperados del servidor
-        sendFail(res, 'Internal server error', [String(error)], 500);
+        sendInternalServerError(res, [String(error)]);
     }
 };

@@ -5,7 +5,7 @@ export const loadConfig = () => {
     const AI_SERVICE_URL = process.env.AI_SERVICE_URL;
 
     if (!JWT_SECRET || !FRONTEND_URL || !AI_SERVICE_URL) {
-        throw new Error('Missing required in environment variables');
+        throw new Error('Missing required environment variables');
     }
 
     return {

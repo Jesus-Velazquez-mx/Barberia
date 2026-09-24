@@ -8,7 +8,7 @@ import cors from 'cors';
 import { sendFail } from './utils/apiResponse.js';
 import { loadConfig } from './config/globalConfig.js';
 
-export const globalConfig = loadConfig();
+loadConfig();
 const { connectDB } = connection;
 
 const app = express();
@@ -52,7 +52,7 @@ app.use('/api', router);
 
 // Respuesta con error al no encontrar la ruta especificada
 app.use('/api', (req: Request, res: Response) => {
-    sendFail(res, 'Ruta de la API no encontrada.', ['Ruta de la API no encontrada'], 404);
+    sendFail(res, 'Ruta de la API no encontrada.', 404);
 });
 
 app.listen(port, async () => {

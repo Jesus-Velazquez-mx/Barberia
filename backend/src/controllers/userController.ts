@@ -1,8 +1,8 @@
 import { z, ZodError } from 'zod';
 import { UserResponse } from "../types/dto/userResponse.interface.js"
-import { ApiHandler, sendFail, sendValidationError } from "../utils/apiResponse.js"
+import { ApiHandler, sendFail, sendInternalServerError, sendValidationError } from "../utils/apiResponse.js"
 import { ApiError } from '../errors/ApiError.js';
-import { updateUser } from '../services/userService.js';
+import { updateUser, UpdateUserInput } from '../services/userService.js';
 
 // Token indicates the user performing the operation,
 // while the user object is the operation target
@@ -14,7 +14,7 @@ const updateUserSchema = z.object({
         password: z.string().min(6).optional(),
         firstName: z.string().min(2).optional(),
         lastName: z.string().min(2).optional(),
-    }),
+    }) satisfies z.ZodType<UpdateUserInput>,
     token: z.jwt()
 })
 
@@ -29,13 +29,14 @@ export const update: ApiHandler<UserResponse> = async (req, res) => {
     } catch (error: unknown) {
         if (error instanceof ZodError) {
             sendValidationError(res, error);
-        }
-
-        if (error instanceof ApiError) {
-            sendFail(res, 'User not found or invalid credentials', null, error.code);
             return;
         }
 
-        sendFail(res, 'Internal server error', [String(error)], 500);
+        if (error instanceof ApiError) {
+            sendFail(res, error.message, error.code);
+            return;
+        }
+
+        sendInternalServerError(res, [String(error)]);
     }
 }

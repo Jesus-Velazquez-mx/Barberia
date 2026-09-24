@@ -1,7 +1,6 @@
 import jwt from 'jsonwebtoken';
-import { globalConfig } from '../server.js';
+import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 import { decodeToken } from './jwtTokenService.js';
-
 
 export type UpdateUserInput = {
     id: string,
@@ -13,7 +12,14 @@ export type UpdateUserInput = {
 }
 
 const updateUser = async (user: UpdateUserInput, token: string) => {
-    return decodeToken(token);
+    try {
+        // TODO
+        return decodeToken(token);
+    } catch (error) {
+        if (error instanceof jwt.TokenExpiredError) {
+            throw new ApiError(ApiErrorCode.UNAUTHORIZED, error.message);
+        }
+    }
 }
 
 export { updateUser };
