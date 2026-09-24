@@ -5,11 +5,9 @@ import type { User, UserRole } from '../types/entities/user.interface.js';
 import type { UserResponse } from '../types/dto/userResponse.interface.js';
 import type { AuthResponse } from '../types/dto/authResponse.interface.js';
 import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
+import { signToken } from './jwtTokenService.js';
 
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) {
-    throw new Error('JWT_SECRET is not defined in environment variables');
-}
+
 
 // Interfaces para tipar los datos de entrada en lugar de usar 'any'
 export interface LoginInput {
@@ -56,17 +54,10 @@ export const loginUser = async (data: LoginInput): Promise<AuthResponse> => {
         throw new ApiError(ApiErrorCode.ACCOUNT_DEACTIVATED, 'Account is deactivated');
     }
 
-    // Genera un token válido por 8 horas
-    const token = jwt.sign(
-        { id: user.id, role: user.role, email: user.email },
-        JWT_SECRET,
-        { expiresIn: '8h' }
-    );
-
     // Devuelve los datos del usuario sin el hash de la contraseña
     return {
         user: toUserResponse(user),
-        token: token
+        token: signToken(user)
     };
 };
 
@@ -88,16 +79,9 @@ export const registerUser = async (data: RegisterInput): Promise<AuthResponse> =
         role: 'client' as UserRole
     });
 
-    // Genera el token para que el usuario inicie sesión inmediatamente después de registrarse
-    const token = jwt.sign(
-        { id: newUser.id, role: newUser.role, email: newUser.email },
-        JWT_SECRET,
-        { expiresIn: '8h' }
-    );
-
     // Devuelve los datos del usuario recién creado sin el hash de la contraseña
     return {
         user: toUserResponse(newUser),
-        token: token
+        token: signToken(newUser)
     };
 };
