@@ -4,6 +4,6 @@ import { update } from '../controllers/userController.js';
 const router = Router();
 
 // TODO - Add Swagger documentation
-router.put('/user', update);
+router.put('/users', update);
 
 export default router;

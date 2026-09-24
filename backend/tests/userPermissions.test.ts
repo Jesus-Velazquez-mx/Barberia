@@ -1,4 +1,4 @@
-import { canUpdateUser } from '../src/services/userPermissions.js';
+import { canUpdateUser, canUpdateManagerTitle, canUpdateBarberProfile } from '../src/services/userPermissions.js';
 import type { UserRole } from '../src/types/entities/user.interface.js';
 
 const A = 'a0000000-0000-0000-0000-000000000001';
@@ -48,5 +48,32 @@ describe('canUpdateUser', () => {
 
     test('manager no puede actualizar a otro manager', () => {
         expect(canUpdateUser({ id: A, role: 'manager' }, { id: B, role: 'manager' })).toBe(false);
+    });
+});
+
+describe('canUpdateManagerTitle', () => {
+    test('manager puede actualizar su propio título', () => {
+        expect(canUpdateManagerTitle({ id: A, role: 'manager' }, A)).toBe(true);
+    });
+
+    test('manager no puede actualizar el título de otro manager', () => {
+        expect(canUpdateManagerTitle({ id: A, role: 'manager' }, B)).toBe(false);
+    });
+
+    const nonManagerRoles: UserRole[] = ['client', 'barber', 'receptionist'];
+    test.each(nonManagerRoles)('%s no puede actualizar ningún título de manager', (role) => {
+        expect(canUpdateManagerTitle({ id: A, role }, A)).toBe(false);
+        expect(canUpdateManagerTitle({ id: A, role }, B)).toBe(false);
+    });
+});
+
+describe('canUpdateBarberProfile', () => {
+    test('manager puede actualizar el perfil de un barbero', () => {
+        expect(canUpdateBarberProfile({ id: A, role: 'manager' })).toBe(true);
+    });
+
+    const nonManagerRoles: UserRole[] = ['client', 'barber', 'receptionist'];
+    test.each(nonManagerRoles)('%s no puede actualizar el perfil de un barbero', (role) => {
+        expect(canUpdateBarberProfile({ id: A, role })).toBe(false);
     });
 });

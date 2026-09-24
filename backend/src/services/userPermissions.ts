@@ -24,3 +24,16 @@ export const canUpdateUser = (performer: UserIdentity, target: UserIdentity): bo
             return target.role === 'manager' ? performer.id === target.id : true;
     }
 };
+
+/**
+ * PUT /manager: a manager may only update their own title.
+ */
+export const canUpdateManagerTitle = (performer: UserIdentity, targetId: string): boolean =>
+    performer.role === 'manager' && performer.id === targetId;
+
+/**
+ * PUT /barber: only managers may update a barber's profile (bio/is_accepting_bookings),
+ * never barbers themselves. The barbers table is role-exclusive, so no target check is needed.
+ */
+export const canUpdateBarberProfile = (performer: UserIdentity): boolean =>
+    performer.role === 'manager';

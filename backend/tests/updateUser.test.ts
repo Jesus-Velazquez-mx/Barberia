@@ -53,12 +53,12 @@ afterAll(async () => {
     await closeDB();
 });
 
-describe('Pruebas de PUT /api/user', () => {
+describe('Pruebas de PUT /api/users', () => {
     test('debe devolver 200 y los datos actualizados cuando un cliente se actualiza a sí mismo', async () => {
         const client = await registerClient();
         const newPhone = generateUniquePhone();
 
-        const response = await request(app).put('/api/user').send({
+        const response = await request(app).put('/api/users').send({
             user: { id: client.id, firstName: 'Actualizado', phone: newPhone },
             token: client.token
         });
@@ -72,7 +72,7 @@ describe('Pruebas de PUT /api/user', () => {
     test('debe devolver 401 con un token inválido', async () => {
         const client = await registerClient();
 
-        const response = await request(app).put('/api/user').send({
+        const response = await request(app).put('/api/users').send({
             user: { id: client.id, firstName: 'Nuevo' },
             token: 'token.invalido.aqui'
         });
@@ -84,7 +84,7 @@ describe('Pruebas de PUT /api/user', () => {
         const clientA = await registerClient();
         const clientB = await registerClient();
 
-        const response = await request(app).put('/api/user').send({
+        const response = await request(app).put('/api/users').send({
             user: { id: clientB.id, firstName: 'Intruso' },
             token: clientA.token
         });
@@ -95,7 +95,7 @@ describe('Pruebas de PUT /api/user', () => {
     test('debe devolver 404 cuando el usuario objetivo no existe', async () => {
         const client = await registerClient();
 
-        const response = await request(app).put('/api/user').send({
+        const response = await request(app).put('/api/users').send({
             user: { id: '00000000-0000-0000-0000-000000000000', firstName: 'Nadie' },
             token: client.token
         });
@@ -107,7 +107,7 @@ describe('Pruebas de PUT /api/user', () => {
         const clientA = await registerClient();
         const clientB = await registerClient();
 
-        const response = await request(app).put('/api/user').send({
+        const response = await request(app).put('/api/users').send({
             user: { id: clientA.id, email: clientB.email },
             token: clientA.token
         });

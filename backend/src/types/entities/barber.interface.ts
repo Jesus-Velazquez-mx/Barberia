@@ -4,6 +4,5 @@ export interface Barber {
     shift_id: string;
     bio: string | null;
     is_accepting_bookings: boolean;
-    created_at: Date;
-    updated_at: Date;
+    deleted_at: Date | null;
 }
