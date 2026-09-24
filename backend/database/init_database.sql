@@ -177,6 +177,7 @@ CREATE TRIGGER trg_barbers_check_role BEFORE INSERT OR UPDATE ON barbers
 CREATE TABLE receptionists (
     user_id     uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     shop_id     uuid NOT NULL REFERENCES shops(id) ON DELETE RESTRICT, -- receptionist works at one specific shop
+    shift_id    uuid NOT NULL REFERENCES shifts(id) ON DELETE RESTRICT,
     deleted_at  timestamptz
 );
 
