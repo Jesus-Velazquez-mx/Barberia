@@ -1,18 +1,18 @@
 import { z, ZodError } from 'zod';
-import { loginUser, registerUser } from '../services/authService.js';
+import { LoginInput, loginUser, RegisterInput, registerUser } from '../services/authService.js';
 import type { ApiHandler } from '../utils/apiResponse.js';
-import { sendSuccess, sendFail } from '../utils/apiResponse.js';
+import { sendSuccess, sendFail, sendValidationError, sendInternalServerError } from '../utils/apiResponse.js';
 import type { AuthResponse } from '../types/dto/authResponse.interface.js';
 import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 
-const loginSchema = z.object({
+const loginSchema: z.ZodType<LoginInput> = z.object({
     email: z.email(),
     password: z.string().min(1)
 });
 
-const registerSchema = z.object({
-    name: z.string().min(2),
-    lastname: z.string().min(2),
+const registerSchema: z.ZodType<RegisterInput> = z.object({
+    firstName: z.string().min(2),
+    lastName: z.string().min(2),
     phone: z.string().max(10).optional(),
     email: z.email(),
     password: z.string().min(6)
@@ -35,18 +35,18 @@ export const login: ApiHandler<AuthResponse> = async (req, res) => {
     } catch (error: unknown) {
         // Maneja los errores de validación generados por Zod
         if (error instanceof ZodError) {
-            sendFail(res, 'Validation error', error.issues.map((issue) => issue.message), 400);
+            sendValidationError(res, error)
             return;
         }
 
         // Devuelve HTTP 404 Not Found para errores de autenticación para no revelar detalles exactos
-        if (error instanceof ApiError && (error.code === ApiErrorCode.NOT_FOUND || error.code === ApiErrorCode.INVALID_CREDENTIALS)) {
-            sendFail(res, 'User not found or invalid credentials', null, 404);
+        if (error instanceof ApiError) {
+            sendFail(res, 'User not found or invalid credentials', error.code);
             return;
         }
 
         // Manejo general para errores inesperados del servidor
-        sendFail(res, 'Internal server error', [String(error)], 500);
+        sendInternalServerError(res, [String(error)]);
     }
 };
 
@@ -67,17 +67,17 @@ export const register: ApiHandler<AuthResponse> = async (req, res) => {
     } catch (error: unknown) {
         // Maneja los errores de validación generados por Zod
         if (error instanceof ZodError) {
-            sendFail(res, 'Validation error', error.issues.map((issue) => issue.message), 400);
+            sendValidationError(res, error)
             return;
         }
 
         // Devuelve HTTP 409 Conflict si el correo electrónico ya está registrado en la base de datos
         if (error instanceof ApiError && error.code === ApiErrorCode.USER_ALREADY_EXISTS) {
-            sendFail(res, 'Email is already registered', null, 409);
+            sendFail(res, 'Email is already registered', error.code);
             return;
         }
 
         // Manejo general para errores inesperados del servidor
-        sendFail(res, 'Internal server error', [String(error)], 500);
+        sendInternalServerError(res, [String(error)]);
     }
 };

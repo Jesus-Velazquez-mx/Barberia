@@ -1,7 +1,7 @@
 //import type { Request, Response } from 'express';
 import testService from '../services/testService.js';
 import type { ApiHandler } from '../utils/apiResponse.js';
-import { sendSuccess, sendFail} from '../utils/apiResponse.js';
+import { sendSuccess, sendFail, sendInternalServerError} from '../utils/apiResponse.js';
 import type { Test } from '../types/entities/test.interface.js';
 
 
@@ -16,7 +16,7 @@ const listarTest: ApiHandler<Test[]> = async (req, res) => {
 
         sendSuccess(res, resultado, 'Test obtenidos correctamente', 200);
     } catch (err) {
-        sendFail(res, 'Error al listar test', [String(err)], 500);
+        sendInternalServerError(res, [String(err)]);
     }
 };
 
@@ -31,7 +31,7 @@ const crearTest: ApiHandler<number> = async (req, res) => {
         /* rowCount regresa el número de filas afectadas */
         sendSuccess(res, rowCount ?? 0 , 'Test creado correctamente', 201);
     } catch (err) {
-        sendFail(res, 'Error al crear test', [String(err)], 500);
+        sendInternalServerError(res, [String(err)]);
     }
 };
 
@@ -47,7 +47,7 @@ const editarTest: ApiHandler<Test> = async (req, res) => {
 
         sendSuccess(res, { id_test, field_test }, 'Test actualizado correctamente', 200);
     } catch (err) {
-        sendFail(res, 'Error al editar test', [String(err)], 500);
+        sendInternalServerError(res, [String(err)]);
     }
 };
 
@@ -63,7 +63,7 @@ const eliminarTest: ApiHandler<number> = async (req, res) => {
 
         sendSuccess(res, rowCount ?? 0, 'Test eliminado correctamente', 200);
     } catch (err) {
-        sendFail(res, 'Error al eliminar test', [String(err)], 500);
+        sendInternalServerError(res, [String(err)]);
     }
 };
 

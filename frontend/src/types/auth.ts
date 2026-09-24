@@ -16,9 +16,12 @@ export interface RegisterFormValues {
 export interface User {
   id: string;
   email: string;
-  name: string;
-  lastname: string;
-  role: string;
+  phone: string | null;
+  firstName: string;
+  lastName: string;
+  role: UserRole;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface LoginResponse {
@@ -33,3 +36,6 @@ export interface AuthContextValue {
   login: (data: LoginResponse) => void;
   logout: () => void;
 }
+
+/* Roles de usuarios */
+export type UserRole = 'client' | 'barber' | 'manager' | 'receptionist';

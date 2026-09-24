@@ -4,7 +4,9 @@ import express from 'express';
 import router from '../src/routes/routes.js';
 import connection from '../src/connection/connection.js';
 import { sendFail } from '../src/utils/apiResponse.js';
+import { loadConfig } from '../src/config/globalConfig.js';
 
+export const globalConfig = loadConfig();
 const { connectDB, closeDB } = connection;
 
 /* Montamos otro express exclusivo para pruebas */
@@ -13,9 +15,8 @@ app.use(express.json());
 
 app.use('/api', router);
 
-app.use('/api', (req,res)=> 
-    sendFail(res, 'Ruta de la API no encontrada', 
-        ['Ruta de la API no encontrada'], 404));
+app.use('/api', (req, res) =>
+    sendFail(res, 'Ruta de la API no encontrada', 404));
 /* Abrir conexión */
 beforeAll(async () => {
     await connectDB();
@@ -35,14 +36,13 @@ describe('Pruebas de los Endpoints de Tests', () => {
             field_test: 'Test 1',
         };
         const response = await request(app).post('/api/crearTest').send(test);
-       
+
         expect(response.statusCode).toBe(201);
         expect(response.body).toEqual({
             data: expect.any(Number),
             message: expect.any(String),
-            error: null,
         });
-        
+
     });
 
     test('GET /api/listarTests debe devolver status 200', async () => {
@@ -52,18 +52,16 @@ describe('Pruebas de los Endpoints de Tests', () => {
         expect(response.body).toEqual({
             data: expect.any(Array),
             message: expect.any(String),
-            error: null,
         });
     });
-    
+
     test('GET /api/rutaInexistente debe devolver error 404', async () => {
-         const response = await request(app) .get('/api/rutaInexistente'); 
-         expect(response.statusCode).toBe(404); 
-         expect(response.body).toEqual({ 
-            data: null, 
-            message: 'Ruta de la API no encontrada', 
-            error: ['Ruta de la API no encontrada'], }); 
-});
+        const response = await request(app).get('/api/rutaInexistente');
+        expect(response.statusCode).toBe(404);
+        expect(response.body).toEqual({
+            message: 'Ruta de la API no encontrada'
+        });
+    });
 
     test('PUT /api/actualizarTest debe devolver envelope con los datos actualizados', async () => {
         const test = {
@@ -72,20 +70,18 @@ describe('Pruebas de los Endpoints de Tests', () => {
         };
         const response = await request(app).put('/api/actualizarTest').send(test);
 
-       expect(response.statusCode).toBe(200);
+        expect(response.statusCode).toBe(200);
         expect(response.body).toEqual({
             data: { id_test: 'T0001', field_test: 'Test editado' },
             message: expect.any(String),
-            error: null,
         });
     });
-     test('PUT /api/actualizarTest debe devolver error', async () => {
+    test('PUT /api/actualizarTest debe devolver error', async () => {
         const response = await request(app)
             .put('/api/actualizarTest')
             .send({ id_test: 'T9999', field_test: 'x' });
         expect(response.statusCode).toBe(500);
         expect(response.body).toEqual({
-            data: null,
             message: expect.any(String),
             error: expect.arrayContaining([expect.any(String)]),
         });
@@ -101,7 +97,6 @@ describe('Pruebas de los Endpoints de Tests', () => {
         expect(response.body).toEqual({
             data: expect.any(Number),
             message: expect.any(String),
-            error: null,
         });
     });
 
@@ -109,10 +104,9 @@ describe('Pruebas de los Endpoints de Tests', () => {
         const response = await request(app)
             .delete('/api/eliminarTest')
             .send({ id_test: 'T9999' });
-      
+
         expect(response.statusCode).toBe(500);
         expect(response.body).toEqual({
-            data: null,
             message: expect.any(String),
             error: expect.arrayContaining([expect.any(String)]),
         });
