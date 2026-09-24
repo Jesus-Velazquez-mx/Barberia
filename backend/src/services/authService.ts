@@ -18,8 +18,8 @@ export interface LoginInput {
 }
 
 export interface RegisterInput {
-    name: string;
-    lastname: string;
+    firstName: string;
+    lastName: string;
     phone?: string;
     email: string;
     password: string;
@@ -82,8 +82,8 @@ export const registerUser = async (data: RegisterInput): Promise<AuthResponse> =
     const newUser = await createNewUserTransaction({
         email: data.email,
         password_hash: hashedPassword,
-        first_name: data.name,
-        last_name: data.lastname,
+        first_name: data.firstName,
+        last_name: data.lastName,
         phone: data.phone || null,
         role: 'client' as UserRole
     });

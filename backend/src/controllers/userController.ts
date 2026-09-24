@@ -1,18 +1,18 @@
 import { z, ZodError } from 'zod';
 import { UserResponse } from "../types/dto/userResponse.interface.js"
 import { ApiHandler, sendFail, sendValidationError } from "../utils/apiResponse.js"
+import { log } from 'node:console';
 
 // Token indicates the user performing the operation,
 // while the user object is the operation target
 const updateUserSchema = z.object({
     user: z.object({
         id: z.uuid(),
-        role: z.string(),
-        email: z.email(),
-        phone: z.string().length(10),
-        password: z.string().min(6),
-        name: z.string().min(2),
-        lastname: z.string().min(2),
+        email: z.email().optional(),
+        phone: z.string().length(10).optional(),
+        password: z.string().min(6).optional(),
+        name: z.string().min(2).optional(),
+        lastname: z.string().min(2).optional(),
     }),
     token: z.jwt()
 })

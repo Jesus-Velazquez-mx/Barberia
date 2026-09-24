@@ -1,18 +1,18 @@
 import { z, ZodError } from 'zod';
-import { loginUser, registerUser } from '../services/authService.js';
+import { LoginInput, loginUser, RegisterInput, registerUser } from '../services/authService.js';
 import type { ApiHandler } from '../utils/apiResponse.js';
 import { sendSuccess, sendFail, sendValidationError } from '../utils/apiResponse.js';
 import type { AuthResponse } from '../types/dto/authResponse.interface.js';
 import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 
-const loginSchema = z.object({
+const loginSchema: z.ZodType<LoginInput> = z.object({
     email: z.email(),
     password: z.string().min(1)
 });
 
-const registerSchema = z.object({
-    name: z.string().min(2),
-    lastname: z.string().min(2),
+const registerSchema: z.ZodType<RegisterInput> = z.object({
+    firstName: z.string().min(2),
+    lastName: z.string().min(2),
     phone: z.string().max(10).optional(),
     email: z.email(),
     password: z.string().min(6)
