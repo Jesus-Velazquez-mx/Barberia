@@ -8,7 +8,7 @@ export interface User {
   email: string;
   name: string;
   lastname: string;
-  role: string;
+  role: UserRole;
 }
 
 export interface LoginResponse {
@@ -23,3 +23,6 @@ export interface AuthContextValue {
   login: (data: LoginResponse) => void;
   logout: () => void;
 }
+
+/* Roles de usuarios */
+export type UserRole = 'client' | 'barber' | 'manager' | 'receptionist';

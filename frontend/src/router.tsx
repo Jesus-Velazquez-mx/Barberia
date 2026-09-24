@@ -1,18 +1,65 @@
 import { createBrowserRouter } from 'react-router-dom';
 import ExamplePage from './pages/ExamplePage';
 import LoginPage from './pages/LoginPage';
+import PlaceholderPage from './pages/PlaceholderPage';
+import { RoleProtectedRoute } from './components/RoleProtectedRoute';
+import { PublicRoute } from './components/PublicRoute';
 
-// Add new routes here as pages are added to src/pages/.
 const router = createBrowserRouter([
+  /* Client */
   {
-    path: '/',
-    element: <ExamplePage />,
+    element: <RoleProtectedRoute allowedRole="client" />,
+    children: [
+      {
+        path: '/client/home',
+        element: <PlaceholderPage title="client" />,
+      },
+    ]
   },
   {
-    path: '/login',
-    element: <LoginPage />,
+    /* Barber */
+    element: <RoleProtectedRoute allowedRole="barber" />,
+    children: [
+      {
+        path: '/barber/home',
+        element: <PlaceholderPage title="barber" />,
+      },
+    ]
+  },
+  {
+    /* Manager */
+    element: <RoleProtectedRoute allowedRole="manager" />,
+    children: [
+      {
+        path: '/manager/home',
+        element: <PlaceholderPage title="manager" />,
+      },
+    ]
+  },
+  {
+    /* Receptionist */
+    element: <RoleProtectedRoute allowedRole="receptionist" />,
+    children: [
+      {
+        path: '/receptionist/home',
+        element: <PlaceholderPage title="receptionist" />,
+      },
+    ]
+  },
+  {
+    /* Public */
+    element: <PublicRoute />,
+    children: [
+      {
+        path: '/',
+        element: <ExamplePage />,
+      },
+      {
+        path: '/login',
+        element: <LoginPage />,
+      }
+    ]
   }
 ]);
-
 
 export default router;
