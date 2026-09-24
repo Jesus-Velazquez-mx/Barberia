@@ -1,5 +1,3 @@
-import styles from '../styles/loginStyle.module.css';
-
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   isLoading?: boolean;
   loadingText?: string;
@@ -7,9 +5,9 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 
 export function Button({ children, isLoading, loadingText, className = '', ...rest }: ButtonProps) {
   return (
-    <button 
-      className={`${styles.loginButton} ${className}`} 
-      disabled={isLoading || rest.disabled} 
+    <button
+      className={`h-10 cursor-pointer rounded-lg border-none bg-[var(--accent)] font-bold uppercase text-black ${className}`}
+      disabled={isLoading || rest.disabled}
       {...rest}
     >
       {isLoading ? loadingText : children}
