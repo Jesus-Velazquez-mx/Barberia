@@ -243,7 +243,8 @@ CREATE TABLE supplies (
     sku         varchar(50),
     created_at  timestamptz NOT NULL DEFAULT now(),
     updated_at  timestamptz NOT NULL DEFAULT now(),
-    UNIQUE (shop_id, sku)
+    UNIQUE (shop_id, sku),
+    UNIQUE (shop_id, name)
 );
 
 CREATE INDEX idx_supplies_shop ON supplies (shop_id);
@@ -434,6 +435,32 @@ CREATE TABLE appointment_services (
 
 CREATE INDEX idx_appointment_services_appointment ON appointment_services (appointment_id);
 CREATE INDEX idx_appointment_services_service     ON appointment_services (service_id);
+
+-- ---------- haircut styles (AI recommendation knowledge base) ----------
+-- Global catalog, shared across shops, same pattern as services. The AI
+-- recommendation service uses this as reference knowledge: each style lists
+-- which facial structures it suits (a style can suit more than one, hence the
+-- join table rather than a single facial_structure_type column).
+
+CREATE TABLE haircut_styles (
+    id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    name        varchar(150) NOT NULL UNIQUE,
+    description text,
+    is_active   boolean NOT NULL DEFAULT true,
+    created_at  timestamptz NOT NULL DEFAULT now(),
+    updated_at  timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TRIGGER trg_haircut_styles_updated_at BEFORE UPDATE ON haircut_styles
+    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TABLE haircut_style_facial_structures (
+    haircut_style_id       uuid NOT NULL REFERENCES haircut_styles(id) ON DELETE CASCADE,
+    facial_structure_type  facial_structure_type NOT NULL,
+    PRIMARY KEY (haircut_style_id, facial_structure_type)
+);
+
+CREATE INDEX idx_haircut_style_facial_structures_type ON haircut_style_facial_structures (facial_structure_type);
 
 -- ---------- haircut recommendations ----------
 
