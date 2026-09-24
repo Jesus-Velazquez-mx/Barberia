@@ -37,10 +37,10 @@ const router = Router();
  *                         role: { type: string, enum: [client, barber, manager, receptionist] }
  *                         email: { type: string, format: email }
  *                         phone: { type: string, nullable: true }
- *                         first_name: { type: string }
- *                         last_name: { type: string }
- *                         created_at: { type: string, format: date-time }
- *                         updated_at: { type: string, format: date-time }
+ *                         firstName: { type: string }
+ *                         lastName: { type: string }
+ *                         createdAt: { type: string, format: date-time }
+ *                         updatedAt: { type: string, format: date-time }
  *                     token: { type: string, example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... }
  *                 message: { type: string, example: Inicio de sesión exitoso }
  *                 error: { type: array, items: { type: string }, nullable: true, example: null }
@@ -114,10 +114,10 @@ router.post('/auth/login', login);
  *                         role: { type: string, enum: [client, barber, manager, receptionist] }
  *                         email: { type: string, format: email }
  *                         phone: { type: string, nullable: true }
- *                         first_name: { type: string }
- *                         last_name: { type: string }
- *                         created_at: { type: string, format: date-time }
- *                         updated_at: { type: string, format: date-time }
+ *                         firstName: { type: string }
+ *                         lastName: { type: string }
+ *                         createdAt: { type: string, format: date-time }
+ *                         updatedAt: { type: string, format: date-time }
  *                     token: { type: string, example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... }
  *                 message: { type: string, example: Usuario registrado correctamente }
  *                 error: { type: array, items: { type: string }, nullable: true, example: null }

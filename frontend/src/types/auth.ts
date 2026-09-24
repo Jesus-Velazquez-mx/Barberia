@@ -6,9 +6,12 @@ export interface LoginFormValues {
 export interface User {
   id: string;
   email: string;
-  name: string;
-  lastname: string;
+  phone: string | null;
+  firstName: string;
+  lastName: string;
   role: UserRole;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface LoginResponse {

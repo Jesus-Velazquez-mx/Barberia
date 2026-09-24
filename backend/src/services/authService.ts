@@ -24,12 +24,19 @@ export interface RegisterInput {
 }
 
 /**
- * Elimina el hash de la contraseña antes de exponer el usuario en una respuesta.
+ * Elimina el hash de la contraseña y traduce los campos snake_case de la base de
+ * datos a camelCase antes de exponer el usuario en una respuesta.
  */
-const toUserResponse = (user: User): UserResponse => {
-    const { password_hash: _password_hash, staff_deleted_at: _staff_deleted_at, ...userResponse } = user;
-    return userResponse;
-};
+const toUserResponse = (user: User): UserResponse => ({
+    id: user.id,
+    role: user.role,
+    email: user.email,
+    phone: user.phone,
+    firstName: user.first_name,
+    lastName: user.last_name,
+    createdAt: user.created_at,
+    updatedAt: user.updated_at
+});
 
 /**
  * Maneja la lógica de negocio para el inicio de sesión.
