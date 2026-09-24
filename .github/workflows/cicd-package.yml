@@ -55,6 +55,8 @@ jobs:
         DB_USER: postgres
         DB_PASSWORD: postgres
         JWT_SECRET: ci-test-secret
+        AI_SERVICE_URL: ci-test-ai-url
+        FRONTEND_URL: ci-test-frontend-url
       run: |
         cd backend
         npm test
@@ -135,6 +137,7 @@ jobs:
                 -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
                 -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
                 -e AI_SERVICE_URL=${{ secrets.AI_SERVICE_URL }} \
+                -e FRONTEND_URL=${{ secrets.FRONTEND_URL }} \
                 -e AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }} \
                 -e AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }} \
                 -e AWS_REGION=${{ secrets.AWS_REGION }}\
