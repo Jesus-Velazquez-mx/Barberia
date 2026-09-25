@@ -3,6 +3,16 @@ export interface LoginFormValues {
   password: string;
 }
 
+export interface RegisterFormValues {
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  email: string;
+  password: string;
+  /* Solo se usa para validar en el front; nunca se envía al backend. */
+  confirmPassword: string;
+}
+
 export interface User {
   id: string;
   email: string;
