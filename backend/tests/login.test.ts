@@ -165,6 +165,22 @@ describe('Pruebas de los Endpoints de Auth', () => {
         expect(response.body.data.user.profile).toEqual({ title: 'Store Manager' });
     });
 
+    /* Prueba 4c: Login de un miembro del personal dado de baja debe ser rechazado */
+    test('POST /api/login debe devolver 403 ACCOUNT_DEACTIVATED cuando el manager está dado de baja', async () => {
+        const managerPassword = 'manager_password123';
+        const manager = await insertManagerWithPassword(managerPassword);
+        await getPool().query('UPDATE managers SET deleted_at = now() WHERE user_id = $1', [manager.id]);
+
+        const response = await request(app)
+            .post(`${baseAuthUrl}/login`)
+            .send({ email: manager.email, password: managerPassword });
+
+        // El controlador oculta el motivo exacto tras un mensaje genérico (igual que
+        // para credenciales inválidas), pero el código HTTP 403 sí distingue este caso.
+        expect(response.statusCode).toBe(403);
+        expect(response.body.message).toBe('User not found or invalid credentials');
+    });
+
     /* Prueba 5: Login incorrecto */
     test('POST /api/login debe devolver status 404 si la contraseña es incorrecta', async () => {
         const wrongCredentials = {
