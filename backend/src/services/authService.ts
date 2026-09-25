@@ -4,7 +4,8 @@ import type { UserRole } from '../types/entities/user.interface.js';
 import type { AuthResponse } from '../types/dto/authResponse.interface.js';
 import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 import { signToken } from './jwtTokenService.js';
-import { toUserResponse } from '../utils/userMapper.js';
+import { toUserResponse, toClientProfile } from '../utils/userMapper.js';
+import { getUserProfile } from './userService.js';
 
 
 
@@ -45,9 +46,12 @@ export const loginUser = async (data: LoginInput): Promise<AuthResponse> => {
         throw new ApiError(ApiErrorCode.ACCOUNT_DEACTIVATED, 'Account is deactivated');
     }
 
+    // Obtiene los datos específicos del rol para anidar dentro de `user`
+    const profile = await getUserProfile(user);
+
     // Devuelve los datos del usuario sin el hash de la contraseña
     return {
-        user: toUserResponse(user),
+        user: { ...toUserResponse(user), profile },
         token: signToken(user)
     };
 };
@@ -61,7 +65,7 @@ export const registerUser = async (data: RegisterInput): Promise<AuthResponse> =
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
     // Llama a la transacción del repositorio para verificar existencia e insertar de forma segura
-    const newUser = await createNewUser({
+    const { user: newUser, client: newClient } = await createNewUser({
         email: data.email,
         password_hash: hashedPassword,
         first_name: data.firstName,
@@ -72,7 +76,7 @@ export const registerUser = async (data: RegisterInput): Promise<AuthResponse> =
 
     // Devuelve los datos del usuario recién creado sin el hash de la contraseña
     return {
-        user: toUserResponse(newUser),
+        user: { ...toUserResponse(newUser), profile: toClientProfile(newClient) },
         token: signToken(newUser)
     };
 };

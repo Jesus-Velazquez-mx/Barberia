@@ -3,6 +3,7 @@ import { decodeToken } from './jwtTokenService.js';
 import { canUpdateManagerTitle } from './userPermissions.js';
 import { updateManagerTitleById } from '../repositories/managerRepository.js';
 import type { ManagerResponse } from '../types/dto/managerResponse.interface.js';
+import { toManagerResponse } from '../utils/userMapper.js';
 
 export interface UpdateManagerRequest {
     id: string;
@@ -22,10 +23,7 @@ const updateManager = async (target: UpdateManagerRequest, token: string): Promi
 
     const updated = await updateManagerTitleById({ userId: target.id, title: target.title });
 
-    return {
-        userId: updated.user_id,
-        title: updated.title
-    };
+    return toManagerResponse(updated);
 };
 
 export { updateManager };

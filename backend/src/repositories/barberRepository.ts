@@ -9,6 +9,23 @@ export interface UpdateBarberInput {
 }
 
 /**
+ * Busca el perfil de un barbero por su user_id. No filtra por deleted_at: los
+ * llamadores que necesitan excluir barberos dados de baja (p. ej. login, que ya
+ * revisó staff_deleted_at) lo hacen antes de invocar esta función.
+ */
+export const getBarberByUserId = async (userId: string): Promise<Barber | null> => {
+    const pool = db.getPool();
+
+    const result = await pool.query(
+        `SELECT user_id, shop_id, shift_id, bio, is_accepting_bookings, deleted_at
+         FROM barbers WHERE user_id = $1`,
+        [userId]
+    );
+
+    return result.rows.length ? result.rows[0] : null;
+};
+
+/**
  * Actualiza el perfil (bio / is_accepting_bookings) de un barbero. Solo modifica las
  * columnas presentes en `fields`. AND deleted_at IS NULL evita que un token vigente
  * pueda editar un barbero que ya fue dado de baja.

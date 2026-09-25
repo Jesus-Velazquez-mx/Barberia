@@ -1,5 +1,6 @@
 import db from '../connection/connection.js';
 import type { User, UserRole } from '../types/entities/user.interface.js';
+import type { Client } from '../types/entities/client.interface.js';
 import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 
 // Interfaz definida para evitar el uso del tipo 'any' en los parámetros
@@ -58,10 +59,11 @@ export const getUserRoleById = async (id: string): Promise<{ id: string; role: U
 
 /**
  * Ejecuta una transacción SQL para asegurar una creación segura del usuario.
- * Primero verifica si el correo ya está registrado y, si no, crea el usuario.
- * Revierte (rollback) todos los cambios si ocurre algún error.
+ * Primero verifica si el correo ya está registrado y, si no, crea el usuario
+ * junto con su fila en `clients` (todo registro nuevo es un cliente). Revierte
+ * (rollback) todos los cambios si ocurre algún error.
  */
-export const createNewUser = async (userData: CreateUserInput): Promise<User> => {
+export const createNewUser = async (userData: CreateUserInput): Promise<{ user: User; client: Client }> => {
     const pool = db.getPool();
     const client = await pool.connect(); // Obtiene un cliente específico para la transacción
 
@@ -93,9 +95,17 @@ export const createNewUser = async (userData: CreateUserInput): Promise<User> =>
         ];
         
         const result = await client.query(insertQuery, values);
-        
+        const newUser: User = result.rows[0];
+
+        // 3. Crea la fila de cliente asociada (todo registro nuevo es un cliente)
+        const clientResult = await client.query(
+            `INSERT INTO clients (user_id) VALUES ($1)
+             RETURNING user_id, facial_structure_type, completed_services_count`,
+            [newUser.id]
+        );
+
         await client.query('COMMIT'); // Guarda los cambios en la base de datos
-        return result.rows[0];
+        return { user: newUser, client: clientResult.rows[0] };
     } catch (error) {
         await client.query('ROLLBACK'); // Cancela la transacción si ocurre un error
         throw error;

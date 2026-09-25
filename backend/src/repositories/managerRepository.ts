@@ -8,6 +8,22 @@ export interface UpdateManagerInput {
 }
 
 /**
+ * Busca el perfil de un manager por su user_id. No filtra por deleted_at: los
+ * llamadores que necesitan excluir managers dados de baja (p. ej. login, que ya
+ * revisó staff_deleted_at) lo hacen antes de invocar esta función.
+ */
+export const getManagerByUserId = async (userId: string): Promise<Manager | null> => {
+    const pool = db.getPool();
+
+    const result = await pool.query(
+        `SELECT user_id, title, deleted_at FROM managers WHERE user_id = $1`,
+        [userId]
+    );
+
+    return result.rows.length ? result.rows[0] : null;
+};
+
+/**
  * Actualiza el título de un manager. AND deleted_at IS NULL evita que un token
  * vigente pueda editar un manager que ya fue dado de baja.
  */
