@@ -102,10 +102,10 @@ describe('Pruebas de PUT /api/barbers', () => {
         const barber = await insertBarber(shopId, 'Old bio', true);
         const token = mintToken(manager.id, 'manager', manager.email);
 
-        const response = await request(app).put('/api/barbers').send({
-            barber: { id: barber.id, bio: 'New bio', isAcceptingBookings: false },
-            token
-        });
+        const response = await request(app)
+            .put('/api/barbers')
+            .set('Authorization', `Bearer ${token}`)
+            .send({ barber: { id: barber.id, bio: 'New bio', isAcceptingBookings: false } });
 
         expect(response.statusCode).toBe(200);
         expect(response.body.data).toMatchObject({
@@ -122,10 +122,10 @@ describe('Pruebas de PUT /api/barbers', () => {
         const barber = await insertBarber(shopId, 'Bio', true);
         const token = mintToken(barber.id, 'barber', barber.email);
 
-        const response = await request(app).put('/api/barbers').send({
-            barber: { id: barber.id, bio: 'Intruso' },
-            token
-        });
+        const response = await request(app)
+            .put('/api/barbers')
+            .set('Authorization', `Bearer ${token}`)
+            .send({ barber: { id: barber.id, bio: 'Intruso' } });
 
         expect(response.statusCode).toBe(403);
     });
@@ -138,10 +138,10 @@ describe('Pruebas de PUT /api/barbers', () => {
         createdOtherUserIds.push(client.id);
         const token = mintToken(client.id, 'client', client.email);
 
-        const response = await request(app).put('/api/barbers').send({
-            barber: { id: barber.id, bio: 'Intruso' },
-            token
-        });
+        const response = await request(app)
+            .put('/api/barbers')
+            .set('Authorization', `Bearer ${token}`)
+            .send({ barber: { id: barber.id, bio: 'Intruso' } });
 
         expect(response.statusCode).toBe(403);
     });
@@ -150,10 +150,10 @@ describe('Pruebas de PUT /api/barbers', () => {
         const manager = await insertManager();
         const token = mintToken(manager.id, 'manager', manager.email);
 
-        const response = await request(app).put('/api/barbers').send({
-            barber: { id: '00000000-0000-0000-0000-000000000000', bio: 'Nadie' },
-            token
-        });
+        const response = await request(app)
+            .put('/api/barbers')
+            .set('Authorization', `Bearer ${token}`)
+            .send({ barber: { id: '00000000-0000-0000-0000-000000000000', bio: 'Nadie' } });
 
         expect(response.statusCode).toBe(404);
     });

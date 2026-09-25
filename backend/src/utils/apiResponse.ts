@@ -7,19 +7,35 @@ import { ValidationError } from '../errors/ApiError.js';
 export type ApiHandler<T> = (req: Request, res: Response<ApiResponse<T>>) => Promise<void>;
 
 // Las funciones de ayuda (helpers)
-export const sendSuccess = <T>(res: Response<ApiResponse<T>>, data: T, message: string, status = 200) =>
+
+interface SendSucessProps<T> {
+  res: Response<ApiResponse<T>>;
+  message: string;
+  data?: T;
+  status?: number
+}
+
+export const sendSuccess = <T>({ res, message, data, status = 200 }: SendSucessProps<T>) =>
   res.status(status).json({ data, message });
 
-export const sendFail = <T>(res: Response<ApiResponse<T>>, message: string, status: number, errors?: string[] | ValidationError[]) =>
+interface SendFailProps<T> {
+  res: Response<ApiResponse<T>>;
+  message: string;
+  errors?: string[] | ValidationError[];
+  status: number
+}
+
+export const sendFail = <T>({ res, message, errors, status }: SendFailProps<T>) =>
   res.status(status).json({ message, error: errors });
 
-export const sendValidationError = <T>(res: Response<ApiResponse<T>>, error: ZodError) => {
-  sendFail(res, 'Validation error', 400, formatZodError(error));
-}
+export const sendValidationError = <T>({ res, error }: { res: Response<ApiResponse<T>>, error: ZodError }) =>
+  sendFail({ res: res, message: 'Validation error', errors: formatZodError(error), status: 400 });
 
-export const sendInternalServerError = <T>(res: Response<ApiResponse<T>>, error: string[], message?: string) => {
-  sendFail(res, message ?? 'An unexpected error ocurred', 500, error);
-}
+export const sendInternalServerError = <T>(
+  { res, error, message = 'An unexpected error ocurred' }: 
+  { res: Response<ApiResponse<T>>, error: string[], message?: string }) =>
+  sendFail({ res: res, message: message, errors: error, status: 500 });
+
 
 function formatZodError(error: ZodError): ValidationError[] {
   return error.issues.map((issue) => {

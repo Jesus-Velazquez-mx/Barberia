@@ -31,22 +31,22 @@ export const login: ApiHandler<AuthResponse> = async (req, res) => {
         const result = await loginUser(validData);
 
         // 3. Devuelve una respuesta HTTP 200 OK
-        sendSuccess(res, result, 'Login successful', 200);
+        sendSuccess({ res, data: result, message: 'Login successful' });
     } catch (error: unknown) {
         // Maneja los errores de validación generados por Zod
         if (error instanceof ZodError) {
-            sendValidationError(res, error)
+            sendValidationError({ res, error })
             return;
         }
 
         // Devuelve HTTP 404 Not Found para errores de autenticación para no revelar detalles exactos
         if (error instanceof ApiError) {
-            sendFail(res, 'User not found or invalid credentials', error.code);
+            sendFail({ res, message: 'User not found or invalid credentials', status: error.code });
             return;
         }
 
         // Manejo general para errores inesperados del servidor
-        sendInternalServerError(res, [String(error)]);
+        sendInternalServerError({ res, error: [String(error)] });
     }
 };
 
@@ -63,21 +63,21 @@ export const register: ApiHandler<AuthResponse> = async (req, res) => {
         const result = await registerUser(validData);
 
         // 3. Devuelve una respuesta HTTP 201 Created
-        sendSuccess(res, result, 'User registered successfully', 201);
+        sendSuccess({ res, data: result, message: 'User registered successfully', status: 201 });
     } catch (error: unknown) {
         // Maneja los errores de validación generados por Zod
         if (error instanceof ZodError) {
-            sendValidationError(res, error)
+            sendValidationError({ res, error })
             return;
         }
 
         // Devuelve HTTP 409 Conflict si el correo electrónico ya está registrado en la base de datos
         if (error instanceof ApiError && error.code === ApiErrorCode.USER_ALREADY_EXISTS) {
-            sendFail(res, 'Email is already registered', error.code);
+            sendFail({ res, message: 'Email is already registered', status: error.code });
             return;
         }
 
         // Manejo general para errores inesperados del servidor
-        sendInternalServerError(res, [String(error)]);
+        sendInternalServerError({ res, error: [String(error)] });
     }
 };
