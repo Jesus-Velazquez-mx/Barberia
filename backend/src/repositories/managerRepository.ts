@@ -10,7 +10,7 @@ export interface UpdateManagerInput {
 /**
  * Busca el perfil de un manager por su user_id. No filtra por deleted_at: los
  * llamadores que necesitan excluir managers dados de baja (p. ej. login, que ya
- * revisó staff_deleted_at) lo hacen antes de invocar esta función.
+ * revisó isUserActive) lo hacen antes de invocar esta función.
  */
 export const getManagerByUserId = async (userId: string): Promise<Manager | null> => {
     const pool = db.getPool();

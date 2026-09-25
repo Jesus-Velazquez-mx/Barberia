@@ -4,7 +4,7 @@ import type { Receptionist } from '../types/entities/receptionist.interface.js';
 /**
  * Busca el perfil de un recepcionista por su user_id. No filtra por deleted_at:
  * los llamadores que necesitan excluir recepcionistas dados de baja (p. ej.
- * login, que ya revisó staff_deleted_at) lo hacen antes de invocar esta función.
+ * login, que ya revisó isUserActive) lo hacen antes de invocar esta función.
  */
 export const getReceptionistByUserId = async (userId: string): Promise<Receptionist | null> => {
     const pool = db.getPool();
