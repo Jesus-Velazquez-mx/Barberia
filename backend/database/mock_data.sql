@@ -46,9 +46,9 @@ INSERT INTO users (id, role, email, phone, password_hash, first_name, last_name)
     ('5204b553-fe01-4c42-a624-7d566e006147', 'receptionist', 'misato.katsuragi@nerv-barbershop.test', '5550000008', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Misato',  'Katsuragi'),
     ('01bd0371-7afc-4756-a7de-26bcb37a163e', 'receptionist', 'ritsuko.akagi@nerv-barbershop.test',    '5550000009', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Ritsuko', 'Akagi');
 
-INSERT INTO receptionists (user_id, shop_id) VALUES
-    ('5204b553-fe01-4c42-a624-7d566e006147', '064e25fa-26c1-4ec8-9d49-78fc5f520519'),
-    ('01bd0371-7afc-4756-a7de-26bcb37a163e', '96c3c0e1-b183-446f-9d2d-d3f3fc9f9361');
+INSERT INTO receptionists (user_id, shop_id, shift_id) VALUES
+    ('5204b553-fe01-4c42-a624-7d566e006147', '064e25fa-26c1-4ec8-9d49-78fc5f520519', (SELECT id FROM shifts WHERE name = 'morning')),
+    ('01bd0371-7afc-4756-a7de-26bcb37a163e', '96c3c0e1-b183-446f-9d2d-d3f3fc9f9361', (SELECT id FROM shifts WHERE name = 'afternoon'));
 
 -- ---------- clients ----------
 
