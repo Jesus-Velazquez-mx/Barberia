@@ -4,8 +4,8 @@ export interface LoginFormValues {
 }
 
 export interface RegisterFormValues {
-  name: string;
-  lastname: string;
+  firstName: string;
+  lastName: string;
   phone?: string;
   email: string;
   password: string;

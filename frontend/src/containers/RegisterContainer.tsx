@@ -34,7 +34,7 @@ export function RegisterFormContainer() {
         if (error.status === 409) {
           errorMessage = 'Este correo ya está registrado';
         } else if (error.status === 400 && error.errors.length > 0) {
-          errorMessage = error.errors[0];
+          errorMessage = error.errors.toString();
         } else {
           errorMessage = error.message;
         }
@@ -47,11 +47,11 @@ export function RegisterFormContainer() {
   return (
     <RegisterForm
       onSubmit={handleSubmit(onSubmit)}
-      nameRegister={register('name', {
+      nameRegister={register('firstName', {
         required: 'El nombre es obligatorio.',
         minLength: { value: 2, message: 'Debe tener al menos 2 caracteres.' },
       })}
-      lastnameRegister={register('lastname', {
+      lastnameRegister={register('lastName', {
         required: 'El apellido es obligatorio.',
         minLength: { value: 2, message: 'Debe tener al menos 2 caracteres.' },
       })}
@@ -75,8 +75,8 @@ export function RegisterFormContainer() {
         validate: (value) =>
           value === watch('password') || 'Las contraseñas no coinciden.',
       })}
-      nameError={errors.name}
-      lastnameError={errors.lastname}
+      nameError={errors.firstName}
+      lastnameError={errors.lastName}
       phoneError={errors.phone}
       emailError={errors.email}
       passwordError={errors.password}
