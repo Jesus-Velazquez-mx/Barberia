@@ -16,7 +16,7 @@ app.use(express.json());
 app.use('/api', router);
 
 app.use('/api', (req, res) =>
-    sendFail(res, 'Ruta de la API no encontrada', 404));
+    sendFail({ res, message: 'Ruta de la API no encontrada', status: 404 }));
 /* Abrir conexión */
 beforeAll(async () => {
     await connectDB();

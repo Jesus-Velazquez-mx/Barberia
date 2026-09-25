@@ -34,9 +34,9 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 let pool: Pool | undefined;
 /* Permitir solicitudes desde el dominio específico del front */
 
-const allowedOrigin = process.env.ENV === 'local' 
-    ? 'http://localhost:5173' 
-    : 'https://barberia.erickdh.com'; 
+const allowedOrigin = process.env.ENV === 'local'
+    ? 'http://localhost:5173'
+    : 'https://barberia.erickdh.com';
 
 app.use(
     cors({
@@ -52,7 +52,7 @@ app.use('/api', router);
 
 // Respuesta con error al no encontrar la ruta especificada
 app.use('/api', (req: Request, res: Response) => {
-    sendFail(res, 'Ruta de la API no encontrada.', 404);
+    sendFail({ res, message: 'Ruta de la API no encontrada.', status: 404 });
 });
 
 app.listen(port, async () => {

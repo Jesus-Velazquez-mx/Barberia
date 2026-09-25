@@ -1,7 +1,7 @@
 //import type { Request, Response } from 'express';
 import testService from '../services/testService.js';
 import type { ApiHandler } from '../utils/apiResponse.js';
-import { sendSuccess, sendFail, sendInternalServerError} from '../utils/apiResponse.js';
+import { sendSuccess, sendFail, sendInternalServerError } from '../utils/apiResponse.js';
 import type { Test } from '../types/entities/test.interface.js';
 
 
@@ -14,9 +14,9 @@ const listarTest: ApiHandler<Test[]> = async (req, res) => {
     try {
         const resultado = await testService.listarTest();
 
-        sendSuccess(res, resultado, 'Test obtenidos correctamente', 200);
+        sendSuccess({ res: res, data: resultado, message: 'Test obtenidos correctamente' });
     } catch (err) {
-        sendInternalServerError(res, [String(err)]);
+        sendInternalServerError({res, error: [String(err)]});
     }
 };
 
@@ -29,9 +29,9 @@ const crearTest: ApiHandler<number> = async (req, res) => {
         const rowCount = await testService.crearTest(id_test, field_test);
 
         /* rowCount regresa el número de filas afectadas */
-        sendSuccess(res, rowCount ?? 0 , 'Test creado correctamente', 201);
+        sendSuccess({ res: res, data: rowCount ?? 0, message: 'Test creado correctamente', status: 201 });
     } catch (err) {
-        sendInternalServerError(res, [String(err)]);
+        sendInternalServerError({res, error: [String(err)]});
     }
 };
 
@@ -45,9 +45,9 @@ const editarTest: ApiHandler<Test> = async (req, res) => {
             throw new Error(`No existe un test con id_test=${id_test}`);
         }
 
-        sendSuccess(res, { id_test, field_test }, 'Test actualizado correctamente', 200);
+        sendSuccess({ res: res, data: { id_test, field_test }, message: 'Test actualizado correctamente' });
     } catch (err) {
-        sendInternalServerError(res, [String(err)]);
+        sendInternalServerError({res, error: [String(err)]});
     }
 };
 
@@ -61,9 +61,9 @@ const eliminarTest: ApiHandler<number> = async (req, res) => {
             throw new Error(`No existe un test con id_test=${id_test}`);
         }
 
-        sendSuccess(res, rowCount ?? 0, 'Test eliminado correctamente', 200);
+        sendSuccess({ res: res, data: rowCount ?? 0, message: 'Test eliminado correctamente' });
     } catch (err) {
-        sendInternalServerError(res, [String(err)]);
+        sendInternalServerError({res, error: [String(err)]});
     }
 };
 

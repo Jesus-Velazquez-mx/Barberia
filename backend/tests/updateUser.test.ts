@@ -124,10 +124,10 @@ describe('Pruebas de PUT /api/users', () => {
         const client = await registerClient();
         const newPhone = generateUniquePhone();
 
-        const response = await request(app).put('/api/users').send({
-            user: { id: client.id, firstName: 'Actualizado', phone: newPhone },
-            token: client.token
-        });
+        const response = await request(app)
+            .put('/api/users')
+            .set('Authorization', `Bearer ${client.token}`)
+            .send({ user: { id: client.id, firstName: 'Actualizado', phone: newPhone } });
 
         expect(response.statusCode).toBe(200);
         expect(response.body.data.firstName).toBe('Actualizado');
@@ -138,10 +138,10 @@ describe('Pruebas de PUT /api/users', () => {
     test('debe devolver 401 con un token inválido', async () => {
         const client = await registerClient();
 
-        const response = await request(app).put('/api/users').send({
-            user: { id: client.id, firstName: 'Nuevo' },
-            token: 'token.invalido.aqui'
-        });
+        const response = await request(app)
+            .put('/api/users')
+            .set('Authorization', 'Bearer token.invalido.aqui')
+            .send({ user: { id: client.id, firstName: 'Nuevo' } });
 
         expect(response.statusCode).toBe(400);
     });
@@ -150,10 +150,10 @@ describe('Pruebas de PUT /api/users', () => {
         const clientA = await registerClient();
         const clientB = await registerClient();
 
-        const response = await request(app).put('/api/users').send({
-            user: { id: clientB.id, firstName: 'Intruso' },
-            token: clientA.token
-        });
+        const response = await request(app)
+            .put('/api/users')
+            .set('Authorization', `Bearer ${clientA.token}`)
+            .send({ user: { id: clientB.id, firstName: 'Intruso' } });
 
         expect(response.statusCode).toBe(403);
     });
@@ -161,10 +161,10 @@ describe('Pruebas de PUT /api/users', () => {
     test('debe devolver 404 cuando el usuario objetivo no existe', async () => {
         const client = await registerClient();
 
-        const response = await request(app).put('/api/users').send({
-            user: { id: '00000000-0000-0000-0000-000000000000', firstName: 'Nadie' },
-            token: client.token
-        });
+        const response = await request(app)
+            .put('/api/users')
+            .set('Authorization', `Bearer ${client.token}`)
+            .send({ user: { id: '00000000-0000-0000-0000-000000000000', firstName: 'Nadie' } });
 
         expect(response.statusCode).toBe(404);
     });
@@ -173,10 +173,10 @@ describe('Pruebas de PUT /api/users', () => {
         const clientA = await registerClient();
         const clientB = await registerClient();
 
-        const response = await request(app).put('/api/users').send({
-            user: { id: clientA.id, email: clientB.email },
-            token: clientA.token
-        });
+        const response = await request(app)
+            .put('/api/users')
+            .set('Authorization', `Bearer ${clientA.token}`)
+            .send({ user: { id: clientA.id, email: clientB.email } });
 
         expect(response.statusCode).toBe(409);
     });
@@ -188,10 +188,10 @@ describe('Pruebas de PUT /api/users', () => {
         await getPool().query('UPDATE barbers SET deleted_at = now() WHERE user_id = $1', [barber.id]);
         const token = mintToken(manager.id, 'manager', manager.email);
 
-        const response = await request(app).put('/api/users').send({
-            user: { id: barber.id, firstName: 'Nuevo' },
-            token
-        });
+        const response = await request(app)
+            .put('/api/users')
+            .set('Authorization', `Bearer ${token}`)
+            .send({ user: { id: barber.id, firstName: 'Nuevo' } });
 
         expect(response.statusCode).toBe(403);
         expect(response.body.message).toBe('Account is deactivated');
@@ -205,10 +205,10 @@ describe('Pruebas de PUT /api/users', () => {
         const target = await insertUser('client');
         createdClientIds.push(target.id);
 
-        const response = await request(app).put('/api/users').send({
-            user: { id: target.id, firstName: 'Nuevo' },
-            token
-        });
+        const response = await request(app)
+            .put('/api/users')
+            .set('Authorization', `Bearer ${token}`)
+            .send({ user: { id: target.id, firstName: 'Nuevo' } });
 
         expect(response.statusCode).toBe(403);
         expect(response.body.message).toBe('Account is deactivated');
