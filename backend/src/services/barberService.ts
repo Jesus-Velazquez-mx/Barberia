@@ -3,6 +3,7 @@ import { decodeToken } from './jwtTokenService.js';
 import { canUpdateBarberProfile } from './userPermissions.js';
 import { updateBarberProfileById } from '../repositories/barberRepository.js';
 import type { BarberResponse } from '../types/dto/barberResponse.interface.js';
+import { toBarberResponse } from '../utils/userMapper.js';
 
 export interface UpdateBarberRequest {
     id: string;
@@ -27,13 +28,7 @@ const updateBarber = async (target: UpdateBarberRequest, token: string): Promise
         isAcceptingBookings: target.isAcceptingBookings
     });
 
-    return {
-        userId: updated.user_id,
-        shopId: updated.shop_id,
-        shiftId: updated.shift_id,
-        bio: updated.bio,
-        isAcceptingBookings: updated.is_accepting_bookings
-    };
+    return toBarberResponse(updated);
 };
 
 export { updateBarber };

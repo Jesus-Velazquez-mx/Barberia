@@ -41,6 +41,31 @@ const router = Router();
  *                         lastName: { type: string }
  *                         createdAt: { type: string, format: date-time }
  *                         updatedAt: { type: string, format: date-time }
+ *                         profile:
+ *                           type: object
+ *                           description: Datos específicos del rol del usuario (forma variable según `role`). userId se omite por ser redundante con `id`.
+ *                           oneOf:
+ *                             - type: object
+ *                               title: BarberProfile
+ *                               properties:
+ *                                 shopId: { type: string, format: uuid }
+ *                                 shiftId: { type: string, format: uuid }
+ *                                 bio: { type: string, nullable: true }
+ *                                 isAcceptingBookings: { type: boolean }
+ *                             - type: object
+ *                               title: ManagerProfile
+ *                               properties:
+ *                                 title: { type: string, nullable: true }
+ *                             - type: object
+ *                               title: ReceptionistProfile
+ *                               properties:
+ *                                 shopId: { type: string, format: uuid }
+ *                                 shiftId: { type: string, format: uuid }
+ *                             - type: object
+ *                               title: ClientProfile
+ *                               properties:
+ *                                 facialStructureType: { type: string, nullable: true, enum: [oval, triangle, heart, round, diamond, square, rectangle] }
+ *                                 completedServicesCount: { type: integer }
  *                     token: { type: string, example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... }
  *                 message: { type: string, example: Inicio de sesión exitoso }
  *                 error: { type: array, items: { type: string }, nullable: true, example: null }
@@ -118,6 +143,12 @@ router.post('/auth/login', login);
  *                         lastName: { type: string }
  *                         createdAt: { type: string, format: date-time }
  *                         updatedAt: { type: string, format: date-time }
+ *                         profile:
+ *                           type: object
+ *                           description: Perfil de cliente recién creado (el registro siempre crea un cliente).
+ *                           properties:
+ *                             facialStructureType: { type: string, nullable: true, enum: [oval, triangle, heart, round, diamond, square, rectangle] }
+ *                             completedServicesCount: { type: integer, example: 0 }
  *                     token: { type: string, example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... }
  *                 message: { type: string, example: Usuario registrado correctamente }
  *                 error: { type: array, items: { type: string }, nullable: true, example: null }
