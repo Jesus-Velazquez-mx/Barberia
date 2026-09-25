@@ -1,36 +1,33 @@
 import { Router } from "express";
-import { update } from '../controllers/userController.js';
+import { update } from '../controllers/barberController.js';
 
 const router = Router();
 
 /**
  * @swagger
- * /api/users:
+ * /api/barbers:
  *   put:
- *     summary: Actualiza la información general de un usuario
- *     description: Actualiza los datos comunes a todos los roles (email, teléfono, contraseña, nombre y apellido). Los atributos específicos de cada rol se actualizan mediante endpoints especializados.
+ *     summary: Actualiza los atributos específicos de un barbero
+ *     description: Actualiza la biografía y/o la disponibilidad para recibir reservas de un barbero. Al menos uno de los dos campos debe estar presente. El cambio de turno y de sucursal se realizan mediante endpoints especializados.
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required: [user, token]
+ *             required: [barber, token]
  *             properties:
- *               user:
+ *               barber:
  *                 type: object
  *                 required: [id]
  *                 properties:
  *                   id: { type: string, format: uuid }
- *                   email: { type: string, format: email, example: cliente@mrbarber.com }
- *                   phone: { type: string, minLength: 10, maxLength: 10, example: "3312345678" }
- *                   password: { type: string, minLength: 6, example: password123 }
- *                   firstName: { type: string, minLength: 2, example: Juan }
- *                   lastName: { type: string, minLength: 2, example: Pérez }
+ *                   bio: { type: string, maxLength: 2000, example: "Especialista en cortes clásicos y degradados." }
+ *                   isAcceptingBookings: { type: boolean, example: true }
  *               token: { type: string, example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... }
  *     responses:
  *       200:
- *         description: Éxito. `data` contiene el usuario actualizado.
+ *         description: Éxito. `data` contiene el barbero actualizado.
  *         content:
  *           application/json:
  *             schema:
@@ -39,15 +36,12 @@ const router = Router();
  *                 data:
  *                   type: object
  *                   properties:
- *                     id: { type: string, format: uuid }
- *                     role: { type: string, enum: [client, barber, manager, receptionist] }
- *                     email: { type: string, format: email }
- *                     phone: { type: string, nullable: true }
- *                     firstName: { type: string }
- *                     lastName: { type: string }
- *                     createdAt: { type: string, format: date-time }
- *                     updatedAt: { type: string, format: date-time }
- *                 message: { type: string, example: User updated successfully }
+ *                     userId: { type: string, format: uuid }
+ *                     shopId: { type: string, format: uuid }
+ *                     shiftId: { type: string, format: uuid }
+ *                     bio: { type: string, nullable: true }
+ *                     isAcceptingBookings: { type: boolean }
+ *                 message: { type: string, example: Barber updated successfully }
  *                 error: { type: array, items: { type: string }, nullable: true, example: null }
  *       400:
  *         description: Error de validación de los datos enviados.
@@ -58,9 +52,9 @@ const router = Router();
  *               properties:
  *                 data: { nullable: true, example: null }
  *                 message: { type: string, example: Error de validación }
- *                 error: { type: array, items: { type: string }, example: ["Invalid email"] }
+ *                 error: { type: array, items: { type: string }, example: ["At least one of bio or isAcceptingBookings must be provided"] }
  *       401:
- *         description: Token inválido o no autorizado para actualizar este usuario.
+ *         description: Token inválido o no autorizado para actualizar este barbero.
  *         content:
  *           application/json:
  *             schema:
@@ -70,14 +64,14 @@ const router = Router();
  *                 message: { type: string, example: Unauthorized }
  *                 error: { nullable: true, example: null }
  *       404:
- *         description: Usuario no encontrado.
+ *         description: Barbero no encontrado.
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
  *                 data: { nullable: true, example: null }
- *                 message: { type: string, example: User not found }
+ *                 message: { type: string, example: Barber not found }
  *                 error: { nullable: true, example: null }
  *       500:
  *         description: Error interno del servidor.
@@ -90,6 +84,6 @@ const router = Router();
  *                 message: { type: string, example: Internal server error }
  *                 error: { type: array, items: { type: string }, example: ["detalle del error"] }
  */
-router.put('/users', update);
+router.put('/barbers', update);
 
 export default router;

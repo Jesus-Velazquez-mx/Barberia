@@ -1,7 +1,13 @@
 import jwt from 'jsonwebtoken';
-import { User } from '../types/entities/user.interface.js';
+import { User, UserRole } from '../types/entities/user.interface.js';
 import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 import { loadConfig } from '../config/globalConfig.js';
+
+export type TokenPayload = jwt.JwtPayload & {
+    id: string;
+    role: UserRole;
+    email: string;
+};
 
 const signToken = (user: User) => {
     return jwt.sign(
@@ -11,11 +17,11 @@ const signToken = (user: User) => {
     );
 }
 
-const decodeToken = (token: string) => {
+const decodeToken = (token: string): TokenPayload => {
     try {
-        jwt.verify(token, loadConfig().JWT_SECRET);
+        return jwt.verify(token, loadConfig().JWT_SECRET) as TokenPayload;
     } catch (error) {
-        if (error instanceof jwt.TokenExpiredError) {
+        if (error instanceof jwt.TokenExpiredError || error instanceof jwt.JsonWebTokenError) {
             throw new ApiError(ApiErrorCode.UNAUTHORIZED, error.message);
         }
         throw error;

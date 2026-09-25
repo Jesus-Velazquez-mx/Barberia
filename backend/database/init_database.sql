@@ -100,11 +100,11 @@ CREATE TRIGGER trg_managers_check_role BEFORE INSERT OR UPDATE ON managers
 
 CREATE TABLE shops (
     id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    name        varchar(50) NOT NULL,
+    name        varchar(50) UNIQUE NOT NULL,
     street      varchar(50),
     postal_code CHAR(5),
     number      CHAR(4),
-    phone       varchar(10),
+    phone       char(10),
     manager_id  uuid NOT NULL,
     is_active   boolean NOT NULL DEFAULT true,
     created_at  timestamptz NOT NULL DEFAULT now(),
@@ -177,6 +177,7 @@ CREATE TRIGGER trg_barbers_check_role BEFORE INSERT OR UPDATE ON barbers
 CREATE TABLE receptionists (
     user_id     uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     shop_id     uuid NOT NULL REFERENCES shops(id) ON DELETE RESTRICT, -- receptionist works at one specific shop
+    shift_id    uuid NOT NULL REFERENCES shifts(id) ON DELETE RESTRICT,
     deleted_at  timestamptz
 );
 
