@@ -94,7 +94,7 @@ router.put('/users', update);
 
 /**
  * @swagger
- * /api/{id}:
+ * /api/users/{id}:
  *   delete:
  *     summary: Elimina un usuario del sistema (borrado físico o lógico)
  *     description: Elimina a un usuario según su ID. Requiere un token JWT válido. Un usuario puede eliminar su propia cuenta, y los usuarios con rol de `manager` pueden eliminar cualquier cuenta (excepto la de otros managers). A los clientes se les aplica un borrado físico definitivo, mientras que al staff se le aplica un borrado lógico (soft delete) marcando la fecha actual en `deleted_at`.
@@ -175,6 +175,6 @@ router.put('/users', update);
  *                 message: { type: string, example: Internal server error }
  *                 error: { type: array, items: { type: string }, example: ["detalle del error en base de datos"] }
  */
-router.delete('/:id', deleteUser);
+router.delete('/users/:id', deleteUser);
 
 export default router;

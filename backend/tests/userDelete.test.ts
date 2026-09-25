@@ -85,7 +85,7 @@ afterAll(async () => {
 describe('Pruebas de eliminación de usuarios por roles', () => {
     const testPassword = 'password123';
 
-    test('DELETE /api/:id - Borrado físico para el rol CLIENTE', async () => {
+    test('DELETE /api/users/:id - Borrado físico para el rol CLIENTE', async () => {
         const email = generateUniqueEmail();
         createdEmails.push(email);
 
@@ -106,7 +106,7 @@ describe('Pruebas de eliminación de usuarios por roles', () => {
 
         // Paso 2: Ejecutar la petición DELETE mandando el token JWT en el header
         const deleteResponse = await request(app)
-            .delete(`/api/${user.id}`) 
+            .delete(`/api/users/${user.id}`) 
             .set('Authorization', `Bearer ${token}`);
 
         expect(deleteResponse.statusCode).toBe(200);
@@ -116,7 +116,7 @@ describe('Pruebas de eliminación de usuarios por roles', () => {
         expect(dbCheck.rows.length).toBe(0);
     });
 
-    test('DELETE /api/:id - Borrado lógico para el rol MANAGER', async () => {
+    test('DELETE /api/users/:id - Borrado lógico para el rol MANAGER', async () => {
         const email = generateUniqueEmail();
         createdEmails.push(email);
 
@@ -142,7 +142,7 @@ describe('Pruebas de eliminación de usuarios por roles', () => {
 
         // Paso 3: Ejecutar la petición de borrado
         const deleteResponse = await request(app)
-            .delete(`/api/${user.id}`)
+            .delete(`/api/users/${user.id}`)
             .set('Authorization', `Bearer ${token}`);
 
         expect(deleteResponse.statusCode).toBe(200);
@@ -153,7 +153,7 @@ describe('Pruebas de eliminación de usuarios por roles', () => {
         expect(dbCheck.rows[0].deleted_at).not.toBeNull();
     });
 
-    test('DELETE /api/:id - Borrado lógico para el rol BARBERO', async () => {
+    test('DELETE /api/users/:id - Borrado lógico para el rol BARBERO', async () => {
         const email = generateUniqueEmail();
         createdEmails.push(email);
 
@@ -182,7 +182,7 @@ describe('Pruebas de eliminación de usuarios por roles', () => {
 
         // Paso 3: Ejecutar la petición de borrado
         const deleteResponse = await request(app)
-            .delete(`/api/${user.id}`)
+            .delete(`/api/users/${user.id}`)
             .set('Authorization', `Bearer ${token}`);
 
         expect(deleteResponse.statusCode).toBe(200);
@@ -193,7 +193,7 @@ describe('Pruebas de eliminación de usuarios por roles', () => {
         expect(dbCheck.rows[0].deleted_at).not.toBeNull();
     });
 
-    test('DELETE /api/:id - 403 Forbidden si un MANAGER intenta borrar a otro MANAGER', async () => {
+    test('DELETE /api/users/:id - 403 Forbidden si un MANAGER intenta borrar a otro MANAGER', async () => {
         const pool = getPool();
 
         // 1. Crear el Mánager 1 (El que ejecuta la acción)
@@ -249,7 +249,7 @@ describe('Pruebas de eliminación de usuarios por roles', () => {
 
         // 3. Ejecutar la petición usando el token ACTUALIZADO del Mánager 1
         const deleteResponse = await request(app)
-            .delete(`/api/${target.user.id}`)
+            .delete(`/api/users/${target.user.id}`)
             .set('Authorization', `Bearer ${validActorToken}`);
 
         // 4. Verificaciones
