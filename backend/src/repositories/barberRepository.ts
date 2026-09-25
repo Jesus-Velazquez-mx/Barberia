@@ -11,7 +11,7 @@ export interface UpdateBarberInput {
 /**
  * Busca el perfil de un barbero por su user_id. No filtra por deleted_at: los
  * llamadores que necesitan excluir barberos dados de baja (p. ej. login, que ya
- * revisó staff_deleted_at) lo hacen antes de invocar esta función.
+ * revisó isUserActive) lo hacen antes de invocar esta función.
  */
 export const getBarberByUserId = async (userId: string): Promise<Barber | null> => {
     const pool = db.getPool();

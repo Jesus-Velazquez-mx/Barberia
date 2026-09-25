@@ -2,7 +2,7 @@ import bcrypt from 'bcrypt';
 import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 import { decodeToken } from './jwtTokenService.js';
 import { canUpdateUser } from './userPermissions.js';
-import { getUserRoleById, updateUserById } from '../repositories/userRepository.js';
+import { getUserRoleById, updateUserById, isUserActive } from '../repositories/userRepository.js';
 import type { UpdateUserInput } from '../repositories/userRepository.js';
 import { getBarberByUserId } from '../repositories/barberRepository.js';
 import { getManagerByUserId } from '../repositories/managerRepository.js';
@@ -27,6 +27,11 @@ const updateUser = async (user: UpdateUserInput, token: string): Promise<UserRes
 
     if (!canUpdateUser(performer, target)) {
         throw new ApiError(ApiErrorCode.FORBIDDEN, 'Not authorized to update this user');
+    }
+
+    // Rejects a still-valid token whose owner (or target) was deactivated since it was issued.
+    if (!(await isUserActive(performer.id)) || !(await isUserActive(target.id))) {
+        throw new ApiError(ApiErrorCode.ACCOUNT_DEACTIVATED, 'Account is deactivated');
     }
 
     const fields: UpdateUserInput = { ...user };

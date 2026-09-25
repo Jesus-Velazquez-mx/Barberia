@@ -12,11 +12,13 @@ BEGIN;
 
 INSERT INTO users (id, role, email, phone, password_hash, first_name, last_name) VALUES
     ('b27c93cf-2282-4b40-81ea-efb5f7bec219', 'manager', 'gendo.ikari@nerv-barbershop.test',     '5550000001', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Gendo',  'Ikari'),
-    ('ca85606b-6af7-4583-82e6-89bcb6a8d4c6', 'manager', 'kozo.fuyutsuki@nerv-barbershop.test',  '5550000002', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Kozo',   'Fuyutsuki');
+    ('ca85606b-6af7-4583-82e6-89bcb6a8d4c6', 'manager', 'kozo.fuyutsuki@nerv-barbershop.test',  '5550000002', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Kozo',   'Fuyutsuki'),
+    ('63bc8b10-4ea0-4247-bf38-c527e5940368', 'manager', 'keel.lorenz@nerv-barbershop.test',  '5650000002', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Keel',   'Lorenz');
 
-INSERT INTO managers (user_id, title) VALUES
-    ('b27c93cf-2282-4b40-81ea-efb5f7bec219', 'Regional Director'),
-    ('ca85606b-6af7-4583-82e6-89bcb6a8d4c6', 'Sub-Director');
+INSERT INTO managers (user_id, title, deleted_at) VALUES
+    ('b27c93cf-2282-4b40-81ea-efb5f7bec219', 'Regional Director', null),
+    ('ca85606b-6af7-4583-82e6-89bcb6a8d4c6', 'Sub-Director', null),
+    ('63bc8b10-4ea0-4247-bf38-c527e5940368', 'CEO', NOW());
 
 -- ---------- shops ----------
 

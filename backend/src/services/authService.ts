@@ -1,5 +1,5 @@
 import bcrypt from 'bcrypt';
-import { getUserByEmail, createNewUser } from '../repositories/userRepository.js';
+import { getUserByEmail, createNewUser, isUserActive } from '../repositories/userRepository.js';
 import type { UserRole } from '../types/entities/user.interface.js';
 import type { AuthResponse } from '../types/dto/authResponse.interface.js';
 import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
@@ -42,7 +42,7 @@ export const loginUser = async (data: LoginInput): Promise<AuthResponse> => {
 
     // Checked after the password, not before, so a wrong-password attempt against a
     // deactivated staff account still reads as invalid credentials, not a status leak.
-    if (user.staff_deleted_at) {
+    if (!(await isUserActive(user.id))) {
         throw new ApiError(ApiErrorCode.ACCOUNT_DEACTIVATED, 'Account is deactivated');
     }
 
