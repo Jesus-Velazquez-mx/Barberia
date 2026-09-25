@@ -1,8 +1,9 @@
 import { z, ZodError } from 'zod';
 import { UserResponse } from "../types/dto/userResponse.interface.js"
-import { ApiHandler, sendFail, sendInternalServerError, sendValidationError } from "../utils/apiResponse.js"
+import { ApiHandler, sendFail, sendInternalServerError, sendSuccess, sendValidationError } from "../utils/apiResponse.js"
 import { ApiError } from '../errors/ApiError.js';
-import { updateUser, UpdateUserInput } from '../services/userService.js';
+import { updateUser } from '../services/userService.js';
+import { UpdateUserInput } from '../repositories/userRepository.js';
 
 // Token indicates the user performing the operation,
 // while the user object is the operation target
@@ -23,9 +24,8 @@ export const update: ApiHandler<UserResponse> = async (req, res) => {
         const validData = updateUserSchema.parse(req.body);
 
         const result = await updateUser(validData.user, validData.token);
-        console.log(result);
 
-        res.status(200).send()
+        sendSuccess(res, result, 'User updated successfully');
     } catch (error: unknown) {
         if (error instanceof ZodError) {
             sendValidationError(res, error);
