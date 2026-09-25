@@ -95,6 +95,8 @@ export const createNewUser = async (userData: CreateUserInput): Promise<{ user: 
             throw new ApiError(ApiErrorCode.USER_ALREADY_EXISTS, 'Email is already registered'); // Dispara el rollback
         }
 
+        const { email, role, phone, password_hash, first_name, last_name } = userData;
+
         // 2. Crea el usuario devolviendo las columnas específicas
         const insertQuery = `
             INSERT INTO users (role, email, phone, password_hash, first_name, last_name)
@@ -103,12 +105,12 @@ export const createNewUser = async (userData: CreateUserInput): Promise<{ user: 
         `;
         
         const values = [
-            userData.role, 
-            userData.email, 
-            userData.phone, 
-            userData.password_hash, 
-            userData.first_name, 
-            userData.last_name
+            role, 
+            email, 
+            phone, 
+            password_hash, 
+            first_name, 
+            last_name
         ];
         
         const result = await client.query(insertQuery, values);
@@ -206,4 +208,55 @@ export const updateUserById = async (fields: UpdateUserInput): Promise<User> => 
     } finally {
         client.release();
     }
+};
+
+/**
+ * Elimina físicamente a un cliente.
+ * Utiliza una transacción para borrar explícitamente el registro de 'clients' 
+ * y luego el de 'users'.
+ */
+export const hardDeleteUser = async (id: string): Promise<void> => {
+    const pool = db.getPool();
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN'); // Inicia la transacción
+
+        // 1. Borra primero el registro de la tabla 'clients'
+        await client.query('DELETE FROM clients WHERE user_id = $1', [id]);
+
+        // 2. Borra el registro principal de la tabla 'users'
+        const result = await client.query('DELETE FROM users WHERE id = $1', [id]);
+        
+        // Verifica si realmente se eliminó algún registro en users
+        if (result.rowCount === 0) {
+            throw new ApiError(ApiErrorCode.NOT_FOUND, 'User not found');
+        }
+
+        await client.query('COMMIT'); // Aplica los cambios
+    } catch (error) {
+        await client.query('ROLLBACK'); // Revierte los cambios en caso de error
+        throw error;
+    } finally {
+        client.release(); // Libera la conexión
+    }
+};
+
+/**
+ * Realiza un borrado lógico (soft delete) para un miembro del staff.
+ * Actualiza el campo 'deleted_at' con la fecha y hora actual en la tabla correspondiente a su rol.
+ */
+export const softDeleteStaff = async (id: string, role: UserRole): Promise<void> => {
+    const pool = db.getPool();
+    let tableName = '';
+
+    // Determina la tabla correcta según el rol del staff
+    if (role === 'barber') tableName = 'barbers';
+    else if (role === 'manager') tableName = 'managers';
+    else if (role === 'receptionist') tableName = 'receptionists';
+    else throw new ApiError(ApiErrorCode.INVALID_INPUT, 'Invalid staff role for soft delete');
+
+    // Formatea la consulta de forma segura. NOW() usa el tiempo actual de PostgreSQL.
+    const query = `UPDATE ${tableName} SET deleted_at = NOW() WHERE user_id = $1`;
+    await pool.query(query, [id]);
 };
