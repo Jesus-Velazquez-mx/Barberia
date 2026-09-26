@@ -4,14 +4,13 @@ import { decodeToken } from './jwtTokenService.js';
 import { canUpdateUser } from './userPermissions.js';
 import { getUserRoleById, isUserActive, updateUserById, hardDeleteClient, softDeleteStaff } from '../repositories/userRepository.js';
 import type { UpdateUserInput } from '../repositories/userRepository.js';
-import { getBarberByUserId } from '../repositories/barberRepository.js';
 import { getManagerByUserId } from '../repositories/managerRepository.js';
 import { getReceptionistByUserId } from '../repositories/receptionistRepository.js';
 import { getClientByUserId } from '../repositories/clientRepository.js';
 import type { User } from '../types/entities/user.interface.js';
 import type { UserResponse } from '../types/dto/userResponse.interface.js';
 import type { ProfileResponse } from '../types/dto/authResponse.interface.js';
-import { toUserResponse, toBarberProfile, toManagerProfile, toReceptionistProfile, toClientProfile } from '../utils/userMapper.js';
+import { toUserResponse, toManagerProfile, toReceptionistProfile, toClientProfile } from '../utils/userMapper.js';
 
 /**
  * Actualiza los datos compartidos (tabla users) del usuario objetivo, siempre que
@@ -44,18 +43,12 @@ const updateUser = async (user: UpdateUserInput, token: string): Promise<UserRes
 };
 
 /**
- * Obtiene los datos específicos del rol de un usuario (barbero, manager,
- * recepcionista o cliente) para complementar los datos compartidos de `users`.
+ * Obtiene los datos específicos del rol de un usuario (manager, recepcionista o
+ * cliente) para complementar los datos compartidos de `users`. Los barberos no
+ * tienen cuenta de usuario, así que nunca pasan por aquí.
  */
 const getUserProfile = async (user: User): Promise<ProfileResponse> => {
     switch (user.role) {
-        case 'barber': {
-            const barber = await getBarberByUserId(user.id);
-            if (!barber) {
-                throw new ApiError(ApiErrorCode.NOT_FOUND, 'Barber profile not found');
-            }
-            return toBarberProfile(barber);
-        }
         case 'manager': {
             const manager = await getManagerByUserId(user.id);
             if (!manager) {

@@ -14,11 +14,6 @@ app.use('/api', router);
 const createdEmails: string[] = [];
 let uniqueCounter = 0;
 
-// Variables globales para almacenar IDs temporales y cumplir con las llaves foráneas (FK)
-let dummyShiftId: string;
-let dummyShopId: string;
-let dummyManagerId: string;
-
 // Función auxiliar para generar un correo único y evitar errores de colisión (UNIQUE constraint)
 const generateUniqueEmail = () => {
     uniqueCounter += 1;
@@ -34,29 +29,6 @@ const generateUniquePhone = () => {
 // Setup: Se ejecuta una sola vez antes de comenzar todas las pruebas
 beforeAll(async () => {
     await connectDB();
-    const pool = getPool();
-
-    // 1. Obtiene un turno (shift) existente en la base de datos para asignarlo a los barberos
-    const shiftRes = await pool.query('SELECT id FROM shifts LIMIT 1');
-    dummyShiftId = shiftRes.rows[0].id;
-
-    // 2. Crea un usuario con rol de mánager global para poder asignarle una tienda
-    const mgrEmail = generateUniqueEmail();
-    createdEmails.push(mgrEmail); 
-    const mgrUserRes = await pool.query(
-        `INSERT INTO users (role, email, phone, password_hash, first_name, last_name) 
-         VALUES ('manager', $1, '9999999999', 'hash', 'Global', 'Manager') RETURNING id`,
-        [mgrEmail]
-    );
-    dummyManagerId = mgrUserRes.rows[0].id;
-    await pool.query('INSERT INTO managers (user_id) VALUES ($1)', [dummyManagerId]);
-
-    // 3. Crea una tienda (shop) temporal asociada al mánager creado en el paso anterior
-    const shopRes = await pool.query(
-        `INSERT INTO shops (name, manager_id) VALUES ($1, $2) RETURNING id`,
-        [`Shop_Test_${Date.now()}`, dummyManagerId]
-    );
-    dummyShopId = shopRes.rows[0].id;
 });
 
 // Teardown: Se ejecuta al finalizar todas las pruebas para limpiar la base de datos (evitar basura)
@@ -69,7 +41,6 @@ afterAll(async () => {
 
         if (userIds.length > 0) {
             // Limpieza exacta en orden jerárquico inverso para no violar las restricciones RESTRICT de las llaves foráneas
-            await pool.query('DELETE FROM barbers WHERE user_id = ANY($1)', [userIds]);
             await pool.query('DELETE FROM receptionists WHERE user_id = ANY($1)', [userIds]);
             await pool.query('DELETE FROM shops WHERE manager_id = ANY($1)', [userIds]); // Las tiendas deben borrarse antes que el mánager
             await pool.query('DELETE FROM managers WHERE user_id = ANY($1)', [userIds]);
@@ -153,45 +124,9 @@ describe('Pruebas de eliminación de usuarios por roles', () => {
         expect(dbCheck.rows[0].deleted_at).not.toBeNull();
     });
 
-    test('DELETE /api/users/:id - Borrado lógico para el rol BARBERO', async () => {
-        const email = generateUniqueEmail();
-        createdEmails.push(email);
-
-        // Paso 1: Crear la cuenta inicial
-        const registerResponse = await request(app).post('/api/auth/register').send({
-            firstName: 'Barber',
-            lastName: 'Pro',
-            phone: generateUniquePhone(),
-            email: email,
-            password: testPassword
-        });
-
-        if (!registerResponse.body || !registerResponse.body.data) {
-            throw new Error(`Fallo en el registro. Respuesta del servidor: ${JSON.stringify(registerResponse.body)}`);
-        }
-
-        const { token, user } = registerResponse.body.data;
-        const pool = getPool();
-
-        // Paso 2: Promover el usuario a barbero y enlazarlo con la tienda y turno creados globalmente en el Setup
-        await pool.query("UPDATE users SET role = 'barber' WHERE id = $1", [user.id]);
-        await pool.query(
-            "INSERT INTO barbers (user_id, shop_id, shift_id) VALUES ($1, $2, $3)", 
-            [user.id, dummyShopId, dummyShiftId]
-        );
-
-        // Paso 3: Ejecutar la petición de borrado
-        const deleteResponse = await request(app)
-            .delete(`/api/users/${user.id}`)
-            .set('Authorization', `Bearer ${token}`);
-
-        expect(deleteResponse.statusCode).toBe(200);
-
-        // Paso 4: Verificar el borrado lógico (Soft delete) revisando el campo deleted_at
-        const dbCheck = await pool.query('SELECT deleted_at FROM barbers WHERE user_id = $1', [user.id]);
-        expect(dbCheck.rows.length).toBe(1);
-        expect(dbCheck.rows[0].deleted_at).not.toBeNull();
-    });
+    // El borrado lógico de barberos ya no pasa por este endpoint: los barberos no
+    // tienen cuenta de usuario, así que se eliminan vía DELETE /api/barbers/:id
+    // (ver tests/updateBarber.test.ts).
 
     test('DELETE /api/users/:id - 403 Forbidden si un MANAGER intenta borrar a otro MANAGER', async () => {
         const pool = getPool();

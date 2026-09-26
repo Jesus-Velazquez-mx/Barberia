@@ -1,4 +1,4 @@
-import { canUpdateUser, canUpdateManagerTitle, canUpdateBarberProfile } from '../src/services/userPermissions.js';
+import { canUpdateUser, canUpdateManagerTitle, canUpdateBarberProfile, canDeleteBarber } from '../src/services/userPermissions.js';
 import type { UserRole } from '../src/types/entities/user.interface.js';
 
 const A = 'a0000000-0000-0000-0000-000000000001';
@@ -13,14 +13,9 @@ describe('canUpdateUser', () => {
         expect(canUpdateUser({ id: A, role: 'client' }, { id: B, role: 'client' })).toBe(false);
     });
 
-    const otherRoles: UserRole[] = ['barber', 'manager', 'receptionist'];
+    const otherRoles: UserRole[] = ['manager', 'receptionist'];
     test.each(otherRoles)('client no puede actualizar a un %s', (role) => {
         expect(canUpdateUser({ id: A, role: 'client' }, { id: B, role })).toBe(false);
-    });
-
-    test('barber nunca puede actualizar a nadie, ni a sí mismo', () => {
-        expect(canUpdateUser({ id: A, role: 'barber' }, { id: A, role: 'barber' })).toBe(false);
-        expect(canUpdateUser({ id: A, role: 'barber' }, { id: B, role: 'client' })).toBe(false);
     });
 
     test('receptionist puede actualizar a un client', () => {
@@ -31,14 +26,13 @@ describe('canUpdateUser', () => {
         expect(canUpdateUser({ id: A, role: 'receptionist' }, { id: A, role: 'receptionist' })).toBe(false);
     });
 
-    const nonClientRoles: UserRole[] = ['barber', 'manager', 'receptionist'];
+    const nonClientRoles: UserRole[] = ['manager', 'receptionist'];
     test.each(nonClientRoles)('receptionist no puede actualizar a un %s que no sea client', (role) => {
         expect(canUpdateUser({ id: A, role: 'receptionist' }, { id: B, role })).toBe(false);
     });
 
-    test('manager puede actualizar a un client, barber o receptionist', () => {
+    test('manager puede actualizar a un client o receptionist', () => {
         expect(canUpdateUser({ id: A, role: 'manager' }, { id: B, role: 'client' })).toBe(true);
-        expect(canUpdateUser({ id: A, role: 'manager' }, { id: B, role: 'barber' })).toBe(true);
         expect(canUpdateUser({ id: A, role: 'manager' }, { id: B, role: 'receptionist' })).toBe(true);
     });
 
@@ -60,7 +54,7 @@ describe('canUpdateManagerTitle', () => {
         expect(canUpdateManagerTitle({ id: A, role: 'manager' }, B)).toBe(false);
     });
 
-    const nonManagerRoles: UserRole[] = ['client', 'barber', 'receptionist'];
+    const nonManagerRoles: UserRole[] = ['client', 'receptionist'];
     test.each(nonManagerRoles)('%s no puede actualizar ningún título de manager', (role) => {
         expect(canUpdateManagerTitle({ id: A, role }, A)).toBe(false);
         expect(canUpdateManagerTitle({ id: A, role }, B)).toBe(false);
@@ -72,8 +66,19 @@ describe('canUpdateBarberProfile', () => {
         expect(canUpdateBarberProfile({ id: A, role: 'manager' })).toBe(true);
     });
 
-    const nonManagerRoles: UserRole[] = ['client', 'barber', 'receptionist'];
+    const nonManagerRoles: UserRole[] = ['client', 'receptionist'];
     test.each(nonManagerRoles)('%s no puede actualizar el perfil de un barbero', (role) => {
         expect(canUpdateBarberProfile({ id: A, role })).toBe(false);
+    });
+});
+
+describe('canDeleteBarber', () => {
+    test('manager puede eliminar a un barbero', () => {
+        expect(canDeleteBarber({ id: A, role: 'manager' })).toBe(true);
+    });
+
+    const nonManagerRoles: UserRole[] = ['client', 'receptionist'];
+    test.each(nonManagerRoles)('%s no puede eliminar a un barbero', (role) => {
+        expect(canDeleteBarber({ id: A, role })).toBe(false);
     });
 });

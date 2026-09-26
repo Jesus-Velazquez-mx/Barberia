@@ -25,7 +25,11 @@ export const toUserResponse = (user: User): UserResponse => ({
 });
 
 export const toBarberResponse = (barber: Barber): BarberResponse => ({
-    userId: barber.user_id,
+    id: barber.id,
+    firstName: barber.first_name,
+    lastName: barber.last_name,
+    email: barber.email,
+    phone: barber.phone,
     shopId: barber.shop_id,
     shiftId: barber.shift_id,
     bio: barber.bio,
@@ -51,13 +55,7 @@ export const toClientResponse = (client: Client): ClientResponse => ({
 
 // The *Profile mappers below are used to nest role data inside `user` in
 // AuthResponse, where userId is redundant with the already-present user.id.
-
-export const toBarberProfile = (barber: Barber): Omit<BarberResponse, 'userId'> => ({
-    shopId: barber.shop_id,
-    shiftId: barber.shift_id,
-    bio: barber.bio,
-    isAcceptingBookings: barber.is_accepting_bookings
-});
+// There is no toBarberProfile: barbers never authenticate, so they never appear here.
 
 export const toManagerProfile = (manager: Manager): Omit<ManagerResponse, 'userId'> => ({
     title: manager.title

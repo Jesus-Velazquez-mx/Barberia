@@ -52,8 +52,9 @@ export const getUserRoleById = async (id: string): Promise<{ id: string; role: U
 
 /**
  * Indica si un usuario está activo: los clientes siempre lo están (se eliminan
- * físicamente); el personal (barbero/manager/recepcionista) lo está si su fila
- * en la tabla de su rol tiene deleted_at NULL. Devuelve false si el id no existe.
+ * físicamente); el personal (manager/recepcionista) lo está si su fila en la
+ * tabla de su rol tiene deleted_at NULL. Devuelve false si el id no existe.
+ * Los barberos no tienen cuenta de usuario, así que nunca pasan por aquí.
  */
 export const isUserActive = async (userId: string): Promise<boolean> => {
     const pool = db.getPool();
@@ -61,10 +62,9 @@ export const isUserActive = async (userId: string): Promise<boolean> => {
     const query = `
         SELECT CASE
             WHEN u.role = 'client' THEN true
-            ELSE COALESCE(b.deleted_at, m.deleted_at, r.deleted_at) IS NULL
+            ELSE COALESCE(m.deleted_at, r.deleted_at) IS NULL
         END AS is_active
         FROM users u
-        LEFT JOIN barbers b ON b.user_id = u.id
         LEFT JOIN managers m ON m.user_id = u.id
         LEFT JOIN receptionists r ON r.user_id = u.id
         WHERE u.id = $1
@@ -243,20 +243,44 @@ export const hardDeleteClient = async (id: string): Promise<void> => {
 };
 
 /**
- * Realiza un borrado lógico (soft delete) para un miembro del staff.
- * Actualiza el campo 'deleted_at' con la fecha y hora actual en la tabla correspondiente a su rol.
+ * Realiza un borrado lógico (soft delete) para un miembro del staff con cuenta
+ * de usuario (manager o recepcionista). Actualiza el campo 'deleted_at' con la
+ * fecha y hora actual en la tabla correspondiente a su rol. Los barberos no
+ * tienen cuenta de usuario, así que se dan de baja por su propio endpoint
+ * (ver deleteBarber en barberService.ts), no por aquí.
+ *
+ * SELECT ... FOR UPDATE bloquea la fila antes de dar de baja: así, una operación
+ * concurrente que dependa de ese deleted_at (p. ej. check_manager_deletable, que
+ * bloquea la baja si el manager aún tiene tiendas asignadas) no puede colarse
+ * entre la verificación de esa fila y este UPDATE. Sin el candado, ambas
+ * transacciones podrían no ver los cambios de la otra bajo READ COMMITTED y
+ * confirmarse las dos, dejando una fila (p. ej. una tienda) asignada a un
+ * miembro del staff ya dado de baja.
  */
 export const softDeleteStaff = async (id: string, role: UserRole): Promise<void> => {
     const pool = db.getPool();
     let tableName = '';
 
     // Determina la tabla correcta según el rol del staff
-    if (role === 'barber') tableName = 'barbers';
-    else if (role === 'manager') tableName = 'managers';
+    if (role === 'manager') tableName = 'managers';
     else if (role === 'receptionist') tableName = 'receptionists';
     else throw new ApiError(ApiErrorCode.INVALID_INPUT, 'Invalid staff role for soft delete');
 
-    // Formatea la consulta de forma segura. NOW() usa el tiempo actual de PostgreSQL.
-    const query = `UPDATE ${tableName} SET deleted_at = NOW() WHERE user_id = $1`;
-    await pool.query(query, [id]);
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        await client.query(`SELECT user_id FROM ${tableName} WHERE user_id = $1 FOR UPDATE`, [id]);
+
+        // Formatea la consulta de forma segura. NOW() usa el tiempo actual de PostgreSQL.
+        await client.query(`UPDATE ${tableName} SET deleted_at = NOW() WHERE user_id = $1`, [id]);
+
+        await client.query('COMMIT');
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
 };

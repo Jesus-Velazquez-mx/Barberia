@@ -26,21 +26,14 @@ INSERT INTO shops (id, name, street, postal_code, number, phone, manager_id) VAL
     ('064e25fa-26c1-4ec8-9d49-78fc5f520519', 'NERV Barbershop - Tokyo-3',    'Central Dogma Ave', '10001', '0100', '5551000001', 'b27c93cf-2282-4b40-81ea-efb5f7bec219'),
     ('96c3c0e1-b183-446f-9d2d-d3f3fc9f9361', 'NERV Barbershop - Matsushiro', 'Geofront Blvd',      '10002', '0200', '5551000002', 'ca85606b-6af7-4583-82e6-89bcb6a8d4c6');
 
--- ---------- barbers ----------
+-- ---------- barbers (standalone staff, no login) ----------
 
-INSERT INTO users (id, role, email, phone, password_hash, first_name, last_name) VALUES
-    ('60bdbfde-b471-4a48-a8dc-208a709793de', 'barber', 'shinji.ikari@nerv-barbershop.test',   '5550000003', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Shinji', 'Ikari'),
-    ('0d67c12d-3947-4ac2-8667-83410cfd5ce1', 'barber', 'kaworu.nagisa@nerv-barbershop.test',  '5550000004', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Kaworu', 'Nagisa'),
-    ('f06b06dd-132f-4b72-a124-b89fe9dd4a0c', 'barber', 'ryoji.kaji@nerv-barbershop.test',     '5550000005', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Ryoji',  'Kaji'),
-    ('cf28b56a-f463-4300-8743-e20979b0901e', 'barber', 'toji.suzuhara@nerv-barbershop.test',  '5550000006', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Toji',   'Suzuhara'),
-    ('347e8a2f-973c-4fab-97a2-144616b2ede0', 'barber', 'kensuke.aida@nerv-barbershop.test',   '5550000007', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Kensuke','Aida');
-
-INSERT INTO barbers (user_id, shop_id, shift_id, bio, is_accepting_bookings) VALUES
-    ('60bdbfde-b471-4a48-a8dc-208a709793de', '064e25fa-26c1-4ec8-9d49-78fc5f520519', (SELECT id FROM shifts WHERE name = 'morning'),   'Precise fades, patient with first-timers.', true),
-    ('0d67c12d-3947-4ac2-8667-83410cfd5ce1', '064e25fa-26c1-4ec8-9d49-78fc5f520519', (SELECT id FROM shifts WHERE name = 'afternoon'), 'Specialist in clean, minimalist cuts.',     true),
-    ('f06b06dd-132f-4b72-a124-b89fe9dd4a0c', '064e25fa-26c1-4ec8-9d49-78fc5f520519', (SELECT id FROM shifts WHERE name = 'morning'),   'Ten years of experience with hot towel shaves.', true),
-    ('cf28b56a-f463-4300-8743-e20979b0901e', '96c3c0e1-b183-446f-9d2d-d3f3fc9f9361', (SELECT id FROM shifts WHERE name = 'morning'),   'Great with kids and first haircuts.', true),
-    ('347e8a2f-973c-4fab-97a2-144616b2ede0', '96c3c0e1-b183-446f-9d2d-d3f3fc9f9361', (SELECT id FROM shifts WHERE name = 'afternoon'), 'Currently fully booked most weeks.', false);
+INSERT INTO barbers (id, first_name, last_name, email, phone, shop_id, shift_id, bio, is_accepting_bookings) VALUES
+    ('60bdbfde-b471-4a48-a8dc-208a709793de', 'Shinji',  'Ikari',     'shinji.ikari@nerv-barbershop.test',   '5550000003', '064e25fa-26c1-4ec8-9d49-78fc5f520519', (SELECT id FROM shifts WHERE name = 'morning'),   'Precise fades, patient with first-timers.', true),
+    ('0d67c12d-3947-4ac2-8667-83410cfd5ce1', 'Kaworu',  'Nagisa',    'kaworu.nagisa@nerv-barbershop.test',  '5550000004', '064e25fa-26c1-4ec8-9d49-78fc5f520519', (SELECT id FROM shifts WHERE name = 'afternoon'), 'Specialist in clean, minimalist cuts.',     true),
+    ('f06b06dd-132f-4b72-a124-b89fe9dd4a0c', 'Ryoji',   'Kaji',      'ryoji.kaji@nerv-barbershop.test',     '5550000005', '064e25fa-26c1-4ec8-9d49-78fc5f520519', (SELECT id FROM shifts WHERE name = 'morning'),   'Ten years of experience with hot towel shaves.', true),
+    ('cf28b56a-f463-4300-8743-e20979b0901e', 'Toji',    'Suzuhara',  'toji.suzuhara@nerv-barbershop.test',  '5550000006', '96c3c0e1-b183-446f-9d2d-d3f3fc9f9361', (SELECT id FROM shifts WHERE name = 'morning'),   'Great with kids and first haircuts.', true),
+    ('347e8a2f-973c-4fab-97a2-144616b2ede0', 'Kensuke', 'Aida',      'kensuke.aida@nerv-barbershop.test',   '5550000007', '96c3c0e1-b183-446f-9d2d-d3f3fc9f9361', (SELECT id FROM shifts WHERE name = 'afternoon'), 'Currently fully booked most weeks.', false);
 
 -- ---------- receptionists ----------
 
@@ -146,7 +139,7 @@ INSERT INTO haircut_style_facial_structures (haircut_style_id, facial_structure_
 -- One slot per barber per working day (Monday-Saturday), matching their shift hours.
 
 INSERT INTO availability_slots (barber_id, shop_id, day_of_week, start_time, end_time)
-SELECT b.user_id, b.shop_id, d.day, s.start_time, s.end_time
+SELECT b.id, b.shop_id, d.day, s.start_time, s.end_time
 FROM barbers b
 JOIN shifts s ON s.id = b.shift_id
 CROSS JOIN generate_series(1, 6) AS d(day);

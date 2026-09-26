@@ -8,14 +8,14 @@ export interface UserIdentity {
 /**
  * Authorization matrix for PUT /user (shared-data update):
  * - client: only themselves.
- * - barber: never allowed, not even themselves.
  * - receptionist: clients only, never themselves or other staff.
  * - manager: anyone except another manager; a manager may only update themselves.
+ *
+ * Barbers are never a UserIdentity here: they have no user account and never
+ * authenticate, so they can't be a performer or a target of this endpoint.
  */
 export const canUpdateUser = (performer: UserIdentity, target: UserIdentity): boolean => {
     switch (performer.role) {
-        case 'barber':
-            return false;
         case 'client':
             return performer.id === target.id;
         case 'receptionist':
@@ -32,8 +32,15 @@ export const canUpdateManagerTitle = (performer: UserIdentity, targetId: string)
     performer.role === 'manager' && performer.id === targetId;
 
 /**
- * PUT /barber: only managers may update a barber's profile (bio/is_accepting_bookings),
- * never barbers themselves. The barbers table is role-exclusive, so no target check is needed.
+ * PUT /barber: only managers may update a barber's profile (bio/is_accepting_bookings).
+ * Barbers have no user account and can never be the performer, so no target check is needed.
  */
 export const canUpdateBarberProfile = (performer: UserIdentity): boolean =>
+    performer.role === 'manager';
+
+/**
+ * DELETE /barbers/:id: only managers may soft-delete a barber. Same rule as
+ * canUpdateBarberProfile, kept as its own named permission for clarity.
+ */
+export const canDeleteBarber = (performer: UserIdentity): boolean =>
     performer.role === 'manager';
