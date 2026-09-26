@@ -34,7 +34,7 @@ const router = Router();
  *                       type: object
  *                       properties:
  *                         id: { type: string, format: uuid }
- *                         role: { type: string, enum: [client, barber, manager, receptionist] }
+ *                         role: { type: string, enum: [client, manager, receptionist] }
  *                         email: { type: string, format: email }
  *                         phone: { type: string, nullable: true }
  *                         firstName: { type: string }
@@ -43,15 +43,8 @@ const router = Router();
  *                         updatedAt: { type: string, format: date-time }
  *                         profile:
  *                           type: object
- *                           description: Datos específicos del rol del usuario (forma variable según `role`). userId se omite por ser redundante con `id`.
+ *                           description: Datos específicos del rol del usuario (forma variable según `role`). userId se omite por ser redundante con `id`. Los barberos no tienen cuenta de usuario ni token propio, así que nunca aparecen aquí.
  *                           oneOf:
- *                             - type: object
- *                               title: BarberProfile
- *                               properties:
- *                                 shopId: { type: string, format: uuid }
- *                                 shiftId: { type: string, format: uuid }
- *                                 bio: { type: string, nullable: true }
- *                                 isAcceptingBookings: { type: boolean }
  *                             - type: object
  *                               title: ManagerProfile
  *                               properties:
@@ -136,7 +129,7 @@ router.post('/auth/login', login);
  *                       type: object
  *                       properties:
  *                         id: { type: string, format: uuid }
- *                         role: { type: string, enum: [client, barber, manager, receptionist] }
+ *                         role: { type: string, enum: [client, manager, receptionist] }
  *                         email: { type: string, format: email }
  *                         phone: { type: string, nullable: true }
  *                         firstName: { type: string }

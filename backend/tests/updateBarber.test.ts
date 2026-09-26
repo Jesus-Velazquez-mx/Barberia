@@ -64,15 +64,18 @@ const insertShop = async (managerId: string): Promise<string> => {
     return id;
 };
 
+// Los barberos son una tabla independiente sin cuenta de usuario: se crean
+// directamente, sin pasar por 'users'.
 const insertBarber = async (shopId: string, bio: string, isAcceptingBookings: boolean) => {
-    const barber = await insertUser('barber');
     const shift = await getPool().query(`SELECT id FROM shifts WHERE name = 'morning'`);
-    await getPool().query(
-        `INSERT INTO barbers (user_id, shop_id, shift_id, bio, is_accepting_bookings) VALUES ($1, $2, $3, $4, $5)`,
-        [barber.id, shopId, shift.rows[0].id, bio, isAcceptingBookings]
+    const result = await getPool().query(
+        `INSERT INTO barbers (email, first_name, last_name, shop_id, shift_id, bio, is_accepting_bookings)
+         VALUES ($1, 'Test', 'Barber', $2, $3, $4, $5) RETURNING id`,
+        [generateUniqueEmail(), shopId, shift.rows[0].id, bio, isAcceptingBookings]
     );
-    createdBarberIds.push(barber.id);
-    return barber;
+    const id = result.rows[0].id;
+    createdBarberIds.push(id);
+    return { id };
 };
 
 beforeAll(async () => {
@@ -81,7 +84,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
     if (createdBarberIds.length > 0) {
-        await getPool().query('DELETE FROM users WHERE id = ANY($1)', [createdBarberIds]);
+        await getPool().query('DELETE FROM barbers WHERE id = ANY($1)', [createdBarberIds]);
     }
     if (createdShopIds.length > 0) {
         await getPool().query('DELETE FROM shops WHERE id = ANY($1)', [createdShopIds]);
@@ -109,25 +112,11 @@ describe('Pruebas de PUT /api/barbers', () => {
 
         expect(response.statusCode).toBe(200);
         expect(response.body.data).toMatchObject({
-            userId: barber.id,
+            id: barber.id,
             shopId,
             bio: 'New bio',
             isAcceptingBookings: false
         });
-    });
-
-    test('debe devolver 403 cuando un barbero intenta actualizar su propio perfil', async () => {
-        const manager = await insertManager();
-        const shopId = await insertShop(manager.id);
-        const barber = await insertBarber(shopId, 'Bio', true);
-        const token = mintToken(barber.id, 'barber', barber.email);
-
-        const response = await request(app)
-            .put('/api/barbers')
-            .set('Authorization', `Bearer ${token}`)
-            .send({ barber: { id: barber.id, bio: 'Intruso' } });
-
-        expect(response.statusCode).toBe(403);
     });
 
     test('debe devolver 403 cuando un cliente intenta actualizar el perfil de un barbero', async () => {
@@ -154,6 +143,53 @@ describe('Pruebas de PUT /api/barbers', () => {
             .put('/api/barbers')
             .set('Authorization', `Bearer ${token}`)
             .send({ barber: { id: '00000000-0000-0000-0000-000000000000', bio: 'Nadie' } });
+
+        expect(response.statusCode).toBe(404);
+    });
+});
+
+describe('Pruebas de DELETE /api/barbers/:id', () => {
+    test('debe devolver 200 y dar de baja lógicamente al barbero cuando un manager lo elimina', async () => {
+        const manager = await insertManager();
+        const shopId = await insertShop(manager.id);
+        const barber = await insertBarber(shopId, 'Bio', true);
+        const token = mintToken(manager.id, 'manager', manager.email);
+
+        const response = await request(app)
+            .delete(`/api/barbers/${barber.id}`)
+            .set('Authorization', `Bearer ${token}`);
+
+        expect(response.statusCode).toBe(200);
+
+        const dbCheck = await getPool().query('SELECT deleted_at FROM barbers WHERE id = $1', [barber.id]);
+        expect(dbCheck.rows[0].deleted_at).not.toBeNull();
+    });
+
+    test('debe devolver 403 cuando un cliente intenta eliminar a un barbero', async () => {
+        const manager = await insertManager();
+        const shopId = await insertShop(manager.id);
+        const barber = await insertBarber(shopId, 'Bio', true);
+        const client = await insertUser('client');
+        createdOtherUserIds.push(client.id);
+        const token = mintToken(client.id, 'client', client.email);
+
+        const response = await request(app)
+            .delete(`/api/barbers/${barber.id}`)
+            .set('Authorization', `Bearer ${token}`);
+
+        expect(response.statusCode).toBe(403);
+
+        const dbCheck = await getPool().query('SELECT deleted_at FROM barbers WHERE id = $1', [barber.id]);
+        expect(dbCheck.rows[0].deleted_at).toBeNull();
+    });
+
+    test('debe devolver 404 cuando el barbero objetivo no existe', async () => {
+        const manager = await insertManager();
+        const token = mintToken(manager.id, 'manager', manager.email);
+
+        const response = await request(app)
+            .delete('/api/barbers/00000000-0000-0000-0000-000000000000')
+            .set('Authorization', `Bearer ${token}`);
 
         expect(response.statusCode).toBe(404);
     });

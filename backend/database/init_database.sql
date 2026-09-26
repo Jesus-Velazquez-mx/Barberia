@@ -11,7 +11,7 @@ CREATE TABLE test (
 
 -- ---------- ENUMS ----------
 
-CREATE TYPE user_role AS ENUM ('client', 'barber', 'manager', 'receptionist');
+CREATE TYPE user_role AS ENUM ('client', 'manager', 'receptionist');
 CREATE TYPE facial_structure_type AS ENUM ('oval', 'triangle', 'heart', 'round', 'diamond', 'square', 'rectangle');
 
 CREATE TYPE appointment_status AS ENUM (
@@ -46,7 +46,6 @@ DECLARE
 BEGIN
     expected_role := CASE TG_TABLE_NAME
         WHEN 'clients'       THEN 'client'
-        WHEN 'barbers'       THEN 'barber'
         WHEN 'managers'      THEN 'manager'
         WHEN 'receptionists' THEN 'receptionist'
     END::user_role;
@@ -140,6 +139,38 @@ INSERT INTO shifts (name, start_time, end_time) VALUES
     ('morning',   '08:00', '16:00'),
     ('afternoon', '12:00', '20:00');
 
+-- ---------- barbers (standalone staff, no login) ----------
+-- Barbers never authenticate into the system, so they are not modeled as users:
+-- this table holds their identity (name/contact) and work data directly instead
+-- of extending a users row via user_id, the pattern the other staff/role tables
+-- below still use.
+--
+-- deleted_at: soft delete instead of hard delete, so appointments.barber_id
+-- (RESTRICT) keeps pointing at a real, named row instead of blocking deletion
+-- forever once any appointment (even a completed one) references the barber.
+-- NULL = active. See trg_barbers_check_deletable below for the guard that blocks
+-- setting this while the barber has pending (scheduled/checked_in) appointments.
+CREATE TABLE barbers (
+    id                    uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    first_name            varchar(100) NOT NULL,
+    last_name             varchar(100) NOT NULL,
+    email                 varchar(255) UNIQUE NOT NULL,
+    phone                 varchar(10) UNIQUE,
+    shop_id               uuid NOT NULL REFERENCES shops(id) ON DELETE RESTRICT,
+    shift_id              uuid NOT NULL REFERENCES shifts(id) ON DELETE RESTRICT,
+    bio                   text,
+    is_accepting_bookings boolean NOT NULL DEFAULT true,
+    deleted_at            timestamptz,
+    created_at            timestamptz NOT NULL DEFAULT now(),
+    updated_at            timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_barbers_shop ON barbers (shop_id);
+CREATE INDEX idx_barbers_shift ON barbers (shift_id);
+CREATE INDEX idx_barbers_active ON barbers (shop_id) WHERE deleted_at IS NULL;
+CREATE TRIGGER trg_barbers_updated_at BEFORE UPDATE ON barbers
+    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
 -- ---------- role-specific extension tables (1:1 with users) ----------
 
 CREATE TABLE clients (
@@ -149,26 +180,6 @@ CREATE TABLE clients (
 );
 
 CREATE TRIGGER trg_clients_check_role BEFORE INSERT OR UPDATE ON clients
-    FOR EACH ROW EXECUTE FUNCTION check_user_role();
-
--- deleted_at: soft delete instead of hard delete, so appointments.barber_id
--- (RESTRICT) keeps pointing at a real, named row instead of blocking deletion
--- forever once any appointment (even a completed one) references the barber.
--- NULL = active. See trg_barbers_check_deletable below for the guard that blocks
--- setting this while the barber has pending (scheduled/checked_in) appointments.
-CREATE TABLE barbers (
-    user_id                 uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-    shop_id                 uuid NOT NULL REFERENCES shops(id) ON DELETE RESTRICT,
-    shift_id                uuid NOT NULL REFERENCES shifts(id) ON DELETE RESTRICT,
-    bio                     text,
-    is_accepting_bookings   boolean NOT NULL DEFAULT true,
-    deleted_at              timestamptz
-);
-
-CREATE INDEX idx_barbers_shop ON barbers (shop_id);
-CREATE INDEX idx_barbers_shift ON barbers (shift_id);
-CREATE INDEX idx_barbers_active ON barbers (shop_id) WHERE deleted_at IS NULL;
-CREATE TRIGGER trg_barbers_check_role BEFORE INSERT OR UPDATE ON barbers
     FOR EACH ROW EXECUTE FUNCTION check_user_role();
 
 -- deleted_at: soft delete for the same reason as barbers/managers, even though
@@ -307,7 +318,7 @@ CREATE INDEX idx_supply_movements_performed_by   ON supply_movements (performed_
 
 CREATE TABLE availability_slots (
     id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    barber_id   uuid NOT NULL REFERENCES barbers(user_id) ON DELETE CASCADE,
+    barber_id   uuid NOT NULL REFERENCES barbers(id) ON DELETE CASCADE,
     shop_id     uuid NOT NULL REFERENCES shops(id) ON DELETE RESTRICT,
     day_of_week smallint NOT NULL CHECK (day_of_week BETWEEN 0 AND 6), -- 0 = Sunday
     start_time  time NOT NULL,
@@ -332,7 +343,7 @@ CREATE TABLE appointments (
     client_id            uuid REFERENCES clients(user_id) ON DELETE SET NULL,
     is_registered_client boolean NOT NULL,
     guest_client_name    varchar(100), -- only name is captured for unregistered clients
-    barber_id            uuid REFERENCES barbers(user_id) ON DELETE RESTRICT, -- Should this remain nullable?
+    barber_id            uuid REFERENCES barbers(id) ON DELETE RESTRICT, -- Should this remain nullable?
     is_walk_in           boolean NOT NULL DEFAULT false,
     status               appointment_status NOT NULL DEFAULT 'scheduled',
     scheduled_start      timestamptz NOT NULL,
@@ -395,10 +406,10 @@ BEGIN
     IF OLD.deleted_at IS NULL AND NEW.deleted_at IS NOT NULL THEN
         IF EXISTS (
             SELECT 1 FROM appointments
-            WHERE barber_id = NEW.user_id
+            WHERE barber_id = NEW.id
               AND status IN ('scheduled', 'checked_in')
         ) THEN
-            RAISE EXCEPTION 'barber % has pending appointments; cancel or reassign them first', NEW.user_id;
+            RAISE EXCEPTION 'barber % has pending appointments; cancel or reassign them first', NEW.id;
         END IF;
     END IF;
     RETURN NEW;

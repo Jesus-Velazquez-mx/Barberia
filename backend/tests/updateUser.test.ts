@@ -15,11 +15,9 @@ app.use('/api', router);
 
 const createdEmails: string[] = [];
 
-// Limpieza en orden seguro: los barberos referencian la tienda (RESTRICT) y la
-// tienda referencia al manager (RESTRICT), así que hay que borrar en ese orden.
-const createdBarberIds: string[] = [];
 const createdShopIds: string[] = [];
 const createdManagerIds: string[] = [];
+const createdReceptionistIds: string[] = [];
 const createdClientIds: string[] = [];
 
 let uniqueCounter = 0;
@@ -66,15 +64,15 @@ const insertShop = async (managerId: string): Promise<string> => {
     return id;
 };
 
-const insertBarber = async (shopId: string) => {
-    const barber = await insertUser('barber');
+const insertReceptionist = async (shopId: string) => {
+    const receptionist = await insertUser('receptionist');
     const shift = await getPool().query(`SELECT id FROM shifts WHERE name = 'morning'`);
     await getPool().query(
-        `INSERT INTO barbers (user_id, shop_id, shift_id) VALUES ($1, $2, $3)`,
-        [barber.id, shopId, shift.rows[0].id]
+        `INSERT INTO receptionists (user_id, shop_id, shift_id) VALUES ($1, $2, $3)`,
+        [receptionist.id, shopId, shift.rows[0].id]
     );
-    createdBarberIds.push(barber.id);
-    return barber;
+    createdReceptionistIds.push(receptionist.id);
+    return receptionist;
 };
 
 const registerClient = async () => {
@@ -101,8 +99,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-    if (createdBarberIds.length > 0) {
-        await getPool().query('DELETE FROM users WHERE id = ANY($1)', [createdBarberIds]);
+    if (createdReceptionistIds.length > 0) {
+        await getPool().query('DELETE FROM users WHERE id = ANY($1)', [createdReceptionistIds]);
     }
     if (createdShopIds.length > 0) {
         await getPool().query('DELETE FROM shops WHERE id = ANY($1)', [createdShopIds]);
@@ -181,17 +179,17 @@ describe('Pruebas de PUT /api/users', () => {
         expect(response.statusCode).toBe(409);
     });
 
-    test('debe devolver 403 ACCOUNT_DEACTIVATED cuando el usuario objetivo (barbero) está dado de baja', async () => {
+    test('debe devolver 403 ACCOUNT_DEACTIVATED cuando el usuario objetivo (recepcionista) está dado de baja', async () => {
         const manager = await insertManager();
         const shopId = await insertShop(manager.id);
-        const barber = await insertBarber(shopId);
-        await getPool().query('UPDATE barbers SET deleted_at = now() WHERE user_id = $1', [barber.id]);
+        const receptionist = await insertReceptionist(shopId);
+        await getPool().query('UPDATE receptionists SET deleted_at = now() WHERE user_id = $1', [receptionist.id]);
         const token = mintToken(manager.id, 'manager', manager.email);
 
         const response = await request(app)
             .put('/api/users')
             .set('Authorization', `Bearer ${token}`)
-            .send({ user: { id: barber.id, firstName: 'Nuevo' } });
+            .send({ user: { id: receptionist.id, firstName: 'Nuevo' } });
 
         expect(response.statusCode).toBe(403);
         expect(response.body.message).toBe('Account is deactivated');

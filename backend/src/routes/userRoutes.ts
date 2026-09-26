@@ -40,7 +40,7 @@ const router = Router();
  *                   type: object
  *                   properties:
  *                     id: { type: string, format: uuid }
- *                     role: { type: string, enum: [client, barber, manager, receptionist] }
+ *                     role: { type: string, enum: [client, manager, receptionist] }
  *                     email: { type: string, format: email }
  *                     phone: { type: string, nullable: true }
  *                     firstName: { type: string }
