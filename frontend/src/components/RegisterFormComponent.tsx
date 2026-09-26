@@ -44,7 +44,7 @@ export function RegisterForm({
         id="name"
         type="text"
         label="Nombres *"
-        placeholder="Luis Fernando"
+        placeholder="Juan Diego"
         error={nameError?.message}
         registerProps={nameRegister}
       />
@@ -53,7 +53,7 @@ export function RegisterForm({
         id="lastname"
         type="text"
         label="Apellidos *"
-        placeholder="Payán López"
+        placeholder="Perez Soto"
         error={lastnameError?.message}
         registerProps={lastnameRegister}
       />
@@ -62,7 +62,7 @@ export function RegisterForm({
         id="phone"
         type="tel"
         label="Teléfono"
-        placeholder="6674210993"
+        placeholder="6671234567"
         error={phoneError?.message}
         registerProps={phoneRegister}
       />
