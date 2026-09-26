@@ -69,9 +69,9 @@ const insertShop = async (managerId: string): Promise<string> => {
 const insertBarber = async (shopId: string, bio: string, isAcceptingBookings: boolean) => {
     const shift = await getPool().query(`SELECT id FROM shifts WHERE name = 'morning'`);
     const result = await getPool().query(
-        `INSERT INTO barbers (first_name, last_name, shop_id, shift_id, bio, is_accepting_bookings)
-         VALUES ('Test', 'Barber', $1, $2, $3, $4) RETURNING id`,
-        [shopId, shift.rows[0].id, bio, isAcceptingBookings]
+        `INSERT INTO barbers (email, first_name, last_name, shop_id, shift_id, bio, is_accepting_bookings)
+         VALUES ($1, 'Test', 'Barber', $2, $3, $4, $5) RETURNING id`,
+        [generateUniqueEmail(), shopId, shift.rows[0].id, bio, isAcceptingBookings]
     );
     const id = result.rows[0].id;
     createdBarberIds.push(id);
