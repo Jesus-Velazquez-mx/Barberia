@@ -215,7 +215,7 @@ export const updateUserById = async (fields: UpdateUserInput): Promise<User> => 
  * Utiliza una transacción para borrar explícitamente el registro de 'clients' 
  * y luego el de 'users'.
  */
-export const hardDeleteUser = async (id: string): Promise<void> => {
+export const hardDeleteClient = async (id: string): Promise<void> => {
     const pool = db.getPool();
     const client = await pool.connect();
 

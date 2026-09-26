@@ -40,10 +40,10 @@ export const loginUser = async (data: LoginInput): Promise<AuthResponse> => {
         throw new ApiError(ApiErrorCode.INVALID_CREDENTIALS, 'Invalid credentials');
     }
 
-    // Checked after the password, not before, so a wrong-password attempt against a
-    // deactivated staff account still reads as invalid credentials, not a status leak.
+    // A pesar de que se trata de una cuenta desactivada, el error apropiado para el caso
+    // específico del proceso de inicio de sesión es NOT FOUND
     if (!(await isUserActive(user.id))) {
-        throw new ApiError(ApiErrorCode.ACCOUNT_DEACTIVATED, 'Account is deactivated');
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Account is deactivated');
     }
 
     // Obtiene los datos específicos del rol para anidar dentro de `user`

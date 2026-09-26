@@ -2,7 +2,7 @@ import bcrypt from 'bcrypt';
 import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 import { decodeToken } from './jwtTokenService.js';
 import { canUpdateUser } from './userPermissions.js';
-import { getUserRoleById, isUserActive, updateUserById, hardDeleteUser, softDeleteStaff } from '../repositories/userRepository.js';
+import { getUserRoleById, isUserActive, updateUserById, hardDeleteClient, softDeleteStaff } from '../repositories/userRepository.js';
 import type { UpdateUserInput } from '../repositories/userRepository.js';
 import { getBarberByUserId } from '../repositories/barberRepository.js';
 import { getManagerByUserId } from '../repositories/managerRepository.js';
@@ -113,7 +113,7 @@ const deleteUserById = async (targetId: string, token: string): Promise<void> =>
     // Ejecuta el borrado correspondiente
     if (targetUser.role === 'client') {
         // Borrado físico: el ON DELETE CASCADE eliminará el registro en la tabla 'clients'
-        await hardDeleteUser(targetId);
+        await hardDeleteClient(targetId);
     } else {
         // Borrado lógico: marca el campo 'deleted_at' del miembro del staff
         await softDeleteStaff(targetId, targetUser.role);
