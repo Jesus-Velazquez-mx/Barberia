@@ -175,9 +175,9 @@ describe('Pruebas de los Endpoints de Auth', () => {
             .post(`${baseAuthUrl}/login`)
             .send({ email: manager.email, password: managerPassword });
 
-        // El controlador oculta el motivo exacto tras un mensaje genérico (igual que
-        // para credenciales inválidas), pero el código HTTP 403 sí distingue este caso.
-        expect(response.statusCode).toBe(403);
+        // El controlador oculta el motivo exacto tras un mensaje genérico y código iguales que
+        // para credenciales inválidas
+        expect(response.statusCode).toBe(404);
         expect(response.body.message).toBe('User not found or invalid credentials');
     });
 
