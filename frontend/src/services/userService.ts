@@ -3,13 +3,11 @@ import type { ChangePasswordFormValues, EditUserFormValues, User } from '../type
 
 interface UpdateUserPayload {
     user: { id: string } & Partial<EditUserFormValues>;
-    token: string;
 }
 
 export const updateUser = async (id: string, values: EditUserFormValues, token: string): Promise<User> => {
     const payload: UpdateUserPayload = {
-        user: { id, ...values },
-        token,
+        user: { id, ...values }
     };
 
     const response = await apiClient.put<User>('/users', payload, {
@@ -23,7 +21,6 @@ interface ChangePasswordPayload {
         id: string;
         password: string;
     };
-    token: string;
 }
 
 export const changePassword = async (
@@ -35,8 +32,7 @@ export const changePassword = async (
         user: {
             id,
             password: values.newPassword,
-        },
-        token,
+        }
     };
 
     const response = await apiClient.put<User>('/users', payload, {
