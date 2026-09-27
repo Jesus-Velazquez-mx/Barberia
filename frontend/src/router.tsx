@@ -17,7 +17,7 @@ const router = createBrowserRouter([
         element: <PlaceholderPage title="client" />,
       },
       {
-        path: '/edit-user',
+        path: '/profile',
         element: <EditUserPage />,
       },
     ],
@@ -67,10 +67,6 @@ const router = createBrowserRouter([
       {
         path: '/register',
         element: <RegisterPage />,
-      },
-      {
-        path: '/edit-user',
-        element: <EditUserPage />,
       },
     ],
   },

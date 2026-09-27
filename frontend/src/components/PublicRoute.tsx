@@ -4,7 +4,11 @@ import { getHomeRouteByRole } from '../utils/roleRedirect';
 import type { UserRole } from '../types/auth';
 
 export function PublicRoute() {
-    const { user, isAuthenticated } = useAuth();
+    const { user, isAuthenticated, isLoading } = useAuth();
+
+    if (isLoading) {
+        return null;
+    }
 
     if (isAuthenticated && user?.role) {
         return <Navigate to={getHomeRouteByRole(user.role as UserRole)} replace />;

@@ -6,7 +6,7 @@ interface PlaceholderPageProps {
 }
 
 export default function PlaceholderPage({ title }: PlaceholderPageProps) {
-  const { logout: logoutContext } = useAuth();
+  const { logout: logoutContext, user } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -36,20 +36,22 @@ export default function PlaceholderPage({ title }: PlaceholderPageProps) {
         >
           CERRAR SESIÓN
         </button>
-        <button
-          onClick={() => navigate('/edit-user')}
-          style={{
-            padding: '10px 20px',
-            backgroundColor: '#a855f7',
-            color: 'white',
-            border: 'none',
-            borderRadius: '5px',
-            cursor: 'pointer',
-            fontWeight: 'bold',
-          }}
-        >
-          Editar usuario
-        </button>
+        {user?.role === 'client' && (
+          <button
+            onClick={() => navigate('/profile')}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: '#a855f7',
+              color: 'white',
+              border: 'none',
+              borderRadius: '5px',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+            }}
+          >
+            Editar usuario
+          </button>
+        )}
       </div>
     </div>
   );
