@@ -1,15 +1,13 @@
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
-import { getUserByEmail, createNewUserTransaction } from '../repositories/userRepository.js';
-import type { User, UserRole } from '../types/entities/user.interface.js';
-import type { UserResponse } from '../types/dto/userResponse.interface.js';
+import { getUserByEmail, createNewUser, isUserActive } from '../repositories/userRepository.js';
+import type { UserRole } from '../types/entities/user.interface.js';
 import type { AuthResponse } from '../types/dto/authResponse.interface.js';
 import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
+import { signToken } from './jwtTokenService.js';
+import { toUserResponse, toClientProfile } from '../utils/userMapper.js';
+import { getUserProfile } from './userService.js';
 
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) {
-    throw new Error('JWT_SECRET is not defined in environment variables');
-}
+
 
 // Interfaces para tipar los datos de entrada en lugar de usar 'any'
 export interface LoginInput {
@@ -18,20 +16,12 @@ export interface LoginInput {
 }
 
 export interface RegisterInput {
-    name: string;
-    lastname: string;
+    firstName: string;
+    lastName: string;
     phone?: string;
     email: string;
     password: string;
 }
-
-/**
- * Elimina el hash de la contraseña antes de exponer el usuario en una respuesta.
- */
-const toUserResponse = (user: User): UserResponse => {
-    const { password_hash: _password_hash, staff_deleted_at: _staff_deleted_at, ...userResponse } = user;
-    return userResponse;
-};
 
 /**
  * Maneja la lógica de negocio para el inicio de sesión.
@@ -42,31 +32,27 @@ export const loginUser = async (data: LoginInput): Promise<AuthResponse> => {
 
     // Lanza errores específicos para que el controlador devuelva los códigos HTTP adecuados
     if (!user) {
-        throw new ApiError(ApiErrorCode.NOT_FOUND, 404, 'User not found');
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'User not found');
     }
 
     const validPassword = await bcrypt.compare(data.password, user.password_hash);
     if (!validPassword) {
-        throw new ApiError(ApiErrorCode.INVALID_CREDENTIALS, 404, 'Invalid credentials');
+        throw new ApiError(ApiErrorCode.INVALID_CREDENTIALS, 'Invalid credentials');
     }
 
-    // Checked after the password, not before, so a wrong-password attempt against a
-    // deactivated staff account still reads as invalid credentials, not a status leak.
-    if (user.staff_deleted_at) {
-        throw new ApiError(ApiErrorCode.ACCOUNT_DEACTIVATED, 403, 'Account is deactivated');
+    // A pesar de que se trata de una cuenta desactivada, el error apropiado para el caso
+    // específico del proceso de inicio de sesión es NOT FOUND
+    if (!(await isUserActive(user.id))) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Account is deactivated');
     }
 
-    // Genera un token válido por 8 horas
-    const token = jwt.sign(
-        { id: user.id, role: user.role, email: user.email },
-        JWT_SECRET,
-        { expiresIn: '8h' }
-    );
+    // Obtiene los datos específicos del rol para anidar dentro de `user`
+    const profile = await getUserProfile(user);
 
     // Devuelve los datos del usuario sin el hash de la contraseña
     return {
-        user: toUserResponse(user),
-        token: token
+        user: { ...toUserResponse(user), profile },
+        token: signToken(user)
     };
 };
 
@@ -79,25 +65,18 @@ export const registerUser = async (data: RegisterInput): Promise<AuthResponse> =
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
     // Llama a la transacción del repositorio para verificar existencia e insertar de forma segura
-    const newUser = await createNewUserTransaction({
+    const { user: newUser, client: newClient } = await createNewUser({
         email: data.email,
         password_hash: hashedPassword,
-        first_name: data.name,
-        last_name: data.lastname,
+        first_name: data.firstName,
+        last_name: data.lastName,
         phone: data.phone || null,
         role: 'client' as UserRole
     });
 
-    // Genera el token para que el usuario inicie sesión inmediatamente después de registrarse
-    const token = jwt.sign(
-        { id: newUser.id, role: newUser.role, email: newUser.email },
-        JWT_SECRET,
-        { expiresIn: '8h' }
-    );
-
     // Devuelve los datos del usuario recién creado sin el hash de la contraseña
     return {
-        user: toUserResponse(newUser),
-        token: token
+        user: { ...toUserResponse(newUser), profile: toClientProfile(newClient) },
+        token: signToken(newUser)
     };
 };

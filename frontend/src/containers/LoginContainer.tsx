@@ -6,6 +6,7 @@ import type { LoginFormValues } from '../types/auth';
 import { LoginForm } from '../components/LoginFormComponent';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { getHomeRouteByRole } from '../utils/roleRedirect';
 
 
 export function LoginFormContainer() {
@@ -26,7 +27,7 @@ export function LoginFormContainer() {
     try {
       const response = await login(values);
       loginContext(response); // Guardar token y user en el contexto
-      navigate('/');
+      navigate(getHomeRouteByRole(response.user.role));
     } catch (error) {
       let errorMessage = 'No se pudo iniciar sesión';
 

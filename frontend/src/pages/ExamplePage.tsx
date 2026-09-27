@@ -1,31 +1,23 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
 
 function ExamplePage() {
-  const { logout: logoutContext } = useAuth();
   const navigate = useNavigate();
-
-  /* Borra el token y el user, y regresa al login*/
-  const handleLogout = () => {
-    logoutContext();
-    navigate('/login');
-  };
 
   return (
     <section style={{ padding: '2rem' }}>
       <h1>Example page</h1>
       <p>This page lives at src/pages/ExamplePage.tsx and is registered as the "/" route in src/router.tsx.</p>
 
-      {/* Contenedor para separar el link del botón */}
+      {/* Contenedor para separar los elementos */}
       <div style={{ marginTop: '2rem', display: 'flex', gap: '20px', alignItems: 'center' }}>
         <Link to="/" style={{ color: '#a855f7', textDecoration: 'none' }}>Home</Link>
 
-        {/* Botón de prueba. Se va a borrar */}
+        {/* Botón para ir al Login */}
         <button
-          onClick={handleLogout}
+          onClick={() => navigate('/login')}
           style={{
             padding: '10px 20px',
-            backgroundColor: '#dc2626',
+            backgroundColor: '#3b82f6',
             color: 'white',
             border: 'none',
             borderRadius: '5px',
@@ -33,7 +25,7 @@ function ExamplePage() {
             fontWeight: 'bold'
           }}
         >
-          CERRAR SESIÓN
+          IR AL LOGIN
         </button>
       </div>
     </section>

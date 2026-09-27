@@ -6,7 +6,9 @@ import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
 import cors from 'cors';
 import { sendFail } from './utils/apiResponse.js';
+import { loadConfig } from './config/globalConfig.js';
 
+loadConfig();
 const { connectDB } = connection;
 
 const app = express();
@@ -21,6 +23,14 @@ const options = {
             version: '1.0.0',
             description: 'Documentación de la API de la Barbería',
         },
+        tags: [
+            { name: 'Auth', description: 'Registro e inicio de sesión de usuarios' },
+            { name: 'Users', description: 'Datos generales de los usuarios, comunes a todos los roles' },
+            { name: 'Managers', description: 'Atributos específicos de los managers' },
+            { name: 'Barbers', description: 'Atributos específicos de los barberos' },
+            { name: 'Recommendation', description: 'Conexión con el microservicio de recomendación de IA' },
+            { name: 'Test', description: 'Endpoints de prueba usados durante el desarrollo' },
+        ],
     },
     apis: ['./src/routes/*.ts', './dist/routes/*.js'], // Ruta al archivo donde se encuentran las rutas de la API
 };
@@ -32,9 +42,9 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 let pool: Pool | undefined;
 /* Permitir solicitudes desde el dominio específico del front */
 
-const allowedOrigin = process.env.ENV === 'local' 
-    ? 'http://localhost:5173' 
-    : 'https://barberia.erickdh.com'; 
+const allowedOrigin = process.env.ENV === 'local'
+    ? 'http://localhost:5173'
+    : 'https://barberia.erickdh.com';
 
 app.use(
     cors({
@@ -50,10 +60,7 @@ app.use('/api', router);
 
 // Respuesta con error al no encontrar la ruta especificada
 app.use('/api', (req: Request, res: Response) => {
-   // res.status(404).json({
-   //     error: 'Ruta de la API no encontrada.',
-   // });
-    sendFail(res, 'Ruta de la API no encontrada.', ['Ruta de la API no encontrada'], 404);
+    sendFail({ res, message: 'Ruta de la API no encontrada.', status: 404 });
 });
 
 app.listen(port, async () => {

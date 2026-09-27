@@ -5,9 +5,10 @@ const router = Router();
 
 /**
  * @swagger
- * /api/login:
+ * /api/auth/login:
  *   post:
  *     summary: Inicia sesión de un usuario
+ *     tags: [Auth]
  *     description: Valida las credenciales y, de ser correctas, retorna los datos del usuario junto con un token JWT.
  *     requestBody:
  *       required: true
@@ -34,13 +35,31 @@ const router = Router();
  *                       type: object
  *                       properties:
  *                         id: { type: string, format: uuid }
- *                         role: { type: string, enum: [client, barber, manager, receptionist] }
+ *                         role: { type: string, enum: [client, manager, receptionist] }
  *                         email: { type: string, format: email }
  *                         phone: { type: string, nullable: true }
- *                         first_name: { type: string }
- *                         last_name: { type: string }
- *                         created_at: { type: string, format: date-time }
- *                         updated_at: { type: string, format: date-time }
+ *                         firstName: { type: string }
+ *                         lastName: { type: string }
+ *                         createdAt: { type: string, format: date-time }
+ *                         updatedAt: { type: string, format: date-time }
+ *                         profile:
+ *                           type: object
+ *                           description: Datos específicos del rol del usuario (forma variable según `role`). userId se omite por ser redundante con `id`. Los barberos no tienen cuenta de usuario ni token propio, así que nunca aparecen aquí.
+ *                           oneOf:
+ *                             - type: object
+ *                               title: ManagerProfile
+ *                               properties:
+ *                                 title: { type: string, nullable: true }
+ *                             - type: object
+ *                               title: ReceptionistProfile
+ *                               properties:
+ *                                 shopId: { type: string, format: uuid }
+ *                                 shiftId: { type: string, format: uuid }
+ *                             - type: object
+ *                               title: ClientProfile
+ *                               properties:
+ *                                 facialStructureType: { type: string, nullable: true, enum: [oval, triangle, heart, round, diamond, square, rectangle] }
+ *                                 completedServicesCount: { type: integer }
  *                     token: { type: string, example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... }
  *                 message: { type: string, example: Inicio de sesión exitoso }
  *                 error: { type: array, items: { type: string }, nullable: true, example: null }
@@ -79,9 +98,10 @@ router.post('/auth/login', login);
 
 /**
  * @swagger
- * /api/register:
+ * /api/auth/register:
  *   post:
  *     summary: Registra un nuevo usuario
+ *     tags: [Auth]
  *     description: Crea un cliente nuevo, cifra su contraseña y retorna sus datos junto con un token JWT para iniciar sesión automáticamente.
  *     requestBody:
  *       required: true
@@ -89,10 +109,10 @@ router.post('/auth/login', login);
  *         application/json:
  *           schema:
  *             type: object
- *             required: [name, lastname, email, password]
+ *             required: [firstName, lastName, email, password]
  *             properties:
- *               name: { type: string, example: Juan }
- *               lastname: { type: string, example: Pérez }
+ *               firstName: { type: string, example: Juan }
+ *               lastName: { type: string, example: Pérez }
  *               phone: { type: string, example: "3312345678" }
  *               email: { type: string, format: email, example: cliente@mrbarber.com }
  *               password: { type: string, example: password123 }
@@ -111,13 +131,19 @@ router.post('/auth/login', login);
  *                       type: object
  *                       properties:
  *                         id: { type: string, format: uuid }
- *                         role: { type: string, enum: [client, barber, manager, receptionist] }
+ *                         role: { type: string, enum: [client, manager, receptionist] }
  *                         email: { type: string, format: email }
  *                         phone: { type: string, nullable: true }
- *                         first_name: { type: string }
- *                         last_name: { type: string }
- *                         created_at: { type: string, format: date-time }
- *                         updated_at: { type: string, format: date-time }
+ *                         firstName: { type: string }
+ *                         lastName: { type: string }
+ *                         createdAt: { type: string, format: date-time }
+ *                         updatedAt: { type: string, format: date-time }
+ *                         profile:
+ *                           type: object
+ *                           description: Perfil de cliente recién creado (el registro siempre crea un cliente).
+ *                           properties:
+ *                             facialStructureType: { type: string, nullable: true, enum: [oval, triangle, heart, round, diamond, square, rectangle] }
+ *                             completedServicesCount: { type: integer, example: 0 }
  *                     token: { type: string, example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... }
  *                 message: { type: string, example: Usuario registrado correctamente }
  *                 error: { type: array, items: { type: string }, nullable: true, example: null }

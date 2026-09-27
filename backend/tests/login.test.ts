@@ -1,8 +1,11 @@
 import request from 'supertest';
 import express from 'express';
+import bcrypt from 'bcrypt';
 import router from '../src/routes/routes.js';
 import connection from '../src/connection/connection.js';
+import { loadConfig } from '../src/config/globalConfig.js';
 
+export const globalConfig = loadConfig();
 const { connectDB, closeDB, getPool } = connection;
 
 /* Montamos otro express exclusivo para pruebas */
@@ -23,6 +26,24 @@ const generateUniqueEmail = () => {
 const generateUniquePhone = () => {
     uniqueCounter += 1;
     return `${Date.now()}${uniqueCounter}`.slice(-10);
+};
+
+/* Crea directamente en la base de datos un manager con contraseña conocida, para
+   poder ejercitar POST /api/login (no solo firmar un token) con un rol de staff. */
+const insertManagerWithPassword = async (password: string) => {
+    const email = generateUniqueEmail();
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const userResult = await getPool().query(
+        `INSERT INTO users (role, email, phone, password_hash, first_name, last_name)
+         VALUES ('manager', $1, $2, $3, 'Test', 'Manager') RETURNING id`,
+        [email, generateUniquePhone(), passwordHash]
+    );
+    const id = userResult.rows[0].id;
+    await getPool().query('INSERT INTO managers (user_id, title) VALUES ($1, $2)', [id, 'Store Manager']);
+
+    createdEmails.push(email);
+    return { id, email };
 };
 
 /* Abrir conexión a la base de datos antes de todas las pruebas */
@@ -64,8 +85,8 @@ describe('Pruebas de los Endpoints de Auth', () => {
     /* Prueba 2: Creación exitosa */
     test('POST /api/register debe devolver status 201 al registrar un cliente correctamente', async () => {
         const newUser = {
-            name: 'Test',
-            lastname: 'User',
+            firstName: 'Test',
+            lastName: 'User',
             phone: uniquePhone,
             email: uniqueEmail,
             password: testPassword
@@ -78,6 +99,11 @@ describe('Pruebas de los Endpoints de Auth', () => {
         expect(response.body.data).toHaveProperty('token'); // Verificamos que devuelva el token de auto-login
         expect(response.body.data.user.email).toBe(uniqueEmail);
         expect(response.body.data.user).not.toHaveProperty('password_hash');
+        // El registro siempre crea un cliente, así que debe devolver su perfil recién creado, anidado en user
+        expect(response.body.data.user.profile).toEqual({
+            facialStructureType: null,
+            completedServicesCount: 0
+        });
     });
 
     /* Prueba 3: Restricción de base de datos.
@@ -86,8 +112,8 @@ describe('Pruebas de los Endpoints de Auth', () => {
     test('POST /api/register debe devolver status 409 si el correo ya está registrado', async () => {
         const duplicateEmail = generateUniqueEmail();
         const duplicateUser = {
-            name: 'Test',
-            lastname: 'User',
+            firstName: 'Test',
+            lastName: 'User',
             phone: generateUniquePhone(),
             email: duplicateEmail,
             password: testPassword
@@ -118,6 +144,41 @@ describe('Pruebas de los Endpoints de Auth', () => {
         expect(response.body.data).toHaveProperty('token');
         expect(response.body.data.user.email).toBe(uniqueEmail);
         expect(response.body.data.user).not.toHaveProperty('password_hash');
+        // El usuario de esta prueba es un cliente (registrado en la Prueba 2)
+        expect(response.body.data.user.profile).toEqual({
+            facialStructureType: null,
+            completedServicesCount: 0
+        });
+    });
+
+    /* Prueba 4b: Login de un rol de staff debe incluir su perfil específico */
+    test('POST /api/login debe incluir el perfil de manager cuando el usuario es un manager', async () => {
+        const managerPassword = 'manager_password123';
+        const manager = await insertManagerWithPassword(managerPassword);
+
+        const response = await request(app)
+            .post(`${baseAuthUrl}/login`)
+            .send({ email: manager.email, password: managerPassword });
+
+        expect(response.statusCode).toBe(200);
+        expect(response.body.data.user.role).toBe('manager');
+        expect(response.body.data.user.profile).toEqual({ title: 'Store Manager' });
+    });
+
+    /* Prueba 4c: Login de un miembro del personal dado de baja debe ser rechazado */
+    test('POST /api/login debe devolver 403 ACCOUNT_DEACTIVATED cuando el manager está dado de baja', async () => {
+        const managerPassword = 'manager_password123';
+        const manager = await insertManagerWithPassword(managerPassword);
+        await getPool().query('UPDATE managers SET deleted_at = now() WHERE user_id = $1', [manager.id]);
+
+        const response = await request(app)
+            .post(`${baseAuthUrl}/login`)
+            .send({ email: manager.email, password: managerPassword });
+
+        // El controlador oculta el motivo exacto tras un mensaje genérico y código iguales que
+        // para credenciales inválidas
+        expect(response.statusCode).toBe(404);
+        expect(response.body.message).toBe('User not found or invalid credentials');
     });
 
     /* Prueba 5: Login incorrecto */

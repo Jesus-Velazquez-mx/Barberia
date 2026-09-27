@@ -1,3 +1,12 @@
-import type { User } from '../entities/user.interface.js';
+import type { UserRole } from '../entities/user.interface.js';
 
-export type UserResponse = Omit<User, 'password_hash' | 'staff_deleted_at'>;
+export interface UserResponse {
+    id: string;
+    role: UserRole;
+    email: string;
+    phone: string | null;
+    firstName: string;
+    lastName: string;
+    createdAt: Date;
+    updatedAt: Date;
+}
