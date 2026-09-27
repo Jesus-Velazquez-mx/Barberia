@@ -8,6 +8,7 @@ const router = Router();
  * /api/managers:
  *   put:
  *     summary: Actualiza el título de un manager
+ *     tags: [Managers]
  *     description: Actualiza el atributo `title` de un manager. El cambio de sucursal se realiza mediante un endpoint especializado.
  *     requestBody:
  *       required: true

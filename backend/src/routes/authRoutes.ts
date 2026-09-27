@@ -8,6 +8,7 @@ const router = Router();
  * /api/auth/login:
  *   post:
  *     summary: Inicia sesión de un usuario
+ *     tags: [Auth]
  *     description: Valida las credenciales y, de ser correctas, retorna los datos del usuario junto con un token JWT.
  *     requestBody:
  *       required: true
@@ -100,6 +101,7 @@ router.post('/auth/login', login);
  * /api/auth/register:
  *   post:
  *     summary: Registra un nuevo usuario
+ *     tags: [Auth]
  *     description: Crea un cliente nuevo, cifra su contraseña y retorna sus datos junto con un token JWT para iniciar sesión automáticamente.
  *     requestBody:
  *       required: true

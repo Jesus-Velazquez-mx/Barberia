@@ -10,6 +10,7 @@ const { testAiService } = recommendationController;
  * /api/recommendation/test:
  *   get:
  *     summary: Verifica la conexión con el microservicio de recomendación
+ *     tags: [Recommendation]
  *     description: Llama al endpoint de salud del microservicio de IA y retorna su estado.
  *     responses:
  *       200:
