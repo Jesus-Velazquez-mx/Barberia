@@ -5,6 +5,7 @@ import RegisterPage from './pages/RegisterPage';
 import PlaceholderPage from './pages/PlaceholderPage';
 import { RoleProtectedRoute } from './components/RoleProtectedRoute';
 import { PublicRoute } from './components/PublicRoute';
+import EditUserPage from './pages/EditUserPage';
 
 const router = createBrowserRouter([
   /* Client */
@@ -15,7 +16,11 @@ const router = createBrowserRouter([
         path: '/client/home',
         element: <PlaceholderPage title="client" />,
       },
-    ]
+      {
+        path: '/profile',
+        element: <EditUserPage />,
+      },
+    ],
   },
   {
     /* Barber */
@@ -25,7 +30,7 @@ const router = createBrowserRouter([
         path: '/barber/home',
         element: <PlaceholderPage title="barber" />,
       },
-    ]
+    ],
   },
   {
     /* Manager */
@@ -35,7 +40,7 @@ const router = createBrowserRouter([
         path: '/manager/home',
         element: <PlaceholderPage title="manager" />,
       },
-    ]
+    ],
   },
   {
     /* Receptionist */
@@ -45,7 +50,7 @@ const router = createBrowserRouter([
         path: '/receptionist/home',
         element: <PlaceholderPage title="receptionist" />,
       },
-    ]
+    ],
   },
   {
     /* Public */
@@ -62,9 +67,9 @@ const router = createBrowserRouter([
       {
         path: '/register',
         element: <RegisterPage />,
-      }
-    ]
-  }
+      },
+    ],
+  },
 ]);
 
 export default router;

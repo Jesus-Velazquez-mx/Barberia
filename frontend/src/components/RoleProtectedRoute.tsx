@@ -8,7 +8,11 @@ interface RoleProtectedRouteProps {
 }
 
 export function RoleProtectedRoute({ allowedRole }: RoleProtectedRouteProps) {
-    const { user, isAuthenticated } = useAuth();
+    const { user, isAuthenticated, isLoading } = useAuth();
+
+    if (isLoading) {
+        return null;
+    }
 
     if (!isAuthenticated) {
         return <Navigate to="/login" replace />;
