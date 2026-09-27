@@ -8,7 +8,7 @@ const router = Router();
  * /api/barbers:
  *   put:
  *     summary: Actualiza los atributos específicos de un barbero
- *     description: Actualiza la biografía y/o la disponibilidad para recibir reservas de un barbero. Al menos uno de los dos campos debe estar presente. El cambio de turno y de sucursal se realizan mediante endpoints especializados. Los barberos no tienen cuenta de usuario ni token propio: solo un manager puede realizar esta acción.
+ *     description: Actualiza la biografía y/o la disponibilidad para recibir reservas de un barbero. Al menos uno de los dos campos debe estar presente. El cambio de turno y de sucursal se realizan mediante endpoints especializados. Los barberos no tienen cuenta de usuario ni token propio, solo un manager puede realizar esta acción.
  *     requestBody:
  *       required: true
  *       content:

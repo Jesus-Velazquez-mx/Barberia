@@ -5,7 +5,7 @@ const router = Router();
 
 /**
  * @swagger
- * /api/login:
+ * /api/auth/login:
  *   post:
  *     summary: Inicia sesión de un usuario
  *     description: Valida las credenciales y, de ser correctas, retorna los datos del usuario junto con un token JWT.
@@ -97,7 +97,7 @@ router.post('/auth/login', login);
 
 /**
  * @swagger
- * /api/register:
+ * /api/auth/register:
  *   post:
  *     summary: Registra un nuevo usuario
  *     description: Crea un cliente nuevo, cifra su contraseña y retorna sus datos junto con un token JWT para iniciar sesión automáticamente.
@@ -107,10 +107,10 @@ router.post('/auth/login', login);
  *         application/json:
  *           schema:
  *             type: object
- *             required: [name, lastname, email, password]
+ *             required: [firstName, lastName, email, password]
  *             properties:
- *               name: { type: string, example: Juan }
- *               lastname: { type: string, example: Pérez }
+ *               firstName: { type: string, example: Juan }
+ *               lastName: { type: string, example: Pérez }
  *               phone: { type: string, example: "3312345678" }
  *               email: { type: string, format: email, example: cliente@mrbarber.com }
  *               password: { type: string, example: password123 }
