@@ -6,10 +6,10 @@ import type { AiApiHealthResponse } from '../types/dto/aiApiHealthResponse.inter
 const testAiService: ApiHandler<AiApiHealthResponse> = async (_req, res) => {
     try {
         const result = await aiService.testConnection();
-        sendSuccess(res, result, 'Conexión con el servicio de recomendación exitosa', 200);
+        sendSuccess({ res, data: result, message: 'Conexión con el servicio de recomendación exitosa' });
     } catch (error) {
         console.error('Error al conectar con el servicio de recomendación:', error);
-        sendInternalServerError(res, [String(error)], 'Error al conectar con el servicio de recomendación');
+        sendInternalServerError({ res, error: [String(error)], message: 'Error al conectar con el servicio de recomendación' });
     }
 };
 
