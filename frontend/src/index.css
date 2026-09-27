@@ -90,4 +90,9 @@
     padding: 4px 8px;
     background: var(--code-bg);
   }
+
+  input::-ms-reveal,
+  input::-ms-clear {
+    display: none;
+  }
 }
