@@ -8,7 +8,8 @@ const router = Router();
  * /api/barbers:
  *   put:
  *     summary: Actualiza los atributos específicos de un barbero
- *     description: Actualiza la biografía y/o la disponibilidad para recibir reservas de un barbero. Al menos uno de los dos campos debe estar presente. El cambio de turno y de sucursal se realizan mediante endpoints especializados. Los barberos no tienen cuenta de usuario ni token propio: solo un manager puede realizar esta acción.
+ *     tags: [Barbers]
+ *     description: Actualiza la biografía y/o la disponibilidad para recibir reservas de un barbero. Al menos uno de los dos campos debe estar presente. El cambio de turno y de sucursal se realizan mediante endpoints especializados. Los barberos no tienen cuenta de usuario ni token propio, solo un manager puede realizar esta acción.
  *     requestBody:
  *       required: true
  *       content:
@@ -95,6 +96,7 @@ router.put('/barbers', update);
  * /api/barbers/{id}:
  *   delete:
  *     summary: Da de baja lógicamente a un barbero
+ *     tags: [Barbers]
  *     description: Marca `deleted_at` con la fecha y hora actual para el barbero indicado. Requiere un token JWT válido de un manager; los barberos no tienen cuenta de usuario ni token propio, así que nunca pueden realizar esta acción por sí mismos.
  *     parameters:
  *       - in: path

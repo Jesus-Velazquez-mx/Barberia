@@ -12,6 +12,7 @@ const { listarTest, crearTest, editarTest, eliminarTest } = testController;
  * /api/listarTests:
  *   get:
  *     summary: Obtiene la lista completa de tests
+ *     tags: [Test]
  *     description: Retorna el envelope estándar con un arreglo de tests en `data`.
  *     responses:
  *       200:
@@ -48,6 +49,7 @@ router.get('/listarTests', listarTest);
  * /api/crearTest:
  *   post:
  *     summary: Crea un nuevo test
+ *     tags: [Test]
  *     description: Permite crear un nuevo test en la base de datos.
  *     requestBody:
  *       required: true
@@ -87,6 +89,7 @@ router.post('/crearTest', crearTest);
  * /api/actualizarTest:
  *   put:
  *     summary: Actualiza un test existente
+ *     tags: [Test]
  *     description: Permite actualizar la información de un test en la base de datos.
  *     requestBody:
  *       required: true
@@ -131,6 +134,7 @@ router.put('/actualizarTest', editarTest);
  * /api/eliminarTest:
  *   delete:
  *     summary: Elimina un test existente
+ *     tags: [Test]
  *     description: Permite eliminar un test de la base de datos.
  *     requestBody:
  *       required: true
