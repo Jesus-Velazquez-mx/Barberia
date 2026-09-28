@@ -10,6 +10,8 @@ interface DeleteAccountModalProps {
   confirmationRegister: UseFormRegisterReturn;
   confirmationWord: string;
   isConfirmed: boolean;
+  serverError: string;
+  isSubmitting: boolean;
 }
 
 export function DeleteAccountModal({
@@ -19,6 +21,8 @@ export function DeleteAccountModal({
   confirmationRegister,
   confirmationWord,
   isConfirmed,
+  serverError,
+  isSubmitting,
 }: DeleteAccountModalProps) {
   return (
     <Modal isOpen={isOpen} onClose={onClose} className="!border-red-500/60 text-center">
@@ -48,6 +52,12 @@ export function DeleteAccountModal({
           {...confirmationRegister}
         />
 
+        {serverError && (
+          <p className="text-center text-[0.85rem] font-semibold text-[#ff4d4d]" role="alert">
+            {serverError}
+          </p>
+        )}
+
         <div className="grid grid-cols-2 gap-4">
           <Button
             type="button"
@@ -59,6 +69,8 @@ export function DeleteAccountModal({
           <Button
             type="submit"
             disabled={!isConfirmed}
+            isLoading={isSubmitting}
+            loadingText="Eliminando..."
             className="!h-12 !bg-red-600 !normal-case !text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
             Sí, eliminar cuenta

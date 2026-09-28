@@ -16,6 +16,7 @@ export const updateUser = async (id: string, values: EditUserFormValues, token: 
 
     return response;
 };
+
 interface ChangePasswordPayload {
     user: {
         id: string;
@@ -40,4 +41,10 @@ export const changePassword = async (
     });
 
     return response;
+};
+
+export const deleteUser = async (id: string, token: string): Promise<void> => {
+    await apiClient.delete<void>(`/users/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
 };
