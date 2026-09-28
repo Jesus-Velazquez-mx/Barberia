@@ -43,6 +43,8 @@ export function EditUserModalContainer({ user, isOpen, onClose, onUpdated }: Edi
   }, [user, reset]);
 
   const handleClose = () => {
+    // Descarta los cambios sin guardar: vuelve a los últimos valores del usuario
+    reset();
     setServerError('');
     setSuccessMessage('');
     onClose();
