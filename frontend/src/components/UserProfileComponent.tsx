@@ -5,6 +5,7 @@ interface UserProfileProps {
   user: User;
   onEdit: () => void;
   onChangePassword: () => void;
+  onDeleteAccount: () => void;
 }
 
 const ROLE_LABELS: Record<UserRole, string> = {
@@ -31,7 +32,7 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function UserProfile({ user, onEdit, onChangePassword }: UserProfileProps) {
+export function UserProfile({ user, onEdit, onChangePassword, onDeleteAccount }: UserProfileProps) {
   const initials = `${user.firstName[0] ?? ''}${user.lastName[0] ?? ''}`.toUpperCase();
 
   return (
@@ -90,9 +91,9 @@ export function UserProfile({ user, onEdit, onChangePassword }: UserProfileProps
             Una vez eliminada tu cuenta, se perderá tu historial de citas y puntos de lealtad.
           </p>
         </div>
-        {/* Pendiente: conectar con DELETE /api/users/:id */}
         <button
           type="button"
+          onClick={onDeleteAccount}
           className="h-10 shrink-0 cursor-pointer rounded-lg border border-red-500 bg-transparent px-5 text-sm font-semibold text-red-500 transition-colors hover:bg-red-500/10"
         >
           Eliminar Cuenta

@@ -5,9 +5,10 @@ interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   children: ReactNode;
+  className?: string;
 }
 
-export function Modal({ isOpen, onClose, children }: ModalProps) {
+export function Modal({ isOpen, onClose, children, className = '' }: ModalProps) {
   useEffect(() => {
     if (!isOpen) return;
 
@@ -34,7 +35,7 @@ export function Modal({ isOpen, onClose, children }: ModalProps) {
     >
       {/* Los selectores [&_...] agrandan los InputField solo dentro de los modales, sin afectar login/registro */}
       <div
-        className="w-full max-w-xl rounded-2xl border border-white/10 bg-[#1E1E1E] p-8 shadow-[var(--shadow)] [&_button]:text-base [&_h2]:text-2xl [&_input]:py-3.5 [&_input]:pl-4 [&_input]:text-base [&_input]:font-normal [&_label]:text-base [&_p]:text-base"
+        className={`w-full max-w-xl rounded-2xl border border-white/10 bg-[#1E1E1E] p-8 shadow-[var(--shadow)] [&_button]:text-base [&_h2]:text-2xl [&_input]:py-3.5 [&_input]:pl-4 [&_input]:text-base [&_input]:font-normal [&_label]:text-base [&_p]:text-base ${className}`}
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"

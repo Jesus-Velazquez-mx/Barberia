@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { EditUserModalContainer } from '../containers/EditUserModalContainer';
 import { ChangePasswordModalContainer } from '../containers/ChangePasswordModalContainer';
+import { DeleteAccountModalContainer } from '../containers/DeleteAccountModalContainer';
 import { DashboardSidebar } from '../components/DashboardSidebarComponent';
 import { UserProfile } from '../components/UserProfileComponent';
 import type { User } from '../types/auth';
@@ -10,6 +11,7 @@ function EditUserPage() {
   const { user: authUser, login: loginContext, token } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   if (!authUser) return null;
 
@@ -27,6 +29,7 @@ function EditUserPage() {
           user={authUser}
           onEdit={() => setIsModalOpen(true)}
           onChangePassword={() => setIsPasswordModalOpen(true)}
+          onDeleteAccount={() => setIsDeleteModalOpen(true)}
         />
       </main>
 
@@ -37,6 +40,7 @@ function EditUserPage() {
         onUpdated={handleUpdated}
       />
       <ChangePasswordModalContainer isOpen={isPasswordModalOpen} onClose={() => setIsPasswordModalOpen(false)} />
+      <DeleteAccountModalContainer isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} />
     </div>
   );
 }

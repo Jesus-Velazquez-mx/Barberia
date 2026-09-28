@@ -77,5 +77,10 @@ export interface ChangePasswordFormValues {
     confirmNewPassword: string;
 }
 
+export interface DeleteAccountFormValues {
+    /* Palabra de confirmación; solo se valida en el front. */
+    confirmation: string;
+}
+
 /* Roles de usuarios */
 export type UserRole = 'client' | 'barber' | 'manager' | 'receptionist';
