@@ -8,6 +8,8 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [token, setToken] = useState<string | null>(null);
+    /* true mientras no se ha revisado el localStorage; evita redirecciones prematuras en las rutas protegidas */
+    const [isLoading, setIsLoading] = useState(true);
 
     /* Sacar los datos del navegador */
     useEffect(() => {
@@ -19,6 +21,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setToken(storedToken); // asignar token
             setUser(JSON.parse(storedUser)); // asignar user
         }
+        setIsLoading(false);
     }, []);
 
     /* Login => Guarda el token y user en el navegador. */
@@ -45,6 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         token,
         isAuthenticated,
+        isLoading,
         login,
         logout
     }
