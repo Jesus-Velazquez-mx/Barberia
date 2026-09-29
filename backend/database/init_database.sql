@@ -342,6 +342,10 @@ CREATE TABLE appointments (
     -- is_registered_client tells the two cases apart and never changes after creation.
     client_id            uuid REFERENCES clients(user_id) ON DELETE SET NULL,
     is_registered_client boolean NOT NULL,
+    -- Snapshot of the registered client's email, filled automatically on insert by
+    -- trg_appointments_set_client_email. Survives client deletion (client_id goes NULL)
+    -- so the appointment keeps partial traceability. NULL for guest bookings.
+    client_email         varchar(255),
     guest_client_name    varchar(100), -- only name is captured for unregistered clients
     barber_id            uuid REFERENCES barbers(id) ON DELETE RESTRICT, -- Should this remain nullable?
     is_walk_in           boolean NOT NULL DEFAULT false,
@@ -372,6 +376,24 @@ CREATE INDEX idx_appointments_shop_start   ON appointments (shop_id, scheduled_s
 CREATE INDEX idx_appointments_status       ON appointments (status);
 CREATE TRIGGER trg_appointments_updated_at BEFORE UPDATE ON appointments
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- client_email is derived, not caller-set: copied from users.email at creation time
+-- when the appointment belongs to a registered client. Guest bookings (client_id
+-- NULL) leave it NULL. Fires on INSERT only, so the snapshot is never rewritten
+-- after the client is deleted.
+CREATE FUNCTION set_appointment_client_email() RETURNS trigger AS $$
+BEGIN
+    IF NEW.client_id IS NOT NULL THEN
+        SELECT email INTO NEW.client_email FROM users WHERE id = NEW.client_id;
+    ELSE
+        NEW.client_email := NULL;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_appointments_set_client_email BEFORE INSERT ON appointments
+    FOR EACH ROW EXECUTE FUNCTION set_appointment_client_email();
 
 -- Loyalty: every completed, non-reward appointment counts as one paid service
 -- toward the client's next free service; completing a reward-redemption
