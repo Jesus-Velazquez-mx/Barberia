@@ -6,6 +6,7 @@ interface UserProfileProps {
   onEdit: () => void;
   onChangePassword: () => void;
   onDeleteAccount: () => void;
+  onLogout: () => void;
 }
 
 const ROLE_LABELS: Record<UserRole, string> = {
@@ -32,7 +33,7 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function UserProfile({ user, onEdit, onChangePassword, onDeleteAccount }: UserProfileProps) {
+export function UserProfile({ user, onEdit, onChangePassword, onDeleteAccount, onLogout }: UserProfileProps) {
   const initials = `${user.firstName[0] ?? ''}${user.lastName[0] ?? ''}`.toUpperCase();
 
   return (
@@ -82,6 +83,22 @@ export function UserProfile({ user, onEdit, onChangePassword, onDeleteAccount }:
             Actualizar Datos
           </Button>
         </div>
+      </section>
+
+      <section className="flex flex-col gap-4 rounded-xl border border-white/10 bg-[#1E1E1E] px-8 py-6 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-base font-semibold text-[var(--text-h)]">Cerrar Sesión</p>
+          <p className="mt-1 text-sm font-semibold text-[var(--text)]">
+            Saldrás de tu cuenta en este dispositivo. Podrás volver a iniciar sesión cuando quieras.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onLogout}
+          className="h-10 shrink-0 cursor-pointer rounded-lg border border-[var(--accent)] bg-transparent px-5 text-sm font-semibold text-[var(--accent)] transition-colors hover:bg-[var(--accent)]/10"
+        >
+          Cerrar Sesión
+        </button>
       </section>
 
       <section className="flex flex-col gap-4 rounded-xl border border-red-500/20 bg-[#221A1A] px-8 py-6 md:flex-row md:items-center md:justify-between">
