@@ -17,7 +17,6 @@ interface EditUserModalProps {
   emailError?: FieldError;
   serverError: string;
   isSubmitting: boolean;
-  successMessage: string;
 }
 
 export function EditUserModal({
@@ -34,7 +33,6 @@ export function EditUserModal({
   emailError,
   serverError,
   isSubmitting,
-  successMessage,
 }: EditUserModalProps) {
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
@@ -95,12 +93,6 @@ export function EditUserModal({
         {serverError && (
           <p className="text-center text-[0.85rem] font-semibold text-[#ff4d4d]" role="alert">
             {serverError}
-          </p>
-        )}
-
-        {successMessage && (
-          <p className="text-center text-[0.85rem] font-semibold text-green-500" role="status">
-            {successMessage}
           </p>
         )}
 

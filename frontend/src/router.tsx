@@ -3,6 +3,7 @@ import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import PlaceholderPage from './pages/PlaceholderPage';
+import ClientHomePage from './pages/ClientHomePage';
 import { RoleProtectedRoute } from './components/RoleProtectedRoute';
 import { PublicRoute } from './components/PublicRoute';
 import EditUserPage from './pages/EditUserPage';
@@ -14,7 +15,7 @@ const router = createBrowserRouter([
     children: [
       {
         path: '/client/home',
-        element: <PlaceholderPage title="client" />,
+        element: <ClientHomePage />,
       },
       {
         path: '/profile',

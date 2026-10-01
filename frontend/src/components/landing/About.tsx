@@ -34,7 +34,7 @@ export function About() {
           </p>
           <p className="mt-4 text-sm leading-relaxed text-neutral-400">
             Nuestro propósito es consolidarnos como el referente estrella de
-            la barbería en el estado, aportando una perspectiva actual,
+            la barbería en el país, aportando una perspectiva actual,
             exclusiva y cercana. Creamos un espacio donde el tiempo se
             detiene y la atención al detalle es absoluta, logrando que cada
             cliente no solo luzca impecable, sino que se sienta
