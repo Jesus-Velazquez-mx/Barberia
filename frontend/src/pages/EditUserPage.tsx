@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { EditUserModalContainer } from '../containers/EditUserModalContainer';
 import { ChangePasswordModalContainer } from '../containers/ChangePasswordModalContainer';
 import { DeleteAccountModalContainer } from '../containers/DeleteAccountModalContainer';
+import { LogoutConfirmModal } from '../components/LogoutConfirmModalComponent';
 import { DashboardSidebar } from '../components/DashboardSidebarComponent';
 import { UserProfile } from '../components/UserProfileComponent';
 import type { User } from '../types/auth';
@@ -14,6 +15,7 @@ function EditUserPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   if (!authUser) return null;
 
@@ -22,7 +24,7 @@ function EditUserPage() {
     if (token) loginContext({ user: updatedUser, token });
   };
 
-  const handleLogout = () => {
+  const handleConfirmLogout = () => {
     logout();
     navigate('/login');
   };
@@ -44,7 +46,7 @@ function EditUserPage() {
           onEdit={() => setIsModalOpen(true)}
           onChangePassword={() => setIsPasswordModalOpen(true)}
           onDeleteAccount={() => setIsDeleteModalOpen(true)}
-          onLogout={handleLogout}
+          onLogout={() => setIsLogoutModalOpen(true)}
         />
       </main>
 
@@ -56,6 +58,11 @@ function EditUserPage() {
       />
       <ChangePasswordModalContainer isOpen={isPasswordModalOpen} onClose={() => setIsPasswordModalOpen(false)} />
       <DeleteAccountModalContainer isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} />
+      <LogoutConfirmModal
+        isOpen={isLogoutModalOpen}
+        onClose={() => setIsLogoutModalOpen(false)}
+        onConfirm={handleConfirmLogout}
+      />
     </div>
   );
 }
