@@ -1,6 +1,6 @@
 import type { UseFormRegisterReturn } from 'react-hook-form';
 
-interface SelectOption {
+export interface SelectOption {
   value: string;
   label: string;
 }
@@ -28,7 +28,7 @@ export function SelectField({ id, label, options, error, registerProps }: Select
           {...registerProps}
         >
           {options.map((option) => (
-            <option key={option.value} value={option.value}>
+            <option key={option.value} value={option.value} className="bg-[#1A1A1A] text-[var(--text-h)]">
               {option.label}
             </option>
           ))}

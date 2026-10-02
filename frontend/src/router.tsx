@@ -7,6 +7,7 @@ import ClientHomePage from './pages/ClientHomePage';
 import { RoleProtectedRoute } from './components/RoleProtectedRoute';
 import { PublicRoute } from './components/PublicRoute';
 import EditUserPage from './pages/EditUserPage';
+import BookingScratchPage from './pages/BookingScratchPage';
 
 const router = createBrowserRouter([
   /* Client */
@@ -20,6 +21,11 @@ const router = createBrowserRouter([
       {
         path: '/profile',
         element: <EditUserPage />,
+      },
+      {
+        // Temporal: UI de reserva con datos mock
+        path: '/client/booking-scratch',
+        element: <BookingScratchPage />,
       },
     ],
   },
