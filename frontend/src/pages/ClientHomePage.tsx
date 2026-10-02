@@ -17,7 +17,7 @@ function ClientHomePage() {
           to="/client/booking-scratch"
           className="inline-block rounded-lg bg-[var(--accent)] px-8 py-3 text-sm font-semibold text-[#141414] no-underline transition-all duration-200 hover:bg-[#B8924A] hover:no-underline hover:shadow-[0_0_18px_rgba(210,172,102,0.6)]"
         >
-          Agendar Cita
+          Selector Citas Mock
         </Link>
       </main>
     </div>
