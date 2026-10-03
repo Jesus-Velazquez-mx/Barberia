@@ -69,9 +69,9 @@ export function EditUserModalContainer({ user, isOpen, onClose, onUpdated }: Edi
     firstName: values.firstName.trim(),
     lastName: values.lastName.trim(),
     ...(dirtyFields.email && { email: values.email.trim() }),
-    ...(phone && { phone }),
+    ...(dirtyFields.phone && { phone: phone ? phone : null }),
 };
-    
+    console.log(dirtyFields, payload)
     try {
       const updated = await updateUser(user.id, payload, token);
       onUpdated(updated);

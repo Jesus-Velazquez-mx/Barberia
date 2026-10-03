@@ -67,7 +67,7 @@ export interface AuthContextValue {
 export interface EditUserFormValues {
     firstName: string;
     lastName: string;
-    phone?: string;
+    phone?: string | null;
     email: string;
 }
 
