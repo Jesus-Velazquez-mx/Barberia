@@ -4,6 +4,7 @@ import { changePassword } from '../services/userService';
 import { ApiError } from '../types/api';
 import type { ChangePasswordFormValues } from '../types/auth';
 import { ChangePasswordModal } from '../components/ChangePasswordModalComponent';
+import { Toast } from '../components/ToastComponent';
 import { useAuth } from '../context/AuthContext';
 
 const REQUIRED_MESSAGE = 'Debe capturar su contraseña actual, la nueva contraseña y su confirmación.';
@@ -19,7 +20,7 @@ interface ChangePasswordModalContainerProps {
 export function ChangePasswordModalContainer({ isOpen, onClose }: ChangePasswordModalContainerProps) {
   const { user, token } = useAuth();
   const [serverError, setServerError] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const {
     register,
@@ -32,19 +33,16 @@ export function ChangePasswordModalContainer({ isOpen, onClose }: ChangePassword
   const handleClose = () => {
     reset();
     setServerError('');
-    setSuccessMessage('');
     onClose();
   };
 
   const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     setServerError('');
-    setSuccessMessage('');
     void handleSubmit(onSubmit)(event);
   };
 
   const onSubmit = async (values: ChangePasswordFormValues) => {
     setServerError('');
-    setSuccessMessage('');
 
     if (!user || !token) {
       setServerError('Tu sesión expiró. Inicia sesión de nuevo.');
@@ -53,8 +51,10 @@ export function ChangePasswordModalContainer({ isOpen, onClose }: ChangePassword
 
     try {
       await changePassword(user.id, { newPassword: values.newPassword }, token);
-      setSuccessMessage('Contraseña actualizada correctamente.');
       reset();
+      // El modal ya cumplió su propósito: se cierra y el aviso vive como toast flotante.
+      onClose();
+      setToastMessage('Contraseña actualizada correctamente.');
     } catch (error) {
       let errorMessage = 'Ocurrió un error al actualizar la contraseña. Intente nuevamente.';
 
@@ -69,24 +69,26 @@ export function ChangePasswordModalContainer({ isOpen, onClose }: ChangePassword
   };
 
   return (
-    <ChangePasswordModal
-      isOpen={isOpen}
-      onClose={handleClose}
-      onSubmit={handleFormSubmit}
+    <>
+      <ChangePasswordModal
+        isOpen={isOpen}
+        onClose={handleClose}
+        onSubmit={handleFormSubmit}
+        newPasswordRegister={register('newPassword', {
+          required: REQUIRED_MESSAGE,
+          pattern: { value: PASSWORD_POLICY_REGEX, message: POLICY_MESSAGE },
+        })}
+        confirmNewPasswordRegister={register('confirmNewPassword', {
+          required: REQUIRED_MESSAGE,
+          validate: (value) => value === watch('newPassword') || 'La confirmación no coincide con la nueva contraseña.',
+        })}
+        newPasswordError={errors.newPassword}
+        confirmNewPasswordError={errors.confirmNewPassword}
+        serverError={serverError}
+        isSubmitting={isSubmitting}
+      />
 
-      newPasswordRegister={register('newPassword', {
-        required: REQUIRED_MESSAGE,
-        pattern: { value: PASSWORD_POLICY_REGEX, message: POLICY_MESSAGE },
-      })}
-      confirmNewPasswordRegister={register('confirmNewPassword', {
-        required: REQUIRED_MESSAGE,
-        validate: (value) => value === watch('newPassword') || 'La confirmación no coincide con la nueva contraseña.',
-      })}
-      newPasswordError={errors.newPassword}
-      confirmNewPasswordError={errors.confirmNewPassword}
-      serverError={serverError}
-      successMessage={successMessage}
-      isSubmitting={isSubmitting}
-    />
+      <Toast message={toastMessage} type="success" onDismiss={() => setToastMessage(null)} />
+    </>
   );
 }

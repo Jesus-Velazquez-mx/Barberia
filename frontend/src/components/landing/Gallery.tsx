@@ -3,6 +3,7 @@ import gallery2 from '../../assets/images/gallery-2.webp';
 import gallery3 from '../../assets/images/gallery-3.webp';
 import gallery4 from '../../assets/images/gallery-4.webp';
 import gallery5 from '../../assets/images/gallery-5.webp';
+import gallery6 from '../../assets/images/gallery-6.webp';
 
 const GALLERY_IMAGES = [gallery1, gallery2, gallery3, gallery4, gallery5];
 
@@ -38,6 +39,10 @@ export function Gallery() {
               />
             </div>
           ))}
+
+          <div className="overflow-hidden rounded-lg border-2 border-transparent opacity-100 transition-all duration-300 group-hover/gallery:opacity-40 hover:!opacity-100 hover:!border-[var(--accent)] hover:!shadow-[0_0_20px_rgba(210,172,102,0.45)] sm:hidden">
+            <img src={gallery6} className="h-64 w-full object-cover" />
+          </div>
         </div>
       </div>
     </section>

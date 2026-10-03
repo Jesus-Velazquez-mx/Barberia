@@ -16,7 +16,7 @@ export interface CreateUserInput {
 export interface UpdateUserInput {
     id: string;
     email?: string;
-    phone?: string;
+    phone?: string | null;
     password?: string;
     firstName?: string;
     lastName?: string;

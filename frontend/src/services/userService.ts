@@ -1,11 +1,15 @@
 import { apiClient } from './apiClient';
 import type { ChangePasswordFormValues, EditUserFormValues, User } from '../types/auth';
 
-interface UpdateUserPayload {
-    user: { id: string } & Partial<EditUserFormValues>;
-}
+export type UpdateUserValues = Omit<Partial<EditUserFormValues>, 'phone'> & {
+    phone?: string | null;
+};
 
-export const updateUser = async (id: string, values: EditUserFormValues, token: string): Promise<User> => {
+type UpdateUserPayload = {
+    user: { id: string } & UpdateUserValues;
+};
+
+export const updateUser = async (id: string, values: UpdateUserValues, token: string): Promise<User> => {
     const payload: UpdateUserPayload = {
         user: { id, ...values }
     };
@@ -21,7 +25,7 @@ interface ChangePasswordPayload {
     user: {
         id: string;
         password: string;
-    };
+    }
 }
 
 export const changePassword = async (

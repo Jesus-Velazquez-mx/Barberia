@@ -13,7 +13,6 @@ interface ChangePasswordModalProps {
   newPasswordError?: FieldError;
   confirmNewPasswordError?: FieldError;
   serverError: string;
-  successMessage: string;
   isSubmitting: boolean;
 }
 
@@ -26,7 +25,6 @@ export function ChangePasswordModal({
   newPasswordError,
   confirmNewPasswordError,
   serverError,
-  successMessage,
   isSubmitting,
 }: ChangePasswordModalProps) {
   return (
@@ -69,12 +67,6 @@ export function ChangePasswordModal({
         {serverError && (
           <p className="text-center text-[0.85rem] font-semibold text-[#ff4d4d]" role="alert">
             {serverError}
-          </p>
-        )}
-
-        {successMessage && (
-          <p className="text-center text-[0.85rem] font-semibold text-green-500" role="status">
-            {successMessage}
           </p>
         )}
 
