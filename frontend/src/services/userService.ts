@@ -4,8 +4,9 @@ import type { ChangePasswordFormValues, EditUserFormValues, User } from '../type
 interface UpdateUserPayload {
     user: { id: string } & Partial<EditUserFormValues>;
 }
+export type UpdateUserValues = Partial<EditUserFormValues>;
 
-export const updateUser = async (id: string, values: EditUserFormValues, token: string): Promise<User> => {
+export const updateUser = async (id: string, values: UpdateUserValues, token: string): Promise<User> => {
     const payload: UpdateUserPayload = {
         user: { id, ...values }
     };

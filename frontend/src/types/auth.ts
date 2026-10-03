@@ -84,3 +84,4 @@ export interface DeleteAccountFormValues {
 
 /* Roles de usuarios */
 export type UserRole = 'client' | 'barber' | 'manager' | 'receptionist';
+
