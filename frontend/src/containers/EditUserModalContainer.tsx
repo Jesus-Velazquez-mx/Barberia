@@ -83,13 +83,10 @@ export function EditUserModalContainer({ user, isOpen, onClose, onUpdated }: Edi
 
       if (error instanceof ApiError) {
         if (error.status === 400 && error.errors.length > 0) {
-  errorMessage = error.errors
-    .map((e: unknown) =>
-      typeof e === 'string' ? e : (e as { message?: string }).message ?? JSON.stringify(e),
-    )
-    .join(' ');
-}
-        else {
+          errorMessage = error.errors.map((e: unknown) =>
+          typeof e === 'string' ? e : (e as { message?: string }).message ?? JSON.stringify(e),
+          ).join(' ');
+        } else {
           errorMessage = error.message;
         }
       }
@@ -117,7 +114,9 @@ export function EditUserModalContainer({ user, isOpen, onClose, onUpdated }: Edi
         })}
         emailRegister={register('email', {
           required: 'El correo es obligatorio.',
-          pattern: { value: /\S+@\S+\.\S+/, message: 'El correo no es válido.' },
+          pattern: {
+            value: /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/,
+            message: 'El correo no es válido.', },
         })}
         firstNameError={errors.firstName}
         lastNameError={errors.lastName}

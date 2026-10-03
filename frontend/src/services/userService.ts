@@ -22,7 +22,7 @@ interface ChangePasswordPayload {
     user: {
         id: string;
         password: string;
-    };
+    }
 }
 
 export const changePassword = async (
