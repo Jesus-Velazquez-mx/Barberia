@@ -67,7 +67,7 @@ export interface AuthContextValue {
 export interface EditUserFormValues {
     firstName: string;
     lastName: string;
-    phone?: string;
+    phone?: string | null;
     email: string;
 }
 
@@ -84,3 +84,4 @@ export interface DeleteAccountFormValues {
 
 /* Roles de usuarios */
 export type UserRole = 'client' | 'barber' | 'manager' | 'receptionist';
+

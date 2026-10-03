@@ -75,7 +75,7 @@ export function EditUserModal({
         <InputField
           id="phone"
           type="tel"
-          label="Teléfono *"
+          label="Teléfono"
           placeholder="Ingresa tu número de teléfono"
           error={phoneError?.message}
           registerProps={phoneRegister}
