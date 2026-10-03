@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { list, getById } from '../controllers/shopController.js';
+import { listByShop } from '../controllers/barberController.js';
 
 const router = Router();
 
@@ -65,5 +66,32 @@ router.get('/shops', list);
  *         description: Error interno del servidor.
  */
 router.get('/shops/:id', getById);
+
+/**
+ * @swagger
+ * /api/shops/{id}/barbers:
+ *   get:
+ *     summary: Obtiene los barberos disponibles en una sucursal específica
+ *     tags: [Shops, Barbers]
+ *     description: Expone qué barberos de una sucursal aceptan reservas actualmente. Excluye a barberos dados de baja o que no aceptan reservas en este momento. Endpoint público.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID único de la sucursal.
+ *     responses:
+ *       200:
+ *         description: Éxito. `data` contiene el arreglo de barberos elegibles (puede estar vacío `[]` si la sucursal existe pero no tiene barberos disponibles).
+ *       400:
+ *         description: Error de validación (el ID no es un UUID válido).
+ *       404:
+ *         description: La sucursal especificada no existe.
+ *       500:
+ *         description: Error interno del servidor.
+ */
+router.get('/shops/:id/barbers', listByShop);
 
 export default router;
