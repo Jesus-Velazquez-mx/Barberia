@@ -1,5 +1,5 @@
 import { DashboardSidebar } from '../components/DashboardSidebarComponent';
-import { BookingScratchContainer } from '../components/BookingScratchContainer';
+import { BookingScratchContainer } from '../containers/BookingScratchContainer';
 import { useAuth } from '../context/AuthContext';
 
 // Página temporal: se reemplaza en la tarea
