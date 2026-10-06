@@ -10,7 +10,7 @@ from app.utils.json_utils import build_json_response
 jd_router = APIRouter(prefix="/jd/analyze")
 
 
-@jd_router.post("/")
+@jd_router.post("")
 async def analyze(req: ApiRequest[JdAnalyzeRequest]) -> JSONResponse:
     res = await analyze_job(req)
     return build_json_response(

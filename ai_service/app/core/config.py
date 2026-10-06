@@ -24,8 +24,8 @@ class Settings(BaseSettings):
     MAX_BACKOFF_SECONDS: float = 30.0
 
     # Anthropic params
-    ANTHROPIC_API_KEY: str
-    ANTHROPIC_MODEL: str
+    ANTHROPIC_API_KEY: str | None = None
+    ANTHROPIC_MODEL: str = "claude-haiku-4-5"
 
     # Ollama params
     OLLAMA_BASE_URL: str = "http://localhost:11434"

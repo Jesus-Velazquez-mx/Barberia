@@ -1,6 +1,6 @@
 from typing import Optional
 
-from ai_service.app.schemas.custom_model import CustomModel
+from app.schemas.custom_model import CustomModel
 
 
 class JdAnalyzeRequest(CustomModel):

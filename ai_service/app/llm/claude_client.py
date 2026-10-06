@@ -25,7 +25,7 @@ from app.llm.llm_exception import (
     LLMClientError,
     LLMClientErrorCategory,
 )
-from ai_service.app.schemas.custom_model import CustomModel
+from app.schemas.custom_model import CustomModel
 from app.schemas.llm import LLMErrorResponse
 
 global_settings = get_settings()

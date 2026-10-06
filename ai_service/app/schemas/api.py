@@ -1,7 +1,7 @@
 from enum import StrEnum
 from typing import Generic, Optional, TypeVar
 
-from ai_service.app.schemas.custom_model import CustomModel
+from app.schemas.custom_model import CustomModel
 
 DataT = TypeVar("DataT")
 

@@ -14,7 +14,7 @@ from app.llm.llm_exception import (
     LLMClientErrorCategory,
     LLMRequestFailedError,
 )
-from ai_service.app.schemas.custom_model import CustomModel
+from app.schemas.custom_model import CustomModel
 
 PROMPT = "summarize this job description"
 TIMEOUT = 0.05
