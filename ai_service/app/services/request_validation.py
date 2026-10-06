@@ -1,9 +1,7 @@
 from pydantic import BaseModel
 
 from app.schemas.api import ApiRequest, ContentError
-from app.schemas.fit_score import FitScoreRequest
 from app.schemas.jd_analyze import JdAnalyzeRequest
-from app.schemas.tailor import TailorRequest
 from app.services.unprocessable_exception import UnprocessableContentError
 
 MIN_FIELD_LENGTHS: dict[str, int] = {
@@ -37,11 +35,7 @@ def _collect_invalid_fields(model: BaseModel, path: str = "") -> list[ContentErr
 
 
 def is_request_content_valid(
-    req: (
-        ApiRequest[JdAnalyzeRequest]
-        | ApiRequest[FitScoreRequest]
-        | ApiRequest[TailorRequest]
-    ),
+    req: ApiRequest[JdAnalyzeRequest],
 ) -> None:
     errors = _collect_invalid_fields(req.data)
     if errors:

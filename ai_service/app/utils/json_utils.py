@@ -12,7 +12,7 @@ def is_valid_json(json_str: str, schema: type[CustomModel]) -> bool:
         return False
 
 
-def get_json_response(content: ApiResponse, status_code: int = 200) -> JSONResponse:
+def build_json_response(content: ApiResponse, status_code: int = 200) -> JSONResponse:
     return JSONResponse(
         status_code=status_code, content=content.model_dump(exclude_none=True)
     )

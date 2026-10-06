@@ -1,6 +1,6 @@
 from typing import Literal
 
-from app.schemas.common import CustomModel
+from ai_service.app.schemas.custom_model import CustomModel
 
 class HealtResponse(CustomModel):
     status: Literal["ok"] = "ok"

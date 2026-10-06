@@ -1,7 +1,7 @@
 from enum import StrEnum
 from typing import Protocol, TypeVar
 
-from app.schemas.common import CustomModel
+from ai_service.app.schemas.custom_model import CustomModel
 from app.schemas.llm import LLMErrorResponse
 
 ModelT = TypeVar("ModelT", bound=CustomModel)

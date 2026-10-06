@@ -9,7 +9,7 @@ from app.llm.llm_exception import (
 )
 from app.schemas.api import ApiResponse, ContentError
 from app.services.unprocessable_exception import UnprocessableContentError
-from app.utils.json_utils import get_json_response
+from app.utils.json_utils import build_json_response
 
 
 def register_exception_handlers(app: FastAPI) -> None:
@@ -17,7 +17,7 @@ def register_exception_handlers(app: FastAPI) -> None:
     async def provider_not_supported_handler(
         req: Request, exc: ProviderNotSupportedError
     ):
-        return get_json_response(
+        return build_json_response(
             status_code=400,
             content=ApiResponse(message=str(exc)),
         )
@@ -25,14 +25,14 @@ def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(LLMRequestFailedError)
     async def llm_request_failed_handler(req: Request, exc: LLMRequestFailedError):
         status = LLM_ERROR_CATEGORY_STATUS.get(exc.original.category, 500)
-        return get_json_response(
+        return build_json_response(
             status_code=status,
             content=ApiResponse(message=exc.original.desc),
         )
 
     @app.exception_handler(StarletteHTTPException)
     async def http_exception_handler(req: Request, exc: StarletteHTTPException):
-        return get_json_response(
+        return build_json_response(
             status_code=exc.status_code,
             content=ApiResponse(message=str(exc.detail)),
         )
@@ -45,7 +45,7 @@ def register_exception_handlers(app: FastAPI) -> None:
             )
             for error in exc.errors()
         ]
-        return get_json_response(
+        return build_json_response(
             status_code=400,
             content=ApiResponse(message="Request validation failed", errors=errors),
         )
@@ -54,7 +54,7 @@ def register_exception_handlers(app: FastAPI) -> None:
     async def unprocessable_content_handler(
         req: Request, exc: UnprocessableContentError
     ):
-        return get_json_response(
+        return build_json_response(
             status_code=422,  # Unprocessable Content
             content=ApiResponse(message=str(exc), errors=exc.errors),
         )

@@ -2,10 +2,8 @@ from fastapi import APIRouter, Depends
 from app.core.auth import verify_internal_api_key
 from app.api.health import health_router
 from app.api.jd_analyze import jd_router
-from app.api.tailor import tailor_router
-from app.api.fit_score import fit_score_router
 
-protected_routers = [jd_router, fit_score_router, tailor_router]
+protected_routers = [jd_router]
 
 def get_internal_router() -> APIRouter:
     internal_router = APIRouter(prefix="/internal/v1")
