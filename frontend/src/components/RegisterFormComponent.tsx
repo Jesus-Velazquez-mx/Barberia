@@ -122,7 +122,7 @@ export function RegisterForm({
         ¿Ya tienes cuenta con nosotros?{' '}
         <Link
           to="/login"
-          className="font-[Inter,sans-serif] font-bold text-[var(--accent)] no-underline hover:text-[var(--accent_secondary)] hover:underline"
+          className="font-[Inter,sans-serif] font-bold text-(--accent) no-underline hover:text-(--accent_secondary) hover:underline"
         >
           Inicia sesión
         </Link>

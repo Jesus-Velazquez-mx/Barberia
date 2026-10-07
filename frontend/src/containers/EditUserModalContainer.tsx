@@ -6,6 +6,7 @@ import type { EditUserFormValues, User } from '../types/auth';
 import { EditUserModal } from '../components/EditUserModalComponent';
 import { Toast } from '../components/ToastComponent';
 import { useAuth } from '../context/AuthContext';
+import { displayToIsoDate, getTodayIso, isoToDisplayDate, isValidDisplayDate } from '../utils/dateFormat';
 
 interface EditUserModalContainerProps {
   user: User;
@@ -14,8 +15,8 @@ interface EditUserModalContainerProps {
   onUpdated: (user: User) => void;
 }
 
-/* El input type="date" solo acepta YYYY-MM-DD; el backend regresa la fecha completa en ISO. */
-const toDateInputValue = (isoDate: string) => isoDate.slice(0, 10);
+/* El campo de fecha usa dd/mm/aaaa; el backend regresa la fecha completa en ISO. */
+const toDateInputValue = isoToDisplayDate;
 
 export function EditUserModalContainer({ user, isOpen, onClose, onUpdated }: EditUserModalContainerProps) {
   const { token } = useAuth();
@@ -77,7 +78,7 @@ export function EditUserModalContainer({ user, isOpen, onClose, onUpdated }: Edi
     lastName: values.lastName.trim(),
     ...(dirtyFields.email && { email: values.email.trim() }),
     ...(dirtyFields.phone && { phone: phone ? phone : null }),
-    ...(dirtyFields.birthDate && values.birthDate && { birthDate: values.birthDate }),
+    ...(dirtyFields.birthDate && values.birthDate && { birthDate: displayToIsoDate(values.birthDate) }),
     ...(dirtyFields.gender && values.gender && { gender: values.gender }),
 };
     console.log(dirtyFields, payload)
@@ -122,8 +123,13 @@ export function EditUserModalContainer({ user, isOpen, onClose, onUpdated }: Edi
           pattern: { value: /^\d{10}$/, message: 'Debe tener 10 dígitos.' },
         })}
         birthDateRegister={register('birthDate', {
-          validate: (value) =>
-            !value || new Date(value) <= new Date() || 'La fecha de nacimiento no puede ser en el futuro.',
+          validate: (value) => {
+            if (!value) return true;
+            if (!isValidDisplayDate(value)) return 'Usa el formato dd/mm/aaaa.';
+            const iso = displayToIsoDate(value);
+            if (iso > getTodayIso()) return 'La fecha de nacimiento no puede ser en el futuro.';
+            return iso >= '1900-01-01' || 'La fecha de nacimiento no es válida.';
+          },
         })}
         genderRegister={register('gender')}
         emailRegister={register('email', {
