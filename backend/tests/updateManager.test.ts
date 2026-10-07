@@ -2,11 +2,9 @@ import request from 'supertest';
 import express from 'express';
 import router from '../src/routes/routes.js';
 import connection from '../src/connection/connection.js';
-import { loadConfig } from '../src/config/globalConfig.js';
 import { signToken } from '../src/services/jwtTokenService.js';
 import type { User, UserRole } from '../src/types/entities/user.interface.js';
 
-export const globalConfig = loadConfig();
 const { connectDB, closeDB, getPool } = connection;
 
 const app = express();

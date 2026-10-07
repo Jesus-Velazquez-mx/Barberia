@@ -1,12 +1,11 @@
+import globalConfig from '../config/globalConfig.js';
 import type { AiApiHealthResponse } from '../types/dto/aiApiHealthResponse.interface.js';
-
-const AI_SERVICE_URL = process.env.AI_SERVICE_URL;
 
 const testConnection = async (): Promise<AiApiHealthResponse> => {
     let res: Response;
 
     try {
-        res = await fetch(`${AI_SERVICE_URL}/health`, {
+        res = await fetch(`${globalConfig.AI_SERVICE_URL}/health`, {
             headers: {
                 'Content-Type': 'application/json',
             },

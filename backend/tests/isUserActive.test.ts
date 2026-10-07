@@ -1,9 +1,7 @@
 import { isUserActive } from '../src/repositories/userRepository.js';
 import connection from '../src/connection/connection.js';
-import { loadConfig } from '../src/config/globalConfig.js';
 import type { UserRole } from '../src/types/entities/user.interface.js';
 
-export const globalConfig = loadConfig();
 const { connectDB, closeDB, getPool } = connection;
 
 const createdUserIds: string[] = [];
