@@ -1,21 +1,15 @@
+from app.services.request_validation import validate_request_content
 from app.llm.llm_client_factory import get_llm_client
 from app.schemas.api import ApiRequest, ContentError
 from app.schemas.jd_analyze import JdAnalysisResult, JdAnalyzeRequest
 from app.schemas.llm import LLMErrorResponse
-from app.services.request_validation import is_request_content_valid
 from app.services.unprocessable_exception import UnprocessableContentError
 
 
-async def analyze_job(req: ApiRequest[JdAnalyzeRequest]) -> JdAnalysisResult:
-    jd_analyze_req = req.data
-
-    is_request_content_valid(req)
-
-    llm_client = get_llm_client(req.provider)
-
-    result_json_schema = JdAnalysisResult.model_json_schema()
-
-    prompt = f"""
+def build_jd_analyze_prompt(
+    result_json_schema, jd_analyze_req: JdAnalyzeRequest
+) -> str:
+    return f"""
     Your task is to analyze a raw description of a job position and return a 
     JSON object containing the relevant information of the job position according 
     to the following schema:
@@ -48,6 +42,15 @@ async def analyze_job(req: ApiRequest[JdAnalyzeRequest]) -> JdAnalysisResult:
     Output guidelines for error response:
     - fields_missing_data field must only contain the name of the fields which lack data, no explanation or commentary.
     """
+
+
+async def analyze_job(req: ApiRequest[JdAnalyzeRequest]) -> JdAnalysisResult:
+    validate_request_content(req)
+
+    jd_analyze_req = req.data
+    prompt = build_jd_analyze_prompt(JdAnalysisResult.model_json_schema(), jd_analyze_req)
+
+    llm_client = get_llm_client(req.provider)
 
     jd_analysis_res = await llm_client.generate_structured_response(
         prompt, JdAnalysisResult

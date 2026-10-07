@@ -34,7 +34,7 @@ def _collect_invalid_fields(model: BaseModel, path: str = "") -> list[ContentErr
     return errors
 
 
-def is_request_content_valid(
+def validate_request_content(
     req: ApiRequest[JdAnalyzeRequest],
 ) -> None:
     errors = _collect_invalid_fields(req.data)
