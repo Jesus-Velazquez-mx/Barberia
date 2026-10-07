@@ -25,8 +25,8 @@ describe('Pruebas de endpoints de Shops (Sucursales)', () => {
 
         // 1. Crear un manager necesario para satisfacer la llave foránea (manager_id) de las tiendas
         const userRes = await pool.query(
-            `INSERT INTO users (role, email, phone, password_hash, first_name, last_name) 
-             VALUES ('manager', 'shop_test_manager_${Date.now()}@mrbarber.com', '5555555555', 'hash', 'Shop', 'Manager') RETURNING id`
+            `INSERT INTO users (role, email, phone, password_hash, first_name, last_name, birth_date, gender) 
+             VALUES ('manager', 'shop_test_manager_${Date.now()}@mrbarber.com', '5555555555', 'hash', 'Shop', 'Manager', '1990-01-01', 'other') RETURNING id`
         );
         dummyManagerId = userRes.rows[0].id;
         await pool.query('INSERT INTO managers (user_id) VALUES ($1)', [dummyManagerId]);

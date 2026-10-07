@@ -41,8 +41,8 @@ describe('Endpoint de Barberos por Sucursal', () => {
 
         // 2. Crear Manager (El mánager es un 'user')
         const managerRes = await pool.query(
-            `INSERT INTO users (role, email, phone, password_hash, first_name, last_name) 
-             VALUES ('manager', $1, $2, 'hash', 'Mgr', 'Test') RETURNING id`,
+            `INSERT INTO users (role, email, phone, password_hash, first_name, last_name, birth_date, gender) 
+             VALUES ('manager', $1, $2, 'hash', 'Mgr', 'Test', '1990-01-01', 'other') RETURNING id`,
             [getEmail('mgr'), getPhone()]
         );
         managerId = managerRes.rows[0].id;
@@ -65,8 +65,8 @@ describe('Endpoint de Barberos por Sucursal', () => {
         // 4. Crear Barberos directamente en la tabla 'barbers' (no son usuarios)
         const createBarber = async (shop: string, isAccepting: boolean, isDeleted: boolean) => {
             const bRes = await pool.query(
-                `INSERT INTO barbers (first_name, last_name, email, phone, shop_id, shift_id, is_accepting_bookings, deleted_at)
-                 VALUES ('Barber', 'Test', $1, $2, $3, $4, $5, $6) RETURNING id`,
+                `INSERT INTO barbers (first_name, last_name, email, phone, shop_id, shift_id, is_accepting_bookings, deleted_at, birth_date, gender)
+                 VALUES ('Barber', 'Test', $1, $2, $3, $4, $5, $6, '1990-01-01', 'other') RETURNING id`,
                 [getEmail('barber'), getPhone(), shop, shiftId, isAccepting, isDeleted ? new Date() : null]
             );
             createdBarberIds.push(bRes.rows[0].id);

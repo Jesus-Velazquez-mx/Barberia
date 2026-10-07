@@ -16,7 +16,7 @@ const registerSchema: z.ZodType<RegisterInput> = z.object({
     phone: z.string().max(10).optional(),
     email: z.email(),
     password: z.string().min(6),
-    birthDate: z.date(),
+    birthDate: z.coerce.date(),
     gender: z.string()
 });
 

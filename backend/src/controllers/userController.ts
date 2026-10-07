@@ -16,7 +16,7 @@ const updateUserSchema = z.object({
         password: z.string().min(6).optional(),
         firstName: z.string().min(2).optional(),
         lastName: z.string().min(2).optional(),
-        birthDate: z.date().optional(),
+        birthDate: z.coerce.date().optional(),
         gender: z.string().optional()
     }) satisfies z.ZodType<UpdateUserInput>,
     token: z.jwt()

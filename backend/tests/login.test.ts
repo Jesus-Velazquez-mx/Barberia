@@ -35,8 +35,8 @@ const insertManagerWithPassword = async (password: string) => {
     const passwordHash = await bcrypt.hash(password, 10);
 
     const userResult = await getPool().query(
-        `INSERT INTO users (role, email, phone, password_hash, first_name, last_name)
-         VALUES ('manager', $1, $2, $3, 'Test', 'Manager') RETURNING id`,
+        `INSERT INTO users (role, email, phone, password_hash, first_name, last_name, birth_date, gender)
+         VALUES ('manager', $1, $2, $3, 'Test', 'Manager', '1990-01-01', 'other') RETURNING id`,
         [email, generateUniquePhone(), passwordHash]
     );
     const id = userResult.rows[0].id;
@@ -89,7 +89,9 @@ describe('Pruebas de los Endpoints de Auth', () => {
             lastName: 'User',
             phone: uniquePhone,
             email: uniqueEmail,
-            password: testPassword
+            password: testPassword,
+            birthDate: '1990-01-01',
+            gender: 'other'
         };
         createdEmails.push(uniqueEmail);
 
@@ -116,7 +118,9 @@ describe('Pruebas de los Endpoints de Auth', () => {
             lastName: 'User',
             phone: generateUniquePhone(),
             email: duplicateEmail,
-            password: testPassword
+            password: testPassword,
+            birthDate: '1990-01-01',
+            gender: 'other'
         };
         createdEmails.push(duplicateEmail);
 
