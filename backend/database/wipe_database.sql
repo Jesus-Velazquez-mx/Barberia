@@ -40,5 +40,6 @@ DROP FUNCTION IF EXISTS set_supplies_needs_reorder() CASCADE;
 DROP FUNCTION IF EXISTS update_client_loyalty_count() CASCADE;
 DROP FUNCTION IF EXISTS check_barber_deletable() CASCADE;
 DROP FUNCTION IF EXISTS check_manager_deletable() CASCADE;
+DROP FUNCTION IF EXISTS set_appointment_client_email() CASCADE;
 
 COMMIT;

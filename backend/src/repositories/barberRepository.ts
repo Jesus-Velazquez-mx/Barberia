@@ -17,7 +17,7 @@ export const getBarberById = async (id: string): Promise<Barber | null> => {
 
     const result = await pool.query(
         `SELECT id, first_name, last_name, email, phone, shop_id, shift_id, bio,
-                is_accepting_bookings, deleted_at, created_at, updated_at
+                is_accepting_bookings, birth_date, gender, deleted_at, created_at, updated_at
          FROM barbers WHERE id = $1`,
         [id]
     );

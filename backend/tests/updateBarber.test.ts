@@ -40,8 +40,8 @@ const mintToken = (id: string, role: UserRole, email: string): string =>
 const insertUser = async (role: UserRole): Promise<{ id: string; email: string }> => {
     const email = generateUniqueEmail();
     const result = await getPool().query(
-        `INSERT INTO users (role, email, phone, password_hash, first_name, last_name)
-         VALUES ($1, $2, $3, 'unused', 'Test', 'User') RETURNING id`,
+        `INSERT INTO users (role, email, phone, password_hash, first_name, last_name, birth_date, gender)
+         VALUES ($1, $2, $3, 'unused', 'Test', 'User', '1990-01-01', 'other') RETURNING id`,
         [role, email, generateUniquePhone()]
     );
     return { id: result.rows[0].id, email };
@@ -69,8 +69,8 @@ const insertShop = async (managerId: string): Promise<string> => {
 const insertBarber = async (shopId: string, bio: string, isAcceptingBookings: boolean) => {
     const shift = await getPool().query(`SELECT id FROM shifts WHERE name = 'morning'`);
     const result = await getPool().query(
-        `INSERT INTO barbers (email, first_name, last_name, shop_id, shift_id, bio, is_accepting_bookings)
-         VALUES ($1, 'Test', 'Barber', $2, $3, $4, $5) RETURNING id`,
+        `INSERT INTO barbers (email, first_name, last_name, shop_id, shift_id, bio, is_accepting_bookings, birth_date, gender)
+         VALUES ($1, 'Test', 'Barber', $2, $3, $4, $5, '1990-01-01', 'other') RETURNING id`,
         [generateUniqueEmail(), shopId, shift.rows[0].id, bio, isAcceptingBookings]
     );
     const id = result.rows[0].id;

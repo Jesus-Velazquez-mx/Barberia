@@ -21,6 +21,8 @@ export interface RegisterInput {
     phone?: string;
     email: string;
     password: string;
+    birthDate: Date;
+    gender: string;
 }
 
 /**
@@ -71,7 +73,9 @@ export const registerUser = async (data: RegisterInput): Promise<AuthResponse> =
         first_name: data.firstName,
         last_name: data.lastName,
         phone: data.phone || null,
-        role: 'client' as UserRole
+        role: 'client' as UserRole,
+        birth_date: data.birthDate,
+        gender: data.gender
     });
 
     // Devuelve los datos del usuario recién creado sin el hash de la contraseña

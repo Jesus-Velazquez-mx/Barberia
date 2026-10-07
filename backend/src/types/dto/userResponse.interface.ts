@@ -7,6 +7,8 @@ export interface UserResponse {
     phone: string | null;
     firstName: string;
     lastName: string;
+    birthDate: Date;
+    gender: string;
     createdAt: Date;
     updatedAt: Date;
 }

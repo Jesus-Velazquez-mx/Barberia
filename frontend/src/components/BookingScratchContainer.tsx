@@ -2,6 +2,7 @@ import { useForm } from 'react-hook-form';
 import { SelectField } from '../components/SelectFieldComponent';
 import { DateField } from '../components/DateFieldComponent';
 import { MOCK_SHOPS, MOCK_SERVICES } from '../mocks/bookingMock';
+import { displayToIsoDate, getTodayIso, isValidDisplayDate } from '../utils/dateFormat';
 
 interface BookingScratchFormValues {
   shopId: string;
@@ -9,21 +10,13 @@ interface BookingScratchFormValues {
   serviceId: string;
 }
 
-// Fecha local de hoy en YYYY-MM-DD. No usar toISOString() directo: devuelve la
-// fecha UTC y por la noche (hora de México) ya marcaría "mañana" como mínimo.
-const getTodayLocal = (): string => {
-  const now = new Date();
-  const offsetMs = now.getTimezoneOffset() * 60_000;
-  return new Date(now.getTime() - offsetMs).toISOString().split('T')[0];
-};
-
 const SHOP_OPTIONS = [{ value: '', label: 'Selecciona una sucursal' }, ...MOCK_SHOPS];
 const SERVICE_OPTIONS = [{ value: '', label: 'Selecciona un servicio' }, ...MOCK_SERVICES];
 
 /* Contenedor temporal con datos mock. Se reemplaza en la tarea
    "Crear contenedor, página y ruta del flujo de reserva". */
 export function BookingScratchContainer() {
-  const today = getTodayLocal();
+  const today = getTodayIso();
 
   const {
     register,
@@ -53,10 +46,13 @@ export function BookingScratchContainer() {
         label="Fecha"
         min={today}
         error={errors.date?.message}
-        // `min` bloquea el calendario, pero en algunos navegadores aún se puede
-        // teclear una fecha pasada: también se valida aquí.
+        // `min` bloquea el calendario, pero la fecha también se puede teclear: se valida aquí.
         registerProps={register('date', {
-          validate: (value) => !value || value >= today || 'La fecha no puede ser anterior a hoy.',
+          validate: (value) => {
+            if (!value) return true;
+            if (!isValidDisplayDate(value)) return 'Usa el formato dd/mm/aaaa.';
+            return displayToIsoDate(value) >= today || 'La fecha no puede ser anterior a hoy.';
+          },
         })}
       />
 
@@ -67,15 +63,15 @@ export function BookingScratchContainer() {
         registerProps={register('serviceId')}
       />
 
-      <div className="border-t border-white/10 pt-4 text-sm text-[var(--text)]">
+      <div className="border-t border-white/10 pt-4 text-sm text-(--text)">
         <p>
-          Sucursal: <span className="text-[var(--text-h)]">{shopLabel ?? '—'}</span>
+          Sucursal: <span className="text-(--text-h)">{shopLabel ?? '—'}</span>
         </p>
         <p>
-          Fecha: <span className="text-[var(--text-h)]">{date || '—'}</span>
+          Fecha: <span className="text-(--text-h)">{date || '—'}</span>
         </p>
         <p>
-          Servicio: <span className="text-[var(--text-h)]">{serviceLabel ?? '—'}</span>
+          Servicio: <span className="text-(--text-h)">{serviceLabel ?? '—'}</span>
         </p>
       </div>
     </div>

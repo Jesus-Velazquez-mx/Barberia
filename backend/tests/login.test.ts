@@ -35,8 +35,8 @@ const insertManagerWithPassword = async (password: string) => {
     const passwordHash = await bcrypt.hash(password, 10);
 
     const userResult = await getPool().query(
-        `INSERT INTO users (role, email, phone, password_hash, first_name, last_name)
-         VALUES ('manager', $1, $2, $3, 'Test', 'Manager') RETURNING id`,
+        `INSERT INTO users (role, email, phone, password_hash, first_name, last_name, birth_date, gender)
+         VALUES ('manager', $1, $2, $3, 'Test', 'Manager', '1990-01-01', 'other') RETURNING id`,
         [email, generateUniquePhone(), passwordHash]
     );
     const id = userResult.rows[0].id;
@@ -89,7 +89,9 @@ describe('Pruebas de los Endpoints de Auth', () => {
             lastName: 'User',
             phone: uniquePhone,
             email: uniqueEmail,
-            password: testPassword
+            password: testPassword,
+            birthDate: '1990-01-01',
+            gender: 'other'
         };
         createdEmails.push(uniqueEmail);
 
@@ -99,6 +101,8 @@ describe('Pruebas de los Endpoints de Auth', () => {
         expect(response.body.data).toHaveProperty('token'); // Verificamos que devuelva el token de auto-login
         expect(response.body.data.user.email).toBe(uniqueEmail);
         expect(response.body.data.user).not.toHaveProperty('password_hash');
+        expect(response.body.data.user.birthDate).toBeTruthy();
+        expect(response.body.data.user.gender).toBe('other');
         // El registro siempre crea un cliente, así que debe devolver su perfil recién creado, anidado en user
         expect(response.body.data.user.profile).toEqual({
             facialStructureType: null,
@@ -116,7 +120,9 @@ describe('Pruebas de los Endpoints de Auth', () => {
             lastName: 'User',
             phone: generateUniquePhone(),
             email: duplicateEmail,
-            password: testPassword
+            password: testPassword,
+            birthDate: '1990-01-01',
+            gender: 'other'
         };
         createdEmails.push(duplicateEmail);
 
@@ -144,6 +150,8 @@ describe('Pruebas de los Endpoints de Auth', () => {
         expect(response.body.data).toHaveProperty('token');
         expect(response.body.data.user.email).toBe(uniqueEmail);
         expect(response.body.data.user).not.toHaveProperty('password_hash');
+        expect(response.body.data.user.birthDate).toBeTruthy();
+        expect(response.body.data.user.gender).toBe('other');
         // El usuario de esta prueba es un cliente (registrado en la Prueba 2)
         expect(response.body.data.user.profile).toEqual({
             facialStructureType: null,

@@ -33,8 +33,8 @@ const mintToken = (id: string, role: UserRole, email: string): string =>
 const insertUser = async (role: UserRole): Promise<{ id: string; email: string }> => {
     const email = generateUniqueEmail();
     const result = await getPool().query(
-        `INSERT INTO users (role, email, phone, password_hash, first_name, last_name)
-         VALUES ($1, $2, $3, 'unused', 'Test', 'User') RETURNING id`,
+        `INSERT INTO users (role, email, phone, password_hash, first_name, last_name, birth_date, gender)
+         VALUES ($1, $2, $3, 'unused', 'Test', 'User', '1990-01-01', 'other') RETURNING id`,
         [role, email, generateUniquePhone()]
     );
     const id = result.rows[0].id;

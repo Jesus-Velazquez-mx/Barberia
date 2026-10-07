@@ -6,6 +6,7 @@ import type { EditUserFormValues, User } from '../types/auth';
 import { EditUserModal } from '../components/EditUserModalComponent';
 import { Toast } from '../components/ToastComponent';
 import { useAuth } from '../context/AuthContext';
+import { displayToIsoDate, getTodayIso, isoToDisplayDate, isValidDisplayDate } from '../utils/dateFormat';
 
 interface EditUserModalContainerProps {
   user: User;
@@ -13,6 +14,9 @@ interface EditUserModalContainerProps {
   onClose: () => void;
   onUpdated: (user: User) => void;
 }
+
+/* El campo de fecha usa dd/mm/aaaa; el backend regresa la fecha completa en ISO. */
+const toDateInputValue = isoToDisplayDate;
 
 export function EditUserModalContainer({ user, isOpen, onClose, onUpdated }: EditUserModalContainerProps) {
   const { token } = useAuth();
@@ -30,6 +34,8 @@ export function EditUserModalContainer({ user, isOpen, onClose, onUpdated }: Edi
       lastName: user.lastName,
       phone: user.phone ?? '',
       email: user.email,
+      birthDate: toDateInputValue(user.birthDate),
+      gender: user.gender,
     },
   });
 
@@ -40,6 +46,8 @@ export function EditUserModalContainer({ user, isOpen, onClose, onUpdated }: Edi
       lastName: user.lastName,
       phone: user.phone ?? '',
       email: user.email,
+      birthDate: toDateInputValue(user.birthDate),
+      gender: user.gender,
     });
   }, [user, reset]);
 
@@ -70,6 +78,8 @@ export function EditUserModalContainer({ user, isOpen, onClose, onUpdated }: Edi
     lastName: values.lastName.trim(),
     ...(dirtyFields.email && { email: values.email.trim() }),
     ...(dirtyFields.phone && { phone: phone ? phone : null }),
+    ...(dirtyFields.birthDate && values.birthDate && { birthDate: displayToIsoDate(values.birthDate) }),
+    ...(dirtyFields.gender && values.gender && { gender: values.gender }),
 };
     console.log(dirtyFields, payload)
     try {
@@ -112,6 +122,16 @@ export function EditUserModalContainer({ user, isOpen, onClose, onUpdated }: Edi
         phoneRegister={register('phone', {
           pattern: { value: /^\d{10}$/, message: 'Debe tener 10 dígitos.' },
         })}
+        birthDateRegister={register('birthDate', {
+          validate: (value) => {
+            if (!value) return true;
+            if (!isValidDisplayDate(value)) return 'Usa el formato dd/mm/aaaa.';
+            const iso = displayToIsoDate(value);
+            if (iso > getTodayIso()) return 'La fecha de nacimiento no puede ser en el futuro.';
+            return iso >= '1900-01-01' || 'La fecha de nacimiento no es válida.';
+          },
+        })}
+        genderRegister={register('gender')}
         emailRegister={register('email', {
           required: 'El correo es obligatorio.',
           pattern: {
@@ -121,6 +141,8 @@ export function EditUserModalContainer({ user, isOpen, onClose, onUpdated }: Edi
         firstNameError={errors.firstName}
         lastNameError={errors.lastName}
         phoneError={errors.phone}
+        birthDateError={errors.birthDate}
+        genderError={errors.gender}
         emailError={errors.email}
         serverError={serverError}
         isSubmitting={isSubmitting}

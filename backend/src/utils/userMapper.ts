@@ -20,6 +20,8 @@ export const toUserResponse = (user: User): UserResponse => ({
     phone: user.phone,
     firstName: user.first_name,
     lastName: user.last_name,
+    birthDate: user.birth_date,
+    gender: user.gender,
     createdAt: user.created_at,
     updatedAt: user.updated_at
 });
