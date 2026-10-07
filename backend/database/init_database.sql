@@ -71,6 +71,8 @@ CREATE TABLE users (
     password_hash   text NOT NULL,
     first_name      varchar(100) NOT NULL,
     last_name       varchar(100) NOT NULL,
+    birth_date      DATE NOT NULL,
+    gender          varchar(10) NOT NULL,
     created_at      timestamptz NOT NULL DEFAULT now(),
     updated_at      timestamptz NOT NULL DEFAULT now()
 );
@@ -156,6 +158,8 @@ CREATE TABLE barbers (
     last_name             varchar(100) NOT NULL,
     email                 varchar(255) UNIQUE NOT NULL,
     phone                 varchar(10) UNIQUE,
+    birth_date            DATE NOT NULL,
+    gender                varchar(10) NOT NULL,
     shop_id               uuid NOT NULL REFERENCES shops(id) ON DELETE RESTRICT,
     shift_id              uuid NOT NULL REFERENCES shifts(id) ON DELETE RESTRICT,
     bio                   text,
