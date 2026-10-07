@@ -18,7 +18,11 @@ export function RegisterFormContainer() {
     handleSubmit,
     watch,
     formState: { errors, isSubmitting },
-  } = useForm<RegisterFormValues>();
+  } = useForm<RegisterFormValues>({
+    // TODO: el negocio solo ofrece servicios para hombres por ahora; quitar este default
+    // en cuanto se habilite el registro para otros géneros y reintroducir el campo en el formulario.
+    defaultValues: { gender: 'male' },
+  });
 
   const onSubmit = async (values: RegisterFormValues) => {
     setServerError('');
@@ -59,6 +63,11 @@ export function RegisterFormContainer() {
         maxLength: { value: 10, message: 'Máximo 10 dígitos.' },
         pattern: { value: /^\d*$/, message: 'Solo se permiten números.' },
       })}
+      birthDateRegister={register('birthDate', {
+        required: 'La fecha de nacimiento es obligatoria.',
+        validate: (value) =>
+          new Date(value) <= new Date() || 'La fecha de nacimiento no puede ser en el futuro.',
+      })}
       emailRegister={register('email', {
         required: 'El correo es obligatorio.',
         pattern: {
@@ -78,6 +87,7 @@ export function RegisterFormContainer() {
       nameError={errors.firstName}
       lastnameError={errors.lastName}
       phoneError={errors.phone}
+      birthDateError={errors.birthDate}
       emailError={errors.email}
       passwordError={errors.password}
       confirmPasswordError={errors.confirmPassword}

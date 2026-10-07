@@ -14,6 +14,9 @@ interface EditUserModalContainerProps {
   onUpdated: (user: User) => void;
 }
 
+/* El input type="date" solo acepta YYYY-MM-DD; el backend regresa la fecha completa en ISO. */
+const toDateInputValue = (isoDate: string) => isoDate.slice(0, 10);
+
 export function EditUserModalContainer({ user, isOpen, onClose, onUpdated }: EditUserModalContainerProps) {
   const { token } = useAuth();
   const [serverError, setServerError] = useState('');
@@ -30,6 +33,8 @@ export function EditUserModalContainer({ user, isOpen, onClose, onUpdated }: Edi
       lastName: user.lastName,
       phone: user.phone ?? '',
       email: user.email,
+      birthDate: toDateInputValue(user.birthDate),
+      gender: user.gender,
     },
   });
 
@@ -40,6 +45,8 @@ export function EditUserModalContainer({ user, isOpen, onClose, onUpdated }: Edi
       lastName: user.lastName,
       phone: user.phone ?? '',
       email: user.email,
+      birthDate: toDateInputValue(user.birthDate),
+      gender: user.gender,
     });
   }, [user, reset]);
 
@@ -70,6 +77,8 @@ export function EditUserModalContainer({ user, isOpen, onClose, onUpdated }: Edi
     lastName: values.lastName.trim(),
     ...(dirtyFields.email && { email: values.email.trim() }),
     ...(dirtyFields.phone && { phone: phone ? phone : null }),
+    ...(dirtyFields.birthDate && values.birthDate && { birthDate: values.birthDate }),
+    ...(dirtyFields.gender && values.gender && { gender: values.gender }),
 };
     console.log(dirtyFields, payload)
     try {
@@ -112,6 +121,11 @@ export function EditUserModalContainer({ user, isOpen, onClose, onUpdated }: Edi
         phoneRegister={register('phone', {
           pattern: { value: /^\d{10}$/, message: 'Debe tener 10 dígitos.' },
         })}
+        birthDateRegister={register('birthDate', {
+          validate: (value) =>
+            !value || new Date(value) <= new Date() || 'La fecha de nacimiento no puede ser en el futuro.',
+        })}
+        genderRegister={register('gender')}
         emailRegister={register('email', {
           required: 'El correo es obligatorio.',
           pattern: {
@@ -121,6 +135,8 @@ export function EditUserModalContainer({ user, isOpen, onClose, onUpdated }: Edi
         firstNameError={errors.firstName}
         lastNameError={errors.lastName}
         phoneError={errors.phone}
+        birthDateError={errors.birthDate}
+        genderError={errors.gender}
         emailError={errors.email}
         serverError={serverError}
         isSubmitting={isSubmitting}

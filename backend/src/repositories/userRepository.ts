@@ -105,7 +105,7 @@ export const createNewUser = async (userData: CreateUserInput): Promise<{ user: 
         const insertQuery = `
             INSERT INTO users (role, email, phone, password_hash, first_name, last_name, birth_date, gender)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-            RETURNING id, role, email, phone, password_hash, first_name, last_name, created_at, updated_at
+            RETURNING id, role, email, phone, password_hash, first_name, last_name, birth_date, gender, created_at, updated_at
         `;
 
         const values = [
@@ -182,6 +182,8 @@ export const updateUserById = async (fields: UpdateUserInput): Promise<User> => 
             ['password', 'password_hash'],
             ['firstName', 'first_name'],
             ['lastName', 'last_name'],
+            ['birthDate', 'birth_date'],
+            ['gender', 'gender'],
         ];
 
         for (const [field, column] of columnByField) {
@@ -201,7 +203,7 @@ export const updateUserById = async (fields: UpdateUserInput): Promise<User> => 
         const updateQuery = `
             UPDATE users SET ${setClauses.join(', ')}
             WHERE id = $${values.length}
-            RETURNING id, role, email, phone, password_hash, first_name, last_name, created_at, updated_at
+            RETURNING id, role, email, phone, password_hash, first_name, last_name, birth_date, gender, created_at, updated_at
         `;
 
         const result = await client.query(updateQuery, values);

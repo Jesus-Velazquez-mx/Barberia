@@ -1,7 +1,10 @@
 import type { FieldError, UseFormRegisterReturn } from 'react-hook-form';
 import { InputField } from './InputFieldComponent';
+import { DateField } from './DateFieldComponent';
+import { SelectField } from './SelectFieldComponent';
 import { Button } from './ButtonComponent';
 import { Modal } from './ModalComponent';
+import { GENDER_OPTIONS } from '../utils/genderOptions';
 
 interface EditUserModalProps {
   isOpen: boolean;
@@ -11,10 +14,14 @@ interface EditUserModalProps {
   lastNameRegister: UseFormRegisterReturn;
   phoneRegister: UseFormRegisterReturn;
   emailRegister: UseFormRegisterReturn;
+  birthDateRegister: UseFormRegisterReturn;
+  genderRegister: UseFormRegisterReturn;
   firstNameError?: FieldError;
   lastNameError?: FieldError;
   phoneError?: FieldError;
   emailError?: FieldError;
+  birthDateError?: FieldError;
+  genderError?: FieldError;
   serverError: string;
   isSubmitting: boolean;
 }
@@ -27,10 +34,14 @@ export function EditUserModal({
   lastNameRegister,
   phoneRegister,
   emailRegister,
+  birthDateRegister,
+  genderRegister,
   firstNameError,
   lastNameError,
   phoneError,
   emailError,
+  birthDateError,
+  genderError,
   serverError,
   isSubmitting,
 }: EditUserModalProps) {
@@ -79,6 +90,23 @@ export function EditUserModal({
           placeholder="Ingresa tu número de teléfono"
           error={phoneError?.message}
           registerProps={phoneRegister}
+        />
+
+        <DateField
+          id="birthDate"
+          label="Fecha de nacimiento"
+          min="1900-01-01"
+          max={new Date().toISOString().slice(0, 10)}
+          error={birthDateError?.message}
+          registerProps={birthDateRegister}
+        />
+
+        <SelectField
+          id="gender"
+          label="Género"
+          options={GENDER_OPTIONS}
+          error={genderError?.message}
+          registerProps={genderRegister}
         />
 
         <InputField

@@ -18,9 +18,21 @@ const ROLE_LABELS: Record<UserRole, string> = {
 
 const PASSWORD_MASK = '******************';
 
+const GENDER_LABELS: Record<string, string> = {
+  female: 'Femenino',
+  male: 'Masculino',
+  other: 'Otro',
+};
+
 /* 6671234567 -> 667 123 4567 */
 const formatPhone = (phone: string | null) =>
   phone ? phone.replace(/^(\d{3})(\d{3})(\d{4})$/, '$1 $2 $3') : 'Sin teléfono';
+
+/* 1990-01-01 -> 01/01/1990, sin depender de la zona horaria del navegador */
+const formatBirthDate = (birthDate: string) => {
+  const [year, month, day] = birthDate.slice(0, 10).split('-');
+  return `${day}/${month}/${year}`;
+};
 
 function ReadOnlyField({ label, value }: { label: string; value: string }) {
   return (
@@ -64,6 +76,11 @@ export function UserProfile({ user, onEdit, onChangePassword, onDeleteAccount, o
           <ReadOnlyField label="Nombre Completo" value={`${user.firstName} ${user.lastName}`} />
           <ReadOnlyField label="Teléfono" value={formatPhone(user.phone)} />
           <ReadOnlyField label="Correo electrónico" value={user.email} />
+        </div>
+
+        <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
+          <ReadOnlyField label="Fecha de nacimiento" value={formatBirthDate(user.birthDate)} />
+          <ReadOnlyField label="Género" value={GENDER_LABELS[user.gender] ?? user.gender} />
         </div>
 
         <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
