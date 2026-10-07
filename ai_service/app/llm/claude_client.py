@@ -55,19 +55,30 @@ class ClaudeClient:
         normalized_prompt = self._normalize_prompt(prompt)
         messages = self._build_messages(normalized_prompt)
         client_params = self._build_client_params(messages)
-        response = await self._create_message(client_params, normalized_prompt)
+        response = await self._generate_response(client_params, normalized_prompt)
         self._validate_stop_reason(response, normalized_prompt)
-        json_response_payload = self._extract_text_payload(
-            response, normalized_prompt
-        )
+        json_response_payload = self._extract_text_payload(response, normalized_prompt)
         return self._parse_response(json_response_payload, schema, normalized_prompt)
 
     @staticmethod
     def _normalize_prompt(prompt: str | list[str]) -> list[str]:
+        """
+        Normaliza el prompt y regresa siempre una lista, sin importar
+        si el valor de entrada es una lista o un solo string
+        """
         return prompt if isinstance(prompt, list) else [prompt]
 
     @staticmethod
     def _build_messages(prompt: list[str]) -> list[dict[str, str]]:
+        """
+        Toma el prompt normalizado y construye el "historial" de mensajes
+        a enviar al LLM. 
+
+        Para cada elemento de prompt, crea un mensaje individual de manera
+        consecutiva asignando el rol de usuario ("user") a cada uno. Finalmente,
+        agrega un mensaje prefabricado (message prefilling) para garantizar
+        que el LLM responda en formato JSON.
+        """
         messages = [
             {"role": MessageRole.USER.value, "content": prompt_part}
             for prompt_part in prompt
@@ -75,9 +86,16 @@ class ClaudeClient:
         messages.append({"role": MessageRole.ASSISTANT.value, "content": "```json"})
         return messages
 
-    def _build_client_params(
-        self, messages: list[dict[str, str]]
-    ) -> dict[str, Any]:
+    def _build_client_params(self, messages: list[dict[str, str]]) -> dict[str, Any]:
+        """
+        Construye el objeto client_params que contiene el modelo
+        específico de Anthropic a utilizar y sus especificaciones: 
+        - Mensajes a procesar (previamente construidos)
+        - Número máximo de tokens
+        - Stop sequence (obliga al modelo a interrumpir la generación)
+        - Prompt de sistema
+        - Activación de control de caché
+        """
         client_params: dict[str, Any] = {
             "model": self.model,
             "max_tokens": self.max_tokens,
@@ -94,15 +112,24 @@ class ClaudeClient:
 
         return client_params
 
-    async def _create_message(
-        self, client_params: dict[str, Any], prompt: list[str]
-    ):
+    async def _generate_response(self, client_params: dict[str, Any], prompt: list[str]):
+        """
+        Llama a la API de Anthropic (utilizando su SDK) con los parámetros 
+        definidos y devuelve la respuesta generada por el LLM.        
+        """
         try:
             return await self.client.messages.create(**client_params)
         except APIError as exc:
             raise self._translate_exception(exc, prompt) from exc
 
+    # TODO - Refactorizar para manejar todas las stop reasons, no solo max_tokens
     def _validate_stop_reason(self, response, prompt: list[str]) -> None:
+        """
+        Valida si la respuesta del LLM fue exitosa. Si la razón por la
+        que la respuesta se detuvo es porque se alcanzó el límite
+        máximo de tokens establecido, entonces arroja una excepción.
+        De lo contrario, no hace nada.        
+        """
         if response.stop_reason == "max_tokens":
             raise LLMClientError(
                 LLMClientErrorCategory.TRUNCATED,
@@ -113,6 +140,10 @@ class ClaudeClient:
             )
 
     def _extract_text_payload(self, response, prompt: list[str]) -> str:
+        """
+        Extrae el contenido relevante de la respuesta del LLM ignorando
+        cualquier bloque de metadata.
+        """
         try:
             return next(b.text for b in response.content if b.type == "text")
         except StopIteration:
@@ -127,6 +158,10 @@ class ClaudeClient:
     def _parse_response(
         self, payload: str, schema: type[ModelT], prompt: list[str]
     ) -> ModelT | LLMErrorResponse:
+        """
+        Convierte la respuesta en texto simple del LLM a un modelo de 
+        Pydantic para su manipulación de manera programática.
+        """
         try:
             return schema.model_validate_json(payload)
         except (ValidationError, ValueError):
@@ -144,6 +179,11 @@ class ClaudeClient:
             )
 
     def _translate_exception(self, exc: APIError, prompt) -> LLMClientError:
+        """
+        Convierte cualquier excepción arrojada por el SDK de Anthropic
+        a una excepción personalizada (definidas en este mismo proyecto) 
+        para controlar el flujo de este programa a nuestra conveniencia.       
+        """
         retry_after = None
 
         if isinstance(exc, RateLimitError):
