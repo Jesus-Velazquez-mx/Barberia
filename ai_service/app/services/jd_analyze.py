@@ -6,7 +6,7 @@ from app.schemas.llm import LLMErrorResponse
 from app.services.unprocessable_exception import UnprocessableContentError
 
 
-def build_jd_analyze_prompt(
+def _build_jd_analyze_prompt(
     result_json_schema, jd_analyze_req: JdAnalyzeRequest
 ) -> str:
     return f"""
@@ -48,7 +48,7 @@ async def analyze_job(req: ApiRequest[JdAnalyzeRequest]) -> JdAnalysisResult:
     validate_request_content(req)
 
     jd_analyze_req = req.data
-    prompt = build_jd_analyze_prompt(JdAnalysisResult.model_json_schema(), jd_analyze_req)
+    prompt = _build_jd_analyze_prompt(JdAnalysisResult.model_json_schema(), jd_analyze_req)
 
     llm_client = get_llm_client(req.provider)
 
