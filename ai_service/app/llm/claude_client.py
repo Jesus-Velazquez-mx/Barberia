@@ -1,4 +1,4 @@
-from typing import TypeVar
+from typing import Any, TypeVar
 
 from anthropic import (
     AsyncAnthropic,
@@ -52,16 +52,33 @@ class ClaudeClient:
     async def generate_structured_response(
         self, prompt: str | list[str], schema: type[ModelT]
     ) -> ModelT | LLMErrorResponse:
-        messages = []
+        normalized_prompt = self._normalize_prompt(prompt)
+        messages = self._build_messages(normalized_prompt)
+        client_params = self._build_client_params(messages)
+        response = await self._create_message(client_params, normalized_prompt)
+        self._validate_stop_reason(response, normalized_prompt)
+        json_response_payload = self._extract_text_payload(
+            response, normalized_prompt
+        )
+        return self._parse_response(json_response_payload, schema, normalized_prompt)
 
-        prompt = prompt if isinstance(prompt, list) else [prompt]
+    @staticmethod
+    def _normalize_prompt(prompt: str | list[str]) -> list[str]:
+        return prompt if isinstance(prompt, list) else [prompt]
 
-        for p in prompt:
-            messages.append({"role": MessageRole.USER.value, "content": p})
-
+    @staticmethod
+    def _build_messages(prompt: list[str]) -> list[dict[str, str]]:
+        messages = [
+            {"role": MessageRole.USER.value, "content": prompt_part}
+            for prompt_part in prompt
+        ]
         messages.append({"role": MessageRole.ASSISTANT.value, "content": "```json"})
+        return messages
 
-        client_params = {
+    def _build_client_params(
+        self, messages: list[dict[str, str]]
+    ) -> dict[str, Any]:
+        client_params: dict[str, Any] = {
             "model": self.model,
             "max_tokens": self.max_tokens,
             "messages": messages,
@@ -75,11 +92,17 @@ class ClaudeClient:
         if self.cache_control:
             client_params["cache_control"] = {"type": "ephemeral"}
 
+        return client_params
+
+    async def _create_message(
+        self, client_params: dict[str, Any], prompt: list[str]
+    ):
         try:
-            response = await self.client.messages.create(**client_params)
+            return await self.client.messages.create(**client_params)
         except APIError as exc:
             raise self._translate_exception(exc, prompt) from exc
 
+    def _validate_stop_reason(self, response, prompt: list[str]) -> None:
         if response.stop_reason == "max_tokens":
             raise LLMClientError(
                 LLMClientErrorCategory.TRUNCATED,
@@ -89,10 +112,9 @@ class ClaudeClient:
                 desc="LLM response surpassed the max allowed tokens",
             )
 
+    def _extract_text_payload(self, response, prompt: list[str]) -> str:
         try:
-            json_response_payload = next(
-                b.text for b in response.content if b.type == "text"
-            )
+            return next(b.text for b in response.content if b.type == "text")
         except StopIteration:
             raise LLMClientError(
                 LLMClientErrorCategory.INVALID_OUTPUT,
@@ -102,13 +124,16 @@ class ClaudeClient:
                 desc="LLM response did not contain a text block",
             )
 
+    def _parse_response(
+        self, payload: str, schema: type[ModelT], prompt: list[str]
+    ) -> ModelT | LLMErrorResponse:
         try:
-            return schema.model_validate_json(json_response_payload)
+            return schema.model_validate_json(payload)
         except (ValidationError, ValueError):
             pass
 
         try:
-            return LLMErrorResponse.model_validate_json(json_response_payload)
+            return LLMErrorResponse.model_validate_json(payload)
         except (ValidationError, ValueError):
             raise LLMClientError(
                 LLMClientErrorCategory.INVALID_OUTPUT,
