@@ -18,11 +18,11 @@ export function RegisterFormContainer() {
     register,
     handleSubmit,
     watch,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting }
   } = useForm<RegisterFormValues>({
     // TODO: el negocio solo ofrece servicios para hombres por ahora; quitar este default
     // en cuanto se habilite el registro para otros géneros y reintroducir el campo en el formulario.
-    defaultValues: { gender: 'male' },
+    defaultValues: { gender: 'male' }
   });
 
   const onSubmit = async (values: RegisterFormValues) => {
@@ -54,15 +54,15 @@ export function RegisterFormContainer() {
       onSubmit={handleSubmit(onSubmit)}
       nameRegister={register('firstName', {
         required: 'El nombre es obligatorio.',
-        minLength: { value: 2, message: 'Debe tener al menos 2 caracteres.' },
+        minLength: { value: 2, message: 'Debe tener al menos 2 caracteres.' }
       })}
       lastnameRegister={register('lastName', {
         required: 'El apellido es obligatorio.',
-        minLength: { value: 2, message: 'Debe tener al menos 2 caracteres.' },
+        minLength: { value: 2, message: 'Debe tener al menos 2 caracteres.' }
       })}
       phoneRegister={register('phone', {
         maxLength: { value: 10, message: 'Máximo 10 dígitos.' },
-        pattern: { value: /^\d*$/, message: 'Solo se permiten números.' },
+        pattern: { value: /^\d*$/, message: 'Solo se permiten números.' }
       })}
       birthDateRegister={register('birthDate', {
         required: 'La fecha de nacimiento es obligatoria.',
@@ -71,23 +71,22 @@ export function RegisterFormContainer() {
           const iso = displayToIsoDate(value);
           if (iso > getTodayIso()) return 'La fecha de nacimiento no puede ser en el futuro.';
           return iso >= '1900-01-01' || 'La fecha de nacimiento no es válida.';
-        },
+        }
       })}
       emailRegister={register('email', {
         required: 'El correo es obligatorio.',
         pattern: {
           value: /\S+@\S+\.\S+/,
-          message: 'El correo no es válido.',
-        },
+          message: 'El correo no es válido.'
+        }
       })}
       passwordRegister={register('password', {
         required: 'La contraseña es obligatoria.',
-        minLength: { value: 6, message: 'Debe tener al menos 6 caracteres.' },
+        minLength: { value: 6, message: 'Debe tener al menos 6 caracteres.' }
       })}
       confirmPasswordRegister={register('confirmPassword', {
         required: 'Confirma tu contraseña.',
-        validate: (value) =>
-          value === watch('password') || 'Las contraseñas no coinciden.',
+        validate: (value) => value === watch('password') || 'Las contraseñas no coinciden.'
       })}
       nameError={errors.firstName}
       lastnameError={errors.lastName}

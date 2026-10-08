@@ -15,7 +15,7 @@ export const updateUser = async (id: string, values: UpdateUserValues, token: st
     };
 
     const response = await apiClient.put<User>('/users', payload, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}` }
     });
 
     return response;
@@ -25,7 +25,7 @@ interface ChangePasswordPayload {
     user: {
         id: string;
         password: string;
-    }
+    };
 }
 
 export const changePassword = async (
@@ -36,12 +36,12 @@ export const changePassword = async (
     const payload: ChangePasswordPayload = {
         user: {
             id,
-            password: values.newPassword,
+            password: values.newPassword
         }
     };
 
     const response = await apiClient.put<User>('/users', payload, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}` }
     });
 
     return response;
@@ -49,6 +49,6 @@ export const changePassword = async (
 
 export const deleteUser = async (id: string, token: string): Promise<void> => {
     await apiClient.delete<void>(`/users/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}` }
     });
 };

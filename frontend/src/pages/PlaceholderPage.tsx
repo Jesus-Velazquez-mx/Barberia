@@ -31,7 +31,7 @@ export default function PlaceholderPage({ title }: PlaceholderPageProps) {
             border: 'none',
             borderRadius: '5px',
             cursor: 'pointer',
-            fontWeight: 'bold',
+            fontWeight: 'bold'
           }}
         >
           CERRAR SESIÓN
@@ -46,7 +46,7 @@ export default function PlaceholderPage({ title }: PlaceholderPageProps) {
               border: 'none',
               borderRadius: '5px',
               cursor: 'pointer',
-              fontWeight: 'bold',
+              fontWeight: 'bold'
             }}
           >
             Editar usuario

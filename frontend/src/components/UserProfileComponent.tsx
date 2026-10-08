@@ -13,7 +13,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
   client: 'Cliente',
   barber: 'Barbero',
   manager: 'Gerente',
-  receptionist: 'Recepcionista',
+  receptionist: 'Recepcionista'
 };
 
 const PASSWORD_MASK = '******************';
@@ -21,7 +21,7 @@ const PASSWORD_MASK = '******************';
 const GENDER_LABELS: Record<string, string> = {
   female: 'Femenino',
   male: 'Masculino',
-  other: 'Otro',
+  other: 'Otro'
 };
 
 /* 6671234567 -> 667 123 4567 */
@@ -51,9 +51,7 @@ export function UserProfile({ user, onEdit, onChangePassword, onDeleteAccount, o
   return (
     <div className="flex flex-col gap-8">
       <header>
-        <h1 className="m-0 font-sans text-3xl font-semibold tracking-normal text-[var(--text-h)]">
-          Mi perfil
-        </h1>
+        <h1 className="m-0 font-sans text-3xl font-semibold tracking-normal text-[var(--text-h)]">Mi perfil</h1>
         <p className="mt-1 text-sm font-semibold text-[var(--text)]">
           Gestiona tu información personal y la configuración de tu cuenta.
         </p>
@@ -64,9 +62,7 @@ export function UserProfile({ user, onEdit, onChangePassword, onDeleteAccount, o
           <span className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-[#2A2A2A] text-sm text-[var(--accent)]">
             {initials}
           </span>
-          <span className="text-2xl font-semibold text-[var(--text-h)]">
-            {user.firstName}
-          </span>
+          <span className="text-2xl font-semibold text-[var(--text-h)]">{user.firstName}</span>
           <span className="rounded-full border border-[var(--text-h)] bg-white/10 px-4 py-1 text-sm text-[var(--text-h)]">
             {ROLE_LABELS[user.role]}
           </span>

@@ -21,10 +21,10 @@ export function BookingScratchContainer() {
   const {
     register,
     watch,
-    formState: { errors },
+    formState: { errors }
   } = useForm<BookingScratchFormValues>({
     mode: 'onChange',
-    defaultValues: { shopId: '', date: '', serviceId: '' },
+    defaultValues: { shopId: '', date: '', serviceId: '' }
   });
 
   // Estado de la selección (react-hook-form es el estado local de este flujo)
@@ -34,12 +34,7 @@ export function BookingScratchContainer() {
 
   return (
     <div className="flex w-full max-w-md flex-col gap-5 rounded-xl border border-[#2c2c2c] bg-[#1a1a1a] p-6">
-      <SelectField
-        id="booking-shop"
-        label="Sucursal"
-        options={SHOP_OPTIONS}
-        registerProps={register('shopId')}
-      />
+      <SelectField id="booking-shop" label="Sucursal" options={SHOP_OPTIONS} registerProps={register('shopId')} />
 
       <DateField
         id="booking-date"
@@ -52,7 +47,7 @@ export function BookingScratchContainer() {
             if (!value) return true;
             if (!isValidDisplayDate(value)) return 'Usa el formato dd/mm/aaaa.';
             return displayToIsoDate(value) >= today || 'La fecha no puede ser anterior a hoy.';
-          },
+          }
         })}
       />
 

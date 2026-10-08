@@ -41,7 +41,7 @@ export function RegisterForm({
   confirmPasswordError,
   birthDateError,
   serverError,
-  isSubmitting,
+  isSubmitting
 }: RegisterFormProps) {
   return (
     <form className="flex w-full flex-col gap-5" onSubmit={onSubmit} noValidate>

@@ -1,4 +1,4 @@
-import type { User } from "../types/auth";
+import type { User } from '../types/auth';
 
 // Valida si el objeto user presente en localStorage es un objeto
 // de tipo User
