@@ -10,7 +10,7 @@ export const listActiveShops = async (): Promise<ShopResponse[]> => {
 
 export const getActiveShopById = async (id: string): Promise<ShopResponse> => {
     const shop = await getShopById(id);
-    
+
     // Si no existe o está inactiva, devolvemos 404 ya que no debe ser agendable
     if (!shop || !shop.is_active) {
         throw new ApiError(ApiErrorCode.NOT_FOUND, 'Shop not found or is inactive');

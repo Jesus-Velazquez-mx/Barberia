@@ -13,8 +13,7 @@ app.use(express.json());
 
 app.use('/api', router);
 
-app.use('/api', (req, res) =>
-    sendFail({ res, message: 'Ruta de la API no encontrada', status: 404 }));
+app.use('/api', (req, res) => sendFail({ res, message: 'Ruta de la API no encontrada', status: 404 }));
 /* Abrir conexión */
 beforeAll(async () => {
     await connectDB();
@@ -26,7 +25,6 @@ afterAll(async () => {
 
 /* Prueba 1 - Tests*/
 describe('Pruebas de los Endpoints de Tests', () => {
-
     // prueba de crear un test
     test('POST /api/crearTest debe devolver status 201', async () => {
         const test = {
@@ -40,7 +38,6 @@ describe('Pruebas de los Endpoints de Tests', () => {
             data: expect.any(Number),
             message: expect.any(String),
         });
-
     });
 
     test('GET /api/listarTests debe devolver status 200', async () => {
@@ -57,7 +54,7 @@ describe('Pruebas de los Endpoints de Tests', () => {
         const response = await request(app).get('/api/rutaInexistente');
         expect(response.statusCode).toBe(404);
         expect(response.body).toEqual({
-            message: 'Ruta de la API no encontrada'
+            message: 'Ruta de la API no encontrada',
         });
     });
 
@@ -75,9 +72,7 @@ describe('Pruebas de los Endpoints de Tests', () => {
         });
     });
     test('PUT /api/actualizarTest debe devolver error', async () => {
-        const response = await request(app)
-            .put('/api/actualizarTest')
-            .send({ id_test: 'T9999', field_test: 'x' });
+        const response = await request(app).put('/api/actualizarTest').send({ id_test: 'T9999', field_test: 'x' });
         expect(response.statusCode).toBe(500);
         expect(response.body).toEqual({
             message: expect.any(String),
@@ -99,9 +94,7 @@ describe('Pruebas de los Endpoints de Tests', () => {
     });
 
     test('DELETE /api/eliminarTest debe devolver error', async () => {
-        const response = await request(app)
-            .delete('/api/eliminarTest')
-            .send({ id_test: 'T9999' });
+        const response = await request(app).delete('/api/eliminarTest').send({ id_test: 'T9999' });
 
         expect(response.statusCode).toBe(500);
         expect(response.body).toEqual({

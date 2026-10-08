@@ -1,7 +1,12 @@
 import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 import { decodeToken } from './jwtTokenService.js';
 import { canUpdateBarberProfile, canDeleteBarber } from './userPermissions.js';
-import { getBarberById, updateBarberProfileById, softDeleteBarberById, getActiveBarbersByShop } from '../repositories/barberRepository.js';
+import {
+    getBarberById,
+    updateBarberProfileById,
+    softDeleteBarberById,
+    getActiveBarbersByShop,
+} from '../repositories/barberRepository.js';
 import { isUserActive } from '../repositories/userRepository.js';
 import { getShopById } from '../repositories/shopRepository.js';
 import type { BarberResponse } from '../types/dto/barberResponse.interface.js';
@@ -31,7 +36,7 @@ const updateBarber = async (target: UpdateBarberRequest, token: string): Promise
     const updated = await updateBarberProfileById({
         id: target.id,
         bio: target.bio,
-        isAcceptingBookings: target.isAcceptingBookings
+        isAcceptingBookings: target.isAcceptingBookings,
     });
 
     return toBarberResponse(updated);

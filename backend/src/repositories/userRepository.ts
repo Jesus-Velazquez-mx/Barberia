@@ -108,16 +108,7 @@ export const createNewUser = async (userData: CreateUserInput): Promise<{ user: 
             RETURNING id, role, email, phone, password_hash, first_name, last_name, birth_date, gender, created_at, updated_at
         `;
 
-        const values = [
-            role,
-            email,
-            phone,
-            password_hash,
-            first_name,
-            last_name,
-            birth_date,
-            gender
-        ];
+        const values = [role, email, phone, password_hash, first_name, last_name, birth_date, gender];
 
         const result = await client.query(insertQuery, values);
         const newUser: User = result.rows[0];
@@ -159,13 +150,19 @@ export const updateUserById = async (fields: UpdateUserInput): Promise<User> => 
 
         // 2. Verifica que el correo/teléfono, si se están cambiando, no estén en uso por otro usuario
         if (fields.email !== undefined) {
-            const emailCheck = await client.query('SELECT id FROM users WHERE email = $1 AND id <> $2', [fields.email, fields.id]);
+            const emailCheck = await client.query('SELECT id FROM users WHERE email = $1 AND id <> $2', [
+                fields.email,
+                fields.id,
+            ]);
             if (emailCheck.rows.length > 0) {
                 throw new ApiError(ApiErrorCode.USER_ALREADY_EXISTS, 'Email is already registered');
             }
         }
         if (fields.phone !== undefined) {
-            const phoneCheck = await client.query('SELECT id FROM users WHERE phone = $1 AND id <> $2', [fields.phone, fields.id]);
+            const phoneCheck = await client.query('SELECT id FROM users WHERE phone = $1 AND id <> $2', [
+                fields.phone,
+                fields.id,
+            ]);
             if (phoneCheck.rows.length > 0) {
                 throw new ApiError(ApiErrorCode.USER_ALREADY_EXISTS, 'Phone is already registered');
             }
@@ -220,7 +217,7 @@ export const updateUserById = async (fields: UpdateUserInput): Promise<User> => 
 
 /**
  * Elimina físicamente a un cliente.
- * Utiliza una transacción para borrar explícitamente el registro de 'clients' 
+ * Utiliza una transacción para borrar explícitamente el registro de 'clients'
  * y luego el de 'users'.
  */
 export const hardDeleteClient = async (id: string): Promise<void> => {

@@ -7,7 +7,7 @@ import { AuthProvider } from './context/AuthContext.tsx';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    { /* AuthProvider siempre envuleve toda la aplicación*/}
+    {/* AuthProvider siempre envuleve toda la aplicación*/}
     <AuthProvider>
       <RouterProvider router={router} />
     </AuthProvider>

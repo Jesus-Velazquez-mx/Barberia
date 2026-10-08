@@ -6,7 +6,7 @@ const ROLE_HOME_ROUTES: Record<UserRole, string> = {
     client: '/client/home',
     barber: '/barber/home',
     manager: '/manager/home',
-    receptionist: '/receptionist/home',
+    receptionist: '/receptionist/home'
 };
 
 export function getHomeRouteByRole(role: UserRole): string {

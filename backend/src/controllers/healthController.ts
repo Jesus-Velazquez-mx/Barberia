@@ -1,4 +1,4 @@
-import { ApiHandler, sendInternalServerError, sendSuccess } from "../utils/apiResponse.js"
+import { type ApiHandler, sendInternalServerError, sendSuccess } from '../utils/apiResponse.js';
 
 export const health: ApiHandler<string> = async (req, res) => {
     try {
@@ -6,4 +6,4 @@ export const health: ApiHandler<string> = async (req, res) => {
     } catch (error) {
         sendInternalServerError({ res, error: [String(error)] });
     }
-}
+};

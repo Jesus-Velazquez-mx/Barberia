@@ -86,10 +86,7 @@ export const softDeleteBarberById = async (id: string): Promise<void> => {
 
         await client.query('SELECT id FROM barbers WHERE id = $1 FOR UPDATE', [id]);
 
-        await client.query(
-            `UPDATE barbers SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL`,
-            [id]
-        );
+        await client.query(`UPDATE barbers SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL`, [id]);
 
         await client.query('COMMIT');
     } catch (error) {

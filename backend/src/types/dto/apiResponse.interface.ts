@@ -1,4 +1,4 @@
-import { ValidationError } from "../../errors/ApiError.js";
+import type { ValidationError } from '../../errors/ApiError.js';
 
 export interface ApiResponse<T> {
     data?: T;

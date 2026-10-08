@@ -9,7 +9,7 @@ const NAV_LINKS = [
   { label: 'Sobre Nosotros', href: '#sobre-nosotros' },
   { label: 'Personal', href: '#personal' },
   { label: 'Galería', href: '#galeria' },
-  { label: 'Ubicación y Contacto', href: '#ubicacion' },
+  { label: 'Ubicación y Contacto', href: '#ubicacion' }
 ];
 
 export function Header() {
@@ -42,11 +42,7 @@ export function Header() {
           Comenzar <ArrowRight size={16} />
         </Link>
 
-        <button
-          onClick={() => setOpen((v) => !v)}
-          className="ml-auto text-white lg:hidden"
-          aria-label="Abrir menú"
-        >
+        <button onClick={() => setOpen((v) => !v)} className="ml-auto text-white lg:hidden" aria-label="Abrir menú">
           {open ? <X size={24} /> : <Menu size={24} />}
         </button>
       </nav>

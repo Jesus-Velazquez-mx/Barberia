@@ -1,9 +1,15 @@
 import { z, ZodError } from 'zod';
-import { UserResponse } from "../types/dto/userResponse.interface.js"
-import { ApiHandler, sendFail, sendInternalServerError, sendSuccess, sendValidationError } from "../utils/apiResponse.js"
+import type { UserResponse } from '../types/dto/userResponse.interface.js';
+import {
+    type ApiHandler,
+    sendFail,
+    sendInternalServerError,
+    sendSuccess,
+    sendValidationError,
+} from '../utils/apiResponse.js';
 import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 import { updateUser, deleteUserById } from '../services/userService.js';
-import { UpdateUserInput } from '../repositories/userRepository.js';
+import type { UpdateUserInput } from '../repositories/userRepository.js';
 import { extractBearerFromHeader } from '../utils/headerHandling.js';
 
 // El token indica el usuario que realiza la operación,
@@ -17,16 +23,16 @@ const updateUserSchema = z.object({
         firstName: z.string().min(2).optional(),
         lastName: z.string().min(2).optional(),
         birthDate: z.coerce.date().optional(),
-        gender: z.string().optional()
+        gender: z.string().optional(),
     }) satisfies z.ZodType<UpdateUserInput>,
-    token: z.jwt()
-})
+    token: z.jwt(),
+});
 
 // El token indica el usuario que autoriza y realiza la acción,
 // mientras que el id especifica la cuenta objetivo que será eliminada
 const deleteUserSchema = z.object({
     id: z.uuid(),
-    token: z.jwt()
+    token: z.jwt(),
 });
 
 export const update: ApiHandler<UserResponse> = async (req, res) => {
@@ -52,7 +58,7 @@ export const update: ApiHandler<UserResponse> = async (req, res) => {
 
         sendInternalServerError({ res, error: [String(error)] });
     }
-}
+};
 
 export const deleteUser: ApiHandler<void> = async (req, res) => {
     try {
@@ -87,4 +93,4 @@ export const deleteUser: ApiHandler<void> = async (req, res) => {
 
         sendInternalServerError({ res, error: [String(error)] });
     }
-}
+};

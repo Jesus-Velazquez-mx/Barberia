@@ -38,7 +38,7 @@ const specs = swaggerJsdoc(options);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 
 /* Pool de conexiones */
-let pool: Pool | undefined;
+let _pool: Pool | undefined;
 /* Permitir solicitudes desde el dominio específico del front */
 
 const allowedOrigin = globalConfig.FRONTEND_URL;
@@ -63,7 +63,7 @@ app.use('/api', (req: Request, res: Response) => {
 app.listen(port, async () => {
     console.log(`La app está escuchando en el puerto ${port}`);
     try {
-        pool = await connectDB();
+        _pool = await connectDB();
         console.log('Base de datos conectada');
     } catch (error) {
         console.log(`Deteniendo el servidor por fallo en BD. ERROR: ${error}`);

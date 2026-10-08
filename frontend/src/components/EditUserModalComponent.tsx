@@ -43,7 +43,7 @@ export function EditUserModal({
   birthDateError,
   genderError,
   serverError,
-  isSubmitting,
+  isSubmitting
 }: EditUserModalProps) {
   return (
     <Modal isOpen={isOpen} onClose={onClose}>

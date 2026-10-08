@@ -15,9 +15,7 @@ export function LogoutConfirmModal({ isOpen, onClose, onConfirm }: LogoutConfirm
         <LogOut size={26} className="text-[var(--accent)]" />
       </div>
 
-      <h2 className="mb-3 mt-5 font-sans font-bold tracking-normal text-[var(--text-h)]">
-        ¿Cerrar sesión?
-      </h2>
+      <h2 className="mb-3 mt-5 font-sans font-bold tracking-normal text-[var(--text-h)]">¿Cerrar sesión?</h2>
       <p className="text-[var(--text)]">
         Vas a salir de tu cuenta. Tendrás que iniciar sesión de nuevo para volver a acceder.
       </p>

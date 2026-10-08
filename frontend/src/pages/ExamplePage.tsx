@@ -6,11 +6,13 @@ function ExamplePage() {
   return (
     <section style={{ padding: '2rem' }}>
       <h1>Example page</h1>
-      <p>This page lives at src/pages/ExamplePage.tsx and is registered as the "/" route in src/router.tsx.</p>
+      <p>This page lives at src/pages/ExamplePage.tsx and is registered as the / route in src/router.tsx.</p>
 
       {/* Contenedor para separar los elementos */}
       <div style={{ marginTop: '2rem', display: 'flex', gap: '20px', alignItems: 'center' }}>
-        <Link to="/" style={{ color: '#a855f7', textDecoration: 'none' }}>Home</Link>
+        <Link to="/" style={{ color: '#a855f7', textDecoration: 'none' }}>
+          Home
+        </Link>
 
         {/* Botón para ir al Login */}
         <button

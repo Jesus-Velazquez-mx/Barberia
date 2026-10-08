@@ -10,34 +10,29 @@ const SERVICES = [
     title: 'Corte moderno',
     description: 'Corte tradicional a tijera y máquina, incluye lavado y peinado.',
     duration: '45 Min',
-    image: corteImg,
+    image: corteImg
   },
   {
     title: 'Delineado de barba',
     description: 'Rebajado con máquina y delineado de contornos con navaja.',
     duration: '30 Min',
-    image: barbaImg,
+    image: barbaImg
   },
   {
     title: 'Limpieza Facial',
     description: 'Gel limpiador, exfoliación mecánica y extracción manual de impurezas.',
     duration: '60 Min',
-    image: facialImg,
+    image: facialImg
   },
   {
     title: 'Tinte de cabello',
     description: 'Aplicación de color en el cabello, lavado y corrección de manchas.',
     duration: '80 Min',
-    image: tinteImg,
-  },
+    image: tinteImg
+  }
 ];
 
-function ServiceCard({
-  title,
-  description,
-  duration,
-  image,
-}: (typeof SERVICES)[number]) {
+function ServiceCard({ title, description, duration, image }: (typeof SERVICES)[number]) {
   return (
     <div className="group rounded-2xl border border-white/5 bg-[#1a1a1a] p-5 text-center transition-all duration-300 hover:border-[var(--accent)] hover:shadow-[0_0_24px_rgba(210,172,102,0.35)]">
       <div className="relative h-65 overflow-hidden rounded-xl">
@@ -68,15 +63,9 @@ export function Services() {
     <section id="servicios" className="bg-[#141414] px-6 py-14">
       <div className="mx-auto max-w-7xl">
         <div className="mx-auto max-w-xl text-center">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--accent)]">
-            Experiencia y detalle
-          </p>
-          <h2 className="mt-2 text-3xl font-extrabold text-white sm:text-4xl">
-            Nuestros servicios
-          </h2>
-          <p className="mt-3 text-sm text-neutral-400">
-            Técnicas tradicionales combinadas con tendencias modernas
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--accent)]">Experiencia y detalle</p>
+          <h2 className="mt-2 text-3xl font-extrabold text-white sm:text-4xl">Nuestros servicios</h2>
+          <p className="mt-3 text-sm text-neutral-400">Técnicas tradicionales combinadas con tendencias modernas</p>
         </div>
 
         <div className="mt-14 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">

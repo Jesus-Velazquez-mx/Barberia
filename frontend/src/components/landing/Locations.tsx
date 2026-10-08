@@ -19,7 +19,7 @@ const BRANCHES: Branch[] = [
     schedule: 'Lun a Dom: 10:00 AM – 8:00 PM',
     phone: '+52 667 170 3681',
     ctaLabel: 'Cómo llegar',
-    mapsUrl: 'https://maps.app.goo.gl/ypzVoUiFx1ohBNqBA',
+    mapsUrl: 'https://maps.app.goo.gl/ypzVoUiFx1ohBNqBA'
   },
   {
     name: 'Mr. Barber Explanada',
@@ -28,7 +28,7 @@ const BRANCHES: Branch[] = [
     schedule: 'Lun a Dom: 10:00 AM – 8:00 PM',
     phone: '+52 667 170 6045',
     ctaLabel: 'Cómo llegar',
-    mapsUrl: 'https://maps.app.goo.gl/K5VSCNN2WkeJ1tgV6',
+    mapsUrl: 'https://maps.app.goo.gl/K5VSCNN2WkeJ1tgV6'
   },
   {
     name: 'Mr. Barber La Gran Plaza',
@@ -37,8 +37,8 @@ const BRANCHES: Branch[] = [
     schedule: 'Gran Apertura: Enero 2027',
     phone: '+52 333 120 4580',
     ctaLabel: 'Ver ubicación en mapa',
-    mapsUrl: 'https://maps.app.goo.gl/LyAera56jKCNaYiH6',
-  },
+    mapsUrl: 'https://maps.app.goo.gl/LyAera56jKCNaYiH6'
+  }
 ];
 
 function BranchCard({ branch }: { branch: Branch }) {
@@ -50,9 +50,7 @@ function BranchCard({ branch }: { branch: Branch }) {
         <h3 className="text-lg font-bold text-white">{branch.name}</h3>
         <span
           className={`rounded-full px-3 py-1 text-xs font-semibold ${
-            isOpen
-              ? 'bg-emerald-500/15 text-emerald-400'
-              : 'bg-blue-400/15 text-blue-400'
+            isOpen ? 'bg-emerald-500/15 text-emerald-400' : 'bg-blue-400/15 text-blue-400'
           }`}
         >
           {branch.status}
@@ -94,12 +92,8 @@ export function Locations() {
     <section id="ubicacion" className="bg-[#141414] px-6 py-12">
       <div className="mx-auto max-w-7xl">
         <div className="mx-auto max-w-xl text-center">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--accent)]">
-            Ubicación y contacto
-          </p>
-          <h2 className="mt-2 text-3xl font-extrabold text-white sm:text-4xl">
-            Nuestras sucursales
-          </h2>
+          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--accent)]">Ubicación y contacto</p>
+          <h2 className="mt-2 text-3xl font-extrabold text-white sm:text-4xl">Nuestras sucursales</h2>
         </div>
 
         <div className="mt-14 grid grid-cols-1 gap-6 lg:grid-cols-3">
