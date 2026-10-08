@@ -5,17 +5,27 @@ import pluginReact from 'eslint-plugin-react';
 
 export default [
     {
-        ignores: ['dist/**'],
-    },
-    {
-        files: ['**/*.{ts,tsx}'],
+        ignores: ['dist/**']
     },
     {
         languageOptions: { globals: globals.browser },
-        settings: { react: { version: '19.2.8' } },
+        settings: { react: { version: '19.2.8' } }
     },
     js.configs.recommended,
     ...tseslint.configs.recommended,
     pluginReact.configs.flat.recommended,
     pluginReact.configs.flat['jsx-runtime'],
+    {
+        files: ['**/*.{ts,tsx}'],
+        rules: {
+            '@typescript-eslint/no-unused-vars': [
+                'error',
+                {
+                    argsIgnorePattern: '^_',
+                    varsIgnorePattern: '^_',
+                    caughtErrorsIgnorePattern: '^_'
+                }
+            ]
+        }
+    }
 ];

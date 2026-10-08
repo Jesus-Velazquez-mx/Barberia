@@ -2,7 +2,13 @@ import bcrypt from 'bcrypt';
 import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 import { decodeToken } from './jwtTokenService.js';
 import { canUpdateUser } from './userPermissions.js';
-import { getUserRoleById, isUserActive, updateUserById, hardDeleteClient, softDeleteStaff } from '../repositories/userRepository.js';
+import {
+    getUserRoleById,
+    isUserActive,
+    updateUserById,
+    hardDeleteClient,
+    softDeleteStaff,
+} from '../repositories/userRepository.js';
 import type { UpdateUserInput } from '../repositories/userRepository.js';
 import { getManagerByUserId } from '../repositories/managerRepository.js';
 import { getReceptionistByUserId } from '../repositories/receptionistRepository.js';

@@ -13,14 +13,26 @@ const ROLE_LABELS: Record<UserRole, string> = {
   client: 'Cliente',
   barber: 'Barbero',
   manager: 'Gerente',
-  receptionist: 'Recepcionista',
+  receptionist: 'Recepcionista'
 };
 
 const PASSWORD_MASK = '******************';
 
+const GENDER_LABELS: Record<string, string> = {
+  female: 'Femenino',
+  male: 'Masculino',
+  other: 'Otro'
+};
+
 /* 6671234567 -> 667 123 4567 */
 const formatPhone = (phone: string | null) =>
   phone ? phone.replace(/^(\d{3})(\d{3})(\d{4})$/, '$1 $2 $3') : 'Sin teléfono';
+
+/* 1990-01-01 -> 01/01/1990, sin depender de la zona horaria del navegador */
+const formatBirthDate = (birthDate: string) => {
+  const [year, month, day] = birthDate.slice(0, 10).split('-');
+  return `${day}/${month}/${year}`;
+};
 
 function ReadOnlyField({ label, value }: { label: string; value: string }) {
   return (
@@ -39,9 +51,7 @@ export function UserProfile({ user, onEdit, onChangePassword, onDeleteAccount, o
   return (
     <div className="flex flex-col gap-8">
       <header>
-        <h1 className="m-0 font-sans text-3xl font-semibold tracking-normal text-[var(--text-h)]">
-          Mi perfil
-        </h1>
+        <h1 className="m-0 font-sans text-3xl font-semibold tracking-normal text-[var(--text-h)]">Mi perfil</h1>
         <p className="mt-1 text-sm font-semibold text-[var(--text)]">
           Gestiona tu información personal y la configuración de tu cuenta.
         </p>
@@ -52,9 +62,7 @@ export function UserProfile({ user, onEdit, onChangePassword, onDeleteAccount, o
           <span className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-[#2A2A2A] text-sm text-[var(--accent)]">
             {initials}
           </span>
-          <span className="text-2xl font-semibold text-[var(--text-h)]">
-            {user.firstName}
-          </span>
+          <span className="text-2xl font-semibold text-[var(--text-h)]">{user.firstName}</span>
           <span className="rounded-full border border-[var(--text-h)] bg-white/10 px-4 py-1 text-sm text-[var(--text-h)]">
             {ROLE_LABELS[user.role]}
           </span>
@@ -64,6 +72,11 @@ export function UserProfile({ user, onEdit, onChangePassword, onDeleteAccount, o
           <ReadOnlyField label="Nombre Completo" value={`${user.firstName} ${user.lastName}`} />
           <ReadOnlyField label="Teléfono" value={formatPhone(user.phone)} />
           <ReadOnlyField label="Correo electrónico" value={user.email} />
+        </div>
+
+        <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
+          <ReadOnlyField label="Fecha de nacimiento" value={formatBirthDate(user.birthDate)} />
+          <ReadOnlyField label="Género" value={GENDER_LABELS[user.gender] ?? user.gender} />
         </div>
 
         <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">

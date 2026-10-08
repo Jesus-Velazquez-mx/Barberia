@@ -1,9 +1,7 @@
 import { isUserActive } from '../src/repositories/userRepository.js';
 import connection from '../src/connection/connection.js';
-import { loadConfig } from '../src/config/globalConfig.js';
 import type { UserRole } from '../src/types/entities/user.interface.js';
 
-export const globalConfig = loadConfig();
 const { connectDB, closeDB, getPool } = connection;
 
 const createdUserIds: string[] = [];
@@ -20,8 +18,8 @@ const generateUniquePhone = () => {
 
 const insertUser = async (role: UserRole): Promise<string> => {
     const result = await getPool().query(
-        `INSERT INTO users (role, email, phone, password_hash, first_name, last_name)
-         VALUES ($1, $2, $3, 'unused', 'Test', 'User') RETURNING id`,
+        `INSERT INTO users (role, email, phone, password_hash, first_name, last_name, birth_date, gender)
+         VALUES ($1, $2, $3, 'unused', 'Test', 'User', '1990-01-01', 'other') RETURNING id`,
         [role, generateUniqueEmail(), generateUniquePhone()]
     );
     const id = result.rows[0].id;
@@ -34,7 +32,7 @@ const insertManager = async (deletedAt: Date | null = null): Promise<string> => 
     await getPool().query('INSERT INTO managers (user_id, title, deleted_at) VALUES ($1, $2, $3)', [
         userId,
         'Manager',
-        deletedAt
+        deletedAt,
     ]);
     return userId;
 };

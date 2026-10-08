@@ -13,6 +13,9 @@ export interface SupplyMovement {
     created_at: Date;
 }
 
-export type CreateSupplyMovementInput = Pick<SupplyMovement, 'supply_id' | 'movement_type' | 'quantity' | 'unit_cost' | 'reason'> & {
+export type CreateSupplyMovementInput = Pick<
+    SupplyMovement,
+    'supply_id' | 'movement_type' | 'quantity' | 'unit_cost' | 'reason'
+> & {
     performed_by: string;
 };

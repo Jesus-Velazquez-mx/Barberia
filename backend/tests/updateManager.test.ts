@@ -2,11 +2,9 @@ import request from 'supertest';
 import express from 'express';
 import router from '../src/routes/routes.js';
 import connection from '../src/connection/connection.js';
-import { loadConfig } from '../src/config/globalConfig.js';
 import { signToken } from '../src/services/jwtTokenService.js';
 import type { User, UserRole } from '../src/types/entities/user.interface.js';
 
-export const globalConfig = loadConfig();
 const { connectDB, closeDB, getPool } = connection;
 
 const app = express();
@@ -27,14 +25,13 @@ const generateUniquePhone = () => {
 
 // Solo se necesitan id/role/email para firmar el token; el resto de campos no
 // se usan (ver src/services/jwtTokenService.ts).
-const mintToken = (id: string, role: UserRole, email: string): string =>
-    signToken({ id, role, email } as User);
+const mintToken = (id: string, role: UserRole, email: string): string => signToken({ id, role, email } as User);
 
 const insertUser = async (role: UserRole): Promise<{ id: string; email: string }> => {
     const email = generateUniqueEmail();
     const result = await getPool().query(
-        `INSERT INTO users (role, email, phone, password_hash, first_name, last_name)
-         VALUES ($1, $2, $3, 'unused', 'Test', 'User') RETURNING id`,
+        `INSERT INTO users (role, email, phone, password_hash, first_name, last_name, birth_date, gender)
+         VALUES ($1, $2, $3, 'unused', 'Test', 'User', '1990-01-01', 'other') RETURNING id`,
         [role, email, generateUniquePhone()]
     );
     const id = result.rows[0].id;

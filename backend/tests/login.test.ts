@@ -3,9 +3,7 @@ import express from 'express';
 import bcrypt from 'bcrypt';
 import router from '../src/routes/routes.js';
 import connection from '../src/connection/connection.js';
-import { loadConfig } from '../src/config/globalConfig.js';
 
-export const globalConfig = loadConfig();
 const { connectDB, closeDB, getPool } = connection;
 
 /* Montamos otro express exclusivo para pruebas */
@@ -35,8 +33,8 @@ const insertManagerWithPassword = async (password: string) => {
     const passwordHash = await bcrypt.hash(password, 10);
 
     const userResult = await getPool().query(
-        `INSERT INTO users (role, email, phone, password_hash, first_name, last_name)
-         VALUES ('manager', $1, $2, $3, 'Test', 'Manager') RETURNING id`,
+        `INSERT INTO users (role, email, phone, password_hash, first_name, last_name, birth_date, gender)
+         VALUES ('manager', $1, $2, $3, 'Test', 'Manager', '1990-01-01', 'other') RETURNING id`,
         [email, generateUniquePhone(), passwordHash]
     );
     const id = userResult.rows[0].id;
@@ -71,10 +69,10 @@ describe('Pruebas de los Endpoints de Auth', () => {
     /* Prueba 1: Zod en el controlador */
     test('POST /api/register debe devolver status 400 si faltan datos obligatorios', async () => {
         const invalidUser = {
-            email: 'solo_correo@mrbarber.com'
+            email: 'solo_correo@mrbarber.com',
             // Faltan campos obligatorios como name, lastname, password
         };
-        
+
         const response = await request(app).post(`${baseAuthUrl}/register`).send(invalidUser);
 
         expect(response.statusCode).toBe(400);
@@ -89,7 +87,9 @@ describe('Pruebas de los Endpoints de Auth', () => {
             lastName: 'User',
             phone: uniquePhone,
             email: uniqueEmail,
-            password: testPassword
+            password: testPassword,
+            birthDate: '1990-01-01',
+            gender: 'other',
         };
         createdEmails.push(uniqueEmail);
 
@@ -99,10 +99,12 @@ describe('Pruebas de los Endpoints de Auth', () => {
         expect(response.body.data).toHaveProperty('token'); // Verificamos que devuelva el token de auto-login
         expect(response.body.data.user.email).toBe(uniqueEmail);
         expect(response.body.data.user).not.toHaveProperty('password_hash');
+        expect(response.body.data.user.birthDate).toBeTruthy();
+        expect(response.body.data.user.gender).toBe('other');
         // El registro siempre crea un cliente, así que debe devolver su perfil recién creado, anidado en user
         expect(response.body.data.user.profile).toEqual({
             facialStructureType: null,
-            completedServicesCount: 0
+            completedServicesCount: 0,
         });
     });
 
@@ -116,7 +118,9 @@ describe('Pruebas de los Endpoints de Auth', () => {
             lastName: 'User',
             phone: generateUniquePhone(),
             email: duplicateEmail,
-            password: testPassword
+            password: testPassword,
+            birthDate: '1990-01-01',
+            gender: 'other',
         };
         createdEmails.push(duplicateEmail);
 
@@ -135,7 +139,7 @@ describe('Pruebas de los Endpoints de Auth', () => {
     test('POST /api/login debe devolver status 200 y el token si las credenciales son correctas', async () => {
         const credentials = {
             email: uniqueEmail,
-            password: testPassword
+            password: testPassword,
         };
 
         const response = await request(app).post(`${baseAuthUrl}/login`).send(credentials);
@@ -144,10 +148,12 @@ describe('Pruebas de los Endpoints de Auth', () => {
         expect(response.body.data).toHaveProperty('token');
         expect(response.body.data.user.email).toBe(uniqueEmail);
         expect(response.body.data.user).not.toHaveProperty('password_hash');
+        expect(response.body.data.user.birthDate).toBeTruthy();
+        expect(response.body.data.user.gender).toBe('other');
         // El usuario de esta prueba es un cliente (registrado en la Prueba 2)
         expect(response.body.data.user.profile).toEqual({
             facialStructureType: null,
-            completedServicesCount: 0
+            completedServicesCount: 0,
         });
     });
 
@@ -185,11 +191,11 @@ describe('Pruebas de los Endpoints de Auth', () => {
     test('POST /api/login debe devolver status 404 si la contraseña es incorrecta', async () => {
         const wrongCredentials = {
             email: uniqueEmail,
-            password: 'clave_equivocada_123'
+            password: 'clave_equivocada_123',
         };
 
         const response = await request(app).post(`${baseAuthUrl}/login`).send(wrongCredentials);
-        
+
         expect(response.statusCode).toBe(404);
         expect(response.body.message).toBe('User not found or invalid credentials');
     });

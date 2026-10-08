@@ -24,9 +24,9 @@ export function DeleteAccountModalContainer({ isOpen, onClose }: DeleteAccountMo
     handleSubmit,
     watch,
     reset,
-    formState: { isSubmitting },
+    formState: { isSubmitting }
   } = useForm<DeleteAccountFormValues>({
-    defaultValues: { confirmation: '' },
+    defaultValues: { confirmation: '' }
   });
 
   const isConfirmed = watch('confirmation') === CONFIRMATION_WORD;
@@ -67,7 +67,7 @@ export function DeleteAccountModalContainer({ isOpen, onClose }: DeleteAccountMo
       onClose={handleClose}
       onSubmit={handleFormSubmit}
       confirmationRegister={register('confirmation', {
-        validate: (value) => value === CONFIRMATION_WORD,
+        validate: (value) => value === CONFIRMATION_WORD
       })}
       confirmationWord={CONFIRMATION_WORD}
       isConfirmed={isConfirmed}

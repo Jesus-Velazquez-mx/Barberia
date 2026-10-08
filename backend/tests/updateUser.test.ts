@@ -2,11 +2,9 @@ import request from 'supertest';
 import express from 'express';
 import router from '../src/routes/routes.js';
 import connection from '../src/connection/connection.js';
-import { loadConfig } from '../src/config/globalConfig.js';
 import { signToken } from '../src/services/jwtTokenService.js';
 import type { User, UserRole } from '../src/types/entities/user.interface.js';
 
-export const globalConfig = loadConfig();
 const { connectDB, closeDB, getPool } = connection;
 
 const app = express();
@@ -34,14 +32,13 @@ const generateUniqueShopName = () => {
     return `Test Shop ${Date.now()}_${uniqueCounter}`;
 };
 
-const mintToken = (id: string, role: UserRole, email: string): string =>
-    signToken({ id, role, email } as User);
+const mintToken = (id: string, role: UserRole, email: string): string => signToken({ id, role, email } as User);
 
 const insertUser = async (role: UserRole): Promise<{ id: string; email: string }> => {
     const email = generateUniqueEmail();
     const result = await getPool().query(
-        `INSERT INTO users (role, email, phone, password_hash, first_name, last_name)
-         VALUES ($1, $2, $3, 'unused', 'Test', 'User') RETURNING id`,
+        `INSERT INTO users (role, email, phone, password_hash, first_name, last_name, birth_date, gender)
+         VALUES ($1, $2, $3, 'unused', 'Test', 'User', '1990-01-01', 'other') RETURNING id`,
         [role, email, generateUniquePhone()]
     );
     return { id: result.rows[0].id, email };
@@ -55,10 +52,10 @@ const insertManager = async () => {
 };
 
 const insertShop = async (managerId: string): Promise<string> => {
-    const result = await getPool().query(
-        `INSERT INTO shops (name, manager_id) VALUES ($1, $2) RETURNING id`,
-        [generateUniqueShopName(), managerId]
-    );
+    const result = await getPool().query(`INSERT INTO shops (name, manager_id) VALUES ($1, $2) RETURNING id`, [
+        generateUniqueShopName(),
+        managerId,
+    ]);
     const id = result.rows[0].id;
     createdShopIds.push(id);
     return id;
@@ -67,10 +64,11 @@ const insertShop = async (managerId: string): Promise<string> => {
 const insertReceptionist = async (shopId: string) => {
     const receptionist = await insertUser('receptionist');
     const shift = await getPool().query(`SELECT id FROM shifts WHERE name = 'morning'`);
-    await getPool().query(
-        `INSERT INTO receptionists (user_id, shop_id, shift_id) VALUES ($1, $2, $3)`,
-        [receptionist.id, shopId, shift.rows[0].id]
-    );
+    await getPool().query(`INSERT INTO receptionists (user_id, shop_id, shift_id) VALUES ($1, $2, $3)`, [
+        receptionist.id,
+        shopId,
+        shift.rows[0].id,
+    ]);
     createdReceptionistIds.push(receptionist.id);
     return receptionist;
 };
@@ -84,13 +82,15 @@ const registerClient = async () => {
         lastName: 'User',
         phone: generateUniquePhone(),
         email,
-        password: 'password123'
+        password: 'password123',
+        birthDate: '1990-01-01',
+        gender: 'other',
     });
 
     return {
         id: response.body.data.user.id,
         email,
-        token: response.body.data.token as string
+        token: response.body.data.token as string,
     };
 };
 

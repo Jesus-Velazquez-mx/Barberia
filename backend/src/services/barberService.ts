@@ -1,10 +1,16 @@
 import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 import { decodeToken } from './jwtTokenService.js';
 import { canUpdateBarberProfile, canDeleteBarber } from './userPermissions.js';
-import { getBarberById, updateBarberProfileById, softDeleteBarberById } from '../repositories/barberRepository.js';
+import {
+    getBarberById,
+    updateBarberProfileById,
+    softDeleteBarberById,
+    getActiveBarbersByShop,
+} from '../repositories/barberRepository.js';
 import { isUserActive } from '../repositories/userRepository.js';
+import { getShopById } from '../repositories/shopRepository.js';
 import type { BarberResponse } from '../types/dto/barberResponse.interface.js';
-import { toBarberResponse } from '../utils/userMapper.js';
+import { toBarberResponse } from '../utils/barberMapper.js';
 
 export interface UpdateBarberRequest {
     id: string;
@@ -30,7 +36,7 @@ const updateBarber = async (target: UpdateBarberRequest, token: string): Promise
     const updated = await updateBarberProfileById({
         id: target.id,
         bio: target.bio,
-        isAcceptingBookings: target.isAcceptingBookings
+        isAcceptingBookings: target.isAcceptingBookings,
     });
 
     return toBarberResponse(updated);
@@ -62,4 +68,16 @@ const deleteBarber = async (targetId: string, token: string): Promise<void> => {
     await softDeleteBarberById(targetId);
 };
 
-export { updateBarber, deleteBarber };
+const listActiveBarbersByShop = async (shopId: string) => {
+    // 1. Verificamos que la sucursal exista
+    const shop = await getShopById(shopId);
+    if (!shop) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Shop not found');
+    }
+
+    // 2. Traemos los barberos elegibles de esa sucursal
+    const barbers = await getActiveBarbersByShop(shopId);
+    return barbers.map(toBarberResponse);
+};
+
+export { updateBarber, deleteBarber, listActiveBarbersByShop };

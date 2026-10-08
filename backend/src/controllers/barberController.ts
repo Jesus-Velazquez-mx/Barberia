@@ -3,27 +3,34 @@ import type { BarberResponse } from '../types/dto/barberResponse.interface.js';
 import type { ApiHandler } from '../utils/apiResponse.js';
 import { sendFail, sendInternalServerError, sendSuccess, sendValidationError } from '../utils/apiResponse.js';
 import { ApiError } from '../errors/ApiError.js';
-import { updateBarber, deleteBarber } from '../services/barberService.js';
+import { updateBarber, deleteBarber, listActiveBarbersByShop } from '../services/barberService.js';
 import { extractBearerFromHeader } from '../utils/headerHandling.js';
 
 // Token indicates the user performing the operation,
 // while the barber object is the operation target
 const updateBarberSchema = z.object({
-    barber: z.object({
-        id: z.uuid(),
-        bio: z.string().max(2000).optional(),
-        isAcceptingBookings: z.boolean().optional(),
-    }).refine((data) => data.bio !== undefined || data.isAcceptingBookings !== undefined, {
-        message: 'At least one of bio or isAcceptingBookings must be provided'
-    }),
-    token: z.jwt()
+    barber: z
+        .object({
+            id: z.uuid(),
+            bio: z.string().max(2000).optional(),
+            isAcceptingBookings: z.boolean().optional(),
+        })
+        .refine((data) => data.bio !== undefined || data.isAcceptingBookings !== undefined, {
+            message: 'At least one of bio or isAcceptingBookings must be provided',
+        }),
+    token: z.jwt(),
 });
 
 // El token indica el usuario que autoriza y realiza la acción,
 // mientras que el id especifica el barbero objetivo que será eliminado
 const deleteBarberSchema = z.object({
     id: z.uuid(),
-    token: z.jwt()
+    token: z.jwt(),
+});
+
+// Validación del ID en los parámetros de la ruta
+const getBarbersByShopSchema = z.object({
+    id: z.uuid('Invalid shop ID format'),
 });
 
 export const update: ApiHandler<BarberResponse> = async (req, res) => {
@@ -45,9 +52,9 @@ export const update: ApiHandler<BarberResponse> = async (req, res) => {
             return;
         }
 
-        sendInternalServerError({res, error: [String(error)]});
+        sendInternalServerError({ res, error: [String(error)] });
     }
-}
+};
 
 export const remove: ApiHandler<void> = async (req, res) => {
     try {
@@ -70,4 +77,23 @@ export const remove: ApiHandler<void> = async (req, res) => {
 
         sendInternalServerError({ res, error: [String(error)] });
     }
-}
+};
+
+export const listByShop: ApiHandler<BarberResponse[]> = async (req, res) => {
+    try {
+        const validParams = getBarbersByShopSchema.parse({ id: req.params.id });
+        const result = await listActiveBarbersByShop(validParams.id);
+
+        sendSuccess({ res, data: result, message: 'Barbers retrieved successfully' });
+    } catch (error: unknown) {
+        if (error instanceof ZodError) {
+            sendValidationError({ res, error });
+            return;
+        }
+        if (error instanceof ApiError) {
+            sendFail({ res, message: error.message, status: error.code });
+            return;
+        }
+        sendInternalServerError({ res, error: [String(error)] });
+    }
+};

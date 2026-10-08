@@ -8,17 +8,16 @@ const NAV_LINKS = [
   { label: 'Sobre Nosotros', href: '#sobre-nosotros' },
   { label: 'Personal', href: '#personal' },
   { label: 'Galería', href: '#galeria' },
-  { label: 'Ubicación y Contacto', href: '#ubicacion' },
+  { label: 'Ubicación y Contacto', href: '#ubicacion' }
 ];
 
 const SOCIALS = [
   { label: 'Facebook', Icon: FacebookIcon, href: '#' },
   { label: 'WhatsApp', Icon: WhatsAppIcon, href: '#' },
-  { label: 'Instagram', Icon: InstagramIcon, href: '#' },
+  { label: 'Instagram', Icon: InstagramIcon, href: '#' }
 ];
 
-const linkHover =
-  'transition-colors duration-200 hover:text-[var(--accent)] hover:underline hover:underline-offset-4';
+const linkHover = 'transition-colors duration-200 hover:text-[var(--accent)] hover:underline hover:underline-offset-4';
 
 export function Footer() {
   return (
@@ -47,9 +46,7 @@ export function Footer() {
 
         {/* Navegación */}
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--accent)]">
-            Navegación
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--accent)]">Navegación</p>
           <ul className="mt-3 flex flex-col gap-2.5 text-sm text-neutral-300">
             {NAV_LINKS.map((link) => (
               <li key={link.label}>
@@ -63,9 +60,7 @@ export function Footer() {
 
         {/* Horarios */}
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--accent)]">
-            Horarios
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--accent)]">Horarios</p>
           <p className="mt-3 text-sm font-semibold text-white">Lunes a Domingo</p>
           <p className="mt-1 text-sm text-neutral-400">10:00 AM - 8:00 PM</p>
           <a href="#ubicacion" className={`mt-1 inline-block text-sm text-[var(--accent)] ${linkHover}`}>
@@ -75,12 +70,8 @@ export function Footer() {
 
         {/* Reserva tu cita */}
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--accent)]">
-            Reserva tu cita
-          </p>
-          <p className="mt-3 text-sm text-neutral-400">
-            Atención personalizada con nuestros barberos.
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--accent)]">Reserva tu cita</p>
+          <p className="mt-3 text-sm text-neutral-400">Atención personalizada con nuestros barberos.</p>
           <Link
             to="/login"
             className="mt-4 inline-block rounded-lg bg-[var(--accent)] px-6 py-2.5 text-sm font-semibold text-[#141414] transition-all duration-200 hover:bg-[#B8924A] hover:shadow-[0_0_16px_rgba(210,172,102,0.55)]"

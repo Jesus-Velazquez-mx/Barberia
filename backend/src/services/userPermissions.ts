@@ -35,12 +35,10 @@ export const canUpdateManagerTitle = (performer: UserIdentity, targetId: string)
  * PUT /barber: only managers may update a barber's profile (bio/is_accepting_bookings).
  * Barbers have no user account and can never be the performer, so no target check is needed.
  */
-export const canUpdateBarberProfile = (performer: UserIdentity): boolean =>
-    performer.role === 'manager';
+export const canUpdateBarberProfile = (performer: UserIdentity): boolean => performer.role === 'manager';
 
 /**
  * DELETE /barbers/:id: only managers may soft-delete a barber. Same rule as
  * canUpdateBarberProfile, kept as its own named permission for clarity.
  */
-export const canDeleteBarber = (performer: UserIdentity): boolean =>
-    performer.role === 'manager';
+export const canDeleteBarber = (performer: UserIdentity): boolean => performer.role === 'manager';

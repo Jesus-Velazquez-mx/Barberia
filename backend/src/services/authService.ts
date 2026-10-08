@@ -7,8 +7,6 @@ import { signToken } from './jwtTokenService.js';
 import { toUserResponse, toClientProfile } from '../utils/userMapper.js';
 import { getUserProfile } from './userService.js';
 
-
-
 // Interfaces para tipar los datos de entrada en lugar de usar 'any'
 export interface LoginInput {
     email: string;
@@ -21,6 +19,8 @@ export interface RegisterInput {
     phone?: string;
     email: string;
     password: string;
+    birthDate: Date;
+    gender: string;
 }
 
 /**
@@ -52,7 +52,7 @@ export const loginUser = async (data: LoginInput): Promise<AuthResponse> => {
     // Devuelve los datos del usuario sin el hash de la contraseña
     return {
         user: { ...toUserResponse(user), profile },
-        token: signToken(user)
+        token: signToken(user),
     };
 };
 
@@ -71,12 +71,14 @@ export const registerUser = async (data: RegisterInput): Promise<AuthResponse> =
         first_name: data.firstName,
         last_name: data.lastName,
         phone: data.phone || null,
-        role: 'client' as UserRole
+        role: 'client' as UserRole,
+        birth_date: data.birthDate,
+        gender: data.gender,
     });
 
     // Devuelve los datos del usuario recién creado sin el hash de la contraseña
     return {
         user: { ...toUserResponse(newUser), profile: toClientProfile(newClient) },
-        token: signToken(newUser)
+        token: signToken(newUser),
     };
 };

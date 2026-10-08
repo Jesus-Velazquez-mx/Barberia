@@ -15,10 +15,7 @@ export interface UpdateManagerInput {
 export const getManagerByUserId = async (userId: string): Promise<Manager | null> => {
     const pool = db.getPool();
 
-    const result = await pool.query(
-        `SELECT user_id, title, deleted_at FROM managers WHERE user_id = $1`,
-        [userId]
-    );
+    const result = await pool.query(`SELECT user_id, title, deleted_at FROM managers WHERE user_id = $1`, [userId]);
 
     return result.rows.length ? result.rows[0] : null;
 };

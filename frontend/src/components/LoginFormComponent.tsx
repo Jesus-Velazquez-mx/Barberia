@@ -20,7 +20,7 @@ export function LoginForm({
   emailError,
   passwordError,
   serverError,
-  isSubmitting,
+  isSubmitting
 }: LoginFormProps) {
   return (
     <form className="flex w-full flex-col gap-5" onSubmit={onSubmit} noValidate>

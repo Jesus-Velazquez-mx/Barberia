@@ -11,6 +11,8 @@ export interface CreateUserInput {
     password_hash: string;
     first_name: string;
     last_name: string;
+    birth_date: Date;
+    gender: string;
 }
 
 export interface UpdateUserInput {
@@ -20,6 +22,8 @@ export interface UpdateUserInput {
     password?: string;
     firstName?: string;
     lastName?: string;
+    birthDate?: Date;
+    gender?: string;
 }
 
 /**
@@ -30,7 +34,7 @@ export const getUserByEmail = async (email: string): Promise<User | null> => {
 
     const query = `
         SELECT u.id, u.role, u.email, u.phone, u.password_hash, u.first_name, u.last_name,
-               u.created_at, u.updated_at
+               u.birth_date, u.gender, u.created_at, u.updated_at
         FROM users u
         WHERE u.email = $1
     `;
@@ -90,29 +94,22 @@ export const createNewUser = async (userData: CreateUserInput): Promise<{ user: 
         // 1. Verifica si el usuario ya existe para evitar duplicados
         const checkQuery = `SELECT id FROM users WHERE email = $1`;
         const checkResult = await client.query(checkQuery, [userData.email]);
-        
+
         if (checkResult.rows.length > 0) {
             throw new ApiError(ApiErrorCode.USER_ALREADY_EXISTS, 'Email is already registered'); // Dispara el rollback
         }
 
-        const { email, role, phone, password_hash, first_name, last_name } = userData;
+        const { email, role, phone, password_hash, first_name, last_name, birth_date, gender } = userData;
 
         // 2. Crea el usuario devolviendo las columnas específicas
         const insertQuery = `
-            INSERT INTO users (role, email, phone, password_hash, first_name, last_name)
-            VALUES ($1, $2, $3, $4, $5, $6)
-            RETURNING id, role, email, phone, password_hash, first_name, last_name, created_at, updated_at
+            INSERT INTO users (role, email, phone, password_hash, first_name, last_name, birth_date, gender)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            RETURNING id, role, email, phone, password_hash, first_name, last_name, birth_date, gender, created_at, updated_at
         `;
-        
-        const values = [
-            role, 
-            email, 
-            phone, 
-            password_hash, 
-            first_name, 
-            last_name
-        ];
-        
+
+        const values = [role, email, phone, password_hash, first_name, last_name, birth_date, gender];
+
         const result = await client.query(insertQuery, values);
         const newUser: User = result.rows[0];
 
@@ -153,13 +150,19 @@ export const updateUserById = async (fields: UpdateUserInput): Promise<User> => 
 
         // 2. Verifica que el correo/teléfono, si se están cambiando, no estén en uso por otro usuario
         if (fields.email !== undefined) {
-            const emailCheck = await client.query('SELECT id FROM users WHERE email = $1 AND id <> $2', [fields.email, fields.id]);
+            const emailCheck = await client.query('SELECT id FROM users WHERE email = $1 AND id <> $2', [
+                fields.email,
+                fields.id,
+            ]);
             if (emailCheck.rows.length > 0) {
                 throw new ApiError(ApiErrorCode.USER_ALREADY_EXISTS, 'Email is already registered');
             }
         }
         if (fields.phone !== undefined) {
-            const phoneCheck = await client.query('SELECT id FROM users WHERE phone = $1 AND id <> $2', [fields.phone, fields.id]);
+            const phoneCheck = await client.query('SELECT id FROM users WHERE phone = $1 AND id <> $2', [
+                fields.phone,
+                fields.id,
+            ]);
             if (phoneCheck.rows.length > 0) {
                 throw new ApiError(ApiErrorCode.USER_ALREADY_EXISTS, 'Phone is already registered');
             }
@@ -176,6 +179,8 @@ export const updateUserById = async (fields: UpdateUserInput): Promise<User> => 
             ['password', 'password_hash'],
             ['firstName', 'first_name'],
             ['lastName', 'last_name'],
+            ['birthDate', 'birth_date'],
+            ['gender', 'gender'],
         ];
 
         for (const [field, column] of columnByField) {
@@ -195,7 +200,7 @@ export const updateUserById = async (fields: UpdateUserInput): Promise<User> => 
         const updateQuery = `
             UPDATE users SET ${setClauses.join(', ')}
             WHERE id = $${values.length}
-            RETURNING id, role, email, phone, password_hash, first_name, last_name, created_at, updated_at
+            RETURNING id, role, email, phone, password_hash, first_name, last_name, birth_date, gender, created_at, updated_at
         `;
 
         const result = await client.query(updateQuery, values);
@@ -212,7 +217,7 @@ export const updateUserById = async (fields: UpdateUserInput): Promise<User> => 
 
 /**
  * Elimina físicamente a un cliente.
- * Utiliza una transacción para borrar explícitamente el registro de 'clients' 
+ * Utiliza una transacción para borrar explícitamente el registro de 'clients'
  * y luego el de 'users'.
  */
 export const hardDeleteClient = async (id: string): Promise<void> => {
@@ -227,7 +232,7 @@ export const hardDeleteClient = async (id: string): Promise<void> => {
 
         // 2. Borra el registro principal de la tabla 'users'
         const result = await client.query('DELETE FROM users WHERE id = $1', [id]);
-        
+
         // Verifica si realmente se eliminó algún registro en users
         if (result.rowCount === 0) {
             throw new ApiError(ApiErrorCode.NOT_FOUND, 'User not found');

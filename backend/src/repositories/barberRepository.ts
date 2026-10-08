@@ -17,7 +17,7 @@ export const getBarberById = async (id: string): Promise<Barber | null> => {
 
     const result = await pool.query(
         `SELECT id, first_name, last_name, email, phone, shop_id, shift_id, bio,
-                is_accepting_bookings, deleted_at, created_at, updated_at
+                is_accepting_bookings, birth_date, gender, deleted_at, created_at, updated_at
          FROM barbers WHERE id = $1`,
         [id]
     );
@@ -86,10 +86,7 @@ export const softDeleteBarberById = async (id: string): Promise<void> => {
 
         await client.query('SELECT id FROM barbers WHERE id = $1 FOR UPDATE', [id]);
 
-        await client.query(
-            `UPDATE barbers SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL`,
-            [id]
-        );
+        await client.query(`UPDATE barbers SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL`, [id]);
 
         await client.query('COMMIT');
     } catch (error) {
@@ -98,4 +95,22 @@ export const softDeleteBarberById = async (id: string): Promise<void> => {
     } finally {
         client.release();
     }
+};
+
+/**
+ * Obtiene los barberos de una sucursal específica que están activos y aceptan reservas.
+ * Se excluyen barberos dados de baja lógicamente y los que tienen is_accepting_bookings = false.
+ */
+export const getActiveBarbersByShop = async (shopId: string) => {
+    const pool = db.getPool();
+    const query = `
+        SELECT id, first_name, last_name, email, phone, shop_id, shift_id, bio, 
+               is_accepting_bookings, created_at, updated_at
+        FROM barbers 
+        WHERE shop_id = $1 
+          AND deleted_at IS NULL 
+          AND is_accepting_bookings = true
+    `;
+    const result = await pool.query(query, [shopId]);
+    return result.rows;
 };

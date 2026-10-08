@@ -1,5 +1,5 @@
 import { z, ZodError } from 'zod';
-import { LoginInput, loginUser, RegisterInput, registerUser } from '../services/authService.js';
+import { type LoginInput, loginUser, type RegisterInput, registerUser } from '../services/authService.js';
 import type { ApiHandler } from '../utils/apiResponse.js';
 import { sendSuccess, sendFail, sendValidationError, sendInternalServerError } from '../utils/apiResponse.js';
 import type { AuthResponse } from '../types/dto/authResponse.interface.js';
@@ -7,7 +7,7 @@ import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 
 const loginSchema: z.ZodType<LoginInput> = z.object({
     email: z.email(),
-    password: z.string().min(1)
+    password: z.string().min(1),
 });
 
 const registerSchema: z.ZodType<RegisterInput> = z.object({
@@ -15,7 +15,9 @@ const registerSchema: z.ZodType<RegisterInput> = z.object({
     lastName: z.string().min(2),
     phone: z.string().max(10).optional(),
     email: z.email(),
-    password: z.string().min(6)
+    password: z.string().min(6),
+    birthDate: z.coerce.date(),
+    gender: z.string(),
 });
 
 /**
@@ -35,7 +37,7 @@ export const login: ApiHandler<AuthResponse> = async (req, res) => {
     } catch (error: unknown) {
         // Maneja los errores de validación generados por Zod
         if (error instanceof ZodError) {
-            sendValidationError({ res, error })
+            sendValidationError({ res, error });
             return;
         }
 
@@ -67,7 +69,7 @@ export const register: ApiHandler<AuthResponse> = async (req, res) => {
     } catch (error: unknown) {
         // Maneja los errores de validación generados por Zod
         if (error instanceof ZodError) {
-            sendValidationError({ res, error })
+            sendValidationError({ res, error });
             return;
         }
 

@@ -8,7 +8,7 @@ const { connectDB, closeDB, getPool } = connection;
 // Configuración de una instancia de Express aislada para las pruebas
 const app = express();
 app.use(express.json());
-app.use('/api', router); 
+app.use('/api', router);
 
 // Arreglo para rastrear los correos creados y borrarlos al finalizar los tests
 const createdEmails: string[] = [];
@@ -37,15 +37,15 @@ afterAll(async () => {
     if (createdEmails.length > 0) {
         // Busca todos los usuarios generados en la prueba actual
         const usersRes = await pool.query('SELECT id FROM users WHERE email = ANY($1)', [createdEmails]);
-        const userIds = usersRes.rows.map(row => row.id);
+        const userIds = usersRes.rows.map((row) => row.id);
 
         if (userIds.length > 0) {
             // Limpieza exacta en orden jerárquico inverso para no violar las restricciones RESTRICT de las llaves foráneas
             await pool.query('DELETE FROM receptionists WHERE user_id = ANY($1)', [userIds]);
             await pool.query('DELETE FROM shops WHERE manager_id = ANY($1)', [userIds]); // Las tiendas deben borrarse antes que el mánager
             await pool.query('DELETE FROM managers WHERE user_id = ANY($1)', [userIds]);
-            await pool.query('DELETE FROM clients WHERE user_id = ANY($1)', [userIds]);  // Borra los clientes generados por defecto en el registro
-            
+            await pool.query('DELETE FROM clients WHERE user_id = ANY($1)', [userIds]); // Borra los clientes generados por defecto en el registro
+
             // Finalmente borra el registro principal de la tabla users
             await pool.query('DELETE FROM users WHERE id = ANY($1)', [userIds]);
         }
@@ -66,7 +66,9 @@ describe('Pruebas de eliminación de usuarios por roles', () => {
             lastName: 'User',
             phone: generateUniquePhone(),
             email: email,
-            password: testPassword
+            password: testPassword,
+            birthDate: '1990-01-01',
+            gender: 'other',
         });
 
         if (!registerResponse.body || !registerResponse.body.data) {
@@ -77,7 +79,7 @@ describe('Pruebas de eliminación de usuarios por roles', () => {
 
         // Paso 2: Ejecutar la petición DELETE mandando el token JWT en el header
         const deleteResponse = await request(app)
-            .delete(`/api/users/${user.id}`) 
+            .delete(`/api/users/${user.id}`)
             .set('Authorization', `Bearer ${token}`);
 
         expect(deleteResponse.statusCode).toBe(200);
@@ -97,7 +99,9 @@ describe('Pruebas de eliminación de usuarios por roles', () => {
             lastName: 'Admin',
             phone: generateUniquePhone(),
             email: email,
-            password: testPassword
+            password: testPassword,
+            birthDate: '1990-01-01',
+            gender: 'other',
         });
 
         if (!registerResponse.body || !registerResponse.body.data) {
@@ -109,7 +113,7 @@ describe('Pruebas de eliminación de usuarios por roles', () => {
 
         // Paso 2: Promover el usuario a mánager forzando la actualización en la BD
         await pool.query("UPDATE users SET role = 'manager' WHERE id = $1", [user.id]);
-        await pool.query("INSERT INTO managers (user_id) VALUES ($1)", [user.id]);
+        await pool.query('INSERT INTO managers (user_id) VALUES ($1)', [user.id]);
 
         // Paso 3: Ejecutar la petición de borrado
         const deleteResponse = await request(app)
@@ -140,7 +144,9 @@ describe('Pruebas de eliminación de usuarios por roles', () => {
             lastName: 'Manager',
             phone: generateUniquePhone(),
             email: actorEmail,
-            password: testPassword
+            password: testPassword,
+            birthDate: '1990-01-01',
+            gender: 'other',
         });
 
         if (!registerActorResponse.body || !registerActorResponse.body.data) {
@@ -148,15 +154,15 @@ describe('Pruebas de eliminación de usuarios por roles', () => {
         }
 
         const actor = registerActorResponse.body.data;
-        
+
         // Promover Actor a Mánager en la BD
         await pool.query("UPDATE users SET role = 'manager' WHERE id = $1", [actor.user.id]);
-        await pool.query("INSERT INTO managers (user_id) VALUES ($1)", [actor.user.id]);
+        await pool.query('INSERT INTO managers (user_id) VALUES ($1)', [actor.user.id]);
 
         // OBTENER UN NUEVO TOKEN ACTUALIZADO PARA EL ACTOR
         const loginActorResponse = await request(app).post('/api/auth/login').send({
             email: actorEmail,
-            password: testPassword
+            password: testPassword,
         });
         const validActorToken = loginActorResponse.body.data.token;
 
@@ -169,18 +175,22 @@ describe('Pruebas de eliminación de usuarios por roles', () => {
             lastName: 'Manager',
             phone: generateUniquePhone(),
             email: targetEmail,
-            password: testPassword
+            password: testPassword,
+            birthDate: '1990-01-01',
+            gender: 'other',
         });
 
         if (!registerTargetResponse.body || !registerTargetResponse.body.data) {
-            throw new Error(`Fallo en el registro del Target. Respuesta: ${JSON.stringify(registerTargetResponse.body)}`);
+            throw new Error(
+                `Fallo en el registro del Target. Respuesta: ${JSON.stringify(registerTargetResponse.body)}`
+            );
         }
 
         const target = registerTargetResponse.body.data;
 
         // Promover Target a Mánager en la BD
         await pool.query("UPDATE users SET role = 'manager' WHERE id = $1", [target.user.id]);
-        await pool.query("INSERT INTO managers (user_id) VALUES ($1)", [target.user.id]);
+        await pool.query('INSERT INTO managers (user_id) VALUES ($1)', [target.user.id]);
 
         // 3. Ejecutar la petición usando el token ACTUALIZADO del Mánager 1
         const deleteResponse = await request(app)

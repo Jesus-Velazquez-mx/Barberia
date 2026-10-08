@@ -16,7 +16,8 @@ const findAll = async (): Promise<Test[]> => {
 };
 
 /* Inserta un nuevo registro en la tabla TEST */
-const create = async (idTest: number, fieldTest: string): Promise<number | null> => { // rowCount es del tipo number | null
+const create = async (idTest: number, fieldTest: string): Promise<number | null> => {
+    // rowCount es del tipo number | null
     const pool = getPool();
 
     const sqlCrearTest = 'INSERT INTO TEST (id_test, field_test) VALUES ($1, $2)';

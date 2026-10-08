@@ -7,12 +7,14 @@ interface InputFieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string;
   error?: string;
   registerProps: UseFormRegisterReturn;
+  /** Contenido posicionado al extremo derecho del input (p. ej. un botón de calendario) */
+  trailing?: React.ReactNode;
 }
 
 const BASE_INPUT_CLASSES =
   'w-full box-border rounded-lg border bg-[#121212] p-[10px] text-[13px] font-semibold text-white placeholder:text-[#a0a0a0] focus:outline-none';
 
-export function InputField({ label, error, registerProps, id, type, ...rest }: InputFieldProps) {
+export function InputField({ label, error, registerProps, trailing, id, type, ...rest }: InputFieldProps) {
   const [showPassword, setShowPassword] = useState(false);
   const isPassword = type === 'password';
   const inputType = isPassword ? (showPassword ? 'text' : 'password') : type;
@@ -23,7 +25,7 @@ export function InputField({ label, error, registerProps, id, type, ...rest }: I
 
   return (
     <div className="flex w-full flex-col items-start gap-2">
-      <label htmlFor={id} className="w-full text-left text-[0.9rem] font-semibold text-[var(--labels)]">
+      <label htmlFor={id} className="w-full text-left text-[0.9rem] font-semibold text-(--labels)">
         {label}
       </label>
 
@@ -31,16 +33,18 @@ export function InputField({ label, error, registerProps, id, type, ...rest }: I
         <input
           id={id}
           type={inputType}
-          className={`${BASE_INPUT_CLASSES} ${borderClasses} ${isPassword ? 'pr-10' : ''}`}
+          className={`${BASE_INPUT_CLASSES} ${borderClasses} ${isPassword || trailing ? 'pr-10' : ''}`}
           {...registerProps}
           {...rest}
         />
+
+        {trailing}
 
         {isPassword && (
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-[10px] top-1/2 flex -translate-y-1/2 items-center border-none bg-transparent p-0 cursor-pointer"
+            className="absolute right-2.5 top-1/2 flex -translate-y-1/2 items-center border-none bg-transparent p-0 cursor-pointer"
             tabIndex={-1}
           >
             <img
