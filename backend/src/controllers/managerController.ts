@@ -13,7 +13,7 @@ const updateManagerSchema = z.object({
         id: z.uuid(),
         title: z.string().min(1).max(100),
     }),
-    token: z.jwt()
+    token: z.jwt(),
 });
 
 export const update: ApiHandler<ManagerResponse> = async (req, res) => {
@@ -37,4 +37,4 @@ export const update: ApiHandler<ManagerResponse> = async (req, res) => {
 
         sendInternalServerError({ res, error: [String(error)] });
     }
-}
+};

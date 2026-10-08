@@ -1,4 +1,9 @@
-import { canUpdateUser, canUpdateManagerTitle, canUpdateBarberProfile, canDeleteBarber } from '../src/services/userPermissions.js';
+import {
+    canUpdateUser,
+    canUpdateManagerTitle,
+    canUpdateBarberProfile,
+    canDeleteBarber,
+} from '../src/services/userPermissions.js';
 import type { UserRole } from '../src/types/entities/user.interface.js';
 
 const A = 'a0000000-0000-0000-0000-000000000001';

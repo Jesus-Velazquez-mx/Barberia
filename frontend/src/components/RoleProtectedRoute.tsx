@@ -4,24 +4,24 @@ import type { UserRole } from '../types/auth';
 import { getHomeRouteByRole } from '../utils/roleRedirect';
 
 interface RoleProtectedRouteProps {
-    allowedRole: UserRole;
+  allowedRole: UserRole;
 }
 
 export function RoleProtectedRoute({ allowedRole }: RoleProtectedRouteProps) {
-    const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
 
-    if (isLoading) {
-        return null;
-    }
+  if (isLoading) {
+    return null;
+  }
 
-    if (!isAuthenticated) {
-        return <Navigate to="/login" replace />;
-    }
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
 
-    if (user?.role !== allowedRole) {
-        return <Navigate to={getHomeRouteByRole(user?.role as UserRole)} replace />;
-    }
+  if (user?.role !== allowedRole) {
+    return <Navigate to={getHomeRouteByRole(user?.role as UserRole)} replace />;
+  }
 
-    /* Que pueda acceder a la ruta protegida */
-    return <Outlet />;
+  /* Que pueda acceder a la ruta protegida */
+  return <Outlet />;
 }

@@ -27,7 +27,7 @@ export function ChangePasswordModalContainer({ isOpen, onClose }: ChangePassword
     handleSubmit,
     watch,
     reset,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting }
   } = useForm<ChangePasswordFormValues>();
 
   const handleClose = () => {
@@ -76,11 +76,11 @@ export function ChangePasswordModalContainer({ isOpen, onClose }: ChangePassword
         onSubmit={handleFormSubmit}
         newPasswordRegister={register('newPassword', {
           required: REQUIRED_MESSAGE,
-          pattern: { value: PASSWORD_POLICY_REGEX, message: POLICY_MESSAGE },
+          pattern: { value: PASSWORD_POLICY_REGEX, message: POLICY_MESSAGE }
         })}
         confirmNewPasswordRegister={register('confirmNewPassword', {
           required: REQUIRED_MESSAGE,
-          validate: (value) => value === watch('newPassword') || 'La confirmación no coincide con la nueva contraseña.',
+          validate: (value) => value === watch('newPassword') || 'La confirmación no coincide con la nueva contraseña.'
         })}
         newPasswordError={errors.newPassword}
         confirmNewPasswordError={errors.confirmNewPassword}

@@ -25,7 +25,7 @@ export function ChangePasswordModal({
   newPasswordError,
   confirmNewPasswordError,
   serverError,
-  isSubmitting,
+  isSubmitting
 }: ChangePasswordModalProps) {
   return (
     <Modal isOpen={isOpen} onClose={onClose}>

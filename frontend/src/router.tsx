@@ -16,18 +16,18 @@ const router = createBrowserRouter([
     children: [
       {
         path: '/client/home',
-        element: <ClientHomePage />,
+        element: <ClientHomePage />
       },
       {
         path: '/profile',
-        element: <EditUserPage />,
+        element: <EditUserPage />
       },
       {
         // Temporal: UI de reserva con datos mock
         path: '/client/booking-scratch',
-        element: <BookingScratchPage />,
-      },
-    ],
+        element: <BookingScratchPage />
+      }
+    ]
   },
   {
     /* Barber */
@@ -35,9 +35,9 @@ const router = createBrowserRouter([
     children: [
       {
         path: '/barber/home',
-        element: <PlaceholderPage title="barber" />,
-      },
-    ],
+        element: <PlaceholderPage title="barber" />
+      }
+    ]
   },
   {
     /* Manager */
@@ -45,9 +45,9 @@ const router = createBrowserRouter([
     children: [
       {
         path: '/manager/home',
-        element: <PlaceholderPage title="manager" />,
-      },
-    ],
+        element: <PlaceholderPage title="manager" />
+      }
+    ]
   },
   {
     /* Receptionist */
@@ -55,9 +55,9 @@ const router = createBrowserRouter([
     children: [
       {
         path: '/receptionist/home',
-        element: <PlaceholderPage title="receptionist" />,
-      },
-    ],
+        element: <PlaceholderPage title="receptionist" />
+      }
+    ]
   },
   {
     /* Public */
@@ -65,18 +65,18 @@ const router = createBrowserRouter([
     children: [
       {
         path: '/',
-        element: <LandingPage />,
+        element: <LandingPage />
       },
       {
         path: '/login',
-        element: <LoginPage />,
+        element: <LoginPage />
       },
       {
         path: '/register',
-        element: <RegisterPage />,
-      },
-    ],
-  },
+        element: <RegisterPage />
+      }
+    ]
+  }
 ]);
 
 export default router;

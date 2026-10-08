@@ -22,7 +22,7 @@ export function DeleteAccountModal({
   confirmationWord,
   isConfirmed,
   serverError,
-  isSubmitting,
+  isSubmitting
 }: DeleteAccountModalProps) {
   return (
     <Modal isOpen={isOpen} onClose={onClose} className="!border-red-500/60 text-center">

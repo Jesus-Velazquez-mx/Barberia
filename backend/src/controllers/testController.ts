@@ -1,9 +1,8 @@
 //import type { Request, Response } from 'express';
 import testService from '../services/testService.js';
 import type { ApiHandler } from '../utils/apiResponse.js';
-import { sendSuccess, sendFail, sendInternalServerError } from '../utils/apiResponse.js';
+import { sendSuccess, sendInternalServerError } from '../utils/apiResponse.js';
 import type { Test } from '../types/entities/test.interface.js';
-
 
 /* Esto es una prueba. En el proyecto real, los datos se validarán con Zod */
 
@@ -16,7 +15,7 @@ const listarTest: ApiHandler<Test[]> = async (req, res) => {
 
         sendSuccess({ res: res, data: resultado, message: 'Test obtenidos correctamente' });
     } catch (err) {
-        sendInternalServerError({res, error: [String(err)]});
+        sendInternalServerError({ res, error: [String(err)] });
     }
 };
 
@@ -31,7 +30,7 @@ const crearTest: ApiHandler<number> = async (req, res) => {
         /* rowCount regresa el número de filas afectadas */
         sendSuccess({ res: res, data: rowCount ?? 0, message: 'Test creado correctamente', status: 201 });
     } catch (err) {
-        sendInternalServerError({res, error: [String(err)]});
+        sendInternalServerError({ res, error: [String(err)] });
     }
 };
 
@@ -47,7 +46,7 @@ const editarTest: ApiHandler<Test> = async (req, res) => {
 
         sendSuccess({ res: res, data: { id_test, field_test }, message: 'Test actualizado correctamente' });
     } catch (err) {
-        sendInternalServerError({res, error: [String(err)]});
+        sendInternalServerError({ res, error: [String(err)] });
     }
 };
 
@@ -63,7 +62,7 @@ const eliminarTest: ApiHandler<number> = async (req, res) => {
 
         sendSuccess({ res: res, data: rowCount ?? 0, message: 'Test eliminado correctamente' });
     } catch (err) {
-        sendInternalServerError({res, error: [String(err)]});
+        sendInternalServerError({ res, error: [String(err)] });
     }
 };
 

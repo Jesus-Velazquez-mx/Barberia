@@ -8,7 +8,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getHomeRouteByRole } from '../utils/roleRedirect';
 
-
 export function LoginFormContainer() {
   const navigate = useNavigate();
   /* Importación nombrada para evitar choques de nombres */
@@ -18,7 +17,7 @@ export function LoginFormContainer() {
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting }
   } = useForm<LoginFormValues>();
 
   const onSubmit = async (values: LoginFormValues) => {
@@ -33,8 +32,7 @@ export function LoginFormContainer() {
 
       if (error instanceof ApiError) {
         errorMessage =
-          error.status === 404 ||
-            error.message === 'User not found or invalid credentials'
+          error.status === 404 || error.message === 'User not found or invalid credentials'
             ? 'Correo o contraseña incorrectos'
             : error.message;
       }
@@ -50,11 +48,11 @@ export function LoginFormContainer() {
         required: 'El correo es obligatorio.',
         pattern: {
           value: /\S+@\S+\.\S+/,
-          message: 'El correo no es válido.',
-        },
+          message: 'El correo no es válido.'
+        }
       })}
       passwordRegister={register('password', {
-        required: 'La contraseña es obligatoria.',
+        required: 'La contraseña es obligatoria.'
       })}
       emailError={errors.email}
       passwordError={errors.password}

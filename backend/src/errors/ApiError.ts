@@ -5,7 +5,7 @@ export enum ApiErrorCode {
     NOT_FOUND = 404,
     INVALID_CREDENTIALS = 404,
     USER_ALREADY_EXISTS = 409,
-    INVALID_INPUT = 422
+    INVALID_INPUT = 422,
 }
 
 export class ApiError extends Error {
@@ -20,6 +20,6 @@ export class ApiError extends Error {
 }
 
 export type ValidationError = {
-    field: string,
-    detail: string,
-}
+    field: string;
+    detail: string;
+};

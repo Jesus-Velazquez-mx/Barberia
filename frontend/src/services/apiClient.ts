@@ -10,8 +10,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
             ...options,
             headers: {
                 'Content-Type': 'application/json',
-                ...options.headers,
-            },
+                ...options.headers
+            }
         });
     } catch {
         throw new ApiError('Network error — could not reach the API', 0);
@@ -34,5 +34,5 @@ export const apiClient = {
         request<T>(path, { ...init, method: 'POST', body: JSON.stringify(body) }),
     put: <T>(path: string, body?: unknown, init?: RequestInit) =>
         request<T>(path, { ...init, method: 'PUT', body: JSON.stringify(body) }),
-    delete: <T>(path: string, init?: RequestInit) => request<T>(path, { ...init, method: 'DELETE' }),
+    delete: <T>(path: string, init?: RequestInit) => request<T>(path, { ...init, method: 'DELETE' })
 };

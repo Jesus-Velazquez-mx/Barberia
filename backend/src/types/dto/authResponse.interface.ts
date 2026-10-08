@@ -6,9 +6,7 @@ import type { ClientResponse } from './clientResponse.interface.js';
 // userId is omitted: it's redundant once nested inside `user`, which already has `id`.
 // Barbers never authenticate, so BarberResponse never appears here.
 export type ProfileResponse =
-    | Omit<ManagerResponse, 'userId'>
-    | Omit<ReceptionistResponse, 'userId'>
-    | Omit<ClientResponse, 'userId'>;
+    Omit<ManagerResponse, 'userId'> | Omit<ReceptionistResponse, 'userId'> | Omit<ClientResponse, 'userId'>;
 
 export interface AuthResponse {
     user: UserResponse & { profile: ProfileResponse };

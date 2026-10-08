@@ -7,7 +7,7 @@ import type { ShopResponse } from '../types/dto/shopResponse.interface.js';
 
 // Validación del ID en los parámetros de la ruta
 const getShopByIdSchema = z.object({
-    id: z.uuid('Invalid shop ID format')
+    id: z.uuid('Invalid shop ID format'),
 });
 
 export const list: ApiHandler<ShopResponse[]> = async (req, res) => {
@@ -27,7 +27,7 @@ export const getById: ApiHandler<ShopResponse> = async (req, res) => {
     try {
         const validParams = getShopByIdSchema.parse({ id: req.params.id });
         const result = await getActiveShopById(validParams.id);
-        
+
         sendSuccess({ res, data: result, message: 'Shop retrieved successfully' });
     } catch (error: unknown) {
         if (error instanceof ZodError) {
