@@ -10,10 +10,11 @@ import {
   MOCK_SCENARIOS,
   MOCK_SCENARIO_ERROR,
   buildMockSlots,
+  getMockDayAvailability,
   type MockScenario,
 } from '../mocks/bookingMock';
 import type { AvailableSlot, DayAvailability } from '../types/availabilityType';
-import { formatSlotTime, getAvailabilityLevel } from '../utils/availabilityUtils';
+import { formatSlotTime } from '../utils/availabilityUtils';
 
 interface BookingScratchFormValues {
   shopId: string;
@@ -23,8 +24,7 @@ interface BookingScratchFormValues {
 
 const pad = (value: number) => String(value).padStart(2, '0');
 
-// Fecha local de hoy en YYYY-MM-DD. No usar toISOString() directo: devuelve la
-// fecha UTC y por la noche (hora de México) ya marcaría "mañana" como mínimo.
+// Fecha local de hoy en YYYY-MM-DD.
 const getTodayLocal = (): string => {
   const now = new Date();
   const offsetMs = now.getTimezoneOffset() * 60_000;
@@ -89,8 +89,7 @@ export function BookingScratchContainer() {
     for (let day = 1; day <= daysInMonth; day++) {
       const dateKey = `${view.year}-${pad(view.month + 1)}-${pad(day)}`;
       if (dateKey < today || dateKey > maxDate) continue;
-      const slotsCount = buildMockSlots(shopId, serviceIds, dateKey).length;
-      result[dateKey] = { level: getAvailabilityLevel(slotsCount), slotsCount };
+      result[dateKey] = getMockDayAvailability(shopId, serviceIds, dateKey);
     }
     return result;
   }, [shopId, serviceKey, view, today, maxDate]);

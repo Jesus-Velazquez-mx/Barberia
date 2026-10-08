@@ -8,10 +8,14 @@ export interface AvailableSlot {
   startTime: string;
 }
 
-export type AvailabilityLevel = 'high' | 'medium' | 'low' | 'none';
+/* Estado de un día en el calendario:
+   - available: hay al menos un horario libre
+   - full: es día laborable pero ya no quedan horarios (cupo lleno)
+   - closed: día inhábil (la sucursal no trabaja) */
+export type DayStatus = 'available' | 'full' | 'closed';
 
-/* Resumen por día para colorear el calendario */
+/* Resumen por día para pintar el calendario */
 export interface DayAvailability {
-  level: AvailabilityLevel;
+  status: DayStatus;
   slotsCount: number;
 }

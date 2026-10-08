@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import type { AvailabilityLevel, DayAvailability } from '../types/availabilityType';
+import type { DayAvailability, DayStatus } from '../types/availabilityType';
 
 interface AvailabilityCalendarProps {
   year: number;
@@ -20,32 +20,35 @@ interface AvailabilityCalendarProps {
 
 const WEEKDAYS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
-/* Paleta: oro a bronce. Alta = oro claro, media = dorado oscuro de la marca,
-   baja = bronce tenue. `cell` pinta el día en el calendario y `swatch` el
-   cuadrito de la leyenda. Para cambiar la paleta solo hay que editar este bloque. */
-const LEVEL_COLORS: Record<AvailabilityLevel, { cell: string; swatch: string }> = {
-  high: {
-    cell: 'border-[#E6C77F] bg-[#E6C77F] text-[#141414]',
-    swatch: 'border border-[#E6C77F] bg-[#E6C77F]',
+/* Colores del calendario. `cell` pinta el día y `swatch` el cuadrito de la leyenda.
+   Los días pasados, fuera de la ventana de reserva e inhábiles usan el estilo `closed`. */
+const STATUS_COLORS: Record<DayStatus, { cell: string; swatch: string }> = {
+  // Paleta fría: turquesa (#2DB5A3) = disponible, rosa (#C4608F) = no disponible
+  available: {
+    cell: 'border-[#2DB5A3]/55 bg-[#2DB5A3]/20 text-[#8EE0D4]',
+    swatch: 'border border-[#2DB5A3]/55 bg-[#2DB5A3]/20',
   },
-  medium: {
-    cell: 'border-[#B8924A] bg-[#B8924A] text-[#141414]',
-    swatch: 'border border-[#B8924A] bg-[#B8924A]',
+  full: {
+    cell: 'border-[#C4608F]/55 bg-[#C4608F]/20 text-[#E6A3C2]',
+    swatch: 'border border-[#C4608F]/55 bg-[#C4608F]/20',
   },
-  low: {
-    cell: 'border-[#8B652D]/70 bg-[#8B652D]/30 text-[#C99A52]',
-    swatch: 'border border-[#8B652D]/70 bg-[#8B652D]/30',
-  },
-  none: {
-    cell: 'border-[#4d4d4d] bg-[#1a1a1a] text-neutral-500',
-    swatch: 'border border-[#4d4d4d] bg-[#1a1a1a]',
+  closed: {
+    cell: 'border-dashed border-[#2c2c2c] bg-[repeating-linear-gradient(45deg,#0f0f0f_0_6px,#171717_6px_12px)] text-neutral-600',
+    swatch:
+      'border border-dashed border-[#3a3a3a] bg-[repeating-linear-gradient(45deg,#0f0f0f_0_6px,#171717_6px_12px)]',
   },
 };
 
-const LEGEND: { level: AvailabilityLevel; label: string }[] = [
-  { level: 'high', label: 'Alta disponibilidad' },
-  { level: 'medium', label: 'Media disponibilidad' },
-  { level: 'low', label: 'Baja disponibilidad' },
+const SELECTED_COLORS = {
+  cell: 'border-[var(--accent)] bg-[var(--accent)] text-[#141414]',
+  swatch: 'bg-[var(--accent)]',
+};
+
+const LEGEND: { label: string; swatch: string }[] = [
+  { label: 'Disponible', swatch: STATUS_COLORS.available.swatch },
+  { label: 'No disponible', swatch: STATUS_COLORS.full.swatch },
+  { label: 'Día inhábil', swatch: STATUS_COLORS.closed.swatch },
+  { label: 'Seleccionado', swatch: SELECTED_COLORS.swatch },
 ];
 
 const pad = (value: number) => String(value).padStart(2, '0');
@@ -109,34 +112,54 @@ export function AvailabilityCalendar({
           const dateKey = `${year}-${pad(month + 1)}-${pad(day)}`;
           const info = availabilityByDate[dateKey];
           const isOutOfRange = dateKey < today || dateKey > maxDate;
-          const level: AvailabilityLevel = isOutOfRange || !info ? 'none' : info.level;
-          const isDisabled = level === 'none';
-          const isSelected = dateKey === selectedDate;
+          const status: DayStatus = isOutOfRange || !info ? 'closed' : info.status;
+          const isClickable = status === 'available';
+          const isSelected = isClickable && dateKey === selectedDate;
+          const isToday = dateKey === today;
           const slotsCount = info?.slotsCount ?? 0;
           const dayLabel = new Date(year, month, day).toLocaleDateString('es-MX', { day: 'numeric', month: 'long' });
+
+          const ariaStatus = isClickable
+            ? `${slotsCount} horarios disponibles`
+            : status === 'full'
+              ? 'no disponible'
+              : 'no reservable';
 
           return (
             <button
               key={dateKey}
               type="button"
-              disabled={isDisabled}
+              disabled={!isClickable}
               aria-pressed={isSelected}
-              aria-label={isDisabled ? `${dayLabel}, sin disponibilidad` : `${dayLabel}, ${slotsCount} horarios disponibles`}
+              aria-label={`${dayLabel}${isToday ? ' (hoy)' : ''}, ${ariaStatus}`}
               onClick={() => onSelectDay(dateKey)}
-              className={`flex min-h-16 flex-col items-start justify-between rounded-lg border p-1.5 text-left transition sm:min-h-20 sm:p-2 ${LEVEL_COLORS[level].cell} ${
-                isDisabled ? 'cursor-not-allowed' : 'cursor-pointer hover:ring-1 hover:ring-white/60'
-              } ${isOutOfRange ? 'opacity-40' : ''} ${isSelected ? 'ring-2 ring-white ring-offset-2 ring-offset-[#1a1a1a]' : ''}`}
+              className={`relative flex min-h-16 flex-col items-start justify-between rounded-lg border p-1.5 text-left transition sm:min-h-20 sm:p-2 ${
+                isSelected ? SELECTED_COLORS.cell : STATUS_COLORS[status].cell
+              } ${isClickable ? 'cursor-pointer hover:ring-1 hover:ring-white/60' : 'cursor-not-allowed'}`}
             >
-              <span className={`text-sm font-semibold ${dateKey === today ? 'underline decoration-2 underline-offset-4' : ''}`}>{day}</span>
+              <span className="text-sm font-semibold">{day}</span>
+              {isClickable && (
+                <span className="hidden text-xs opacity-80 sm:inline">
+                  {slotsCount} {slotsCount === 1 ? 'horario' : 'horarios'}
+                </span>
+              )}
+              {isToday && (
+                <span
+                  aria-hidden="true"
+                  className={`absolute right-2 top-2 h-2 w-2 rounded-full ${
+                    isSelected ? 'bg-[#141414]' : 'bg-[var(--accent)]'
+                  }`}
+                />
+              )}
             </button>
           );
         })}
       </div>
 
       <div className="mt-5 flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-        {LEGEND.map(({ level, label }) => (
-          <div key={level} className="flex items-center gap-2 text-sm text-[var(--text-h)]">
-            <span className={`inline-block h-4 w-4 rounded-sm ${LEVEL_COLORS[level].swatch}`} aria-hidden="true" />
+        {LEGEND.map(({ label, swatch }) => (
+          <div key={label} className="flex items-center gap-2 text-sm text-[var(--text-h)]">
+            <span className={`inline-block h-5 w-5 rounded-md ${swatch}`} aria-hidden="true" />
             {label}
           </div>
         ))}

@@ -1,7 +1,7 @@
 // Datos mock SOLO para la UI de selección (sin backend).
 // Se elimina cuando exista el contenedor real del flujo de reserva.
 import type { SelectOption } from '../components/SelectFieldComponent';
-import type { AvailableSlot } from '../types/availabilityType';
+import type { AvailableSlot, DayAvailability } from '../types/availabilityType';
 
 export const MOCK_SHOPS: SelectOption[] = [
   { value: 'shop-1', label: 'Mr. Barber Sendero' },
@@ -41,6 +41,13 @@ const SLOT_TIMES = Array.from({ length: 21 }, (_, i) => {
   return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
 });
 
+// Feriados mock (además de los domingos) para mostrar días inhábiles
+const MOCK_HOLIDAYS = ['2026-11-02', '2026-11-16', '2026-12-12', '2026-12-25', '2027-01-01'];
+
+/* Día inhábil: domingo o feriado */
+export const isMockClosedDay = (date: string): boolean =>
+  new Date(`${date}T00:00:00`).getDay() === 0 || MOCK_HOLIDAYS.includes(date);
+
 const hashString = (value: string): number => {
   let hash = 0;
   for (const char of value) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
@@ -48,12 +55,13 @@ const hashString = (value: string): number => {
 };
 
 /* Genera horarios de forma determinista según sucursal/servicios/fecha, para que
-   el calendario muestre días con distinta disponibilidad. Domingos cerrado.
+   el calendario muestre días con distinta disponibilidad. Días inhábiles sin horarios.
    Más servicios en la cita = más tiempo requerido = menos horarios libres. */
 export function buildMockSlots(shopId: string, serviceIds: string[], date: string): AvailableSlot[] {
-  if (new Date(`${date}T00:00:00`).getDay() === 0) return [];
+  if (isMockClosedDay(date)) return [];
 
   const seed = hashString(`${shopId}|${[...serviceIds].sort().join(',')}|${date}`);
+  if ((seed >>> 5) % 6 === 0) return []; // cupo lleno: 1 de cada 6 días laborables
   const total = SLOT_TIMES.length * MOCK_BARBERS.length;
   const count = Math.floor((seed % 25) / Math.max(serviceIds.length, 1));
   const offset = (seed >>> 3) % total;
@@ -72,4 +80,11 @@ export function buildMockSlots(shopId: string, serviceIds: string[], date: strin
         startTime: `${date}T${SLOT_TIMES[Math.floor(index / MOCK_BARBERS.length)]}:00`,
       };
     });
+}
+
+/* Estado del día para el calendario: inhábil, cupo lleno o disponible */
+export function getMockDayAvailability(shopId: string, serviceIds: string[], date: string): DayAvailability {
+  if (isMockClosedDay(date)) return { status: 'closed', slotsCount: 0 };
+  const slotsCount = buildMockSlots(shopId, serviceIds, date).length;
+  return { status: slotsCount > 0 ? 'available' : 'full', slotsCount };
 }
