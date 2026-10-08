@@ -25,7 +25,7 @@ export function SlotPickerModal({
   error,
   selectedSlot,
   onSelectSlot,
-  onConfirm,
+  onConfirm
 }: SlotPickerModalProps) {
   return (
     <Modal isOpen={isOpen} onClose={onClose}>

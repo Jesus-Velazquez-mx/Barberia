@@ -26,29 +26,28 @@ const STATUS_COLORS: Record<DayStatus, { cell: string; swatch: string }> = {
   // Paleta fría: turquesa (#2DB5A3) = disponible, rosa (#C4608F) = no disponible
   available: {
     cell: 'border-[#2DB5A3]/55 bg-[#2DB5A3]/20 text-[#8EE0D4]',
-    swatch: 'border border-[#2DB5A3]/55 bg-[#2DB5A3]/20',
+    swatch: 'border border-[#2DB5A3]/55 bg-[#2DB5A3]/20'
   },
   full: {
     cell: 'border-[#C4608F]/55 bg-[#C4608F]/20 text-[#E6A3C2]',
-    swatch: 'border border-[#C4608F]/55 bg-[#C4608F]/20',
+    swatch: 'border border-[#C4608F]/55 bg-[#C4608F]/20'
   },
   closed: {
     cell: 'border-dashed border-[#2c2c2c] bg-[repeating-linear-gradient(45deg,#0f0f0f_0_6px,#171717_6px_12px)] text-neutral-600',
-    swatch:
-      'border border-dashed border-[#3a3a3a] bg-[repeating-linear-gradient(45deg,#0f0f0f_0_6px,#171717_6px_12px)]',
-  },
+    swatch: 'border border-dashed border-[#3a3a3a] bg-[repeating-linear-gradient(45deg,#0f0f0f_0_6px,#171717_6px_12px)]'
+  }
 };
 
 const SELECTED_COLORS = {
   cell: 'border-[var(--accent)] bg-[var(--accent)] text-[#141414]',
-  swatch: 'bg-[var(--accent)]',
+  swatch: 'bg-[var(--accent)]'
 };
 
 const LEGEND: { label: string; swatch: string }[] = [
   { label: 'Disponible', swatch: STATUS_COLORS.available.swatch },
   { label: 'No disponible', swatch: STATUS_COLORS.full.swatch },
   { label: 'Día inhábil', swatch: STATUS_COLORS.closed.swatch },
-  { label: 'Seleccionado', swatch: SELECTED_COLORS.swatch },
+  { label: 'Seleccionado', swatch: SELECTED_COLORS.swatch }
 ];
 
 const pad = (value: number) => String(value).padStart(2, '0');
@@ -64,7 +63,7 @@ export function AvailabilityCalendar({
   canGoNext,
   onPrevMonth,
   onNextMonth,
-  onSelectDay,
+  onSelectDay
 }: AvailabilityCalendarProps) {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   // Semana que empieza en lunes

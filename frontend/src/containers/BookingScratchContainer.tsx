@@ -11,7 +11,7 @@ import {
   MOCK_SCENARIO_ERROR,
   buildMockSlots,
   getMockDayAvailability,
-  type MockScenario,
+  type MockScenario
 } from '../mocks/bookingMock';
 import type { AvailableSlot, DayAvailability } from '../types/availabilityType';
 import { formatSlotTime } from '../utils/availabilityUtils';
@@ -54,7 +54,7 @@ export function BookingScratchContainer() {
   const [confirmedSlot, setConfirmedSlot] = useState<AvailableSlot | null>(null);
 
   const { register, watch, control } = useForm<BookingScratchFormValues>({
-    defaultValues: { shopId: '', services: [{ serviceId: '' }], scenario: 'data' },
+    defaultValues: { shopId: '', services: [{ serviceId: '' }], scenario: 'data' }
   });
   const { fields, append, remove } = useFieldArray({ control, name: 'services' });
   const { shopId, services, scenario } = watch();
@@ -69,7 +69,7 @@ export function BookingScratchContainer() {
     const takenByOthers = services.filter((_, i) => i !== index).map((s) => s.serviceId);
     return [
       { value: '', label: 'Selecciona un servicio' },
-      ...MOCK_SERVICES.filter((option) => !takenByOthers.includes(option.value)),
+      ...MOCK_SERVICES.filter((option) => !takenByOthers.includes(option.value))
     ];
   };
 
@@ -132,7 +132,7 @@ export function BookingScratchContainer() {
         weekday: 'long',
         day: 'numeric',
         month: 'long',
-        year: 'numeric',
+        year: 'numeric'
       })
     : '';
 
