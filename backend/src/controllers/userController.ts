@@ -12,10 +12,12 @@ const updateUserSchema = z.object({
     user: z.object({
         id: z.uuid(),
         email: z.email().optional(),
-        phone: z.string().length(10).optional(),
+        phone: z.string().length(10).nullable().optional(),
         password: z.string().min(6).optional(),
         firstName: z.string().min(2).optional(),
         lastName: z.string().min(2).optional(),
+        birthDate: z.coerce.date().optional(),
+        gender: z.string().optional()
     }) satisfies z.ZodType<UpdateUserInput>,
     token: z.jwt()
 })

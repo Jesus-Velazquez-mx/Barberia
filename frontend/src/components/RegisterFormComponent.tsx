@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import type { FieldError, UseFormRegisterReturn } from 'react-hook-form';
 import { InputField } from './InputFieldComponent';
+import { DateField } from './DateFieldComponent';
 import { Button } from './ButtonComponent';
 
 interface RegisterFormProps {
@@ -11,12 +12,14 @@ interface RegisterFormProps {
   emailRegister: UseFormRegisterReturn;
   passwordRegister: UseFormRegisterReturn;
   confirmPasswordRegister: UseFormRegisterReturn;
+  birthDateRegister: UseFormRegisterReturn;
   nameError?: FieldError;
   lastnameError?: FieldError;
   phoneError?: FieldError;
   emailError?: FieldError;
   passwordError?: FieldError;
   confirmPasswordError?: FieldError;
+  birthDateError?: FieldError;
   serverError: string;
   isSubmitting: boolean;
 }
@@ -29,12 +32,14 @@ export function RegisterForm({
   emailRegister,
   passwordRegister,
   confirmPasswordRegister,
+  birthDateRegister,
   nameError,
   lastnameError,
   phoneError,
   emailError,
   passwordError,
   confirmPasswordError,
+  birthDateError,
   serverError,
   isSubmitting,
 }: RegisterFormProps) {
@@ -65,6 +70,15 @@ export function RegisterForm({
         placeholder="6671234567"
         error={phoneError?.message}
         registerProps={phoneRegister}
+      />
+
+      <DateField
+        id="birthDate"
+        label="Fecha de nacimiento *"
+        min="1900-01-01"
+        max={new Date().toISOString().slice(0, 10)}
+        error={birthDateError?.message}
+        registerProps={birthDateRegister}
       />
 
       <InputField
@@ -108,7 +122,7 @@ export function RegisterForm({
         ¿Ya tienes cuenta con nosotros?{' '}
         <Link
           to="/login"
-          className="font-[Inter,sans-serif] font-bold text-[var(--accent)] no-underline hover:text-[var(--accent_secondary)] hover:underline"
+          className="font-[Inter,sans-serif] font-bold text-(--accent) no-underline hover:text-(--accent_secondary) hover:underline"
         >
           Inicia sesión
         </Link>

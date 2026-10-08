@@ -66,7 +66,9 @@ describe('Pruebas de eliminación de usuarios por roles', () => {
             lastName: 'User',
             phone: generateUniquePhone(),
             email: email,
-            password: testPassword
+            password: testPassword,
+            birthDate: '1990-01-01',
+            gender: 'other'
         });
 
         if (!registerResponse.body || !registerResponse.body.data) {
@@ -97,7 +99,9 @@ describe('Pruebas de eliminación de usuarios por roles', () => {
             lastName: 'Admin',
             phone: generateUniquePhone(),
             email: email,
-            password: testPassword
+            password: testPassword,
+            birthDate: '1990-01-01',
+            gender: 'other'
         });
 
         if (!registerResponse.body || !registerResponse.body.data) {
@@ -140,7 +144,9 @@ describe('Pruebas de eliminación de usuarios por roles', () => {
             lastName: 'Manager',
             phone: generateUniquePhone(),
             email: actorEmail,
-            password: testPassword
+            password: testPassword,
+            birthDate: '1990-01-01',
+            gender: 'other'
         });
 
         if (!registerActorResponse.body || !registerActorResponse.body.data) {
@@ -169,7 +175,9 @@ describe('Pruebas de eliminación de usuarios por roles', () => {
             lastName: 'Manager',
             phone: generateUniquePhone(),
             email: targetEmail,
-            password: testPassword
+            password: testPassword,
+            birthDate: '1990-01-01',
+            gender: 'other'
         });
 
         if (!registerTargetResponse.body || !registerTargetResponse.body.data) {

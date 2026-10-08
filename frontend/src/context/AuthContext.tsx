@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import type { AuthContextValue, LoginResponse, User } from '../types/auth';
+import { isStoredUserValid } from '../utils/userValidation';
 
 /* Se usa la interfaz para definir los "values" del contexto*/
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -17,9 +18,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const storedToken = localStorage.getItem('token');
         /* User actual */
         const storedUser = localStorage.getItem('user');
-        if (storedToken && storedUser) {
+
+        let parsedUser: unknown;
+        try {
+            parsedUser = storedUser ? JSON.parse(storedUser) : null;
+        } catch {
+            parsedUser = null;
+        }
+
+        if (storedToken && isStoredUserValid(parsedUser)) {
             setToken(storedToken); // asignar token
-            setUser(JSON.parse(storedUser)); // asignar user
+            setUser(parsedUser); // asignar user
+        } else if (storedToken || storedUser) {
+            setToken(null);
+            setUser(null);
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
         }
         setIsLoading(false);
     }, []);

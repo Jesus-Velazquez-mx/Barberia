@@ -11,6 +11,9 @@ export interface RegisterFormValues {
     password: string;
     /* Solo se usa para validar en el front; nunca se envía al backend. */
     confirmPassword: string;
+    /* Formato YYYY-MM-DD, tal como lo produce un <input type="date"> */
+    birthDate: string;
+    gender: string;
 }
 
 export interface User {
@@ -19,6 +22,8 @@ export interface User {
     phone: string | null;
     firstName: string;
     lastName: string;
+    birthDate: string;
+    gender: string;
     role: UserRole;
     createdAt: string;
     updatedAt: string;
@@ -67,8 +72,10 @@ export interface AuthContextValue {
 export interface EditUserFormValues {
     firstName: string;
     lastName: string;
-    phone?: string;
+    phone?: string | null;
     email: string;
+    birthDate?: string;
+    gender?: string;
 }
 
 export interface ChangePasswordFormValues {
@@ -84,3 +91,4 @@ export interface DeleteAccountFormValues {
 
 /* Roles de usuarios */
 export type UserRole = 'client' | 'barber' | 'manager' | 'receptionist';
+

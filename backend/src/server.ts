@@ -6,9 +6,8 @@ import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
 import cors from 'cors';
 import { sendFail } from './utils/apiResponse.js';
-import { loadConfig } from './config/globalConfig.js';
+import globalConfig from './config/globalConfig.js';
 
-loadConfig();
 const { connectDB } = connection;
 
 const app = express();
@@ -42,9 +41,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 let pool: Pool | undefined;
 /* Permitir solicitudes desde el dominio específico del front */
 
-const allowedOrigin = process.env.ENV === 'local'
-    ? 'http://localhost:5173'
-    : 'https://barberia.erickdh.com';
+const allowedOrigin = globalConfig.FRONTEND_URL;
 
 app.use(
     cors({
