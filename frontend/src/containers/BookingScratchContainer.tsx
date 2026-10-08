@@ -137,101 +137,107 @@ export function BookingScratchContainer() {
     : '';
 
   return (
-    <div className="flex w-full max-w-5xl flex-col gap-6">
-      <div className="flex flex-col gap-5 rounded-xl border border-[#2c2c2c] bg-[#1a1a1a] p-6">
-        <div className="grid gap-5 sm:grid-cols-2">
-          <SelectField
-            id="booking-shop"
-            label="Sucursal"
-            options={SHOP_OPTIONS}
-            registerProps={register('shopId', { onChange: resetSelection })}
-          />
-          <SelectField
-            id="booking-scenario"
-            label="Estado de horarios (demo)"
-            options={MOCK_SCENARIOS}
-            registerProps={register('scenario')}
-          />
-        </div>
+    <div className="flex w-full flex-col gap-6">
+      <div className="flex flex-col items-start gap-6 min-[110rem]:flex-row">
+        {/* Formulario */}
+        <div className='flex flex-col gap-6 min-w-fit w-full max-w-190'>
+          <div className="flex flex-col gap-5 rounded-xl border border-[#2c2c2c] bg-[#1a1a1a] p-6">
+            <div className="grid gap-5 sm:grid-cols-2">
+              <SelectField
+                id="booking-shop"
+                label="Sucursal"
+                options={SHOP_OPTIONS}
+                registerProps={register('shopId', { onChange: resetSelection })}
+              />
+              <SelectField
+                id="booking-scenario"
+                label="Estado de horarios (demo)"
+                options={MOCK_SCENARIOS}
+                registerProps={register('scenario')}
+              />
+            </div>
 
-        <div className="flex flex-col gap-3">
-          {fields.map((field, index) => (
-            <div key={field.id} className="flex items-end gap-3">
-              <div className="flex-1">
-                <SelectField
-                  id={`booking-service-${index}`}
-                  label={fields.length > 1 ? `Servicio ${index + 1}` : 'Servicio'}
-                  options={getServiceOptions(index)}
-                  registerProps={register(`services.${index}.serviceId`, { onChange: resetSelection })}
-                />
-              </div>
-              {index > 0 && (
+            <div className="flex flex-col gap-3">
+              {fields.map((field, index) => (
+                <div key={field.id} className="flex items-end gap-3">
+                  <div className="flex-1">
+                    <SelectField
+                      id={`booking-service-${index}`}
+                      label={fields.length > 1 ? `Servicio ${index + 1}` : 'Servicio'}
+                      options={getServiceOptions(index)}
+                      registerProps={register(`services.${index}.serviceId`, { onChange: resetSelection })}
+                    />
+                  </div>
+                  {index > 0 && (
+                    <button
+                      type="button"
+                      aria-label={`Quitar servicio ${index + 1}`}
+                      onClick={() => {
+                        remove(index);
+                        resetSelection();
+                      }}
+                      className="flex h-12.5 w-12.5 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-white/10 bg-transparent text-(--text) transition-colors hover:border-(--accent) hover:text-(--accent)"
+                    >
+                      <X size={18} />
+                    </button>
+                  )}
+                </div>
+              ))}
+
+              {services.length < MOCK_SERVICES.length && (
                 <button
                   type="button"
-                  aria-label={`Quitar servicio ${index + 1}`}
-                  onClick={() => {
-                    remove(index);
-                    resetSelection();
-                  }}
-                  className="flex h-[50px] w-[50px] shrink-0 cursor-pointer items-center justify-center rounded-lg border border-white/10 bg-transparent text-[var(--text)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                  disabled={!canAddService}
+                  onClick={() => append({ serviceId: '' })}
+                  className="flex w-fit cursor-pointer items-center gap-2 rounded-lg border border-(--accent) bg-transparent px-4 py-2 text-sm font-semibold text-(--accent) transition-colors hover:bg-(--accent)/10 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                 >
-                  <X size={18} />
+                  <Plus size={16} />
+                  Añadir otro servicio
                 </button>
               )}
             </div>
-          ))}
-
-          {services.length < MOCK_SERVICES.length && (
-            <button
-              type="button"
-              disabled={!canAddService}
-              onClick={() => append({ serviceId: '' })}
-              className="flex w-fit cursor-pointer items-center gap-2 rounded-lg border border-[var(--accent)] bg-transparent px-4 py-2 text-sm font-semibold text-[var(--accent)] transition-colors hover:bg-[var(--accent)]/10 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
-            >
-              <Plus size={16} />
-              Añadir otro servicio
-            </button>
-          )}
+          </div>
+          {/* Resumen de la selección */}
+          <div className="rounded-xl border border-[#2c2c2c] bg-[#1a1a1a] p-6 text-sm text-(--text)">
+            <p className="m-0">
+              Sucursal: <span className="text-(--text-h)">{shopLabel ?? '—'}</span>
+            </p>
+            <p className="m-0">
+              {selectedServiceIds.length > 1 ? 'Servicios' : 'Servicio'}:{' '}
+              <span className="text-(--text-h)">{serviceLabels || '—'}</span>
+            </p>
+            <p className="m-0">
+              Fecha: <span className="text-(--text-h)">{selectedDate ?? '—'}</span>
+            </p>
+            <p className="m-0">
+              Horario:{' '}
+              <span className="text-(--text-h)">
+                {confirmedSlot ? `${formatSlotTime(confirmedSlot.startTime)} · ${confirmedSlot.barberName}` : '—'}
+              </span>
+            </p>
+          </div>
         </div>
-      </div>
 
-      {shopId && selectedServiceIds.length > 0 ? (
-        <AvailabilityCalendar
-          year={view.year}
-          month={view.month}
-          today={today}
-          maxDate={maxDate}
-          availabilityByDate={availabilityByDate}
-          selectedDate={selectedDate}
-          canGoPrev={viewIndex > currentMonthIndex}
-          canGoNext={viewIndex < maxMonthIndex}
-          onPrevMonth={() => handleMonthChange(-1)}
-          onNextMonth={() => handleMonthChange(1)}
-          onSelectDay={handleSelectDay}
-        />
-      ) : (
-        <p className="m-0 rounded-xl border border-dashed border-white/15 px-6 py-12 text-center text-[var(--text)]">
-          Selecciona una sucursal y al menos un servicio para ver la disponibilidad.
-        </p>
-      )}
-
-      <div className="rounded-xl border border-[#2c2c2c] bg-[#1a1a1a] p-6 text-sm text-[var(--text)]">
-        <p className="m-0">
-          Sucursal: <span className="text-[var(--text-h)]">{shopLabel ?? '—'}</span>
-        </p>
-        <p className="m-0">
-          {selectedServiceIds.length > 1 ? 'Servicios' : 'Servicio'}:{' '}
-          <span className="text-[var(--text-h)]">{serviceLabels || '—'}</span>
-        </p>
-        <p className="m-0">
-          Fecha: <span className="text-[var(--text-h)]">{selectedDate ?? '—'}</span>
-        </p>
-        <p className="m-0">
-          Horario:{' '}
-          <span className="text-[var(--text-h)]">
-            {confirmedSlot ? `${formatSlotTime(confirmedSlot.startTime)} · ${confirmedSlot.barberName}` : '—'}
-          </span>
-        </p>
+        {/* Calendario */}
+        {shopId && selectedServiceIds.length > 0 ? (
+          <AvailabilityCalendar
+            year={view.year}
+            month={view.month}
+            today={today}
+            maxDate={maxDate}
+            availabilityByDate={availabilityByDate}
+            selectedDate={selectedDate}
+            canGoPrev={viewIndex > currentMonthIndex}
+            canGoNext={viewIndex < maxMonthIndex}
+            onPrevMonth={() => handleMonthChange(-1)}
+            onNextMonth={() => handleMonthChange(1)}
+            onSelectDay={handleSelectDay}
+          />
+        ) : (
+          <p className="m-0 rounded-xl border border-dashed border-white/15 px-6 py-12 text-center text-(--text) min-w-fit w-full max-w-160">
+            Selecciona una sucursal y al menos un servicio para ver la disponibilidad.
+          </p>
+        )}
       </div>
 
       <SlotPickerModal

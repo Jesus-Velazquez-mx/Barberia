@@ -14,7 +14,7 @@ function BookingScratchPage() {
       <DashboardSidebar firstName={user.firstName} />
 
       <main className="flex-1 px-4 pt-20 sm:px-12 lg:py-10">
-        <h1 className="mb-6 text-3xl text-[var(--text-h)]">Reservar cita</h1>
+        <h1 className="mb-6 text-3xl text-(--text-h)">Reservar cita</h1>
         <BookingScratchContainer />
       </main>
     </div>

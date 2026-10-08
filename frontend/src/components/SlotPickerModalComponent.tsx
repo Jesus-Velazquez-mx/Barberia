@@ -34,13 +34,13 @@ export function SlotPickerModal({
           type="button"
           aria-label="Cerrar"
           onClick={onClose}
-          className="absolute right-0 top-0 cursor-pointer border-none bg-transparent text-[var(--text)] hover:text-[var(--accent)]"
+          className="absolute right-0 top-0 cursor-pointer border-none bg-transparent text-(--text) hover:text-(--accent)"
         >
           <X size={20} />
         </button>
 
-        <h2 className="m-0 text-center text-[var(--text-h)]">Horarios disponibles</h2>
-        <p className="mb-6 mt-1 text-center capitalize text-[var(--text)]">{dateLabel}</p>
+        <h2 className="m-0 text-center text-(--text-h)">Horarios disponibles</h2>
+        <p className="mb-6 mt-1 text-center capitalize text-(--text)">{dateLabel}</p>
 
         <AvailableSlots
           slots={slots}
@@ -52,7 +52,7 @@ export function SlotPickerModal({
 
         <Button
           type="button"
-          className="mt-6 w-full disabled:cursor-not-allowed disabled:opacity-50"
+          className="mt-6 w-full disabled:cursor-not-allowed disabled:opacity-50 mb-6"
           disabled={!selectedSlot}
           onClick={onConfirm}
         >

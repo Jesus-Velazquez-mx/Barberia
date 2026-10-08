@@ -51,37 +51,32 @@ export function UserProfile({ user, onEdit, onChangePassword, onDeleteAccount, o
   return (
     <div className="flex flex-col gap-8">
       <header>
-        <h1 className="m-0 font-sans text-3xl font-semibold tracking-normal text-[var(--text-h)]">Mi perfil</h1>
-        <p className="mt-1 text-sm font-semibold text-[var(--text)]">
+        <h1 className="m-0 font-sans text-3xl font-semibold tracking-normal text-(--text-h)">Mi perfil</h1>
+        <p className="mt-1 text-sm font-semibold text-(--text)">
           Gestiona tu información personal y la configuración de tu cuenta.
         </p>
       </header>
 
       <section className="rounded-xl border border-white/10 bg-[#1E1E1E] p-8">
         <div className="flex items-center gap-3 border-b border-white/10 pb-6">
-          <span className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-[#2A2A2A] text-sm text-[var(--accent)]">
+          <span className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-[#2A2A2A] text-sm text-(--accent)">
             {initials}
           </span>
-          <span className="text-2xl font-semibold text-[var(--text-h)]">{user.firstName}</span>
-          <span className="rounded-full border border-[var(--text-h)] bg-white/10 px-4 py-1 text-sm text-[var(--text-h)]">
+          <span className="text-2xl font-semibold text-(--text-h)">{user.firstName}</span>
+          <span className="rounded-full border border-(--text-h) bg-white/10 px-4 py-1 text-sm text-(--text-h)">
             {ROLE_LABELS[user.role]}
           </span>
         </div>
 
-        <div className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-3">
+        <div className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
           <ReadOnlyField label="Nombre Completo" value={`${user.firstName} ${user.lastName}`} />
-          <ReadOnlyField label="Teléfono" value={formatPhone(user.phone)} />
           <ReadOnlyField label="Correo electrónico" value={user.email} />
         </div>
 
-        <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
+        <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-3">
+          <ReadOnlyField label="Teléfono" value={formatPhone(user.phone)} />
           <ReadOnlyField label="Fecha de nacimiento" value={formatBirthDate(user.birthDate)} />
           <ReadOnlyField label="Género" value={GENDER_LABELS[user.gender] ?? user.gender} />
-        </div>
-
-        <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
-          <ReadOnlyField label="Contraseña" value={PASSWORD_MASK} />
-          <ReadOnlyField label="Confirmar Contraseña" value={PASSWORD_MASK} />
         </div>
 
         <div className="mt-6 flex justify-end gap-3">

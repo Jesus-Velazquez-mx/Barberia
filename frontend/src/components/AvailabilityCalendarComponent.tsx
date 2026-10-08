@@ -72,24 +72,24 @@ export function AvailabilityCalendar({
   const monthTitle = `${monthName.charAt(0).toUpperCase()}${monthName.slice(1)} - ${year}`;
 
   return (
-    <div className="rounded-xl border border-[#2c2c2c] bg-[#1a1a1a] p-4 sm:p-6">
+    <div className="rounded-xl border border-[#2c2c2c] bg-[#1a1a1a] p-4 sm:p-6 w-full max-w-190">
       <div className="mb-4 flex items-center justify-between">
         <button
           type="button"
           aria-label="Mes anterior"
           disabled={!canGoPrev}
           onClick={onPrevMonth}
-          className="cursor-pointer rounded-lg border border-white/10 bg-transparent p-2 text-[var(--text-h)] hover:border-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-white/10"
+          className="cursor-pointer rounded-lg border border-white/10 bg-transparent p-2 text-(--text-h) hover:border-(--accent) disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-white/10"
         >
           <ChevronLeft size={20} />
         </button>
-        <h2 className="m-0 text-2xl text-[var(--text-h)]">{monthTitle}</h2>
+        <h2 className="m-0 text-2xl text-(--text-h)">{monthTitle}</h2>
         <button
           type="button"
           aria-label="Mes siguiente"
           disabled={!canGoNext}
           onClick={onNextMonth}
-          className="cursor-pointer rounded-lg border border-white/10 bg-transparent p-2 text-[var(--text-h)] hover:border-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-white/10"
+          className="cursor-pointer rounded-lg border border-white/10 bg-transparent p-2 text-(--text-h) hover:border-(--accent) disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-white/10"
         >
           <ChevronRight size={20} />
         </button>
@@ -97,7 +97,7 @@ export function AvailabilityCalendar({
 
       <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
         {WEEKDAYS.map((weekday) => (
-          <div key={weekday} className="pb-1 text-center text-xs font-semibold uppercase text-[var(--text)]">
+          <div key={weekday} className="pb-1 text-center text-xs font-semibold uppercase text-(--text)">
             {weekday}
           </div>
         ))}
@@ -145,8 +145,8 @@ export function AvailabilityCalendar({
               {isToday && (
                 <span
                   aria-hidden="true"
-                  className={`absolute right-2 top-2 h-2 w-2 rounded-full ${
-                    isSelected ? 'bg-[#141414]' : 'bg-[var(--accent)]'
+                  className={`absolute right-2 top-2 h-3 w-3 rounded-full ${
+                    isSelected ? 'bg-[#141414]' : 'bg-white'
                   }`}
                 />
               )}
@@ -157,7 +157,7 @@ export function AvailabilityCalendar({
 
       <div className="mt-5 flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
         {LEGEND.map(({ label, swatch }) => (
-          <div key={label} className="flex items-center gap-2 text-sm text-[var(--text-h)]">
+          <div key={label} className="flex items-center gap-2 text-sm text-(--text-h)">
             <span className={`inline-block h-5 w-5 rounded-md ${swatch}`} aria-hidden="true" />
             {label}
           </div>
