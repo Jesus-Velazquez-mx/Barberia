@@ -9,7 +9,7 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/server.js",
     "format": "npx prettier . --write",
-    "prettier": "npx prettier . --write",
+    "prettier": "npx prettier . --check",
     "lint": "eslint ."
   },
   "keywords": [],
