@@ -1,4 +1,6 @@
-export const toBarberResponse = (barber: any) => {
+import type { Barber } from '../types/entities/barber.interface.js';
+
+export const toBarberResponse = (barber: Barber) => {
     return {
         id: barber.id,
         firstName: barber.first_name,

@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router } from 'express';
 import { update } from '../controllers/managerController.js';
 
 const router = Router();

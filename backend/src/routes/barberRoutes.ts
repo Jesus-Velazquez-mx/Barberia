@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router } from 'express';
 import { update, remove } from '../controllers/barberController.js';
 
 const router = Router();

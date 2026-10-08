@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router } from 'express';
 import { list, getById } from '../controllers/shopController.js';
 import { listByShop } from '../controllers/barberController.js';
 

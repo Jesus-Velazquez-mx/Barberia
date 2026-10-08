@@ -23,7 +23,7 @@ export const toUserResponse = (user: User): UserResponse => ({
     birthDate: user.birth_date,
     gender: user.gender,
     createdAt: user.created_at,
-    updatedAt: user.updated_at
+    updatedAt: user.updated_at,
 });
 
 export const toBarberResponse = (barber: Barber): BarberResponse => ({
@@ -35,24 +35,24 @@ export const toBarberResponse = (barber: Barber): BarberResponse => ({
     shopId: barber.shop_id,
     shiftId: barber.shift_id,
     bio: barber.bio,
-    isAcceptingBookings: barber.is_accepting_bookings
+    isAcceptingBookings: barber.is_accepting_bookings,
 });
 
 export const toManagerResponse = (manager: Manager): ManagerResponse => ({
     userId: manager.user_id,
-    title: manager.title
+    title: manager.title,
 });
 
 export const toReceptionistResponse = (receptionist: Receptionist): ReceptionistResponse => ({
     userId: receptionist.user_id,
     shopId: receptionist.shop_id,
-    shiftId: receptionist.shift_id
+    shiftId: receptionist.shift_id,
 });
 
 export const toClientResponse = (client: Client): ClientResponse => ({
     userId: client.user_id,
     facialStructureType: client.facial_structure_type,
-    completedServicesCount: client.completed_services_count
+    completedServicesCount: client.completed_services_count,
 });
 
 // The *Profile mappers below are used to nest role data inside `user` in
@@ -60,15 +60,15 @@ export const toClientResponse = (client: Client): ClientResponse => ({
 // There is no toBarberProfile: barbers never authenticate, so they never appear here.
 
 export const toManagerProfile = (manager: Manager): Omit<ManagerResponse, 'userId'> => ({
-    title: manager.title
+    title: manager.title,
 });
 
 export const toReceptionistProfile = (receptionist: Receptionist): Omit<ReceptionistResponse, 'userId'> => ({
     shopId: receptionist.shop_id,
-    shiftId: receptionist.shift_id
+    shiftId: receptionist.shift_id,
 });
 
 export const toClientProfile = (client: Client): Omit<ClientResponse, 'userId'> => ({
     facialStructureType: client.facial_structure_type,
-    completedServicesCount: client.completed_services_count
+    completedServicesCount: client.completed_services_count,
 });

@@ -1,4 +1,3 @@
-
 let ENV, JWT_SECRET, FRONTEND_URL, AI_SERVICE_URL;
 
 const loadConfig = () => {
@@ -15,8 +14,8 @@ const loadConfig = () => {
         ENV,
         JWT_SECRET,
         FRONTEND_URL,
-        AI_SERVICE_URL
+        AI_SERVICE_URL,
     };
-}
+};
 
 export default loadConfig();

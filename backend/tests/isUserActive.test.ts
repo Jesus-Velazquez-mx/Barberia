@@ -32,7 +32,7 @@ const insertManager = async (deletedAt: Date | null = null): Promise<string> => 
     await getPool().query('INSERT INTO managers (user_id, title, deleted_at) VALUES ($1, $2, $3)', [
         userId,
         'Manager',
-        deletedAt
+        deletedAt,
     ]);
     return userId;
 };

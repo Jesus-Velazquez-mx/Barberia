@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { User, UserRole } from '../types/entities/user.interface.js';
+import type { User, UserRole } from '../types/entities/user.interface.js';
 import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 import globalConfig from '../config/globalConfig.js';
 
@@ -10,12 +10,8 @@ export type TokenPayload = jwt.JwtPayload & {
 };
 
 const signToken = (user: User) => {
-    return jwt.sign(
-        { id: user.id, role: user.role, email: user.email },
-        globalConfig.JWT_SECRET,
-        { expiresIn: '8h' }
-    );
-}
+    return jwt.sign({ id: user.id, role: user.role, email: user.email }, globalConfig.JWT_SECRET, { expiresIn: '8h' });
+};
 
 const decodeToken = (token: string): TokenPayload => {
     try {
@@ -26,6 +22,6 @@ const decodeToken = (token: string): TokenPayload => {
         }
         throw error;
     }
-}
+};
 
 export { signToken, decodeToken };

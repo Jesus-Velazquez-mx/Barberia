@@ -25,8 +25,7 @@ const generateUniquePhone = () => {
 
 // Solo se necesitan id/role/email para firmar el token; el resto de campos no
 // se usan (ver src/services/jwtTokenService.ts).
-const mintToken = (id: string, role: UserRole, email: string): string =>
-    signToken({ id, role, email } as User);
+const mintToken = (id: string, role: UserRole, email: string): string => signToken({ id, role, email } as User);
 
 const insertUser = async (role: UserRole): Promise<{ id: string; email: string }> => {
     const email = generateUniqueEmail();

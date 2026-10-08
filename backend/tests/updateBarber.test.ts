@@ -32,8 +32,7 @@ const generateUniqueShopName = () => {
     return `Test Shop ${Date.now()}_${uniqueCounter}`;
 };
 
-const mintToken = (id: string, role: UserRole, email: string): string =>
-    signToken({ id, role, email } as User);
+const mintToken = (id: string, role: UserRole, email: string): string => signToken({ id, role, email } as User);
 
 const insertUser = async (role: UserRole): Promise<{ id: string; email: string }> => {
     const email = generateUniqueEmail();
@@ -53,10 +52,10 @@ const insertManager = async () => {
 };
 
 const insertShop = async (managerId: string): Promise<string> => {
-    const result = await getPool().query(
-        `INSERT INTO shops (name, manager_id) VALUES ($1, $2) RETURNING id`,
-        [generateUniqueShopName(), managerId]
-    );
+    const result = await getPool().query(`INSERT INTO shops (name, manager_id) VALUES ($1, $2) RETURNING id`, [
+        generateUniqueShopName(),
+        managerId,
+    ]);
     const id = result.rows[0].id;
     createdShopIds.push(id);
     return id;
@@ -113,7 +112,7 @@ describe('Pruebas de PUT /api/barbers', () => {
             id: barber.id,
             shopId,
             bio: 'New bio',
-            isAcceptingBookings: false
+            isAcceptingBookings: false,
         });
     });
 
@@ -153,9 +152,7 @@ describe('Pruebas de DELETE /api/barbers/:id', () => {
         const barber = await insertBarber(shopId, 'Bio', true);
         const token = mintToken(manager.id, 'manager', manager.email);
 
-        const response = await request(app)
-            .delete(`/api/barbers/${barber.id}`)
-            .set('Authorization', `Bearer ${token}`);
+        const response = await request(app).delete(`/api/barbers/${barber.id}`).set('Authorization', `Bearer ${token}`);
 
         expect(response.statusCode).toBe(200);
 
@@ -171,9 +168,7 @@ describe('Pruebas de DELETE /api/barbers/:id', () => {
         createdOtherUserIds.push(client.id);
         const token = mintToken(client.id, 'client', client.email);
 
-        const response = await request(app)
-            .delete(`/api/barbers/${barber.id}`)
-            .set('Authorization', `Bearer ${token}`);
+        const response = await request(app).delete(`/api/barbers/${barber.id}`).set('Authorization', `Bearer ${token}`);
 
         expect(response.statusCode).toBe(403);
 
