@@ -42,9 +42,9 @@ export function AvailableSlots({ slots, isLoading, error, selectedSlot, onSelect
   if (slots.length === 0) {
     return (
       <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-white/15 px-4 py-8 text-center">
-        <CalendarX size={32} className="text-[var(--text)]" />
-        <p className="m-0 font-semibold text-[var(--text-h)]">No hay horarios disponibles para esta fecha.</p>
-        <p className="m-0 text-[var(--text)]">Prueba con otro día.</p>
+        <CalendarX size={32} className="text-(--text)" />
+        <p className="m-0 font-semibold text-(--text-h)">No hay horarios disponibles para esta fecha.</p>
+        <p className="m-0 text-(--text)">Prueba con otro día.</p>
       </div>
     );
   }
@@ -61,12 +61,12 @@ export function AvailableSlots({ slots, isLoading, error, selectedSlot, onSelect
               onClick={() => onSelectSlot(slot)}
               className={`flex h-14 w-full cursor-pointer flex-col items-center justify-center rounded-lg border px-1 transition-colors ${
                 isSelected
-                  ? 'border-[var(--accent)] bg-[var(--accent)] text-[#141414]'
-                  : 'border-white/10 bg-[#121212] text-[var(--text-h)] hover:border-[var(--accent)]'
+                  ? 'border-(--accent) bg-(--accent) text-[#141414]'
+                  : 'border-white/10 bg-[#121212] text-(--text-h) hover:border-(--accent)'
               }`}
             >
               <span className="font-semibold">{formatSlotTime(slot.startTime)}</span>
-              <span className={`w-full truncate text-xs ${isSelected ? 'text-[#141414]' : 'text-[var(--text)]'}`}>
+              <span className={`w-full truncate text-xs ${isSelected ? 'text-[#141414]' : 'text-(--text)'}`}>
                 {slot.barberName}
               </span>
             </button>

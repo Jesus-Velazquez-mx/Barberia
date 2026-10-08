@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import request from 'supertest';
 import express from 'express';
 import router from '../src/routes/routes.js';
@@ -28,7 +29,7 @@ describe('Endpoint de Barberos por Sucursal', () => {
     // Contadores para asegurar restricciones UNIQUE de tu BD
     let phoneCounter = 6671000000;
     const getPhone = () => (phoneCounter++).toString();
-    const getEmail = (prefix: string) => `${prefix}_${Date.now()}@mrbarber.test`;
+    const getEmail = (prefix: string) => `${prefix}_${randomUUID()}@mrbarber.test`;
 
     beforeAll(async () => {
         await connectDB();

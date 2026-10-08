@@ -36,7 +36,7 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col gap-2">
       <span className="text-sm text-(--text)">{label}</span>
-      <div className="truncate rounded-lg border border-white/10 bg-[#121212] px-4 py-3 text-base text-[var(--text-h)]">
+      <div className="truncate rounded-lg border border-white/10 bg-[#121212] px-4 py-3 text-base text-(--text-h)">
         {value}
       </div>
     </div>
@@ -81,11 +81,11 @@ export function UserProfile({ user, onEdit, onChangePassword, onDeleteAccount, o
           <Button
             type="button"
             onClick={onChangePassword}
-            className="!h-10 !border !border-solid !border-[var(--accent)] !bg-transparent !px-5 !text-sm !normal-case !text-[var(--accent)]"
+            className="h-10! border! border-solid! border-(--accent)! bg-transparent! px-5! text-sm! normal-case! text-(--accent)!"
           >
             Cambiar Contraseña
           </Button>
-          <Button type="button" onClick={onEdit} className="!h-10 !px-5 !text-sm !normal-case">
+          <Button type="button" onClick={onEdit} className="h-10! px-5! text-sm! normal-case!">
             Actualizar Datos
           </Button>
         </div>
@@ -93,15 +93,15 @@ export function UserProfile({ user, onEdit, onChangePassword, onDeleteAccount, o
 
       <section className="flex flex-col gap-4 rounded-xl border border-white/10 bg-[#1E1E1E] px-8 py-6 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-base font-semibold text-[var(--text-h)]">Cerrar Sesión</p>
-          <p className="mt-1 text-sm font-semibold text-[var(--text)]">
+          <p className="text-base font-semibold text-(--text-h)">Cerrar Sesión</p>
+          <p className="mt-1 text-sm font-semibold text-(--text)">
             Saldrás de tu cuenta en este dispositivo. Podrás volver a iniciar sesión cuando quieras.
           </p>
         </div>
         <button
           type="button"
           onClick={onLogout}
-          className="h-10 shrink-0 cursor-pointer rounded-lg border border-[var(--accent)] bg-transparent px-5 text-sm font-semibold text-[var(--accent)] transition-colors hover:bg-[var(--accent)]/10"
+          className="h-10 shrink-0 cursor-pointer rounded-lg border border-(--accent) bg-transparent px-5 text-sm font-semibold text-(--accent) transition-colors hover:bg-(--accent)/10"
         >
           Cerrar Sesión
         </button>
@@ -110,7 +110,7 @@ export function UserProfile({ user, onEdit, onChangePassword, onDeleteAccount, o
       <section className="flex flex-col gap-4 rounded-xl border border-red-500/20 bg-[#221A1A] px-8 py-6 md:flex-row md:items-center md:justify-between">
         <div>
           <p className="text-base font-semibold text-red-500">Eliminar Cuenta</p>
-          <p className="mt-1 text-sm font-semibold text-[var(--text)]">
+          <p className="mt-1 text-sm font-semibold text-(--text)">
             Una vez eliminada tu cuenta, se perderá tu historial de citas y puntos de lealtad.
           </p>
         </div>
