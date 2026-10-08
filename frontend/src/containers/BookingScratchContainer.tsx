@@ -140,7 +140,7 @@ export function BookingScratchContainer() {
     <div className="flex w-full flex-col gap-6">
       <div className="flex flex-col items-start gap-6 min-[110rem]:flex-row">
         {/* Formulario */}
-        <div className='flex flex-col gap-6 min-w-fit w-full max-w-190'>
+        <div className="flex flex-col gap-6 min-w-fit w-full max-w-190">
           <div className="flex flex-col gap-5 rounded-xl border border-[#2c2c2c] bg-[#1a1a1a] p-6">
             <div className="grid gap-5 sm:grid-cols-2">
               <SelectField

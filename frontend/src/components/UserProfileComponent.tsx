@@ -16,8 +16,6 @@ const ROLE_LABELS: Record<UserRole, string> = {
   receptionist: 'Recepcionista'
 };
 
-const PASSWORD_MASK = '******************';
-
 const GENDER_LABELS: Record<string, string> = {
   female: 'Femenino',
   male: 'Masculino',
@@ -37,7 +35,7 @@ const formatBirthDate = (birthDate: string) => {
 function ReadOnlyField({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-sm text-[var(--text)]">{label}</span>
+      <span className="text-sm text-(--text)">{label}</span>
       <div className="truncate rounded-lg border border-white/10 bg-[#121212] px-4 py-3 text-base text-[var(--text-h)]">
         {value}
       </div>

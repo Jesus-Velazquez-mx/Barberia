@@ -145,9 +145,7 @@ export function AvailabilityCalendar({
               {isToday && (
                 <span
                   aria-hidden="true"
-                  className={`absolute right-2 top-2 h-3 w-3 rounded-full ${
-                    isSelected ? 'bg-[#141414]' : 'bg-white'
-                  }`}
+                  className={`absolute right-2 top-2 h-3 w-3 rounded-full ${isSelected ? 'bg-[#141414]' : 'bg-white'}`}
                 />
               )}
             </button>
