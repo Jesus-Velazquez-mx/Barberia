@@ -43,6 +43,20 @@ export const getUserByEmail = async (email: string): Promise<User | null> => {
     return result.rows.length ? result.rows[0] : null;
 };
 
+export const getUserById = async (id: string): Promise<User | null> => {
+    const pool = db.getPool();
+
+    const query = `
+        SELECT u.id, u.role, u.email, u.phone, u.password_hash, u.first_name, u.last_name,
+               u.birth_date, u.gender, u.created_at, u.updated_at
+        FROM users u
+        WHERE u.id = $1
+    `;
+
+    const result = await pool.query(query, [id]);
+    return result.rows.length ? result.rows[0] : null;
+};
+
 /**
  * Busca únicamente el id y el rol de un usuario. Usado para la comprobación de
  * autorización de updateUserById, que no necesita el resto de las columnas.

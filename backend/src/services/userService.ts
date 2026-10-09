@@ -18,6 +18,19 @@ import type { UserResponse } from '../types/dto/userResponse.interface.js';
 import type { ProfileResponse } from '../types/dto/authResponse.interface.js';
 import { toUserResponse, toManagerProfile, toReceptionistProfile, toClientProfile } from '../utils/userMapper.js';
 
+const calculateAge = (birthDate: Date, currentDate = new Date()): number => {
+    let age = currentDate.getFullYear() - birthDate.getFullYear();
+    const birthdayHasOccurred =
+        currentDate.getMonth() > birthDate.getMonth() ||
+        (currentDate.getMonth() === birthDate.getMonth() && currentDate.getDate() >= birthDate.getDate());
+
+    if (!birthdayHasOccurred) {
+        age -= 1;
+    }
+
+    return age;
+};
+
 /**
  * Actualiza los datos compartidos (tabla users) del usuario objetivo, siempre que
  * el usuario autenticado por el token esté autorizado a hacerlo (ver userPermissions.ts).
@@ -119,4 +132,4 @@ const deleteUserById = async (targetId: string, token: string): Promise<void> =>
     }
 };
 
-export { updateUser, getUserProfile, deleteUserById };
+export { calculateAge, updateUser, getUserProfile, deleteUserById };

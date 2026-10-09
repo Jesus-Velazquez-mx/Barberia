@@ -9,14 +9,16 @@ const router = Router();
  *   put:
  *     summary: Actualiza la información general de un usuario
  *     tags: [Users]
- *     description: Actualiza los datos comunes a todos los roles (email, teléfono, contraseña, nombre y apellido). Los atributos específicos de cada rol se actualizan mediante endpoints especializados.
+ *     description: Actualiza los datos comunes a todos los roles (email, teléfono, contraseña, nombre y apellido). Los atributos específicos de cada rol se actualizan mediante endpoints especializados. Requiere un token JWT en el header `Authorization` (formato `Bearer <token>`).
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required: [user, token]
+ *             required: [user]
  *             properties:
  *               user:
  *                 type: object
@@ -28,7 +30,6 @@ const router = Router();
  *                   password: { type: string, minLength: 6, example: password123 }
  *                   firstName: { type: string, minLength: 2, example: Juan }
  *                   lastName: { type: string, minLength: 2, example: Pérez }
- *               token: { type: string, example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... }
  *     responses:
  *       200:
  *         description: Éxito. `data` contiene el usuario actualizado.
@@ -61,7 +62,7 @@ const router = Router();
  *                 message: { type: string, example: Error de validación }
  *                 error: { type: array, items: { type: string }, example: ["Invalid email"] }
  *       401:
- *         description: Token inválido o no autorizado para actualizar este usuario.
+ *         description: Token ausente, inválido o no autorizado para actualizar este usuario.
  *         content:
  *           application/json:
  *             schema:
@@ -99,7 +100,9 @@ router.put('/users', update);
  *   delete:
  *     summary: Elimina un usuario del sistema (borrado físico o lógico)
  *     tags: [Users]
- *     description: Elimina a un usuario según su ID. Requiere un token JWT válido. Un usuario puede eliminar su propia cuenta, y los usuarios con rol de `manager` pueden eliminar cualquier cuenta (excepto la de otros managers). A los clientes se les aplica un borrado físico definitivo, mientras que al staff se le aplica un borrado lógico (soft delete) marcando la fecha actual en `deleted_at`.
+ *     description: Elimina a un usuario según su ID. Requiere un token JWT válido en el header `Authorization` (formato `Bearer <token>`). Un usuario puede eliminar su propia cuenta, y los usuarios con rol de `manager` pueden eliminar cualquier cuenta (excepto la de otros managers). A los clientes se les aplica un borrado físico definitivo, mientras que al staff se le aplica un borrado lógico (soft delete) marcando la fecha actual en `deleted_at`.
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -108,13 +111,6 @@ router.put('/users', update);
  *           type: string
  *           format: uuid
  *         description: ID único del usuario a eliminar.
- *       - in: header
- *         name: Authorization
- *         required: true
- *         schema:
- *           type: string
- *           example: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
- *         description: Token JWT para autorizar la petición. Debe tener el prefijo "Bearer ".
  *     responses:
  *       200:
  *         description: Éxito. El usuario fue eliminado correctamente.
