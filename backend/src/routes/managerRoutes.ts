@@ -9,14 +9,16 @@ const router = Router();
  *   put:
  *     summary: Actualiza el título de un manager
  *     tags: [Managers]
- *     description: Actualiza el atributo `title` de un manager. El cambio de sucursal se realiza mediante un endpoint especializado.
+ *     description: Actualiza el atributo `title` de un manager. El cambio de sucursal se realiza mediante un endpoint especializado. Requiere un token JWT en el header `Authorization` (formato `Bearer <token>`).
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required: [manager, token]
+ *             required: [manager]
  *             properties:
  *               manager:
  *                 type: object
@@ -24,7 +26,6 @@ const router = Router();
  *                 properties:
  *                   id: { type: string, format: uuid }
  *                   title: { type: string, minLength: 1, maxLength: 100, example: "Gerente de sucursal" }
- *               token: { type: string, example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... }
  *     responses:
  *       200:
  *         description: Éxito. `data` contiene el manager actualizado.
@@ -51,7 +52,7 @@ const router = Router();
  *                 message: { type: string, example: Error de validación }
  *                 error: { type: array, items: { type: string }, example: ["Invalid input"] }
  *       401:
- *         description: Token inválido o no autorizado para actualizar este manager.
+ *         description: Token ausente, inválido o no autorizado para actualizar este manager.
  *         content:
  *           application/json:
  *             schema:

@@ -22,6 +22,16 @@ const options = {
             version: '1.0.0',
             description: 'Documentación de la API de la Barbería',
         },
+        components: {
+            securitySchemes: {
+                bearerAuth: {
+                    type: 'http',
+                    scheme: 'bearer',
+                    bearerFormat: 'JWT',
+                    description: 'Token JWT obtenido en /api/auth/login o /api/auth/register',
+                },
+            },
+        },
         tags: [
             { name: 'Auth', description: 'Registro e inicio de sesión de usuarios' },
             { name: 'Users', description: 'Datos generales de los usuarios, comunes a todos los roles' },

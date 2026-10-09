@@ -43,7 +43,7 @@ router.get('/recommendation/test', testAiService);
  *   post:
  *     summary: Genera recomendaciones de cortes de cabello
  *     tags: [Recommendation]
- *     description: Genera recomendaciones personalizadas para el cliente autenticado usando su fotografía, edad, género y preferencias.
+ *     description: Genera recomendaciones personalizadas para el cliente autenticado usando su fotografía, edad, género y preferencias. Requiere un token JWT de un cliente en el header `Authorization` (formato `Bearer <token>`).
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -93,7 +93,7 @@ router.get('/recommendation/test', testAiService);
  *       400:
  *         description: Error de validación de los datos enviados.
  *       401:
- *         description: Token inválido o el usuario no es un cliente.
+ *         description: Token ausente, inválido o el usuario no es un cliente.
  *       404:
  *         description: No se encontró el cliente.
  *       500:
