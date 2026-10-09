@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     # Ollama params
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str | None = None
+    OLLAMA_NUM_CTX: int = 8192  # Context window (tokens). Ollama's default is small and truncates silently
+    OLLAMA_TEMPERATURE: float = 0.0
+    OLLAMA_KEEP_ALIVE: str = "10m"  # How long the model stays loaded in memory
 
 
 @lru_cache
