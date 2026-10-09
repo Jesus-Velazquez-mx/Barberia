@@ -95,9 +95,9 @@ router.get('/recommendation/test', testAiService);
  *       401:
  *         description: Token inválido o el usuario no es un cliente.
  *       404:
- *         description: No se encontró el cliente o no hay estilos de corte disponibles.
+ *         description: No se encontró el cliente.
  *       500:
- *         description: Error al comunicarse con el servicio de recomendación.
+ *         description: Error al comunicarse con el servicio de recomendación o no hay estilos de corte disponibles.
  */
 router.post('/recommendation/generate', getHaircutRecommendation);
 
