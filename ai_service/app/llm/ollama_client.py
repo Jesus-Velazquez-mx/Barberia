@@ -8,6 +8,7 @@ from pydantic import TypeAdapter, ValidationError
 
 from app.core.config import get_settings
 from app.llm.error_handling import enable_error_handling
+from app.llm.image_loader import ImageLoadError, load_image
 from app.llm.llm_client import MessageRole
 from app.llm.llm_exception import (
     LLMClientError,
@@ -61,15 +62,58 @@ class OllamaClient:
 
     @enable_error_handling  # Enables retries and error-handling
     async def generate_structured_response(
-        self, prompt: str | list[str], schema: type[ModelT]
+        self,
+        prompt: str | list[str],
+        schema: type[ModelT],
+        image_url: str | None = None,
     ) -> ModelT | LLMErrorResponse:
+        """
+        Si se recibe `image_url`, la imagen se descarga, se normaliza y se
+        envía al modelo como bytes. Vive solo en memoria y se descarta al
+        terminar cada intento (con éxito o con error). Ver image_loader.
+        """
         normalized_prompt = self._normalize_prompt(prompt)
-        messages = self._build_messages(normalized_prompt)
-        chat_params = self._build_chat_params(messages, schema)
-        response = await self._generate_response(chat_params, normalized_prompt)
-        self._validate_done_reason(response, normalized_prompt)
-        json_response_payload = self._extract_text_payload(response, normalized_prompt)
-        return self._parse_response(json_response_payload, schema, normalized_prompt)
+        image_bytes: bytes | None = None
+        chat_params: dict[str, Any] | None = None
+
+        try:
+            if image_url:
+                image_bytes = await self._load_image(image_url, normalized_prompt)
+
+            messages = self._build_messages(
+                normalized_prompt, [image_bytes] if image_bytes else None
+            )
+            chat_params = self._build_chat_params(messages, schema)
+            response = await self._generate_response(chat_params, normalized_prompt)
+            self._validate_done_reason(response, normalized_prompt)
+            json_response_payload = self._extract_text_payload(
+                response, normalized_prompt
+            )
+            return self._parse_response(
+                json_response_payload, schema, normalized_prompt
+            )
+        finally:
+            # Se sueltan todas las referencias a la imagen. Python no permite
+            # borrar bytes de memoria de forma explícita; al no quedar
+            # referencias, el recolector los libera.
+            if chat_params is not None:
+                for message in chat_params["messages"]:
+                    message.pop("images", None)
+                chat_params.clear()
+            image_bytes = None
+
+    async def _load_image(self, image_url: str, prompt: list[str]) -> bytes:
+        """
+        Descarga y prepara la imagen. Traduce los errores del cargador a
+        LLMClientError para que el manejo de errores/reintentos los trate
+        igual que cualquier otra falla del cliente.
+        """
+        try:
+            return await load_image(image_url)
+        except ImageLoadError as exc:
+            raise LLMClientError(
+                exc.category, self.provider, self.model, prompt, exc.desc
+            ) from exc
 
     @staticmethod
     def _normalize_prompt(prompt: str | list[str]) -> list[str]:
@@ -79,7 +123,9 @@ class OllamaClient:
         """
         return prompt if isinstance(prompt, list) else [prompt]
 
-    def _build_messages(self, prompt: list[str]) -> list[dict[str, str]]:
+    def _build_messages(
+        self, prompt: list[str], images: list[bytes] | None = None
+    ) -> list[dict[str, Any]]:
         """
         Construye el "historial" de mensajes a enviar al LLM.
 
@@ -87,8 +133,12 @@ class OllamaClient:
         cada elemento del prompt se convierte en un mensaje consecutivo con
         el rol "user". A diferencia de ClaudeClient, no se usa message
         prefilling: el formato JSON se exige con el parámetro `format`.
+
+        Las imágenes (si hay) van en el campo `images` del último mensaje
+        "user". Siempre son `bytes`: el SDK los convierte a base64 y nunca
+        los interpreta como ruta de archivo (un `str` sí lo haría).
         """
-        messages: list[dict[str, str]] = []
+        messages: list[dict[str, Any]] = []
 
         if self.system:
             messages.append({"role": MessageRole.SYSTEM.value, "content": self.system})
@@ -97,6 +147,9 @@ class OllamaClient:
             {"role": MessageRole.USER.value, "content": prompt_part}
             for prompt_part in prompt
         )
+
+        if images:
+            messages[-1]["images"] = images
         return messages
 
     @staticmethod
@@ -113,7 +166,7 @@ class OllamaClient:
         return TypeAdapter(Union[schema, LLMErrorResponse]).json_schema(by_alias=True)
 
     def _build_chat_params(
-        self, messages: list[dict[str, str]], schema: type[ModelT]
+        self, messages: list[dict[str, Any]], schema: type[ModelT]
     ) -> dict[str, Any]:
         """
         Construye los parámetros de la llamada a Ollama:

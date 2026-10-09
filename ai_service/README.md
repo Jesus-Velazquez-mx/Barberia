@@ -96,6 +96,11 @@ OLLAMA_MODEL=gemma4:e4b
 | `OLLAMA_NUM_CTX` | `8192` | Tamaño de la ventana de contexto. Ollama usa una pequeña por defecto y trunca el prompt sin avisar. |
 | `OLLAMA_TEMPERATURE` | `0.0` | Temperatura de generación. |
 | `OLLAMA_KEEP_ALIVE` | `10m` | Tiempo que el modelo permanece cargado en memoria tras una petición. |
+| `IMAGE_ALLOWED_HOSTS` | *(vacío)* | Hosts desde los que se pueden descargar imágenes, separados por comas. Acepta `*.dominio`. Vacío = no se descarga ninguna (evita SSRF). Ej.: `mi-bucket.s3.us-east-1.amazonaws.com`. |
+| `IMAGE_MAX_BYTES` | `10485760` | Tamaño máximo del archivo descargado. |
+| `IMAGE_MAX_PIXELS` | `40000000` | Ancho × alto máximo (protege contra *decompression bombs*). |
+| `IMAGE_MAX_SIDE` | `1024` | Lado mayor (px) al que se reduce la imagen antes de enviarla al modelo. |
+| `IMAGE_DOWNLOAD_TIMEOUT` | `15` | Segundos máximos para descargar la imagen. |
 
 Si Ollama corre en otra máquina, esta debe exponerlo (`OLLAMA_HOST=0.0.0.0`) y `OLLAMA_BASE_URL` debe apuntar a ella. Ollama no tiene autenticación, así que ese acceso debe limitarse a una red privada.
 
