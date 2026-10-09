@@ -1,8 +1,8 @@
-import type { HaircutStyleDTO } from "../recommendation.interface.js";
+import type { HaircutStyleDTO } from '../recommendation.interface.js';
 
 interface InternalAIRequest<T> {
     data: T;
-    provider: string
+    provider: string;
 }
 
 interface InternalAIRecommendationRequest {
@@ -12,7 +12,7 @@ interface InternalAIRecommendationRequest {
         age: number;
         gender: string;
         userPreferences?: string;
-    }
+    };
 }
 
 interface InternalAIResponse<T> {
@@ -22,12 +22,8 @@ interface InternalAIResponse<T> {
 }
 
 type AIContentError = {
-    field?: string,
-    detail: string
-}
-
-export type {
-    InternalAIRequest,
-    InternalAIRecommendationRequest,
-    InternalAIResponse
+    field?: string;
+    detail: string;
 };
+
+export type { InternalAIRequest, InternalAIRecommendationRequest, InternalAIResponse };

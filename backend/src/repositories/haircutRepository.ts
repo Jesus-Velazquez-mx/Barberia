@@ -8,8 +8,8 @@ export const getActiveHaircutStyles = async (): Promise<HaircutStyle[] | null> =
     const query = 'SELECT * FROM haircut_styles WHERE is_active = true';
 
     const result = await pool.query(query);
-    return result.rows.length ? result.rows as HaircutStyle[] : null;
-}
+    return result.rows.length ? (result.rows as HaircutStyle[]) : null;
+};
 
 export const getActiveHaircutStylesByFacialStructure = async (facialStructure: FacialStructureType) => {
     const pool = db.getPool();
@@ -22,5 +22,5 @@ export const getActiveHaircutStylesByFacialStructure = async (facialStructure: F
     `;
 
     const result = await pool.query(query, [facialStructure]);
-    return result.rows.length ? result.rows as HaircutStyle[] : null;
-}
+    return result.rows.length ? (result.rows as HaircutStyle[]) : null;
+};

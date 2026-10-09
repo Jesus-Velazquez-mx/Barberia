@@ -16,7 +16,7 @@ const loadConfig = () => {
         JWT_SECRET,
         FRONTEND_URL,
         AI_SERVICE_URL,
-        AI_PROVIDER
+        AI_PROVIDER,
     };
 };
 

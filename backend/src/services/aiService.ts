@@ -2,8 +2,16 @@ import chalk from 'chalk';
 import globalConfig from '../config/globalConfig.js';
 import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 import { getUserById } from '../repositories/userRepository.js';
-import type { InternalAIRecommendationRequest, InternalAIRequest, InternalAIResponse } from '../types/dto/ai_service/internalAIService.js';
-import type { HaircutRecommendationRequest, HaircutRecommendationResponse, RecommendationHealthResponse } from '../types/dto/recommendation.interface.js';
+import type {
+    InternalAIRecommendationRequest,
+    InternalAIRequest,
+    InternalAIResponse,
+} from '../types/dto/ai_service/internalAIService.js';
+import type {
+    HaircutRecommendationRequest,
+    HaircutRecommendationResponse,
+    RecommendationHealthResponse,
+} from '../types/dto/recommendation.interface.js';
 import { isUserSessionValid } from '../utils/userSession.js';
 import { getClientByUserId } from '../repositories/clientRepository.js';
 import { getActiveHaircutStyles, getActiveHaircutStylesByFacialStructure } from '../repositories/haircutRepository.js';
@@ -51,7 +59,7 @@ export const generateRecommendation = async (
     if (!client || !user) {
         throw new ApiError(ApiErrorCode.NOT_FOUND, 'Client could not be found');
     }
-    
+
     let availableHaircuts: HaircutStyle[] | null = null;
     if (client.facial_structure_type) {
         availableHaircuts = await getActiveHaircutStylesByFacialStructure(client.facial_structure_type);
@@ -60,8 +68,8 @@ export const generateRecommendation = async (
         client.facial_structure_type = 'diamond';
     }
 
-    availableHaircuts = availableHaircuts ?? (await getActiveHaircutStyles())
-    
+    availableHaircuts = availableHaircuts ?? (await getActiveHaircutStyles());
+
     if (!availableHaircuts) {
         throw new ApiError(ApiErrorCode.INTERNAL_SERVER_ERROR, 'No haircut styles were found');
     }
@@ -72,15 +80,15 @@ export const generateRecommendation = async (
         userData: {
             age: calculateAge(user.birth_date),
             gender: user.gender,
-            userPreferences: recommendationParams.userPreferences
-        }
+            userPreferences: recommendationParams.userPreferences,
+        },
     };
 
     try {
         res = await fetch(`${globalConfig.AI_SERVICE_URL}/haircut/recommend`, {
             headers: {
                 'Content-Type': 'application/json',
-                'X-Internal-Api-Key': process.env.AI_SERVICE_API_KEY!
+                'X-Internal-Api-Key': process.env.AI_SERVICE_API_KEY!,
             },
             method: 'POST',
             body: JSON.stringify(buildAIServicePayload(payload)),
@@ -100,11 +108,11 @@ export const generateRecommendation = async (
     }
 
     return (await res.json()) as InternalAIResponse<HaircutRecommendationResponse>;
-}
+};
 
 const buildAIServicePayload = <T>(obj: T): InternalAIRequest<T> => {
     return {
         data: obj,
-        provider: globalConfig.AI_PROVIDER
-    }
-}
+        provider: globalConfig.AI_PROVIDER,
+    };
+};

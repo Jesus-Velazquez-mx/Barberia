@@ -3,10 +3,10 @@ interface RecommendationHealthResponse {
 }
 
 type HaircutStyleDTO = {
-    id: string,
-    name: string,
-    description?: string
-}
+    id: string;
+    name: string;
+    description?: string;
+};
 
 interface HaircutRecommendationRequest {
     photo: string;
@@ -24,5 +24,5 @@ export type {
     RecommendationHealthResponse,
     HaircutStyleDTO,
     HaircutRecommendationRequest,
-    HaircutRecommendationResponse
+    HaircutRecommendationResponse,
 };
