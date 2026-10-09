@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Literal, Optional
 
 from app.schemas.custom_model import CustomModel
 
@@ -14,9 +14,9 @@ class JdAnalyzeRequest(CustomModel):
 class JdAnalysisResult(CustomModel):
     required_skills: list[str]
     preferred_skills: list[str] = []
-    seniority_level: str  # "junior" | "mid" | "senior" | "lead" | ...
+    seniority_level: Literal["junior", "mid", "senior", "lead"]
     employment_type: str | None = None  # "full-time" | "contract" | ...
-    tone: str  # "formal" | "casual" | "startup" | ...
+    tone: Literal["formal", "casual", "startup"]
     key_responsibilities: list[str]
     years_of_experience_required: int | None = None
     company_name: str | None = None

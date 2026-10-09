@@ -1,9 +1,10 @@
+import json
 import logging
-from typing import Any, TypeVar
+from typing import Any, TypeVar, Union
 
 import httpx
 from ollama import AsyncClient, ResponseError
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 from app.core.config import get_settings
 from app.llm.error_handling import enable_error_handling
@@ -64,7 +65,7 @@ class OllamaClient:
     ) -> ModelT | LLMErrorResponse:
         normalized_prompt = self._normalize_prompt(prompt)
         messages = self._build_messages(normalized_prompt)
-        chat_params = self._build_chat_params(messages)
+        chat_params = self._build_chat_params(messages, schema)
         response = await self._generate_response(chat_params, normalized_prompt)
         self._validate_done_reason(response, normalized_prompt)
         json_response_payload = self._extract_text_payload(response, normalized_prompt)
@@ -98,12 +99,29 @@ class OllamaClient:
         )
         return messages
 
-    def _build_chat_params(self, messages: list[dict[str, str]]) -> dict[str, Any]:
+    @staticmethod
+    def _build_format_schema(schema: type[ModelT]) -> dict[str, Any]:
+        """
+        Construye el JSON Schema que se envía en el parámetro `format`.
+
+        Es una unión (anyOf) entre el schema esperado y LLMErrorResponse, de
+        modo que el modelo pueda responder con cualquiera de los dos y
+        Ollama restrinja la generación a esas estructuras. Si solo se enviara
+        el schema esperado, el modelo no tendría forma de reportar datos
+        insuficientes. TypeAdapter se encarga de fusionar los $defs.
+        """
+        return TypeAdapter(Union[schema, LLMErrorResponse]).json_schema(by_alias=True)
+
+    def _build_chat_params(
+        self, messages: list[dict[str, str]], schema: type[ModelT]
+    ) -> dict[str, Any]:
         """
         Construye los parámetros de la llamada a Ollama:
         - Modelo a utilizar
         - Mensajes a procesar (previamente construidos)
-        - format="json": obliga al modelo a producir JSON válido
+        - format: JSON Schema (structured outputs). A diferencia de
+          format="json", que solo garantiza JSON válido, esto restringe la
+          generación a los campos del schema (ver _build_format_schema)
         - num_predict: número máximo de tokens a generar
         - num_ctx: tamaño de la ventana de contexto. Ollama usa uno pequeño por
           defecto y trunca el prompt sin avisar, por eso se fija explícitamente
@@ -113,7 +131,7 @@ class OllamaClient:
         return {
             "model": self.model,
             "messages": messages,
-            "format": "json",
+            "format": self._build_format_schema(schema),
             "options": {
                 "num_predict": self.max_tokens,
                 "num_ctx": self.num_ctx,
@@ -139,6 +157,24 @@ class OllamaClient:
         arroja una excepción. De lo contrario, no hace nada.
         """
         if response.done_reason == "length":
+            # Se registra qué generó el modelo antes de cortarse: permite ver si
+            # fue una respuesta legítimamente larga, texto de razonamiento
+            # (thinking) o un ciclo de repetición/espacios en blanco.
+            message = getattr(response, "message", None)
+            content = getattr(message, "content", None) or ""
+            thinking = getattr(message, "thinking", None) or ""
+            logger.warning(
+                "Ollama model '%s' hit the token limit (num_predict=%s, "
+                "eval_count=%s).\nContent chars: %d, thinking chars: %d\n"
+                "Content (first %d chars): %r",
+                self.model,
+                self.max_tokens,
+                getattr(response, "eval_count", None),
+                len(content),
+                len(thinking),
+                MAX_LOGGED_PAYLOAD_CHARS,
+                content[:MAX_LOGGED_PAYLOAD_CHARS],
+            )
             raise LLMClientError(
                 LLMClientErrorCategory.TRUNCATED,
                 self.provider,
@@ -175,31 +211,45 @@ class OllamaClient:
 
         return payload.strip()
 
+    @staticmethod
+    def _candidate_payloads(data: Any, model_cls: type[CustomModel]):
+        """
+        Genera las formas posibles del payload: primero tal cual y, si el
+        modelo lo anidó bajo una única clave (ej. {"JdAnalysisResult": {...}}),
+        también el contenido desenvuelto.
+        """
+        yield data
+
+        if isinstance(data, dict) and len(data) == 1:
+            key, value = next(iter(data.items()))
+            known_keys = set(model_cls.model_fields) | {
+                field.alias
+                for field in model_cls.model_fields.values()
+                if field.alias
+            }
+            if isinstance(value, dict) and (
+                key.lower() == model_cls.__name__.lower() or key not in known_keys
+            ):
+                yield value
+
     def _parse_response(
         self, payload: str, schema: type[ModelT], prompt: list[str]
     ) -> ModelT | LLMErrorResponse:
         """
         Convierte la respuesta en texto simple del LLM a un modelo de
         Pydantic para su manipulación de manera programática.
+
+        Tolera que el modelo envuelva el objeto en una clave contenedora
+        (ej. {"JdAnalysisResult": {...}}), algo común en modelos locales.
         """
-        schema_error: Exception | None = None
-
         try:
-            return schema.model_validate_json(payload)
-        except (ValidationError, ValueError) as exc:
-            schema_error = exc
-
-        try:
-            return LLMErrorResponse.model_validate_json(payload)
-        except (ValidationError, ValueError):
-            # Los modelos locales fallan más que Claude en respetar el schema,
-            # así que se deja registro de qué devolvió y qué campos no cumplieron.
+            data = json.loads(payload)
+        except json.JSONDecodeError as exc:
             logger.warning(
-                "Ollama model '%s' returned a payload that matches neither %s nor "
-                "the error schema.\nValidation error: %s\nPayload (first %d chars): %s",
+                "Ollama model '%s' returned invalid JSON: %s\n"
+                "Payload (first %d chars): %s",
                 self.model,
-                schema.__name__,
-                schema_error,
+                exc,
                 MAX_LOGGED_PAYLOAD_CHARS,
                 payload[:MAX_LOGGED_PAYLOAD_CHARS],
             )
@@ -209,7 +259,40 @@ class OllamaClient:
                 self.model,
                 prompt,
                 desc="LLM response did not contain a valid json payload",
-            )
+            ) from exc
+
+        schema_error: ValidationError | None = None
+
+        for candidate in self._candidate_payloads(data, schema):
+            try:
+                return schema.model_validate(candidate)
+            except ValidationError as exc:
+                schema_error = schema_error or exc
+
+        for candidate in self._candidate_payloads(data, LLMErrorResponse):
+            try:
+                return LLMErrorResponse.model_validate(candidate)
+            except ValidationError:
+                continue
+
+        # Los modelos locales fallan más que Claude en respetar el schema,
+        # así que se deja registro de qué devolvió y qué campos no cumplieron.
+        logger.warning(
+            "Ollama model '%s' returned a payload that matches neither %s nor "
+            "the error schema.\nValidation error: %s\nPayload (first %d chars): %s",
+            self.model,
+            schema.__name__,
+            schema_error,
+            MAX_LOGGED_PAYLOAD_CHARS,
+            payload[:MAX_LOGGED_PAYLOAD_CHARS],
+        )
+        raise LLMClientError(
+            LLMClientErrorCategory.INVALID_OUTPUT,
+            self.provider,
+            self.model,
+            prompt,
+            desc="LLM response did not contain a valid json payload",
+        )
 
     def _translate_exception(self, exc: Exception, prompt) -> LLMClientError:
         """
