@@ -3,7 +3,7 @@ name = "ai-service"
 version = "0.1.0"
 description = "AI microservice for job position analysis, resume tailoring and profile scoring"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 dependencies = [
     "anthropic>=0.120.2",
     "fastapi>=0.141.1",

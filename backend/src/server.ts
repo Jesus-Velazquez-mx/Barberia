@@ -13,6 +13,8 @@ const { connectDB } = connection;
 const app = express();
 const port = 3000;
 
+
+
 /* Configuración de Swagger para la documentación de la API con Swagger J*/
 const options = {
     definition: {
@@ -61,7 +63,8 @@ app.use(
 );
 
 /* Retornar JSON en las respuestas */
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 /* Usar las rutas definidas en router */
 app.use('/api', router);
 
