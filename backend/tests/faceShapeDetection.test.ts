@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { detectFacialStructureViaAI } from '../src/services/aiService.js';
+import { detectFacialStructure } from '../src/services/aiService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,7 +26,7 @@ describe('Integración de Microservicio de IA - Detección Facial Parametrizada'
         const imageBuffer = fs.readFileSync(imagePath);
         const base64Image = `data:image/jpeg;base64,${imageBuffer.toString('base64')}`;
 
-        const formaDetectada = await detectFacialStructureViaAI(base64Image);
+        const formaDetectada = await detectFacialStructure(base64Image);
         
         console.log(`[Test] Rostro evaluado -> Esperado: ${tipo} | Detectado por IA: ${formaDetectada}`);
 

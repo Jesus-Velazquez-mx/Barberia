@@ -16,7 +16,7 @@ import { isUserSessionValid } from '../utils/userSession.js';
 import { getClientByUserId } from '../repositories/clientRepository.js';
 import { getActiveHaircutStyles, getActiveHaircutStylesByFacialStructure } from '../repositories/haircutRepository.js';
 import { calculateAge } from './userService.js';
-import type { HaircutStyle } from '../types/entities/haircutStyle.interface.js';
+import type { FacialStructureType } from '../types/entities/client.interface.js';
 
 export const testConnection = async (): Promise<RecommendationHealthResponse> => {
     let res: Response;
@@ -44,15 +44,10 @@ export const testConnection = async (): Promise<RecommendationHealthResponse> =>
 /**
  * Función auxiliar para llamar al microservicio de Python y detectar la estructura facial usando la IA.
  */
-export const detectFacialStructureViaAI = async (photoBase64: string): Promise<string> => {
+export const detectFacialStructure = async (photo: string): Promise<InternalAIResponse<FacialStructureType>> => {
     let res: Response;
 
-    const payload = {
-        provider: globalConfig.AI_PROVIDER,
-        data: {
-            photo: photoBase64,
-        },
-    };
+    const payload = buildAIServicePayload({ obj: photo });
 
     try {
         res = await fetch(`${globalConfig.AI_SERVICE_URL}/face/detect-structure`, {
@@ -76,9 +71,7 @@ export const detectFacialStructureViaAI = async (photoBase64: string): Promise<s
         throw new ApiError(ApiErrorCode.INTERNAL_SERVER_ERROR, errorMsg);
     }
 
-    // Tipado seguro basado en la estructura esperada del JSON en lugar de 'any'
-    const data = (await res.json()) as { data: { facialStructure: string } };
-    return data.data.facialStructure;
+    return (await res.json()) as InternalAIResponse<FacialStructureType>;
 };
 
 export const generateRecommendation = async (
@@ -100,29 +93,19 @@ export const generateRecommendation = async (
         throw new ApiError(ApiErrorCode.NOT_FOUND, 'Client could not be found');
     }
 
-    let availableHaircuts: HaircutStyle[] | null = null;
-    if (client.facial_structure_type) {
-        availableHaircuts = await getActiveHaircutStylesByFacialStructure(client.facial_structure_type);
-    } else {
+    if (!client.facial_structure_type) {
         // Si el cliente no tiene una estructura facial registrada, llamamos a la IA para detectarla con la foto.
-        if (recommendationParams.photo) {
-            try {
-                const detectedStructure = await detectFacialStructureViaAI(recommendationParams.photo);
-                client.facial_structure_type = detectedStructure as NonNullable<typeof client.facial_structure_type>;
-                console.log(chalk.green(`[AI Service] Estructura facial detectada exitosamente por la IA: ${detectedStructure}`));
-            } catch (_) {
-                console.warn(chalk.yellow('[AI Service] No se pudo detectar por IA.'));
-            }
-        } else {
-            client.facial_structure_type = 'round';
-        }
+        const facialStructureResponse = await detectFacialStructure(recommendationParams.photo);
 
-        availableHaircuts = await getActiveHaircutStylesByFacialStructure(
-            client.facial_structure_type as NonNullable<typeof client.facial_structure_type>
-        );
+        if (facialStructureResponse.data) {
+            client.facial_structure_type = facialStructureResponse.data;
+            console.log(chalk.green(`[AI Service] Estructura facial detectada exitosamente por la IA: ${client.facial_structure_type}`));
+        } else {
+            throw new ApiError(ApiErrorCode.INTERNAL_SERVER_ERROR, 'Facial detection request failed');
+        }
     }
 
-    availableHaircuts = availableHaircuts ?? (await getActiveHaircutStyles());
+    const availableHaircuts = (await getActiveHaircutStylesByFacialStructure(client.facial_structure_type)) ?? (await getActiveHaircutStyles());
 
     if (!availableHaircuts) {
         throw new ApiError(ApiErrorCode.INTERNAL_SERVER_ERROR, 'No haircut styles were found');
@@ -145,7 +128,7 @@ export const generateRecommendation = async (
                 'X-Internal-Api-Key': process.env.AI_SERVICE_API_KEY!,
             },
             method: 'POST',
-            body: JSON.stringify(buildAIServicePayload(payload)),
+            body: JSON.stringify(buildAIServicePayload({ obj: payload })),
         });
     } catch (error) {
         console.error(error);
@@ -164,9 +147,16 @@ export const generateRecommendation = async (
     return (await res.json()) as InternalAIResponse<HaircutRecommendationResponse>;
 };
 
-const buildAIServicePayload = <T>(obj: T): InternalAIRequest<T> => {
-    return {
+interface BuildAIServicePayloadProps<T> {
+    obj: T,
+    includeProvider?: boolean;
+}
+
+const buildAIServicePayload = <T>({ obj, includeProvider = true }: BuildAIServicePayloadProps<T>): InternalAIRequest<T> => {
+    return includeProvider ? {
         data: obj,
         provider: globalConfig.AI_PROVIDER,
+    } : {
+        data: obj
     };
 };
