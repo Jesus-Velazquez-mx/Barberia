@@ -13,8 +13,6 @@ const { connectDB } = connection;
 const app = express();
 const port = 3000;
 
-
-
 /* Configuración de Swagger para la documentación de la API con Swagger J*/
 const options = {
     definition: {

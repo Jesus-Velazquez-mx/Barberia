@@ -60,7 +60,10 @@ export const detectFacialStructure = async (photo: string): Promise<InternalAIRe
         });
     } catch (error) {
         console.error(error);
-        throw new ApiError(ApiErrorCode.INTERNAL_SERVER_ERROR, 'Network error. Could not call AI facial detection microservice');
+        throw new ApiError(
+            ApiErrorCode.INTERNAL_SERVER_ERROR,
+            'Network error. Could not call AI facial detection microservice'
+        );
     }
 
     if (!res.ok) {
@@ -99,13 +102,19 @@ export const generateRecommendation = async (
 
         if (facialStructureResponse.data) {
             client.facial_structure_type = facialStructureResponse.data;
-            console.log(chalk.green(`[AI Service] Estructura facial detectada exitosamente por la IA: ${client.facial_structure_type}`));
+            console.log(
+                chalk.green(
+                    `[AI Service] Estructura facial detectada exitosamente por la IA: ${client.facial_structure_type}`
+                )
+            );
         } else {
             throw new ApiError(ApiErrorCode.INTERNAL_SERVER_ERROR, 'Facial detection request failed');
         }
     }
 
-    const availableHaircuts = (await getActiveHaircutStylesByFacialStructure(client.facial_structure_type)) ?? (await getActiveHaircutStyles());
+    const availableHaircuts =
+        (await getActiveHaircutStylesByFacialStructure(client.facial_structure_type)) ??
+        (await getActiveHaircutStyles());
 
     if (!availableHaircuts) {
         throw new ApiError(ApiErrorCode.INTERNAL_SERVER_ERROR, 'No haircut styles were found');
@@ -148,15 +157,20 @@ export const generateRecommendation = async (
 };
 
 interface BuildAIServicePayloadProps<T> {
-    obj: T,
+    obj: T;
     includeProvider?: boolean;
 }
 
-const buildAIServicePayload = <T>({ obj, includeProvider = true }: BuildAIServicePayloadProps<T>): InternalAIRequest<T> => {
-    return includeProvider ? {
-        data: obj,
-        provider: globalConfig.AI_PROVIDER,
-    } : {
-        data: obj
-    };
+const buildAIServicePayload = <T>({
+    obj,
+    includeProvider = true,
+}: BuildAIServicePayloadProps<T>): InternalAIRequest<T> => {
+    return includeProvider
+        ? {
+              data: obj,
+              provider: globalConfig.AI_PROVIDER,
+          }
+        : {
+              data: obj,
+          };
 };
