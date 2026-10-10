@@ -29,6 +29,7 @@ FastAPI /internal/v1
 							+-- LLM client factory
 											|
 											+-- ClaudeClient -> Anthropic API
+											+-- OllamaClient -> Ollama (modelo local)
 ```
 
 Estructura principal:
@@ -71,6 +72,39 @@ Las demás variables tienen valores predeterminados. No subas `.env` ni claves
 reales al repositorio.
 
 **Importante:** Si no colocas `ANTHROPIC_API_KEY` en el archivo `.env` y realizas una petición con `anthropic` como provider, será rechazada con un error `500 Internal Server Error`.
+
+### Usar Ollama como provider
+
+Para usar `"provider": "ollama"` necesitas un servidor de [Ollama](https://ollama.com) con el modelo descargado:
+
+```powershell
+ollama pull gemma4:e4b
+curl http://localhost:11434/api/tags
+```
+
+Y estas variables en el `.env`:
+
+```env
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=gemma4:e4b
+```
+
+| Variable | Valor por defecto | Descripción |
+|---|---|---|
+| `OLLAMA_BASE_URL` | `http://localhost:11434` | Dirección del servidor de Ollama. |
+| `OLLAMA_MODEL` | *(ninguno, obligatorio)* | Modelo a usar. Debe estar descargado en ese servidor. |
+| `OLLAMA_NUM_CTX` | `8192` | Tamaño de la ventana de contexto. Ollama usa una pequeña por defecto y trunca el prompt sin avisar. |
+| `OLLAMA_TEMPERATURE` | `0.0` | Temperatura de generación. |
+| `OLLAMA_KEEP_ALIVE` | `10m` | Tiempo que el modelo permanece cargado en memoria tras una petición. |
+| `IMAGE_ALLOWED_HOSTS` | *(vacío)* | Hosts desde los que se pueden descargar imágenes, separados por comas. Acepta `*.dominio`. Vacío = no se descarga ninguna (evita SSRF). Ej.: `mi-bucket.s3.us-east-1.amazonaws.com`. |
+| `IMAGE_MAX_BYTES` | `10485760` | Tamaño máximo del archivo descargado. |
+| `IMAGE_MAX_PIXELS` | `40000000` | Ancho × alto máximo (protege contra *decompression bombs*). |
+| `IMAGE_MAX_SIDE` | `1024` | Lado mayor (px) al que se reduce la imagen antes de enviarla al modelo. |
+| `IMAGE_DOWNLOAD_TIMEOUT` | `15` | Segundos máximos para descargar la imagen. |
+
+Si Ollama corre en otra máquina, esta debe exponerlo (`OLLAMA_HOST=0.0.0.0`) y `OLLAMA_BASE_URL` debe apuntar a ella. Ollama no tiene autenticación, así que ese acceso debe limitarse a una red privada.
+
+Si `OLLAMA_MODEL` no está definida, las peticiones con `ollama` como provider fallan con un `500 Internal Server Error`.
 
 ## Instalación y ejecución
 
@@ -205,9 +239,16 @@ La solicitud tiene una estructura válida, pero el contenido no es suficiente pa
 
 Verifica que `ANTHROPIC_API_KEY` sea válida, que el modelo configurado exista y que el entorno tenga salida de red. El cliente aplica reintentos para errores transitorios y límites de tasa hasta `LLM_MAX_ATTEMPTS`, dentro del presupuesto de `LLM_TIMEOUT`. Ajusta `LLM_TIMEOUT`, `BASE_BACKOFF_SECONDS` o `MAX_BACKOFF_SECONDS` si el entorno necesita más tiempo.
 
+### Errores de Ollama
+
+- `503` (provider unavailable): Ollama no está corriendo o `OLLAMA_BASE_URL` no es alcanzable desde donde corre el servicio.
+- `500` con mensaje sobre el modelo: el modelo de `OLLAMA_MODEL` no está descargado en ese servidor. Ejecuta `ollama pull <modelo>`.
+- `504` (timeout): la primera petición carga el modelo en memoria y puede tardar. Aumenta `LLM_TIMEOUT` o usa un modelo más pequeño.
+- `502` (invalid output o truncated): el modelo no devolvió un JSON válido o se quedó sin tokens. Aumenta `MAX_TOKENS` o prueba otro modelo.
+
 ### `provider not supported`
 
-Usa `"provider": "anthropic"`. Aunque `ollama` está definido en el esquema, su cliente todavía no está implementado en la fábrica de proveedores.
+Usa `"provider": "anthropic"` u `"ollama"`. Cualquier otro valor es rechazado.
 
 ### El puerto 8000 ya está ocupado
 
