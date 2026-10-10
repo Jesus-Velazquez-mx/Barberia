@@ -7,7 +7,7 @@ internos y se protege mediante la cabecera (HTTP header) `X-Internal-Api-Key`, e
 
 ## Estado actual
 
-Solo contiene el endpoint `/jd/analyze` para servir como referencia. Será eliminado posteriormente.
+Contiene el endpoint `/jd/analyze` como referencia (será eliminado posteriormente) y `/face/detect-structure`, que clasifica la estructura facial de una foto con un modelo local de PyTorch. La foto se envía como URL https (`photoUrl`, p. ej. una URL prefirmada de S3; el host debe estar en `IMAGE_ALLOWED_HOSTS`) o como base64 (`photo`); se debe enviar exactamente uno de los dos. El modelo se descarga y verifica (SHA256) al iniciar el servicio.
 
 ## Arquitectura
 
@@ -101,6 +101,10 @@ OLLAMA_MODEL=gemma4:e4b
 | `IMAGE_MAX_PIXELS` | `40000000` | Ancho × alto máximo (protege contra *decompression bombs*). |
 | `IMAGE_MAX_SIDE` | `1024` | Lado mayor (px) al que se reduce la imagen antes de enviarla al modelo. |
 | `IMAGE_DOWNLOAD_TIMEOUT` | `15` | Segundos máximos para descargar la imagen. |
+| `FACE_MODEL_PATH` | `models/model_85_nn_.pth` | Ruta del modelo clasificador de rostros (relativa a la raíz de `ai_service`). Se descarga al iniciar si no existe. |
+| `FACE_MODEL_URL` | *(Hugging Face, revisión fija)* | URL de descarga del modelo. Debe apuntar a un commit concreto, nunca a `main`. |
+| `FACE_MODEL_SHA256` | *(hash del modelo fijado)* | SHA256 esperado. Si el archivo descargado no coincide, el servicio no inicia. El modelo es un pickle de PyTorch (ejecuta código al cargarse), por eso se verifica. |
+| `FACE_MODEL_DOWNLOAD_TIMEOUT` | `120` | Segundos máximos para descargar el modelo. |
 
 Si Ollama corre en otra máquina, esta debe exponerlo (`OLLAMA_HOST=0.0.0.0`) y `OLLAMA_BASE_URL` debe apuntar a ella. Ollama no tiene autenticación, así que ese acceso debe limitarse a una red privada.
 

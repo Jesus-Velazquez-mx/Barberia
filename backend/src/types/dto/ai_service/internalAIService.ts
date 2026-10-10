@@ -2,7 +2,7 @@ import type { HaircutStyleDTO } from '../recommendation.interface.js';
 
 interface InternalAIRequest<T> {
     data: T;
-    provider: string;
+    provider?: string;
 }
 
 interface InternalAIRecommendationRequest {

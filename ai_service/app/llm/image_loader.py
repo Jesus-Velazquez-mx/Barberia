@@ -176,7 +176,7 @@ async def _download(url: str) -> bytes:
         ) from exc
 
 
-def _process(raw: bytes) -> bytes:
+def normalize_image(raw: bytes) -> bytes:
     """
     Valida que sea una imagen real y la normaliza a JPEG RGB en memoria:
     corrige la orientación EXIF, reduce el lado mayor y descarta los
@@ -220,6 +220,6 @@ async def load_image(url: str) -> bytes:
     """
     raw = await _download(url)
     try:
-        return await asyncio.to_thread(_process, raw)
+        return await asyncio.to_thread(normalize_image, raw)
     finally:
         del raw

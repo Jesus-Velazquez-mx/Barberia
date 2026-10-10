@@ -8,3 +8,7 @@ postman/
 .claude
 CLAUDE.md
 graphify-out/
+venv/
+model_85_nn_.pth
+ai_service/ai_service.egg-info/
+ai_service/build/
