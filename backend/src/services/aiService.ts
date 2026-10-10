@@ -111,7 +111,7 @@ export const generateRecommendation = async (
                 client.facial_structure_type = detectedStructure;
                 console.log(chalk.green(`[AI Service] Estructura facial detectada exitosamente por la IA: ${detectedStructure}`));
             } catch (err) {
-                console.warn(chalk.yellow('[AI Service] No se pudo detectar por IA.')); // Respaldo de seguridad si falla
+                console.warn(chalk.yellow('[AI Service] No se pudo detectar por IA.'));
             }
         } else {
             client.facial_structure_type = 'round';
