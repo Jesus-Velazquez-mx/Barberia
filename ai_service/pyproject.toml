@@ -10,6 +10,8 @@ dependencies = [
     "ollama>=0.6.3",
     "pillow>=12.3.0",
     "pydantic-settings>=2.14.2",
+    "torch>=2.14.1",
+    "torchvision>=0.29.1",
     "uvicorn>=0.52.1",
 ]
 
