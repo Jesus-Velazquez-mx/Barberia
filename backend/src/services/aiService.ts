@@ -117,7 +117,9 @@ export const generateRecommendation = async (
             client.facial_structure_type = 'round';
         }
 
-        availableHaircuts = await getActiveHaircutStylesByFacialStructure(client.facial_structure_type as any);
+        availableHaircuts = await getActiveHaircutStylesByFacialStructure(
+            client.facial_structure_type as NonNullable<typeof client.facial_structure_type>
+        );
     }
 
     availableHaircuts = availableHaircuts ?? (await getActiveHaircutStyles());
