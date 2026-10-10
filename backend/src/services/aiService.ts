@@ -110,7 +110,7 @@ export const generateRecommendation = async (
                 const detectedStructure = await detectFacialStructureViaAI(recommendationParams.photo);
                 client.facial_structure_type = detectedStructure;
                 console.log(chalk.green(`[AI Service] Estructura facial detectada exitosamente por la IA: ${detectedStructure}`));
-            } catch (err) {
+            } catch (_) {
                 console.warn(chalk.yellow('[AI Service] No se pudo detectar por IA.'));
             }
         } else {
