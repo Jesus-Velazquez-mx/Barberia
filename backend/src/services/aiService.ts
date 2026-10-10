@@ -111,11 +111,10 @@ export const generateRecommendation = async (
                 client.facial_structure_type = detectedStructure;
                 console.log(chalk.green(`[AI Service] Estructura facial detectada exitosamente por la IA: ${detectedStructure}`));
             } catch (err) {
-                console.warn(chalk.yellow('[AI Service] No se pudo detectar por IA, usando estructura por defecto.'));
-                client.facial_structure_type = 'diamond'; // Respaldo de seguridad si falla
+                console.warn(chalk.yellow('[AI Service] No se pudo detectar por IA.')); // Respaldo de seguridad si falla
             }
         } else {
-            client.facial_structure_type = 'diamond';
+            client.facial_structure_type = 'round';
         }
 
         availableHaircuts = await getActiveHaircutStylesByFacialStructure(client.facial_structure_type as any);
