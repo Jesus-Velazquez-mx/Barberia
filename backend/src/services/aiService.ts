@@ -44,7 +44,7 @@ export const testConnection = async (): Promise<RecommendationHealthResponse> =>
 /**
  * Función auxiliar para llamar al microservicio de Python y detectar la estructura facial usando la IA.
  */
-export const detectFacialStructureViaAI = async (photoBase64: string): Promise<any> => {
+export const detectFacialStructureViaAI = async (photoBase64: string): Promise<string> => {
     let res: Response;
 
     const payload = {
@@ -55,7 +55,6 @@ export const detectFacialStructureViaAI = async (photoBase64: string): Promise<a
     };
 
     try {
-        // Nota: globalConfig.AI_SERVICE_URL apunta a la base (ej. http://localhost:8000/internal/v1)
         res = await fetch(`${globalConfig.AI_SERVICE_URL}/face/detect-structure`, {
             headers: {
                 'Content-Type': 'application/json',
@@ -66,19 +65,20 @@ export const detectFacialStructureViaAI = async (photoBase64: string): Promise<a
         });
     } catch (error) {
         console.error(error);
-        throw new Error('Network error. Could not call AI facial detection microservice');
+        throw new ApiError(ApiErrorCode.INTERNAL_SERVER_ERROR, 'Network error. Could not call AI facial detection microservice');
     }
 
     if (!res.ok) {
         const errorMsg = `Facial detection request failed with status code: ${res.status}`;
         console.error(chalk.red(`\nERROR - ${errorMsg}`));
-        const response = await res.json();
+        const response = (await res.json()) as unknown;
         console.error('Response from AI service:\n', response);
-        throw new Error(errorMsg);
+        throw new ApiError(ApiErrorCode.INTERNAL_SERVER_ERROR, errorMsg);
     }
 
-    const data: any = await res.json();
-    return data.data.facialStructure; // Devuelve la estructura detectada (ej: "square", "oval", etc.)
+    // Tipado seguro basado en la estructura esperada del JSON en lugar de 'any'
+    const data = (await res.json()) as { data: { facialStructure: string } };
+    return data.data.facialStructure;
 };
 
 export const generateRecommendation = async (
@@ -108,7 +108,7 @@ export const generateRecommendation = async (
         if (recommendationParams.photo) {
             try {
                 const detectedStructure = await detectFacialStructureViaAI(recommendationParams.photo);
-                client.facial_structure_type = detectedStructure;
+                client.facial_structure_type = detectedStructure as NonNullable<typeof client.facial_structure_type>;
                 console.log(chalk.green(`[AI Service] Estructura facial detectada exitosamente por la IA: ${detectedStructure}`));
             } catch (_) {
                 console.warn(chalk.yellow('[AI Service] No se pudo detectar por IA.'));
