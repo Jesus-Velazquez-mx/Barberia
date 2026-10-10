@@ -14,7 +14,10 @@ class LLMClient(Protocol):
     model: str
 
     async def generate_structured_response(
-        self, prompt: str | list[str], schema: type[ModelT]
+        self,
+        prompt: str | list[str],
+        schema: type[ModelT],
+        image_url: str | None = None,
     ) -> ModelT | LLMErrorResponse: ...
 
 
