@@ -17,7 +17,7 @@ export const getClientByUserId = async (userId: string): Promise<Client | null> 
 
 export const updateClientFacialStructure = async (userId: string, facialStructure: string): Promise<void> => {
     const pool = db.getPool();
-    // Coincide exactamente con tu esquema de base de datos
+
     await pool.query(
         `UPDATE clients SET facial_structure_type = $1 WHERE user_id = $2`,
         [facialStructure, userId]

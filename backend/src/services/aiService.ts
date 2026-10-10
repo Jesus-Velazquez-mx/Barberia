@@ -42,7 +42,7 @@ export const testConnection = async (): Promise<RecommendationHealthResponse> =>
 };
 
 /**
- * Nueva función auxiliar para llamar al microservicio de Python y detectar la estructura facial usando la IA.
+ * Función auxiliar para llamar al microservicio de Python y detectar la estructura facial usando la IA.
  */
 export const detectFacialStructureViaAI = async (photoBase64: string): Promise<any> => {
     let res: Response;
