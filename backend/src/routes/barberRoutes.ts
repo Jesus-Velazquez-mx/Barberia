@@ -9,14 +9,16 @@ const router = Router();
  *   put:
  *     summary: Actualiza los atributos específicos de un barbero
  *     tags: [Barbers]
- *     description: Actualiza la biografía y/o la disponibilidad para recibir reservas de un barbero. Al menos uno de los dos campos debe estar presente. El cambio de turno y de sucursal se realizan mediante endpoints especializados. Los barberos no tienen cuenta de usuario ni token propio, solo un manager puede realizar esta acción.
+ *     description: Actualiza la biografía y/o la disponibilidad para recibir reservas de un barbero. Al menos uno de los dos campos debe estar presente. El cambio de turno y de sucursal se realizan mediante endpoints especializados. Los barberos no tienen cuenta de usuario ni token propio, solo un manager puede realizar esta acción. Requiere el token JWT del manager en el header `Authorization` (formato `Bearer <token>`).
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required: [barber, token]
+ *             required: [barber]
  *             properties:
  *               barber:
  *                 type: object
@@ -25,7 +27,6 @@ const router = Router();
  *                   id: { type: string, format: uuid }
  *                   bio: { type: string, maxLength: 2000, example: "Especialista en cortes clásicos y degradados." }
  *                   isAcceptingBookings: { type: boolean, example: true }
- *               token: { type: string, example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... }
  *     responses:
  *       200:
  *         description: Éxito. `data` contiene el barbero actualizado.
@@ -59,7 +60,7 @@ const router = Router();
  *                 message: { type: string, example: Error de validación }
  *                 error: { type: array, items: { type: string }, example: ["At least one of bio or isAcceptingBookings must be provided"] }
  *       401:
- *         description: Token inválido o no autorizado para actualizar este barbero.
+ *         description: Token ausente, inválido o no autorizado para actualizar este barbero.
  *         content:
  *           application/json:
  *             schema:
@@ -97,7 +98,9 @@ router.put('/barbers', update);
  *   delete:
  *     summary: Da de baja lógicamente a un barbero
  *     tags: [Barbers]
- *     description: Marca `deleted_at` con la fecha y hora actual para el barbero indicado. Requiere un token JWT válido de un manager; los barberos no tienen cuenta de usuario ni token propio, así que nunca pueden realizar esta acción por sí mismos.
+ *     description: Marca `deleted_at` con la fecha y hora actual para el barbero indicado. Requiere un token JWT válido de un manager en el header `Authorization` (formato `Bearer <token>`); los barberos no tienen cuenta de usuario ni token propio, así que nunca pueden realizar esta acción por sí mismos.
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -106,13 +109,6 @@ router.put('/barbers', update);
  *           type: string
  *           format: uuid
  *         description: ID único del barbero a dar de baja.
- *       - in: header
- *         name: Authorization
- *         required: true
- *         schema:
- *           type: string
- *           example: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
- *         description: Token JWT de un manager para autorizar la petición. Debe tener el prefijo "Bearer ".
  *     responses:
  *       200:
  *         description: Éxito. El barbero fue dado de baja correctamente.

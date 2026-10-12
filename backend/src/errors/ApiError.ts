@@ -1,4 +1,5 @@
 export enum ApiErrorCode {
+    BAD_REQUEST = 400,
     UNAUTHORIZED = 401,
     ACCOUNT_DEACTIVATED = 403,
     FORBIDDEN = 403,
@@ -6,6 +7,7 @@ export enum ApiErrorCode {
     INVALID_CREDENTIALS = 404,
     USER_ALREADY_EXISTS = 409,
     INVALID_INPUT = 422,
+    INTERNAL_SERVER_ERROR = 500,
 }
 
 export class ApiError extends Error {

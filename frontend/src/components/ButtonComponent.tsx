@@ -6,7 +6,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 export function Button({ children, isLoading, loadingText, className = '', ...rest }: ButtonProps) {
   return (
     <button
-      className={`h-10 cursor-pointer rounded-lg border-none bg-[var(--accent)] font-bold uppercase text-black ${className}`}
+      className={`h-10 cursor-pointer rounded-lg border-none bg-(--accent) font-bold uppercase text-black ${className}`}
       disabled={isLoading || rest.disabled}
       {...rest}
     >

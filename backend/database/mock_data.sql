@@ -7,6 +7,7 @@
 
 -- Password for all users: 'password'
 
+
 BEGIN;
 -- ---------- managers ----------
 

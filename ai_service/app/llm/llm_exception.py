@@ -77,7 +77,10 @@ class ProviderNotSupportedError(Exception):
     """Raise on get_llm_client() when provider is not found"""
 
     def __init__(self, provider: str):
-        message = f"{provider} provider could not be found or is not supported"
+        if (provider):
+            message = f"{provider} provider could not be found or is not supported"
+        else:
+            message = "LLM provider was not specified"
 
         super().__init__(message)
 

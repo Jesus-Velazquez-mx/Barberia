@@ -22,6 +22,16 @@ const options = {
             version: '1.0.0',
             description: 'Documentación de la API de la Barbería',
         },
+        components: {
+            securitySchemes: {
+                bearerAuth: {
+                    type: 'http',
+                    scheme: 'bearer',
+                    bearerFormat: 'JWT',
+                    description: 'Token JWT obtenido en /api/auth/login o /api/auth/register',
+                },
+            },
+        },
         tags: [
             { name: 'Auth', description: 'Registro e inicio de sesión de usuarios' },
             { name: 'Users', description: 'Datos generales de los usuarios, comunes a todos los roles' },
@@ -51,7 +61,8 @@ app.use(
 );
 
 /* Retornar JSON en las respuestas */
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 /* Usar las rutas definidas en router */
 app.use('/api', router);
 

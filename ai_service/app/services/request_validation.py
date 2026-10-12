@@ -13,7 +13,11 @@ MIN_FIELD_LENGTHS: dict[str, int] = {
 def _collect_invalid_fields(model: BaseModel, path: str = "") -> list[ContentError]:
     errors = []
     for field_name, value in model:
-        field_path = f"{path}.{field_name}" if path else field_name
+        # El nombre expuesto al cliente es el alias (camelCase), igual que en
+        # el resto de la API; la búsqueda de longitudes usa el nombre Python.
+        field_info = type(model).model_fields.get(field_name)
+        public_name = (field_info.alias if field_info else None) or field_name
+        field_path = f"{path}.{public_name}" if path else public_name
         if isinstance(value, BaseModel):
             errors.extend(_collect_invalid_fields(value, field_path))
         elif isinstance(value, list):

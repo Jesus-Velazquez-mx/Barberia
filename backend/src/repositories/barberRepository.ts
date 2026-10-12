@@ -101,7 +101,7 @@ export const softDeleteBarberById = async (id: string): Promise<void> => {
  * Obtiene los barberos de una sucursal específica que están activos y aceptan reservas.
  * Se excluyen barberos dados de baja lógicamente y los que tienen is_accepting_bookings = false.
  */
-export const getActiveBarbersByShop = async (shopId: string) => {
+export const getActiveBarbersByShop = async (shopId: string): Promise<Barber[]> => {
     const pool = db.getPool();
     const query = `
         SELECT id, first_name, last_name, email, phone, shop_id, shift_id, bio, 
@@ -111,6 +111,6 @@ export const getActiveBarbersByShop = async (shopId: string) => {
           AND deleted_at IS NULL 
           AND is_accepting_bookings = true
     `;
-    const result = await pool.query(query, [shopId]);
+    const result = await pool.query<Barber>(query, [shopId]);
     return result.rows;
 };

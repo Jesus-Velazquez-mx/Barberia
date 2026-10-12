@@ -13,7 +13,7 @@ class LLMProvider(StrEnum):
 
 class ApiRequest(CustomModel, Generic[DataT]):
     data: DataT
-    provider: LLMProvider
+    provider: Optional[LLMProvider] = None
 
 
 class ContentError(CustomModel):
