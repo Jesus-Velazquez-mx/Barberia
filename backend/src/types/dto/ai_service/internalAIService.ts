@@ -1,4 +1,4 @@
-import { FacialStructureType } from '../../entities/client.interface.js';
+import type { FacialStructureType } from '../../entities/client.interface.js';
 import type { HaircutStyleDTO } from '../recommendation.interface.js';
 
 interface InternalAIRequest<T> {

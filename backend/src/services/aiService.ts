@@ -19,7 +19,6 @@ import { getUserPhotoKey } from '../utils/photoKey.js';
 import { getClientByUserId, updateClientFacialStructure } from '../repositories/clientRepository.js';
 import { getActiveHaircutStyles, getActiveHaircutStylesByFacialStructure } from '../repositories/haircutRepository.js';
 import { calculateAge } from './userService.js';
-import type { FacialStructureType } from '../types/entities/client.interface.js';
 
 export const testConnection = async (): Promise<RecommendationHealthResponse> => {
     let res: Response;
@@ -107,9 +106,7 @@ export const generateRecommendation = async (
 
         if (facialStructureResponse.data) {
             client.facial_structure_type = facialStructureResponse.data.facialStructure;
-
-            console.log(client.facial_structure_type);
-
+            
             // Se guarda para no volver a invocar a la IA en las siguientes recomendaciones.
             await updateClientFacialStructure(performer.id, client.facial_structure_type);
 

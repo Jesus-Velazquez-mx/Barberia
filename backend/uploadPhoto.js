@@ -5,7 +5,7 @@ const credentials = {
     password: 'password',
 };
 
-async function getTokenFromLogin({ email, password }) {
+async function getTokenFromLogin() {
     // Login
 
     const authResponse = await fetch('http://localhost:3000/api/auth/login', {

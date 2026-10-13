@@ -84,7 +84,7 @@ afterEach(() => {
 
 describe('detectFacialStructure', () => {
     test('hace POST al endpoint de detección con los headers de autenticación', async () => {
-        fetchMock.mockResolvedValue(jsonResponse({ data: 'heart', message: 'ok' }));
+        fetchMock.mockResolvedValue(jsonResponse({ data: { facialStructure: 'heart' }, message: 'ok' }));
 
         await detectFacialStructure(PHOTO_KEY);
 
@@ -99,7 +99,7 @@ describe('detectFacialStructure', () => {
     });
 
     test('envía solo la key de la foto en el cuerpo (el modelo facial es local, sin proveedor)', async () => {
-        fetchMock.mockResolvedValue(jsonResponse({ data: 'oval', message: 'ok' }));
+        fetchMock.mockResolvedValue(jsonResponse({ data: { facialStructure: 'oval' }, message: 'ok' }));
 
         await detectFacialStructure(PHOTO_KEY);
 
@@ -107,7 +107,7 @@ describe('detectFacialStructure', () => {
     });
 
     test('devuelve la respuesta JSON del microservicio sin modificarla', async () => {
-        const aiResponse = { data: 'round', message: 'Facial structure classified successfully' };
+        const aiResponse = { data: { facialStructure: 'round' }, message: 'Facial structure classified successfully' };
         fetchMock.mockResolvedValue(jsonResponse(aiResponse));
 
         await expect(detectFacialStructure(PHOTO_KEY)).resolves.toEqual(aiResponse);
@@ -182,7 +182,7 @@ describe('generateRecommendation - detección de estructura facial', () => {
     test('detecta la estructura facial antes de recomendar si el cliente no la tiene', async () => {
         getClientByUserId.mockResolvedValue({ user_id: 'user-1', facial_structure_type: null });
         fetchMock
-            .mockResolvedValueOnce(jsonResponse({ data: 'heart', message: 'ok' }))
+            .mockResolvedValueOnce(jsonResponse({ data: { facialStructure: 'heart' }, message: 'ok' }))
             .mockResolvedValueOnce(jsonResponse({ data: { haircuts: [] }, message: 'ok' }));
 
         await generateRecommendation(params, TOKEN);
@@ -196,7 +196,7 @@ describe('generateRecommendation - detección de estructura facial', () => {
     test('guarda en la base de datos la estructura facial detectada por la IA', async () => {
         getClientByUserId.mockResolvedValue({ user_id: 'user-1', facial_structure_type: null });
         fetchMock
-            .mockResolvedValueOnce(jsonResponse({ data: 'heart', message: 'ok' }))
+            .mockResolvedValueOnce(jsonResponse({ data: { facialStructure: 'heart' }, message: 'ok' }))
             .mockResolvedValueOnce(jsonResponse({ data: { haircuts: [] }, message: 'ok' }));
 
         await generateRecommendation(params, TOKEN);
@@ -220,7 +220,7 @@ describe('generateRecommendation - detección de estructura facial', () => {
 
     test('propaga el error si no se puede guardar y no llama a la IA de recomendación', async () => {
         getClientByUserId.mockResolvedValue({ user_id: 'user-1', facial_structure_type: null });
-        fetchMock.mockResolvedValueOnce(jsonResponse({ data: 'heart', message: 'ok' }));
+        fetchMock.mockResolvedValueOnce(jsonResponse({ data: { facialStructure: 'heart' }, message: 'ok' }));
         updateClientFacialStructure.mockRejectedValue(new Error('db down'));
 
         await expect(generateRecommendation(params, TOKEN)).rejects.toThrow('db down');
