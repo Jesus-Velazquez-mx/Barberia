@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { testAiService, getHaircutRecommendation } from '../controllers/recommendationController.js';
+import { getBucketPresignedURL } from '../controllers/bucketController.js';
 
 const router = Router();
 
@@ -100,5 +101,48 @@ router.get('/recommendation/test', testAiService);
  *         description: Error al comunicarse con el servicio de recomendación o no hay estilos de corte disponibles.
  */
 router.post('/recommendation/generate', getHaircutRecommendation);
+
+/**
+ * @swagger
+ * /api/presigned-url:
+ *   get:
+ *     summary: Genera un formulario presignado para subir una imagen
+ *     tags: [Storage]
+ *     description: Genera una URL y los campos necesarios para subir una imagen directamente a S3. La carga debe enviarse como multipart/form-data, incluir todos los campos retornados y declarar un Content-Type que comience con image/. El archivo no puede superar los 5 MB.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Formulario presignado generado exitosamente.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [data, message]
+ *               properties:
+ *                 data:
+ *                   type: object
+ *                   required: [url, fields]
+ *                   properties:
+ *                     url:
+ *                       type: string
+ *                       format: uri
+ *                       description: URL de S3 a la que debe enviarse el formulario multipart.
+ *                     fields:
+ *                       type: object
+ *                       additionalProperties:
+ *                         type: string
+ *                       description: Campos firmados que deben incluirse sin modificaciones en el formulario.
+ *                 message:
+ *                   type: string
+ *                   example: Presigned URL generated successfully
+ *       401:
+ *         description: Token ausente, inválido o el usuario no es un cliente.
+ *       502:
+ *         description: No se pudieron resolver las credenciales de AWS.
+ *       500:
+ *         description: Error inesperado al generar el formulario presignado.
+ */
+router.get('/presigned-url', getBucketPresignedURL);
 
 export default router;
