@@ -4,6 +4,11 @@ import router from '../src/routes/routes.js';
 import connection from '../src/connection/connection.js';
 import { signToken } from '../src/services/jwtTokenService.js';
 import type { User, UserRole } from '../src/types/entities/user.interface.js';
+import {
+    generateUniqueEmail as uniqueEmail,
+    generateUniquePhone,
+    generateUniqueName as uniqueName,
+} from './helpers/uniqueValues.js';
 
 const { connectDB, closeDB, getPool } = connection;
 
@@ -18,19 +23,8 @@ const createdShopIds: string[] = [];
 const createdManagerIds: string[] = [];
 const createdOtherUserIds: string[] = [];
 
-let uniqueCounter = 0;
-const generateUniqueEmail = () => {
-    uniqueCounter += 1;
-    return `update_barber_test_${Date.now()}_${uniqueCounter}@mrbarber.com`;
-};
-const generateUniquePhone = () => {
-    uniqueCounter += 1;
-    return `${Date.now()}${uniqueCounter}`.slice(-10);
-};
-const generateUniqueShopName = () => {
-    uniqueCounter += 1;
-    return `Test Shop ${Date.now()}_${uniqueCounter}`;
-};
+const generateUniqueEmail = () => uniqueEmail('update_barber_test');
+const generateUniqueShopName = () => uniqueName('Test Shop');
 
 const mintToken = (id: string, role: UserRole, email: string): string => signToken({ id, role, email } as User);
 

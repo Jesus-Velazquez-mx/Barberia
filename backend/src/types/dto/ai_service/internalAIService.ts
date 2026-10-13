@@ -1,3 +1,4 @@
+import type { FacialStructureType } from '../../entities/client.interface.js';
 import type { HaircutStyleDTO } from '../recommendation.interface.js';
 
 interface InternalAIRequest<T> {
@@ -5,9 +6,18 @@ interface InternalAIRequest<T> {
     provider?: string;
 }
 
+interface InternalAIFaceDetectionRequest {
+    /** Key de la foto en el bucket privado de S3; el microservicio la descarga por su cuenta. */
+    photoKey: string;
+}
+
+interface InternalAIFaceDetectionResponse {
+    facialStructure: FacialStructureType
+}
+
 interface InternalAIRecommendationRequest {
     suggestedHaircuts: HaircutStyleDTO[];
-    photo: string;
+    photoKey: string;
     userData: {
         age: number;
         gender: string;
@@ -26,4 +36,10 @@ type AIContentError = {
     detail: string;
 };
 
-export type { InternalAIRequest, InternalAIRecommendationRequest, InternalAIResponse };
+export type {
+    InternalAIRequest,
+    InternalAIFaceDetectionRequest,
+    InternalAIFaceDetectionResponse,
+    InternalAIRecommendationRequest,
+    InternalAIResponse,
+};
