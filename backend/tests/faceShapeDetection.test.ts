@@ -18,6 +18,7 @@ const KEY_PREFIX = 'user/images/';
 // ESM: los mocks deben registrarse antes de importar dinámicamente el servicio.
 const getUserById = jest.fn<(...args: any[]) => Promise<any>>();
 const getClientByUserId = jest.fn<(...args: any[]) => Promise<any>>();
+const updateClientFacialStructure = jest.fn<(...args: any[]) => Promise<void>>();
 const getActiveHaircutStyles = jest.fn<(...args: any[]) => Promise<any>>();
 const getActiveHaircutStylesByFacialStructure = jest.fn<(...args: any[]) => Promise<any>>();
 const isUserSessionValid = jest.fn<(...args: any[]) => Promise<any>>();
@@ -34,7 +35,7 @@ jest.unstable_mockModule('../src/config/globalConfig.js', () => ({
     },
 }));
 jest.unstable_mockModule('../src/repositories/userRepository.js', () => ({ getUserById }));
-jest.unstable_mockModule('../src/repositories/clientRepository.js', () => ({ getClientByUserId }));
+jest.unstable_mockModule('../src/repositories/clientRepository.js', () => ({ getClientByUserId, updateClientFacialStructure }));
 jest.unstable_mockModule('../src/repositories/haircutRepository.js', () => ({
     getActiveHaircutStyles,
     getActiveHaircutStylesByFacialStructure,
@@ -97,7 +98,7 @@ describe('detectFacialStructure', () => {
         });
     });
 
-    test('envía el proveedor configurado y la key de la foto en el cuerpo', async () => {
+    test('envía solo la key de la foto en el cuerpo (el modelo facial es local, sin proveedor)', async () => {
         fetchMock.mockResolvedValue(jsonResponse({ data: 'oval', message: 'ok' }));
 
         await detectFacialStructure(PHOTO_KEY);
@@ -164,6 +165,7 @@ describe('generateRecommendation - detección de estructura facial', () => {
 
         expect(calledUrls()).toEqual([RECOMMEND_URL]);
         expect(getActiveHaircutStylesByFacialStructure).toHaveBeenCalledWith('square');
+        expect(updateClientFacialStructure).not.toHaveBeenCalled();
     });
 
     test('envía a la IA la key de la foto del usuario autenticado, derivada en el servidor', async () => {
@@ -191,6 +193,41 @@ describe('generateRecommendation - detección de estructura facial', () => {
         expect(getActiveHaircutStylesByFacialStructure).toHaveBeenCalledWith('heart');
     });
 
+    test('guarda en la base de datos la estructura facial detectada por la IA', async () => {
+        getClientByUserId.mockResolvedValue({ user_id: 'user-1', facial_structure_type: null });
+        fetchMock
+            .mockResolvedValueOnce(jsonResponse({ data: 'heart', message: 'ok' }))
+            .mockResolvedValueOnce(jsonResponse({ data: { haircuts: [] }, message: 'ok' }));
+
+        await generateRecommendation(params, TOKEN);
+
+        expect(updateClientFacialStructure).toHaveBeenCalledTimes(1);
+        expect(updateClientFacialStructure).toHaveBeenCalledWith('user-1', 'heart');
+        // Se guarda antes de buscar los cortes, que ya dependen de la estructura detectada
+        expect(updateClientFacialStructure.mock.invocationCallOrder[0]).toBeLessThan(
+            getActiveHaircutStylesByFacialStructure.mock.invocationCallOrder[0]
+        );
+    });
+
+    test('no guarda nada si la detección falla', async () => {
+        getClientByUserId.mockResolvedValue({ user_id: 'user-1', facial_structure_type: null });
+        fetchMock.mockResolvedValueOnce(jsonResponse({ message: 'Photo was not found' }, 422));
+
+        await expect(generateRecommendation(params, TOKEN)).rejects.toBeInstanceOf(ApiError);
+
+        expect(updateClientFacialStructure).not.toHaveBeenCalled();
+    });
+
+    test('propaga el error si no se puede guardar y no llama a la IA de recomendación', async () => {
+        getClientByUserId.mockResolvedValue({ user_id: 'user-1', facial_structure_type: null });
+        fetchMock.mockResolvedValueOnce(jsonResponse({ data: 'heart', message: 'ok' }));
+        updateClientFacialStructure.mockRejectedValue(new Error('db down'));
+
+        await expect(generateRecommendation(params, TOKEN)).rejects.toThrow('db down');
+
+        expect(calledUrls()).toEqual([FACE_URL]);
+    });
+
     test('lanza ApiError 500 si la detección no devuelve una estructura facial', async () => {
         getClientByUserId.mockResolvedValue({ user_id: 'user-1', facial_structure_type: null });
         fetchMock.mockResolvedValueOnce(jsonResponse({ message: 'no data' }));
@@ -200,5 +237,6 @@ describe('generateRecommendation - detección de estructura facial', () => {
         expect(error).toBeInstanceOf(ApiError);
         expect((error as InstanceType<typeof ApiError>).code).toBe(ApiErrorCode.INTERNAL_SERVER_ERROR);
         expect(calledUrls()).toEqual([FACE_URL]);
+        expect(updateClientFacialStructure).not.toHaveBeenCalled();
     });
 });

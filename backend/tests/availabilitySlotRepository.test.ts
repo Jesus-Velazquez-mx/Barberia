@@ -10,6 +10,7 @@ import {
     insertAvailabilitySlot,
     cleanupFixtures,
 } from './helpers/availabilityFixtures.js';
+import { generateUniqueName } from './helpers/uniqueValues.js';
 
 const { connectDB, closeDB } = connection;
 
@@ -21,7 +22,7 @@ describe('availabilitySlotRepository', () => {
         await connectDB();
 
         const manager = await insertManager();
-        const shopId = await insertShop(manager.id, { name: `Slots Shop ${Date.now()}` });
+        const shopId = await insertShop(manager.id, { name: generateUniqueName('Slots Shop') });
 
         const createdBarberA = await insertBarber(shopId);
         const createdBarberB = await insertBarber(shopId);

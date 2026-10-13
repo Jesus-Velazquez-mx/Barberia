@@ -4,6 +4,7 @@ import router from '../src/routes/routes.js';
 import connection from '../src/connection/connection.js';
 import { signToken } from '../src/services/jwtTokenService.js';
 import type { User, UserRole } from '../src/types/entities/user.interface.js';
+import { generateUniqueEmail as uniqueEmail, generateUniquePhone } from './helpers/uniqueValues.js';
 
 const { connectDB, closeDB, getPool } = connection;
 
@@ -13,15 +14,7 @@ app.use('/api', router);
 
 const createdUserIds: string[] = [];
 
-let uniqueCounter = 0;
-const generateUniqueEmail = () => {
-    uniqueCounter += 1;
-    return `update_manager_test_${Date.now()}_${uniqueCounter}@mrbarber.com`;
-};
-const generateUniquePhone = () => {
-    uniqueCounter += 1;
-    return `${Date.now()}${uniqueCounter}`.slice(-10);
-};
+const generateUniqueEmail = () => uniqueEmail('update_manager_test');
 
 // Solo se necesitan id/role/email para firmar el token; el resto de campos no
 // se usan (ver src/services/jwtTokenService.ts).

@@ -1,5 +1,6 @@
 import connection from '../../src/connection/connection.js';
 import type { UserRole } from '../../src/types/entities/user.interface.js';
+import { generateUniqueEmail, generateUniquePhone, generateUniqueName } from './uniqueValues.js';
 
 const { getPool } = connection;
 
@@ -14,22 +15,11 @@ export const createdShiftIds: string[] = [];
 export const createdManagerIds: string[] = [];
 export const createdUserIds: string[] = [];
 
-let fixtureCounter = 0;
+export const generateUniqueFixtureEmail = (prefix = 'fixture') => generateUniqueEmail(prefix);
 
-export const generateUniqueFixtureEmail = (prefix = 'fixture') => {
-    fixtureCounter += 1;
-    return `${prefix}_${Date.now()}_${fixtureCounter}@mrbarber.test`;
-};
+export const generateUniqueFixturePhone = () => generateUniquePhone();
 
-export const generateUniqueFixturePhone = () => {
-    fixtureCounter += 1;
-    return `${Date.now()}${fixtureCounter}`.slice(-10);
-};
-
-export const generateUniqueFixtureName = (prefix = 'Test') => {
-    fixtureCounter += 1;
-    return `${prefix} ${Date.now()}_${fixtureCounter}`;
-};
+export const generateUniqueFixtureName = (prefix = 'Test') => generateUniqueName(prefix);
 
 /**
  * Inserta un usuario base en la tabla 'users'.

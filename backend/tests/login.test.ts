@@ -3,6 +3,7 @@ import express from 'express';
 import bcrypt from 'bcrypt';
 import router from '../src/routes/routes.js';
 import connection from '../src/connection/connection.js';
+import { generateUniqueEmail, generateUniquePhone } from './helpers/uniqueValues.js';
 
 const { connectDB, closeDB, getPool } = connection;
 
@@ -14,17 +15,6 @@ app.use('/api', router);
 /* Correos creados por las pruebas, para poder limpiarlos al finalizar */
 const createdEmails: string[] = [];
 
-// Contador para garantizar valores únicos incluso si dos llamadas caen en el mismo milisegundo
-let uniqueCounter = 0;
-const generateUniqueEmail = () => {
-    uniqueCounter += 1;
-    return `test_${Date.now()}_${uniqueCounter}@mrbarber.com`;
-};
-// La columna phone es varchar(10) UNIQUE, así que también debe ser única por prueba
-const generateUniquePhone = () => {
-    uniqueCounter += 1;
-    return `${Date.now()}${uniqueCounter}`.slice(-10);
-};
 
 /* Crea directamente en la base de datos un manager con contraseña conocida, para
    poder ejercitar POST /api/login (no solo firmar un token) con un rol de staff. */
