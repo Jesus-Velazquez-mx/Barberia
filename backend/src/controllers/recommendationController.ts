@@ -12,7 +12,6 @@ import { extractBearerFromHeader } from '../utils/headerHandling.js';
 
 const haircutRecommendationSchema = z.object({
     recommendationParams: z.object({
-        photo: z.string(),
         userPreferences: z.string().max(500).optional(),
     }) satisfies z.ZodType<HaircutRecommendationRequest>,
     token: z.jwt(),

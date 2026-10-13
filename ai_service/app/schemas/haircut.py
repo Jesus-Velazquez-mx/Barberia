@@ -10,7 +10,7 @@ class HaircutStyle(CustomModel):
 
 class HaircutRecommendationRequest(CustomModel):
     suggested_haircuts: list[HaircutStyle]
-    photo: str  # Foto en base64
+    photo_key: str  # Key de la foto en el bucket privado de S3
     user_data: UserData
 
 

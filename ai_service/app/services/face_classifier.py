@@ -1,5 +1,4 @@
-import base64
-import binascii
+import asyncio
 import hashlib
 import io
 import logging
@@ -12,8 +11,7 @@ import torchvision.transforms as T
 from PIL import Image
 
 from app.core.config import get_settings
-from app.llm.image_loader import ImageLoadError, normalize_image
-from app.llm.llm_exception import LLMClientErrorCategory
+from app.llm.image_loader import load_image_from_key
 
 logger = logging.getLogger(__name__)
 
@@ -138,44 +136,22 @@ def get_model() -> tuple[torch.nn.Module, torch.device]:
     return _model, _device
 
 
-def _invalid(desc: str) -> ImageLoadError:
-    return ImageLoadError(LLMClientErrorCategory.INVALID_REQUEST, desc)
-
-
-def _decode_photo(base64_img: str) -> bytes:
-    """Decodifica el base64 (con o sin prefijo data URL) y normaliza la imagen a JPEG RGB."""
-    if base64_img.startswith("data:"):
-        _, _, base64_img = base64_img.partition(",")
-
-    max_bytes = get_settings().IMAGE_MAX_BYTES
-    # Cota previa a decodificar: 4 caracteres base64 son 3 bytes
-    if len(base64_img) > (max_bytes * 4) // 3 + 4:
-        raise _invalid(f"Image is larger than {max_bytes} bytes")
-
-    try:
-        raw = base64.b64decode(base64_img, validate=True)
-    except (binascii.Error, ValueError) as exc:
-        raise _invalid("Photo is not valid base64") from exc
-
-    if len(raw) > max_bytes:
-        raise _invalid(f"Image is larger than {max_bytes} bytes")
-
-    return normalize_image(raw)
-
-
-def classify_face_shape(base64_img: str) -> str:
+async def classify_face_shape(photo_key: str) -> str:
     """
-    Clasifica una foto recibida en base64. Lanza ImageLoadError si no es una
-    imagen válida. Devuelve un valor de FacialStructureType.
+    Descarga la foto `photo_key` del bucket privado de S3, la valida y
+    clasifica la forma del rostro. Lanza ImageLoadError si la foto no existe,
+    no es una imagen válida o el almacenamiento falla. Devuelve un valor de
+    FacialStructureType.
     """
-    return classify_image_bytes(_decode_photo(base64_img))
+    image_bytes = await load_image_from_key(photo_key)
+    # La inferencia es trabajo de CPU/GPU: se ejecuta en un thread para no bloquear el event loop
+    return await asyncio.to_thread(classify_image_bytes, image_bytes)
 
 
 def classify_image_bytes(image_bytes: bytes) -> str:
     """
     Ejecuta la inferencia sobre una imagen ya validada y normalizada (la que
-    regresan `load_image` o `normalize_image`). Es el punto común de las dos
-    entradas: base64 y URL.
+    regresa `load_image_from_key`).
     """
     model, device = get_model()
 

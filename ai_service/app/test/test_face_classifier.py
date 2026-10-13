@@ -1,4 +1,4 @@
-import base64
+import asyncio
 import hashlib
 import io
 import os
@@ -12,18 +12,14 @@ from PIL import Image
 
 os.environ.setdefault("AI_SERVICE_API_KEY", "test-key")
 
-from app.core.config import Settings
 from app.llm.image_loader import ImageLoadError
+from app.llm.llm_exception import LLMClientErrorCategory
 from app.schemas.face import FacialStructureType
 from app.services import face_classifier
 
 PAYLOAD = b"fake-model-weights" * 1000
 PAYLOAD_SHA256 = hashlib.sha256(PAYLOAD).hexdigest()
 URL = "https://huggingface.co/owner/repo/resolve/abc123/model.pth"
-
-
-def _settings(**overrides) -> Settings:
-    return Settings(AI_SERVICE_API_KEY="test-key", **overrides)  # type: ignore[call-arg]
 
 
 def _serve(monkeypatch, handler) -> list[str]:
@@ -39,10 +35,10 @@ def _serve(monkeypatch, handler) -> list[str]:
     return requested
 
 
-def _image_b64(size=(300, 200), fmt="JPEG", prefix="") -> str:
+def _jpeg(size=(300, 200)) -> bytes:
     buffer = io.BytesIO()
-    Image.new("RGB", size, "tan").save(buffer, format=fmt)
-    return prefix + base64.b64encode(buffer.getvalue()).decode()
+    Image.new("RGB", size, "tan").save(buffer, format="JPEG")
+    return buffer.getvalue()
 
 
 class _FakeModel(torch.nn.Module):
@@ -187,6 +183,20 @@ def test_expected_hash_comparison_is_case_insensitive(tmp_path, monkeypatch) -> 
 # --- Clasificación ------------------------------------------------------------------
 
 
+@pytest.fixture
+def loaded_keys(monkeypatch) -> list[str]:
+    keys: list[str] = []
+
+    async def fake_load_image_from_key(key: str) -> bytes:
+        keys.append(key)
+        return _jpeg()
+
+    monkeypatch.setattr(
+        face_classifier, "load_image_from_key", fake_load_image_from_key
+    )
+    return keys
+
+
 @pytest.mark.parametrize(
     ("predicted", "expected"),
     [
@@ -197,61 +207,35 @@ def test_expected_hash_comparison_is_case_insensitive(tmp_path, monkeypatch) -> 
         ("Square", "square"),
     ],
 )
-def test_classify_maps_prediction_to_enum(fake_model, predicted, expected) -> None:
+def test_classify_maps_prediction_to_enum(
+    fake_model, loaded_keys, predicted, expected
+) -> None:
     model = fake_model(predicted)
 
-    shape = face_classifier.classify_face_shape(_image_b64())
+    shape = asyncio.run(face_classifier.classify_face_shape("photos/abc"))
 
     assert shape == expected
     assert FacialStructureType(shape)
     assert model.seen_shape == (1, 3, 224, 224)
+    assert loaded_keys == ["photos/abc"]
 
 
-def test_classify_accepts_data_url_prefix(fake_model) -> None:
-    fake_model("Oval")
-
-    shape = face_classifier.classify_face_shape(
-        _image_b64(prefix="data:image/jpeg;base64,")
-    )
-
-    assert shape == "oval"
-
-
-def test_classify_accepts_png(fake_model) -> None:
-    fake_model("Round")
-
-    assert face_classifier.classify_face_shape(_image_b64(fmt="PNG")) == "round"
-
-
-def test_classify_does_not_keep_module_level_result(fake_model) -> None:
+def test_classify_does_not_keep_module_level_result(fake_model, loaded_keys) -> None:
     fake_model("Square")
 
-    face_classifier.classify_face_shape(_image_b64())
+    asyncio.run(face_classifier.classify_face_shape("photos/abc"))
 
     assert not hasattr(face_classifier, "_latest_detected_structure")
     assert not hasattr(face_classifier, "get_latest_structure")
 
 
-def test_classify_rejects_invalid_base64(fake_model) -> None:
+def test_classify_propagates_download_errors(fake_model, monkeypatch) -> None:
     fake_model("Oval")
 
-    with pytest.raises(ImageLoadError):
-        face_classifier.classify_face_shape("this is !!! not base64")
+    async def failing(key: str) -> bytes:
+        raise ImageLoadError(LLMClientErrorCategory.INVALID_REQUEST, "Photo was not found")
 
-
-def test_classify_rejects_non_image_payload(fake_model) -> None:
-    fake_model("Oval")
-    payload = base64.b64encode(b"definitely not an image").decode()
+    monkeypatch.setattr(face_classifier, "load_image_from_key", failing)
 
     with pytest.raises(ImageLoadError):
-        face_classifier.classify_face_shape(payload)
-
-
-def test_classify_rejects_oversized_payload(fake_model, monkeypatch) -> None:
-    fake_model("Oval")
-    monkeypatch.setattr(
-        face_classifier, "get_settings", lambda: _settings(IMAGE_MAX_BYTES=100)
-    )
-
-    with pytest.raises(ImageLoadError):
-        face_classifier.classify_face_shape(_image_b64(size=(400, 400)))
+        asyncio.run(face_classifier.classify_face_shape("photos/abc"))

@@ -44,7 +44,20 @@ router.get('/recommendation/test', testAiService);
  *   post:
  *     summary: Genera recomendaciones de cortes de cabello
  *     tags: [Recommendation]
- *     description: Genera recomendaciones personalizadas para el cliente autenticado usando su fotografía, edad, género y preferencias. Requiere un token JWT de un cliente en el header `Authorization` (formato `Bearer <token>`).
+ *     description: >-
+ *       Genera recomendaciones personalizadas para el cliente autenticado usando su fotografía,
+ *       edad, género y preferencias. Requiere un token JWT de un cliente en el header
+ *       `Authorization` (formato `Bearer <token>`).
+ *
+ *       **La fotografía no se envía en esta petición.** Antes de llamar a este endpoint el cliente
+ *       debe haberla subido a S3 con el formulario de `GET /api/presigned-url`. El servidor deriva
+ *       la key del objeto a partir del usuario autenticado (`<prefijo del bucket><id del usuario>`)
+ *       y el microservicio de IA descarga la foto directamente del bucket privado. Cada usuario
+ *       tiene una sola foto; subir una nueva reemplaza la anterior.
+ *
+ *       Si el cliente aún no tiene estructura facial registrada, esta se detecta a partir de la
+ *       foto (JPEG, PNG o WEBP) antes de generar las recomendaciones; en ese caso la foto debe
+ *       existir en el bucket y ser una imagen válida.
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -57,17 +70,16 @@ router.get('/recommendation/test', testAiService);
  *             properties:
  *               recommendationParams:
  *                 type: object
- *                 required: [photo]
+ *                 description: Parámetros de la recomendación. Puede enviarse vacío (`{}`); los campos no listados, como `photo`, se ignoran.
  *                 properties:
- *                   photo:
- *                     type: string
- *                     description: Fotografía del cliente, codificada como string.
- *                     example: data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQ...
  *                   userPreferences:
  *                     type: string
  *                     maxLength: 500
  *                     description: Preferencias o indicaciones adicionales del cliente.
  *                     example: Prefiero un corte corto y fácil de mantener.
+ *           example:
+ *             recommendationParams:
+ *               userPreferences: Prefiero un corte corto y fácil de mantener.
  *     responses:
  *       200:
  *         description: Recomendaciones generadas exitosamente.
@@ -92,13 +104,17 @@ router.get('/recommendation/test', testAiService);
  *                     confidence: { type: number, format: float, minimum: 0, maximum: 1, example: 0.92 }
  *                 message: { type: string, example: Recomendación de corte generada exitosamente }
  *       400:
- *         description: Error de validación de los datos enviados.
+ *         description: Error de validación de los datos enviados (por ejemplo, `userPreferences` supera los 500 caracteres o falta `recommendationParams`).
  *       401:
  *         description: Token ausente, inválido o el usuario no es un cliente.
  *       404:
  *         description: No se encontró el cliente.
  *       500:
- *         description: Error al comunicarse con el servicio de recomendación o no hay estilos de corte disponibles.
+ *         description: >-
+ *           Error al comunicarse con el servicio de recomendación, no hay estilos de corte disponibles
+ *           o la detección de estructura facial falló. Esto último incluye que el cliente no haya
+ *           subido su foto al bucket, que el archivo no sea una imagen JPEG, PNG o WEBP válida o que
+ *           el almacenamiento no esté disponible.
  */
 router.post('/recommendation/generate', getHaircutRecommendation);
 

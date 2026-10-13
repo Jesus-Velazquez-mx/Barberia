@@ -1,6 +1,6 @@
-import { PresignedPost } from "@aws-sdk/s3-presigned-post";
+import type { PresignedPost } from "@aws-sdk/s3-presigned-post";
 import { generatePresignedURL } from "../services/bucketService.js";
-import { ApiHandler, sendFail, sendInternalServerError, sendSuccess, sendValidationError } from "../utils/apiResponse.js";
+import { type ApiHandler, sendFail, sendInternalServerError, sendSuccess, sendValidationError } from "../utils/apiResponse.js";
 import { extractBearerFromHeader } from "../utils/headerHandling.js";
 import { ZodError } from "zod";
 import { ApiError, ApiErrorCode } from "../errors/ApiError.js";

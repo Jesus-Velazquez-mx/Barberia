@@ -3,6 +3,8 @@ import globalConfig from '../config/globalConfig.js';
 import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 import { getUserById } from '../repositories/userRepository.js';
 import type {
+    InternalAIFaceDetectionRequest,
+    InternalAIFaceDetectionResponse,
     InternalAIRecommendationRequest,
     InternalAIRequest,
     InternalAIResponse,
@@ -13,7 +15,8 @@ import type {
     RecommendationHealthResponse,
 } from '../types/dto/recommendation.interface.js';
 import { isUserSessionValid } from '../utils/userSession.js';
-import { getClientByUserId } from '../repositories/clientRepository.js';
+import { getUserPhotoKey } from '../utils/photoKey.js';
+import { getClientByUserId, updateClientFacialStructure } from '../repositories/clientRepository.js';
 import { getActiveHaircutStyles, getActiveHaircutStylesByFacialStructure } from '../repositories/haircutRepository.js';
 import { calculateAge } from './userService.js';
 import type { FacialStructureType } from '../types/entities/client.interface.js';
@@ -44,10 +47,10 @@ export const testConnection = async (): Promise<RecommendationHealthResponse> =>
 /**
  * Función auxiliar para llamar al microservicio de Python y detectar la estructura facial usando la IA.
  */
-export const detectFacialStructure = async (photo: string): Promise<InternalAIResponse<FacialStructureType>> => {
+export const detectFacialStructure = async (photoKey: string): Promise<InternalAIResponse<InternalAIFaceDetectionResponse>> => {
     let res: Response;
 
-    const payload = buildAIServicePayload({ obj: photo });
+    const payload = buildAIServicePayload<InternalAIFaceDetectionRequest>({ obj: { photoKey }, includeProvider: false });
 
     try {
         res = await fetch(`${globalConfig.AI_SERVICE_URL}/face/detect-structure`, {
@@ -74,7 +77,7 @@ export const detectFacialStructure = async (photo: string): Promise<InternalAIRe
         throw new ApiError(ApiErrorCode.INTERNAL_SERVER_ERROR, errorMsg);
     }
 
-    return (await res.json()) as InternalAIResponse<FacialStructureType>;
+    return (await res.json()) as InternalAIResponse<InternalAIFaceDetectionResponse>;
 };
 
 export const generateRecommendation = async (
@@ -96,12 +99,20 @@ export const generateRecommendation = async (
         throw new ApiError(ApiErrorCode.NOT_FOUND, 'Client could not be found');
     }
 
+    const photoKey = getUserPhotoKey(performer.id);
+
     if (!client.facial_structure_type) {
         // Si el cliente no tiene una estructura facial registrada, llamamos a la IA para detectarla con la foto.
-        const facialStructureResponse = await detectFacialStructure(recommendationParams.photo);
+        const facialStructureResponse = await detectFacialStructure(photoKey);
 
         if (facialStructureResponse.data) {
-            client.facial_structure_type = facialStructureResponse.data;
+            client.facial_structure_type = facialStructureResponse.data.facialStructure;
+
+            console.log(client.facial_structure_type);
+
+            // Se guarda para no volver a invocar a la IA en las siguientes recomendaciones.
+            await updateClientFacialStructure(performer.id, client.facial_structure_type);
+
             console.log(
                 chalk.green(
                     `[AI Service] Estructura facial detectada exitosamente por la IA: ${client.facial_structure_type}`
@@ -111,6 +122,12 @@ export const generateRecommendation = async (
             throw new ApiError(ApiErrorCode.INTERNAL_SERVER_ERROR, 'Facial detection request failed');
         }
     }
+
+    console.log(
+        chalk.green(
+            `Estructura facial obtenida desde la base de datos: ${client.facial_structure_type}`
+        )
+    );
 
     const availableHaircuts =
         (await getActiveHaircutStylesByFacialStructure(client.facial_structure_type)) ??
@@ -122,7 +139,7 @@ export const generateRecommendation = async (
 
     const payload: InternalAIRecommendationRequest = {
         suggestedHaircuts: availableHaircuts,
-        photo: recommendationParams.photo,
+        photoKey,
         userData: {
             age: calculateAge(user.birth_date),
             gender: user.gender,
@@ -167,10 +184,10 @@ const buildAIServicePayload = <T>({
 }: BuildAIServicePayloadProps<T>): InternalAIRequest<T> => {
     return includeProvider
         ? {
-              data: obj,
-              provider: globalConfig.AI_PROVIDER,
-          }
+            data: obj,
+            provider: globalConfig.AI_PROVIDER,
+        }
         : {
-              data: obj,
-          };
+            data: obj,
+        };
 };

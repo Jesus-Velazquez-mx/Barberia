@@ -9,7 +9,6 @@ type HaircutStyleDTO = {
 };
 
 interface HaircutRecommendationRequest {
-    photo: string;
     userPreferences?: string;
 }
 
