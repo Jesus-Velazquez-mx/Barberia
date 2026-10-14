@@ -109,6 +109,18 @@ def llm_result(
     )
 
 
+def no_suitable_result(
+    haircuts=None, reasoning="Buscas el cabello largo y solo hay cortes cortos."
+) -> HaircutRecommendationResponse:
+    return HaircutRecommendationResponse.model_validate(
+        {
+            "status": "no_suitable_haircut",
+            "haircuts": haircuts or [],
+            "reasoning": reasoning,
+        }
+    )
+
+
 def run_service(req):
     return asyncio.run(service_module.recommend_haircut(req))
 
@@ -182,6 +194,10 @@ def test_name_and_description_come_from_request_not_llm(use_fake_llm):
         (llm_result(confidence=-0.1), "confidence"),
         (llm_result(reasoning="   "), "reasoning"),
         (llm_result(suggestion_text=""), "suggestion_text"),
+        (llm_result(suggestion_text=None), "suggestion_text"),
+        (llm_result(confidence=None), "confidence"),
+        (no_suitable_result(haircuts=[HAIRCUTS[0]]), "haircuts"),
+        (no_suitable_result(reasoning="  "), "reasoning"),
     ],
 )
 def test_invalid_llm_response_raises_unprocessable(
@@ -193,6 +209,36 @@ def test_invalid_llm_response_raises_unprocessable(
         run_service(build_request())
 
     assert expected_field in {e.field for e in exc.value.errors}
+
+
+def test_default_status_is_recommended(use_fake_llm):
+    use_fake_llm(llm_result())
+
+    res = run_service(build_request())
+
+    assert res.status == "recommended"
+
+
+def test_no_suitable_haircut_is_returned_with_reason(use_fake_llm):
+    use_fake_llm(no_suitable_result())
+
+    res = run_service(build_request())
+
+    assert res.status == "no_suitable_haircut"
+    assert res.haircuts == []
+    assert "cortos" in res.reasoning
+    assert res.suggestion_text is None
+    assert res.confidence is None
+
+
+def test_prompt_explains_no_suitable_haircut_outcome(use_fake_llm):
+    client = use_fake_llm(llm_result())
+
+    run_service(build_request())
+
+    prompt = str(client.calls[0]["prompt"])
+    assert "no_suitable_haircut" in prompt
+    assert "closest compatible one" not in prompt
 
 
 def test_llm_error_response_raises_unprocessable(use_fake_llm):
@@ -248,6 +294,19 @@ def test_endpoint_returns_recommendation(use_fake_llm):
     assert body["data"]["haircuts"][0]["id"] == "1"
     assert body["data"]["confidence"] == 0.9
     assert "suggestionText" in body["data"]
+    assert body["data"]["status"] == "recommended"
+
+
+def test_endpoint_returns_no_suitable_haircut(use_fake_llm):
+    use_fake_llm(no_suitable_result())
+
+    res = TestClient(app).post(ENDPOINT, json=build_payload(), headers=auth_headers())
+
+    assert res.status_code == 200
+    data = res.json()["data"]
+    assert data["status"] == "no_suitable_haircut"
+    assert data["haircuts"] == []
+    assert "cortos" in data["reasoning"]
 
 
 def test_endpoint_returns_422_when_content_is_invalid(use_fake_llm):

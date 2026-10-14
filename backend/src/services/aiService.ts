@@ -6,12 +6,13 @@ import type {
     InternalAIFaceDetectionRequest,
     InternalAIFaceDetectionResponse,
     InternalAIRecommendationRequest,
+    InternalAIRecommendationResponse,
     InternalAIRequest,
     InternalAIResponse,
 } from '../types/dto/ai_service/internalAIService.js';
 import type {
     HaircutRecommendationRequest,
-    HaircutRecommendationResponse,
+    HaircutRecommendationResult,
     HaircutStyleDTO,
     RecommendationHealthResponse,
 } from '../types/dto/recommendation.interface.js';
@@ -21,6 +22,12 @@ import { getUserPhotoKey } from '../utils/photoKey.js';
 import { getClientByUserId, updateClientFacialStructure } from '../repositories/clientRepository.js';
 import { getActiveHaircutStyles, getActiveHaircutStylesByFacialStructure } from '../repositories/haircutRepository.js';
 import { calculateAge } from './userService.js';
+
+/** Plantilla fija que se envía al cliente cuando el LLM descarta todos los cortes; el motivo va aparte en `data.reason`. */
+export const NO_SUITABLE_HAIRCUT_MESSAGE =
+    'Ninguno de los cortes existentes parece ajustarse a tus preferencias, te sugerimos hablar directamente con tu barbero';
+
+export const RECOMMENDATION_GENERATED_MESSAGE = 'Recomendación de corte generada exitosamente';
 
 export const testConnection = async (): Promise<RecommendationHealthResponse> => {
     let res: Response;
@@ -80,7 +87,7 @@ export const detectFacialStructure = async (photoKey: string): Promise<InternalA
 export const generateRecommendation = async (
     recommendationParams: HaircutRecommendationRequest,
     token: string
-): Promise<InternalAIResponse<HaircutRecommendationResponse>> => {
+): Promise<HaircutRecommendationResult> => {
     let res: Response;
 
     const performer = await isUserSessionValid(token);
@@ -161,7 +168,43 @@ export const generateRecommendation = async (
         throw await buildAIServiceError(res, 'Haircut recommendation request');
     }
 
-    return (await res.json()) as InternalAIResponse<HaircutRecommendationResponse>;
+    const aiResponse = (await res.json()) as InternalAIResponse<InternalAIRecommendationResponse>;
+
+    return toRecommendationResult(aiResponse.data);
+};
+
+/**
+ * Convierte la respuesta de la IA en lo que se envía al cliente web. Cuando el LLM considera que ningún corte
+ * encaja con las preferencias, el mensaje es una plantilla fija y solo el motivo (`reason`) lo redacta el LLM.
+ */
+const toRecommendationResult = (data: InternalAIRecommendationResponse | undefined): HaircutRecommendationResult => {
+    if (!data) {
+        console.error(chalk.red('\nERROR - AI service returned a successful response without data'));
+        throw new ApiError(ApiErrorCode.INTERNAL_SERVER_ERROR, 'Haircut recommendation request returned no data');
+    }
+
+    if (data.status === 'no_suitable_haircut') {
+        return {
+            message: NO_SUITABLE_HAIRCUT_MESSAGE,
+            data: { status: 'no_suitable_haircut', reason: data.reasoning },
+        };
+    }
+
+    if (data.suggestionText === undefined || data.confidence === undefined) {
+        console.error(chalk.red('\nERROR - AI service returned an incomplete recommendation:'), data);
+        throw new ApiError(ApiErrorCode.INTERNAL_SERVER_ERROR, 'Haircut recommendation request returned incomplete data');
+    }
+
+    return {
+        message: RECOMMENDATION_GENERATED_MESSAGE,
+        data: {
+            status: 'recommended',
+            haircuts: data.haircuts,
+            suggestionText: data.suggestionText,
+            reasoning: data.reasoning,
+            confidence: data.confidence,
+        },
+    };
 };
 
 /** Solo se envían a la IA los campos que usa; `description` es nullable en la base de datos. */

@@ -9,6 +9,7 @@ os.environ.setdefault("ANTHROPIC_API_KEY", "anthropic-test-key")
 from app.llm.claude_client import ClaudeClient
 from app.llm.llm_exception import LLMClientError, LLMClientErrorCategory
 from app.schemas.custom_model import CustomModel
+from app.schemas.haircut import HaircutRecommendationResponse
 from app.schemas.llm import LLMErrorResponse
 
 
@@ -73,6 +74,27 @@ def test_parse_response_accepts_primary_and_error_schemas() -> None:
 
     assert result == FakeSchema(value="ok")
     assert isinstance(error, LLMErrorResponse)
+
+
+def test_parse_response_distinguishes_haircut_outcomes_by_status() -> None:
+    client = _client()
+    prompt = ["prompt"]
+
+    no_match = client._parse_response(
+        '{"status":"no_suitable_haircut","haircuts":[],"reasoning":"Solo hay cortes cortos."}',
+        HaircutRecommendationResponse,
+        prompt,
+    )
+    insufficient = client._parse_response(
+        '{"status":"insufficient_data","insufficiencyReason":"no face"}',
+        HaircutRecommendationResponse,
+        prompt,
+    )
+
+    assert isinstance(no_match, HaircutRecommendationResponse)
+    assert no_match.status == "no_suitable_haircut"
+    assert no_match.haircuts == []
+    assert isinstance(insufficient, LLMErrorResponse)
 
 
 def test_parse_response_rejects_invalid_payload() -> None:

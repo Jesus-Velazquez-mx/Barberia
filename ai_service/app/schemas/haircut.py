@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import Field
 
@@ -19,7 +19,14 @@ class HaircutRecommendationRequest(CustomModel):
 
 
 class HaircutRecommendationResponse(CustomModel):
-    haircuts: list[HaircutStyle]
-    suggestion_text: str
+    """
+    - recommended: haircuts (al menos uno), suggestion_text y confidence son obligatorios.
+    - no_suitable_haircut: ningún candidato es compatible con las preferencias; haircuts va vacío
+      y reasoning explica por qué.
+    """
+
+    status: Literal["recommended", "no_suitable_haircut"] = "recommended"
+    haircuts: list[HaircutStyle] = Field(default_factory=list)
+    suggestion_text: Optional[str] = None
     reasoning: str
-    confidence: float
+    confidence: Optional[float] = None

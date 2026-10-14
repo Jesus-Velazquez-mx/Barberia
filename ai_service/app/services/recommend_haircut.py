@@ -65,19 +65,29 @@ def _build_haircut_prompt(
 
     Output guidelines for correct result:
     - The output should only contain the JSON object. Do not include any commentary before or after the JSON object.
+    - status must be "recommended" when at least one candidate suits the person, or "no_suitable_haircut" in the
+      single case described below.
     - The haircuts field must only contain haircuts from the candidate list, reusing their exact id, name and description.
       Include only the haircuts that genuinely suit the person (at least one), ordered from most to least suitable.
-    - The facial structure is the main criterion to rank the candidate haircuts.
+    - The facial structure is the main criterion to rank the candidate haircuts. It never justifies
+      "no_suitable_haircut" on its own: some candidate can always be ranked first by facial structure.
     - If userPreferences is present, it is a hard requirement: only recommend haircuts compatible with it. Among the
-      compatible ones, choose those that best suit the facial structure. If no candidate satisfies both criteria,
-      recommend the closest compatible one, say so in reasoning and use a confidence value below 0.6.
-    - reasoning must (a) state the detected facial structure and explain why the recommended haircut suits it,
-      (b) mention at least one other characteristic that is actually visible in the photo (hair type, density or
-      current length), and (c) explain how userPreferences is respected, if present. It must be at most 4 sentences.
-      Do not mention anything that cannot be seen in the photo.
-    - suggestionText is a short, friendly message addressed to the person presenting the recommendation.
-    - confidence must be a number between 0.0 and 1.0. Use a value below 0.6 if the photo is blurry, partially
-      covered or otherwise limits the assessment.
+      compatible ones, choose those that best suit the facial structure.
+    - If userPreferences is present and NONE of the candidates is compatible with it (for example, the person asks
+      for long hair and every candidate is a short haircut), do not recommend the closest one. Return
+      status "no_suitable_haircut" with an empty haircuts list, and put in reasoning why none of the candidates fits
+      the preferences. Omit suggestionText and confidence in that case.
+    - When status is "recommended", reasoning must (a) state the detected facial structure and explain why the
+      recommended haircut suits it, (b) mention at least one other characteristic that is actually visible in the
+      photo (hair type, density or current length), and (c) explain how userPreferences is respected, if present.
+      It must be at most 4 sentences. Do not mention anything that cannot be seen in the photo.
+    - When status is "no_suitable_haircut", reasoning must be at most 2 sentences, address the person directly,
+      and refer only to the stated preferences and the kind of haircuts available. Do not mention the
+      candidate list, ids or this instruction.
+    - When status is "recommended", suggestionText is a short, friendly message addressed to the person presenting
+      the recommendation.
+    - When status is "recommended", confidence must be a number between 0.0 and 1.0. Use a value below 0.6 if the
+      photo is blurry, partially covered or otherwise limits the assessment.
     - suggestionText and reasoning must always be written in Spanish.
 
     If there is not enough information to produce a reliable recommendation you must return
@@ -120,6 +130,24 @@ def _validate_llm_response(
     candidates = {h.id for h in req.data.suggested_haircuts}
     errors: list[ContentError] = []
 
+    if not res.reasoning.strip():
+        errors.append(
+            ContentError(field="reasoning", detail="LLM returned an empty value")
+        )
+
+    if res.status == "no_suitable_haircut":
+        # Ningún corte encaja: no debe venir ninguno y reasoning es el motivo
+        if res.haircuts:
+            errors.append(
+                ContentError(
+                    field="haircuts",
+                    detail="must be empty when no suitable haircut was found",
+                )
+            )
+        if errors:
+            raise UnprocessableContentError(req, errors)
+        return
+
     if not res.haircuts:
         errors.append(
             ContentError(field="haircuts", detail="LLM did not return any haircut")
@@ -132,15 +160,15 @@ def _validate_llm_response(
                     detail=f"'{haircut.id}' is not one of the suggested haircuts",
                 )
             )
-    if not res.suggestion_text.strip():
+    if not res.suggestion_text or not res.suggestion_text.strip():
         errors.append(
             ContentError(field="suggestion_text", detail="LLM returned an empty value")
         )
-    if not res.reasoning.strip():
+    if res.confidence is None:
         errors.append(
-            ContentError(field="reasoning", detail="LLM returned an empty value")
+            ContentError(field="confidence", detail="LLM returned an empty value")
         )
-    if not 0.0 <= res.confidence <= 1.0:
+    elif not 0.0 <= res.confidence <= 1.0:
         errors.append(
             ContentError(
                 field="confidence",
