@@ -10,10 +10,11 @@ interface SelectFieldProps {
   label: string;
   options: SelectOption[];
   error?: string;
+  disabled?: boolean;
   registerProps: UseFormRegisterReturn;
 }
 
-export function SelectField({ id, label, options, error, registerProps }: SelectFieldProps) {
+export function SelectField({ id, label, options, error, disabled, registerProps }: SelectFieldProps) {
   return (
     <div className="flex flex-col gap-1.5">
       <label htmlFor={id} className="text-[0.85rem] font-semibold text-[var(--labels)]">
@@ -23,8 +24,9 @@ export function SelectField({ id, label, options, error, registerProps }: Select
       <div className="relative">
         <select
           id={id}
-          className="w-full appearance-none rounded-lg border border-white/10 bg-black/20 px-3.5 py-2.5 pr-9 text-[var(--text-h)] outline-none focus:border-[var(--accent)]"
+          className="w-full appearance-none rounded-lg border border-white/10 bg-black/20 px-3.5 py-2.5 pr-9 text-[var(--text-h)] outline-none focus:border-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60"
           aria-invalid={Boolean(error)}
+          disabled={disabled}
           {...registerProps}
         >
           {options.map((option) => (
