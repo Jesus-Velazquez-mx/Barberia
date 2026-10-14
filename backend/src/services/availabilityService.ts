@@ -88,7 +88,7 @@ export const getAvailableSlots = async ({
     serviceId,
 }: GetAvailableSlotsInput): Promise<AvailableSlotsByBarber[]> => {
     const dayStart = parseDate(date);
-    const now = Date.now();
+    const now = Date.now() - new Date().getTimezoneOffset() * MS_PER_MINUTE;
     const todayStart = now - (now % MS_PER_DAY);
 
     if (dayStart < todayStart) {

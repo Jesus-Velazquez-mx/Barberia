@@ -96,7 +96,7 @@ export function BookingScratchContainer() {
   const serviceKey = selectedServiceIds.join(',');
   const canAddService = services.length < serviceOptions.length && services.every((s) => s.serviceId);
 
-  /* 1. useEffect con arreglo vacío para cargar sucursales y servicios al montar */
+  /* useEffect con arreglo vacío para cargar sucursales y servicios al montar */
   useEffect(() => {
     let active = true;
 
@@ -115,7 +115,7 @@ export function BookingScratchContainer() {
     };
   }, []);
 
-  /* 2. useEffect que depende de shopId para cargar los barberos activos cuando cambia la sucursal */
+  /* useEffect que depende de shopId para cargar los barberos activos cuando cambia la sucursal */
   useEffect(() => {
     if (!shopId) {
       setBarbers([]);
@@ -137,7 +137,7 @@ export function BookingScratchContainer() {
     };
   }, [shopId]);
 
-  /* 3. useEffect para calcular la disponibilidad real de cada día del mes visible en el calendario */
+  /* useEffect para calcular la disponibilidad real de cada día del mes visible en el calendario */
   useEffect(() => {
     const primaryServiceId = selectedServiceIds[0];
     if (!shopId || !primaryServiceId) {
@@ -173,7 +173,9 @@ export function BookingScratchContainer() {
           };
           return [dateKey, dayAvailability] as const;
         } catch {
-          return [dateKey, { status: 'closed', slotsCount: 0 } as DayAvailability] as const;
+          // Si falla la red al precargar el mes, dejamos el día seleccionable 
+          // para que al abrir el modal se muestre el estado de error legible.
+          return [dateKey, { status: 'available', slotsCount: 0 } as DayAvailability] as const;
         }
       })
     ).then((entries) => {
