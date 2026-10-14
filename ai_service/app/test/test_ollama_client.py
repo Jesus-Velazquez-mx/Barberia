@@ -32,6 +32,7 @@ def _client(*, system: str | None = None) -> OllamaClient:
     client.num_ctx = 4096
     client.temperature = 0.0
     client.keep_alive = "5m"
+    client.think = False
     return client
 
 
@@ -77,7 +78,17 @@ def test_build_chat_params_sends_schema_with_explicit_limits() -> None:
     assert params["messages"] == []
     assert params["options"] == {"num_predict": 100, "num_ctx": 4096, "temperature": 0.0}
     assert params["keep_alive"] == "5m"
+    assert params["think"] is False
     assert isinstance(params["format"], dict)
+
+
+def test_build_chat_params_forwards_think_setting() -> None:
+    client = _client()
+    client.think = True
+
+    params = client._build_chat_params([], FakeSchema)
+
+    assert params["think"] is True
 
 
 def test_format_schema_is_union_of_expected_and_error_schemas() -> None:
@@ -337,6 +348,7 @@ def test_init_reads_defaults_from_settings(monkeypatch) -> None:
             OLLAMA_MODEL="gemma4:e4b",
             OLLAMA_BASE_URL="http://localhost:11434",
             OLLAMA_NUM_CTX=8192,
+            OLLAMA_MAX_TOKENS=1500,
             MAX_TOKENS=1000,
         ),
     )
@@ -347,7 +359,19 @@ def test_init_reads_defaults_from_settings(monkeypatch) -> None:
     assert client.model == "gemma4:e4b"
     assert client.base_url == "http://localhost:11434"
     assert client.num_ctx == 8192
-    assert client.max_tokens == 1000
+    # El límite de Ollama es independiente de MAX_TOKENS (el de Claude)
+    assert client.max_tokens == 1500
+    assert client.think is False
+
+
+def test_init_reads_think_from_settings(monkeypatch) -> None:
+    monkeypatch.setattr(
+        ollama_client,
+        "get_settings",
+        lambda: _settings(OLLAMA_MODEL="gemma4:e4b", OLLAMA_THINK=True),
+    )
+
+    assert OllamaClient().think is True
 
 
 def test_init_fails_fast_without_model(monkeypatch) -> None:

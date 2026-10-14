@@ -37,6 +37,7 @@ class OllamaClient:
         num_ctx: int | None = None,
         temperature: float | None = None,
         keep_alive: str | None = None,
+        think: bool | None = None,
     ):
         # Los valores se resuelven aquí y no al importar el módulo, para que
         # importar OllamaClient no dependa de que exista la configuración.
@@ -50,7 +51,12 @@ class OllamaClient:
             )
 
         self.model = resolved_model
-        self.max_tokens = max_tokens if max_tokens is not None else settings.MAX_TOKENS
+        # A diferencia de Claude, Ollama cuenta los tokens de razonamiento
+        # (thinking) dentro del máximo de salida, por eso tiene su propio límite.
+        self.max_tokens = (
+            max_tokens if max_tokens is not None else settings.OLLAMA_MAX_TOKENS
+        )
+        self.think = think if think is not None else settings.OLLAMA_THINK
         self.system = system
         self.base_url = base_url or settings.OLLAMA_BASE_URL
         self.num_ctx = num_ctx if num_ctx is not None else settings.OLLAMA_NUM_CTX
@@ -175,15 +181,20 @@ class OllamaClient:
         - format: JSON Schema (structured outputs). A diferencia de
           format="json", que solo garantiza JSON válido, esto restringe la
           generación a los campos del schema (ver _build_format_schema)
-        - num_predict: número máximo de tokens a generar
-        - num_ctx: tamaño de la ventana de contexto. Ollama usa uno pequeño por
-          defecto y trunca el prompt sin avisar, por eso se fija explícitamente
+        - think: activa o desactiva el razonamiento del modelo. Los modelos con
+          thinking lo activan por defecto, y esos tokens consumen tanto
+          num_predict como la ventana de contexto antes de que aparezca el JSON
+        - num_predict: número máximo de tokens a generar (incluye el thinking)
+        - num_ctx: tamaño de la ventana de contexto, compartida por el prompt,
+          la imagen y lo que se genera. Ollama usa uno pequeño por defecto y
+          trunca sin avisar, por eso se fija explícitamente
         - temperature: baja, para respuestas estables y estructuradas
         - keep_alive: tiempo que el modelo se queda cargado en memoria
         """
         return {
             "model": self.model,
             "messages": messages,
+            "think": self.think,
             "format": self._build_format_schema(schema),
             "options": {
                 "num_predict": self.max_tokens,

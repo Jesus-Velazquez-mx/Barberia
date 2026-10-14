@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     # Provider-agnostic LLM params
     LLM_TIMEOUT: float = 90.0  # Seconds
     LLM_MAX_ATTEMPTS: int = 3
-    MAX_TOKENS: int = 1000
+    MAX_TOKENS: int = 2048
     BASE_BACKOFF_SECONDS: float = 1.0
     MAX_BACKOFF_SECONDS: float = 30.0
 
@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str | None = None
     OLLAMA_NUM_CTX: int = 8192  # Context window (tokens). Ollama's default is small and truncates silently
+    OLLAMA_MAX_TOKENS: int = 4096 # Ollama includes thinking tokens in the count for max output tokens, to it's managed separately
+    OLLAMA_THINK: bool = False  # Thinking models spend part of the context and OLLAMA_MAX_TOKENS on it
     OLLAMA_TEMPERATURE: float = 0.0
     OLLAMA_KEEP_ALIVE: str = "10m"  # How long the model stays loaded in memory
 
