@@ -8,4 +8,6 @@ export interface BarberResponse {
     shiftId: string;
     bio: string | null;
     isAcceptingBookings: boolean;
+    createdAt: Date;
+    updatedAt: Date;
 }

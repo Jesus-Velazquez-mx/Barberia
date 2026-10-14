@@ -17,8 +17,10 @@ const getAvailabilityQuerySchema = z.object({
         .regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format, expected YYYY-MM-DD')
         .refine(
             (val) => {
-                const today = new Date().toISOString().slice(0, 10);
-                return val >= today;
+                const now = new Date();
+                const offsetMs = now.getTimezoneOffset() * 60_000;
+                const localToday = new Date(now.getTime() - offsetMs).toISOString().slice(0, 10);
+                return val >= localToday;
             },
             { message: 'Date cannot be before today' }
         ),

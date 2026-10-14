@@ -1,4 +1,4 @@
-export interface Service {
+export interface OfferedService {
     id: string;
     category_id: string;
     name: string;

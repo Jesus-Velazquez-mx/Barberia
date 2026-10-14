@@ -8,7 +8,7 @@ const getActiveSlotsByBarberIdsAndDay = jest.fn<(...args: any[]) => Promise<any>
 const getBlockingAppointmentsByBarberIdsAndRange = jest.fn<(...args: any[]) => Promise<any>>();
 const getAllShifts = jest.fn<(...args: any[]) => Promise<any>>();
 
-jest.unstable_mockModule('../src/repositories/serviceRepository.js', () => ({ getServiceById }));
+jest.unstable_mockModule('../src/repositories/offeredServiceRepository.js', () => ({ getServiceById }));
 jest.unstable_mockModule('../src/repositories/shopRepository.js', () => ({ getShopById }));
 jest.unstable_mockModule('../src/repositories/barberRepository.js', () => ({ getActiveBarbersByShop }));
 jest.unstable_mockModule('../src/repositories/availabilitySlotRepository.js', () => ({
