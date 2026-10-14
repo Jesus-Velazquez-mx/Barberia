@@ -20,3 +20,12 @@ export const updateClientFacialStructure = async (userId: string, facialStructur
 
     await pool.query(`UPDATE clients SET facial_structure_type = $1 WHERE user_id = $2`, [facialStructure, userId]);
 };
+
+/**
+ * Descarta la estructura facial guardada para que se vuelva a detectar a partir de la foto vigente.
+ */
+export const clearClientFacialStructure = async (userId: string): Promise<void> => {
+    const pool = db.getPool();
+
+    await pool.query(`UPDATE clients SET facial_structure_type = NULL WHERE user_id = $1`, [userId]);
+};

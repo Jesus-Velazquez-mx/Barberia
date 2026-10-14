@@ -1,3 +1,10 @@
+import base64
+
+from click import prompt
+from app.llm.image_loader import ImageLoadError, load_image_from_key
+import base64
+from app.llm.image_loader import ImageLoadError, load_image_from_key
+
 from typing import Any, TypeVar
 
 from anthropic import (
@@ -50,16 +57,33 @@ class ClaudeClient:
 
     @enable_error_handling  # Enables retries and error-handling
     async def generate_structured_response(
-        self, prompt: str | list[str], schema: type[ModelT]
+        self,
+        prompt: str | list[str],
+        schema: type[ModelT],
+        photo_key: str | None = None,
     ) -> ModelT | LLMErrorResponse:
         normalized_prompt = self._normalize_prompt(prompt)
-        messages = self._build_messages(normalized_prompt)
-        client_params = self._build_client_params(messages)
-        response = await self._generate_response(client_params, normalized_prompt)
-        self._validate_stop_reason(response, normalized_prompt)
-        json_response_payload = self._extract_text_payload(response, normalized_prompt)
-        return self._parse_response(json_response_payload, schema, normalized_prompt)
+        image_bytes: bytes | None = None
+        try:
+            if photo_key:
+                image_bytes = await self._load_image(photo_key, normalized_prompt)
+            messages = self._build_messages(normalized_prompt, image_bytes)
+            client_params = self._build_client_params(messages)
+            response = await self._generate_response(client_params, normalized_prompt)
+            self._validate_stop_reason(response, normalized_prompt)
+            payload = self._extract_text_payload(response, normalized_prompt)
+            return self._parse_response(payload, schema, normalized_prompt)
+        finally:
+            image_bytes = None
 
+    async def _load_image(self, photo_key: str, prompt: list[str]) -> bytes:
+        try:
+            return await load_image_from_key(photo_key)
+        except ImageLoadError as exc:
+            raise LLMClientError(
+                exc.category, self.provider, self.model, prompt, exc.desc
+            ) from exc
+        
     @staticmethod
     def _normalize_prompt(prompt: str | list[str]) -> list[str]:
         """
@@ -69,21 +93,23 @@ class ClaudeClient:
         return prompt if isinstance(prompt, list) else [prompt]
 
     @staticmethod
-    def _build_messages(prompt: list[str]) -> list[dict[str, str]]:
-        """
-        Toma el prompt normalizado y construye el "historial" de mensajes
-        a enviar al LLM. 
-
-        Para cada elemento de prompt, crea un mensaje individual de manera
-        consecutiva asignando el rol de usuario ("user") a cada uno. Finalmente,
-        agrega un mensaje prefabricado (message prefilling) para garantizar
-        que el LLM responda en formato JSON.
-        """
-        messages = [
-            {"role": MessageRole.USER.value, "content": prompt_part}
-            for prompt_part in prompt
+    def _build_messages(prompt: list[str], image: bytes | None = None) -> list[dict]:
+        messages: list[dict] = [
+            {"role": MessageRole.USER.value, "content": part} for part in prompt
         ]
-        messages.append({"role": MessageRole.ASSISTANT.value, "content": "```json"})
+        if image:
+            # load_image_from_key siempre devuelve JPEG; la imagen va antes del texto
+            messages[-1]["content"] = [
+                {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": "image/jpeg",
+                        "data": base64.b64encode(image).decode(),
+                    },
+                },
+                {"type": "text", "text": messages[-1]["content"]},
+            ]
         return messages
 
     def _build_client_params(self, messages: list[dict[str, str]]) -> dict[str, Any]:
@@ -100,7 +126,6 @@ class ClaudeClient:
             "model": self.model,
             "max_tokens": self.max_tokens,
             "messages": messages,
-            "stop_sequences": ["```"],
             # "output_config": self._build_output_config(schema),
         }
 
@@ -142,10 +167,11 @@ class ClaudeClient:
     def _extract_text_payload(self, response, prompt: list[str]) -> str:
         """
         Extrae el contenido relevante de la respuesta del LLM ignorando
-        cualquier bloque de metadata.
+        cualquier bloque de metadata, y quita la cerca de código markdown
+        (```json ... ```) si el modelo la agregó.
         """
         try:
-            return next(b.text for b in response.content if b.type == "text")
+            text = next(b.text for b in response.content if b.type == "text")
         except StopIteration:
             raise LLMClientError(
                 LLMClientErrorCategory.INVALID_OUTPUT,
@@ -154,6 +180,15 @@ class ClaudeClient:
                 prompt,
                 desc="LLM response did not contain a text block",
             )
+        return self._strip_code_fence(text)
+
+    @staticmethod
+    def _strip_code_fence(text: str) -> str:
+        payload = text.strip()
+        if payload.startswith("```"):
+            payload = payload.removeprefix("```json").removeprefix("```")
+            payload = payload.removesuffix("```")
+        return payload.strip()
 
     def _parse_response(
         self, payload: str, schema: type[ModelT], prompt: list[str]
@@ -207,7 +242,7 @@ class ClaudeClient:
             (BadRequestError, UnprocessableEntityError, NotFoundError, ConflictError),
         ):
             category = LLMClientErrorCategory.INVALID_REQUEST
-            desc = "Request was rejected by the provider as malformed or invalid"
+            desc = f"Request was rejected by the provider as malformed or invalid: {exc}"
         elif isinstance(exc, APIResponseValidationError):
             category = LLMClientErrorCategory.INVALID_OUTPUT
             desc = "Provider response did not match the expected shape"

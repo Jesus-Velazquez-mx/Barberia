@@ -21,8 +21,22 @@ interface InternalAIRecommendationRequest {
     userData: {
         age: number;
         gender: string;
+        facialStructure: FacialStructureType;
         userPreferences?: string;
     };
+}
+
+/**
+ * Respuesta cruda de /haircut/recommend. Con `no_suitable_haircut`, `haircuts` va vacío y `reasoning`
+ * es el motivo; `suggestionText` y `confidence` solo vienen con `recommended`.
+ */
+interface InternalAIRecommendationResponse {
+    /** Puede faltar si el microservicio es una versión anterior; se interpreta como `recommended`. */
+    status?: 'recommended' | 'no_suitable_haircut';
+    haircuts: HaircutStyleDTO[];
+    suggestionText?: string;
+    reasoning: string;
+    confidence?: number;
 }
 
 interface InternalAIResponse<T> {
@@ -41,5 +55,6 @@ export type {
     InternalAIFaceDetectionRequest,
     InternalAIFaceDetectionResponse,
     InternalAIRecommendationRequest,
+    InternalAIRecommendationResponse,
     InternalAIResponse,
 };

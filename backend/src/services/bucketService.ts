@@ -5,6 +5,7 @@ import { ApiError, ApiErrorCode } from "../errors/ApiError.js";
 import { isUserSessionValid } from "../utils/userSession.js";
 import { getUserPhotoKey } from "../utils/photoKey.js";
 import { fromEnv } from "@aws-sdk/credential-providers";
+import { clearClientFacialStructure } from "../repositories/clientRepository.js";
 
 const client = new S3Client({
     region: globalConfig.AWS_REGION,
@@ -18,7 +19,7 @@ export const generatePresignedURL = async (token: string) => {
         throw new ApiError(ApiErrorCode.UNAUTHORIZED, 'This feature is only available for clients');
     }
 
-    return await createPresignedPost(client, {
+    const presignedPost = await createPresignedPost(client, {
         Bucket: globalConfig.AWS_BUCKET,
         Key: getUserPhotoKey(performer.id),
         Conditions: [
@@ -27,4 +28,10 @@ export const generatePresignedURL = async (token: string) => {
         ],
         Expires: 120
     });
+
+    // Cada usuario tiene una sola foto y subir una nueva reemplaza la anterior, así que la estructura facial
+    // guardada deja de ser confiable: se descarta para que la siguiente recomendación la detecte de nuevo.
+    await clearClientFacialStructure(performer.id);
+
+    return presignedPost;
 }

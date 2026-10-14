@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 
 from app.llm.image_loader import ImageLoadError
 from app.llm.llm_exception import LLM_ERROR_CATEGORY_STATUS, LLMClientErrorCategory
-from app.schemas.api import ApiRequest, ApiResponse, ContentError
+from app.schemas.api import ApiResponse, BaseApiRequest, ContentError
 from app.schemas.face import FaceDetectionRequest, FaceDetectionResponse
 from app.services.face_classifier import classify_face_shape
 from app.services.unprocessable_exception import UnprocessableContentError
@@ -13,13 +13,13 @@ face_router = APIRouter(prefix="/face/detect-structure")
 
 
 @face_router.post("")
-async def detect_structure(req: ApiRequest[FaceDetectionRequest]) -> JSONResponse:  # type: ignore
+async def detect_structure(req: BaseApiRequest[FaceDetectionRequest]) -> JSONResponse:  # type: ignore
     data = req.data
 
     try:
         shape = await classify_face_shape(data.photo_key)
     except ImageLoadError as exc:
-        if exc.category == LLMClientErrorCategory.INVALID_REQUEST:
+        if exc.category == LLMClientErrorCategory.INVALID_PHOTO:
             # La key no es válida, no existe o el objeto no es una imagen: error del contenido recibido
             raise UnprocessableContentError(
                 req, [ContentError(field="photoKey", detail=exc.desc)]

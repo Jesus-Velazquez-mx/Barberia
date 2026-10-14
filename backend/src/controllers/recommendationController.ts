@@ -25,7 +25,7 @@ const getHaircutRecommendation: ApiHandler<HaircutRecommendationResponse> = asyn
 
         const recommendationResult = await generateRecommendation(validData.recommendationParams, validData.token);
 
-        sendSuccess({ res, message: 'Recomendación de corte generada exitosamente', data: recommendationResult.data });
+        sendSuccess({ res, message: recommendationResult.message, data: recommendationResult.data });
     } catch (error: unknown) {
         if (error instanceof ZodError) {
             sendValidationError({ res, error });

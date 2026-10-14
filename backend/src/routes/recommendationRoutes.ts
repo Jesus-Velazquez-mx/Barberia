@@ -57,7 +57,9 @@ router.get('/recommendation/test', testAiService);
  *
  *       Si el cliente aún no tiene estructura facial registrada, esta se detecta a partir de la
  *       foto (JPEG, PNG o WEBP) antes de generar las recomendaciones; en ese caso la foto debe
- *       existir en el bucket y ser una imagen válida.
+ *       existir en el bucket y ser una imagen válida. La estructura facial guardada se descarta
+ *       cada vez que se solicita un formulario de subida (`GET /api/presigned-url`), por lo que
+ *       se vuelve a detectar con la foto nueva.
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -82,29 +84,51 @@ router.get('/recommendation/test', testAiService);
  *               userPreferences: Prefiero un corte corto y fácil de mantener.
  *     responses:
  *       200:
- *         description: Recomendaciones generadas exitosamente.
+ *         description: >-
+ *           Respuesta válida con dos resultados posibles, que se distinguen por `data.status`:
+ *
+ *           - `recommended`: al menos un corte encaja con el cliente.
+ *           - `no_suitable_haircut`: ninguno de los cortes existentes es compatible con las preferencias del
+ *             cliente (por ejemplo, quiere cabello largo y solo hay cortes cortos). `message` es una plantilla fija
+ *             que invita al cliente a hablar con su barbero y `data.reason` es el motivo redactado por la IA.
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
  *                 data:
- *                   type: object
- *                   properties:
- *                     haircuts:
- *                       type: array
- *                       items:
- *                         type: object
- *                         properties:
- *                           id: { type: string, format: uuid }
- *                           name: { type: string, example: Fade clásico }
- *                           description: { type: string, example: Degradado progresivo en los laterales. }
- *                     suggestonText: { type: string, example: Este estilo se adapta a tus características. }
- *                     reasoning: { type: string, example: El corte favorece la estructura facial y tus preferencias. }
- *                     confidence: { type: number, format: float, minimum: 0, maximum: 1, example: 0.92 }
- *                 message: { type: string, example: Recomendación de corte generada exitosamente }
+ *                   oneOf:
+ *                     - type: object
+ *                       description: Resultado `recommended`.
+ *                       properties:
+ *                         status: { type: string, enum: [recommended] }
+ *                         haircuts:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               id: { type: string, format: uuid }
+ *                               name: { type: string, example: Fade clásico }
+ *                               description: { type: string, example: Degradado progresivo en los laterales. }
+ *                         suggestionText: { type: string, example: Este estilo se adapta a tus características. }
+ *                         reasoning: { type: string, example: El corte favorece la estructura facial y tus preferencias. }
+ *                         confidence: { type: number, format: float, minimum: 0, maximum: 1, example: 0.92 }
+ *                     - type: object
+ *                       description: Resultado `no_suitable_haircut`.
+ *                       properties:
+ *                         status: { type: string, enum: [no_suitable_haircut] }
+ *                         reason: { type: string, example: Buscas el cabello largo y los cortes disponibles son todos cortos. }
+ *                 message:
+ *                   type: string
+ *                   description: >-
+ *                     "Recomendación de corte generada exitosamente" con `recommended`; con `no_suitable_haircut`
+ *                     es la plantilla fija sobre hablar con el barbero.
+ *                   example: Recomendación de corte generada exitosamente
  *       400:
- *         description: Error de validación de los datos enviados (por ejemplo, `userPreferences` supera los 500 caracteres o falta `recommendationParams`).
+ *         description: >-
+ *           Error de validación de los datos enviados (por ejemplo, `userPreferences` supera los 500 caracteres o falta
+ *           `recommendationParams`) o la foto del cliente no se puede usar: no existe en el bucket o el archivo no es
+ *           una imagen JPEG, PNG o WEBP válida.
  *       401:
  *         description: Token ausente, inválido o el usuario no es un cliente.
  *       404:
@@ -112,9 +136,8 @@ router.get('/recommendation/test', testAiService);
  *       500:
  *         description: >-
  *           Error al comunicarse con el servicio de recomendación, no hay estilos de corte disponibles
- *           o la detección de estructura facial falló. Esto último incluye que el cliente no haya
- *           subido su foto al bucket, que el archivo no sea una imagen JPEG, PNG o WEBP válida o que
- *           el almacenamiento no esté disponible.
+ *           o la detección de estructura facial falló por una causa ajena al cliente (por ejemplo, el
+ *           almacenamiento no está disponible).
  */
 router.post('/recommendation/generate', getHaircutRecommendation);
 

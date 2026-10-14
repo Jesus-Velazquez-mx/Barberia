@@ -93,10 +93,11 @@ OLLAMA_MODEL=gemma4:e4b
 |---|---|---|
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Dirección del servidor de Ollama. |
 | `OLLAMA_MODEL` | *(ninguno, obligatorio)* | Modelo a usar. Debe estar descargado en ese servidor. |
-| `OLLAMA_NUM_CTX` | `8192` | Tamaño de la ventana de contexto. Ollama usa una pequeña por defecto y trunca el prompt sin avisar. |
+| `OLLAMA_NUM_CTX` | `8192` | Tamaño de la ventana de contexto, compartida por el prompt, la imagen y la respuesta del modelo (incluido su razonamiento). Ollama usa una pequeña por defecto y trunca sin avisar. Si las respuestas se cortan, aumenta este valor (p. ej. `16384` o `32768`, según tu memoria). |
+| `OLLAMA_MAX_TOKENS` | `4096` | Máximo de tokens que el modelo puede **generar**; no incluye el prompt. Si `OLLAMA_THINK` está activo, el razonamiento cuenta dentro de este límite. Es independiente de `MAX_TOKENS`, que solo usa Anthropic. Debe caber en `OLLAMA_NUM_CTX` junto con el prompt. |
+| `OLLAMA_THINK` | `false` | Activa el razonamiento (*thinking*) de los modelos que lo soportan. Está desactivado porque consume tokens y contexto, y aquí la salida ya está restringida a un JSON. |
 | `OLLAMA_TEMPERATURE` | `0.0` | Temperatura de generación. |
 | `OLLAMA_KEEP_ALIVE` | `10m` | Tiempo que el modelo permanece cargado en memoria tras una petición. |
-| `IMAGE_ALLOWED_HOSTS` | *(vacío)* | Hosts desde los que se pueden descargar imágenes por URL (las imágenes de las peticiones a los LLM), separados por comas. Acepta `*.dominio`. Vacío = no se descarga ninguna (evita SSRF). No aplica a `photoKey`. |
 | `AWS_ACCESS_KEY_ID` | *(ninguno)* | Credenciales del usuario IAM con permiso `s3:GetObject` sobre `<AWS_BUCKET>/<AWS_BUCKET_KEY_PREFIX>*`. Si no se definen, boto3 usa su cadena por defecto (p. ej. un rol de instancia). |
 | `AWS_SECRET_ACCESS_KEY` | *(ninguno)* | Secreto del usuario IAM anterior. |
 | `AWS_REGION` | *(vacío, obligatoria para `photoKey`)* | Región del bucket. |
@@ -253,7 +254,7 @@ Verifica que `ANTHROPIC_API_KEY` sea válida, que el modelo configurado exista y
 - `503` (provider unavailable): Ollama no está corriendo o `OLLAMA_BASE_URL` no es alcanzable desde donde corre el servicio.
 - `500` con mensaje sobre el modelo: el modelo de `OLLAMA_MODEL` no está descargado en ese servidor. Ejecuta `ollama pull <modelo>`.
 - `504` (timeout): la primera petición carga el modelo en memoria y puede tardar. Aumenta `LLM_TIMEOUT` o usa un modelo más pequeño.
-- `502` (invalid output o truncated): el modelo no devolvió un JSON válido o se quedó sin tokens. Aumenta `MAX_TOKENS` o prueba otro modelo.
+- `502` (invalid output o truncated): el modelo no devolvió un JSON válido o se quedó sin tokens. Con Ollama, `MAX_TOKENS` no tiene efecto: revisa que `OLLAMA_THINK` esté en `false` (el razonamiento consume tokens y contexto), aumenta `OLLAMA_NUM_CTX` (ventana compartida por prompt, imagen y respuesta) o `OLLAMA_MAX_TOKENS` (límite de generación), o prueba otro modelo. Con Anthropic, aumenta `MAX_TOKENS`.
 
 ### `provider not supported`
 

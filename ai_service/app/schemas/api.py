@@ -11,9 +11,14 @@ class LLMProvider(StrEnum):
     OLLAMA = "ollama"
 
 
-class ApiRequest(CustomModel, Generic[DataT]):
+class BaseApiRequest(CustomModel, Generic[DataT]):
     data: DataT
-    provider: Optional[LLMProvider] = None
+
+
+class ApiRequest(BaseApiRequest[DataT], Generic[DataT]):
+    """Request for endpoints that call an LLM."""
+
+    provider: LLMProvider
 
 
 class ContentError(CustomModel):
