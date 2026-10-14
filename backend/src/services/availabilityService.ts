@@ -92,7 +92,7 @@ export const getAvailableSlots = async ({
     const todayStart = now - (now % MS_PER_DAY);
 
     if (dayStart < todayStart) {
-        throw new ApiError(ApiErrorCode.INVALID_INPUT, 'Date cannot be in the past');
+        throw new ApiError(ApiErrorCode.INVALID_INPUT, 'La fecha no puede estar en pasado');
     }
     if (dayStart > todayStart + MAX_BOOKING_DAYS_AHEAD * MS_PER_DAY) {
         throw new ApiError(ApiErrorCode.INVALID_INPUT, `Date cannot be more than ${MAX_BOOKING_DAYS_AHEAD} days ahead`);

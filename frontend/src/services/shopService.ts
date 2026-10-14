@@ -1,5 +1,6 @@
 import { apiClient } from './apiClient';
-import type { Shop, Barber } from '../types/shop.ts'
+import type { Shop } from '../types/shop.ts'
+import type { Barber } from '../types/barber.ts'
 import type { OfferedService } from '../types/offeredService.ts';
 
 export const getShops = async (): Promise<Shop[]> => {

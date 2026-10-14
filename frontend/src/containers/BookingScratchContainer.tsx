@@ -1,19 +1,19 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { Plus, X } from 'lucide-react';
 import { SelectField } from '../components/SelectFieldComponent';
 import { AvailabilityCalendar } from '../components/AvailabilityCalendarComponent';
 import { SlotPickerModal } from '../components/SlotPickerModalComponent';
 import {
-  MOCK_SHOPS,
-  MOCK_SERVICES,
   MOCK_SCENARIOS,
   MOCK_SCENARIO_ERROR,
-  buildMockSlots,
-  getMockDayAvailability,
   type MockScenario
 } from '../mocks/bookingMock';
+import { getShops, getActiveBarbersByShop, getOfferedServices } from '../services/shopService';
+import { getShopAvailability } from '../services/availabilityService';
+import { ApiError } from '../types/api';
 import type { AvailableSlot, DayAvailability } from '../types/availabilityType';
+import type { Barber } from '../types/barber';
 import { formatSlotTime } from '../utils/availabilityUtils';
 
 interface BookingScratchFormValues {
@@ -31,7 +31,25 @@ const getTodayLocal = (): string => {
   return new Date(now.getTime() - offsetMs).toISOString().split('T')[0];
 };
 
-const SHOP_OPTIONS = [{ value: '', label: 'Selecciona una sucursal' }, ...MOCK_SHOPS];
+/* Para evitar código duplicado, se ha creado una función auxiliar 
+que hace exactamente lo mismo que EditUserModalContainer. */
+const formatApiError = (error: unknown, fallbackMessage: string): string => {
+  if (error instanceof ApiError) {
+    if (error.status === 400 && error.errors.length > 0) {
+      return error.errors
+        .map((e: unknown) =>
+          typeof e === 'string' ? e : ((e as { message?: string }).message ?? JSON.stringify(e))
+        )
+        .join(' ');
+    }
+    if (error.status === 404) {
+      return error.message || 'La sucursal o el servicio seleccionado no existe.';
+    }
+    return error.message;
+  }
+
+  return fallbackMessage;
+};
 
 // Ventana de reserva: desde hoy hasta 30 días después
 const BOOKING_WINDOW_DAYS = 30;
@@ -53,23 +71,177 @@ export function BookingScratchContainer() {
   const [selectedSlot, setSelectedSlot] = useState<AvailableSlot | null>(null);
   const [confirmedSlot, setConfirmedSlot] = useState<AvailableSlot | null>(null);
 
+  /* Arreglos con datos reales del backend */
+  const [shopOptions, setShopOptions] = useState<{ value: string; label: string }[]>([]);
+  const [serviceOptions, setServiceOptions] = useState<{ value: string; label: string }[]>([]);
+  const [barbers, setBarbers] = useState<Barber[]>([]);
+  const [availabilityByDate, setAvailabilityByDate] = useState<Record<string, DayAvailability>>({});
+  const [fetchedSlots, setFetchedSlots] = useState<AvailableSlot[]>([]);
+  const [isFetchingSlots, setIsFetchingSlots] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
   const { register, watch, control } = useForm<BookingScratchFormValues>({
     defaultValues: { shopId: '', services: [{ serviceId: '' }], scenario: 'data' }
   });
   const { fields, append, remove } = useFieldArray({ control, name: 'services' });
   const { shopId, services, scenario } = watch();
 
+  const SHOP_OPTIONS = useMemo(
+    () => [{ value: '', label: 'Selecciona una sucursal' }, ...shopOptions],
+    [shopOptions]
+  );
+
   // Servicios ya elegidos (sin filas vacías)
   const selectedServiceIds = services.map((s) => s.serviceId).filter(Boolean);
   const serviceKey = selectedServiceIds.join(',');
-  const canAddService = services.length < MOCK_SERVICES.length && services.every((s) => s.serviceId);
+  const canAddService = services.length < serviceOptions.length && services.every((s) => s.serviceId);
 
-  // Cada fila ofrece solo los servicios que no se eligieron en otra fila
+  /* 1. useEffect con arreglo vacío para cargar sucursales y servicios al montar */
+  useEffect(() => {
+    let active = true;
+
+    Promise.all([getShops(), getOfferedServices()])
+      .then(([shopsData, servicesData]) => {
+        if (!active) return;
+        setShopOptions(shopsData.map((shop) => ({ value: shop.id, label: shop.name })));
+        setServiceOptions(servicesData.map((service) => ({ value: service.id, label: service.name })));
+      })
+      .catch((error) => {
+        console.error(formatApiError(error, 'Error al cargar sucursales o servicios.'));
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  /* 2. useEffect que depende de shopId para cargar los barberos activos cuando cambia la sucursal */
+  useEffect(() => {
+    if (!shopId) {
+      setBarbers([]);
+      return;
+    }
+
+    let active = true;
+    getActiveBarbersByShop(shopId)
+      .then((data) => {
+        if (active) setBarbers(data);
+      })
+      .catch((error) => {
+        console.error(formatApiError(error, 'Error al cargar barberos de la sucursal.'));
+        if (active) setBarbers([]);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [shopId]);
+
+  /* 3. useEffect para calcular la disponibilidad real de cada día del mes visible en el calendario */
+  useEffect(() => {
+    const primaryServiceId = selectedServiceIds[0];
+    if (!shopId || !primaryServiceId) {
+      setAvailabilityByDate({});
+      return;
+    }
+
+    let active = true;
+    const daysInMonth = new Date(view.year, view.month + 1, 0).getDate();
+    const validDates: string[] = [];
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateKey = `${view.year}-${pad(view.month + 1)}-${pad(day)}`;
+      if (dateKey >= today && dateKey <= maxDate) {
+        validDates.push(dateKey);
+      }
+    }
+
+    Promise.all(
+      validDates.map(async (dateKey) => {
+        try {
+          const data = await getShopAvailability({
+            shopId,
+            date: dateKey,
+            serviceId: primaryServiceId
+          });
+          const totalSlots = data.reduce((sum, item) => sum + item.startTimes.length, 0);
+          const isSunday = new Date(`${dateKey}T00:00:00`).getDay() === 0;
+
+          const dayAvailability: DayAvailability = {
+            status: totalSlots > 0 ? 'available' : isSunday ? 'closed' : 'full',
+            slotsCount: totalSlots
+          };
+          return [dateKey, dayAvailability] as const;
+        } catch {
+          return [dateKey, { status: 'closed', slotsCount: 0 } as DayAvailability] as const;
+        }
+      })
+    ).then((entries) => {
+      if (!active) return;
+      setAvailabilityByDate(Object.fromEntries(entries));
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [shopId, serviceKey, view.year, view.month, today, maxDate]);
+
+  /* 4. useEffect para consultar los slots detallados cada vez que cambie sucursal, fecha o servicio */
+  useEffect(() => {
+    const primaryServiceId = selectedServiceIds[0];
+    if (!shopId || !selectedDate || !primaryServiceId) {
+      setFetchedSlots([]);
+      setFetchError(null);
+      return;
+    }
+
+    let active = true;
+    setIsFetchingSlots(true);
+    setFetchError(null);
+
+    getShopAvailability({
+      shopId,
+      date: selectedDate,
+      serviceId: primaryServiceId
+    })
+      .then((availabilityData) => {
+        if (!active) return;
+
+        const barberMap = new Map(
+          barbers.map((b) => [b.id, `${b.firstName} ${b.lastName}`.trim()])
+        );
+
+        const mappedSlots: AvailableSlot[] = availabilityData.flatMap((item) => {
+          const barberName = barberMap.get(item.barberId) ?? 'Barbero';
+          return item.startTimes.map((startTime) => ({
+            barberId: item.barberId,
+            barberName,
+            startTime
+          }));
+        });
+
+        setFetchedSlots(mappedSlots);
+      })
+      .catch((error) => {
+        if (!active) return;
+        setFetchError(formatApiError(error, MOCK_SCENARIO_ERROR));
+        setFetchedSlots([]);
+      })
+      .finally(() => {
+        if (active) setIsFetchingSlots(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [shopId, selectedDate, serviceKey, barbers]);
+
+  /* Cada fila ofrece solo los servicios que no se eligieron en otra fila */
   const getServiceOptions = (index: number) => {
     const takenByOthers = services.filter((_, i) => i !== index).map((s) => s.serviceId);
     return [
       { value: '', label: 'Selecciona un servicio' },
-      ...MOCK_SERVICES.filter((option) => !takenByOthers.includes(option.value))
+      ...serviceOptions.filter((option) => !takenByOthers.includes(option.value))
     ];
   };
 
@@ -80,27 +252,16 @@ export function BookingScratchContainer() {
     setIsModalOpen(false);
   };
 
-  // Color y cantidad de horarios por día del mes visible
-  const availabilityByDate = useMemo(() => {
-    const result: Record<string, DayAvailability> = {};
-    const serviceIds = serviceKey ? serviceKey.split(',') : [];
-    if (!shopId || serviceIds.length === 0) return result;
-    const daysInMonth = new Date(view.year, view.month + 1, 0).getDate();
-    for (let day = 1; day <= daysInMonth; day++) {
-      const dateKey = `${view.year}-${pad(view.month + 1)}-${pad(day)}`;
-      if (dateKey < today || dateKey > maxDate) continue;
-      result[dateKey] = getMockDayAvailability(shopId, serviceIds, dateKey);
-    }
-    return result;
-  }, [shopId, serviceKey, view, today, maxDate]);
-
   // Lo que recibe el modal según el escenario mock elegido
   let slots: AvailableSlot[] = [];
   let isLoading = false;
   let error: string | null = null;
   if (selectedDate) {
-    if (scenario === 'data') slots = buildMockSlots(shopId, selectedServiceIds, selectedDate);
-    else if (scenario === 'loading') isLoading = true;
+    if (scenario === 'data') {
+      slots = fetchedSlots;
+      isLoading = isFetchingSlots;
+      error = fetchError;
+    } else if (scenario === 'loading') isLoading = true;
     else if (scenario === 'error') error = MOCK_SCENARIO_ERROR;
   }
 
@@ -122,9 +283,9 @@ export function BookingScratchContainer() {
     setIsModalOpen(false);
   };
 
-  const shopLabel = MOCK_SHOPS.find((s) => s.value === shopId)?.label;
+  const shopLabel = shopOptions.find((s) => s.value === shopId)?.label;
   const serviceLabels = selectedServiceIds
-    .map((id) => MOCK_SERVICES.find((s) => s.value === id)?.label)
+    .map((id) => serviceOptions.find((s) => s.value === id)?.label)
     .filter(Boolean)
     .join(', ');
   const dateLabel = selectedDate
@@ -184,7 +345,7 @@ export function BookingScratchContainer() {
                 </div>
               ))}
 
-              {services.length < MOCK_SERVICES.length && (
+              {services.length < serviceOptions.length && (
                 <button
                   type="button"
                   disabled={!canAddService}
