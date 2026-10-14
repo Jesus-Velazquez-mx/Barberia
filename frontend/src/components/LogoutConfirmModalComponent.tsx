@@ -10,7 +10,7 @@ interface LogoutConfirmModalProps {
 
 export function LogoutConfirmModal({ isOpen, onClose, onConfirm }: LogoutConfirmModalProps) {
   return (
-    <Modal isOpen={isOpen} onClose={onClose} className="text-center">
+    <Modal isOpen={isOpen} onClose={onClose} className="pb-8 text-center">
       <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-[var(--accent)]/40 bg-[var(--accent)]/10">
         <LogOut size={26} className="text-[var(--accent)]" />
       </div>
