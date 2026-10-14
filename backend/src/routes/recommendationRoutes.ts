@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { testAiService, getHaircutRecommendation } from '../controllers/recommendationController.js';
+import { getBucketPresignedURL } from '../controllers/bucketController.js';
 
 const router = Router();
 
@@ -43,7 +44,22 @@ router.get('/recommendation/test', testAiService);
  *   post:
  *     summary: Genera recomendaciones de cortes de cabello
  *     tags: [Recommendation]
- *     description: Genera recomendaciones personalizadas para el cliente autenticado usando su fotografía, edad, género y preferencias. Requiere un token JWT de un cliente en el header `Authorization` (formato `Bearer <token>`).
+ *     description: >-
+ *       Genera recomendaciones personalizadas para el cliente autenticado usando su fotografía,
+ *       edad, género y preferencias. Requiere un token JWT de un cliente en el header
+ *       `Authorization` (formato `Bearer <token>`).
+ *
+ *       **La fotografía no se envía en esta petición.** Antes de llamar a este endpoint el cliente
+ *       debe haberla subido a S3 con el formulario de `GET /api/presigned-url`. El servidor deriva
+ *       la key del objeto a partir del usuario autenticado (`<prefijo del bucket><id del usuario>`)
+ *       y el microservicio de IA descarga la foto directamente del bucket privado. Cada usuario
+ *       tiene una sola foto; subir una nueva reemplaza la anterior.
+ *
+ *       Si el cliente aún no tiene estructura facial registrada, esta se detecta a partir de la
+ *       foto (JPEG, PNG o WEBP) antes de generar las recomendaciones; en ese caso la foto debe
+ *       existir en el bucket y ser una imagen válida. La estructura facial guardada se descarta
+ *       cada vez que se solicita un formulario de subida (`GET /api/presigned-url`), por lo que
+ *       se vuelve a detectar con la foto nueva.
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -56,49 +72,116 @@ router.get('/recommendation/test', testAiService);
  *             properties:
  *               recommendationParams:
  *                 type: object
- *                 required: [photo]
+ *                 description: Parámetros de la recomendación. Puede enviarse vacío (`{}`); los campos no listados, como `photo`, se ignoran.
  *                 properties:
- *                   photo:
- *                     type: string
- *                     description: Fotografía del cliente, codificada como string.
- *                     example: data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQ...
  *                   userPreferences:
  *                     type: string
  *                     maxLength: 500
  *                     description: Preferencias o indicaciones adicionales del cliente.
  *                     example: Prefiero un corte corto y fácil de mantener.
+ *           example:
+ *             recommendationParams:
+ *               userPreferences: Prefiero un corte corto y fácil de mantener.
  *     responses:
  *       200:
- *         description: Recomendaciones generadas exitosamente.
+ *         description: >-
+ *           Respuesta válida con dos resultados posibles, que se distinguen por `data.status`:
+ *
+ *           - `recommended`: al menos un corte encaja con el cliente.
+ *           - `no_suitable_haircut`: ninguno de los cortes existentes es compatible con las preferencias del
+ *             cliente (por ejemplo, quiere cabello largo y solo hay cortes cortos). `message` es una plantilla fija
+ *             que invita al cliente a hablar con su barbero y `data.reason` es el motivo redactado por la IA.
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
  *                 data:
- *                   type: object
- *                   properties:
- *                     haircuts:
- *                       type: array
- *                       items:
- *                         type: object
- *                         properties:
- *                           id: { type: string, format: uuid }
- *                           name: { type: string, example: Fade clásico }
- *                           description: { type: string, example: Degradado progresivo en los laterales. }
- *                     suggestonText: { type: string, example: Este estilo se adapta a tus características. }
- *                     reasoning: { type: string, example: El corte favorece la estructura facial y tus preferencias. }
- *                     confidence: { type: number, format: float, minimum: 0, maximum: 1, example: 0.92 }
- *                 message: { type: string, example: Recomendación de corte generada exitosamente }
+ *                   oneOf:
+ *                     - type: object
+ *                       description: Resultado `recommended`.
+ *                       properties:
+ *                         status: { type: string, enum: [recommended] }
+ *                         haircuts:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               id: { type: string, format: uuid }
+ *                               name: { type: string, example: Fade clásico }
+ *                               description: { type: string, example: Degradado progresivo en los laterales. }
+ *                         suggestionText: { type: string, example: Este estilo se adapta a tus características. }
+ *                         reasoning: { type: string, example: El corte favorece la estructura facial y tus preferencias. }
+ *                         confidence: { type: number, format: float, minimum: 0, maximum: 1, example: 0.92 }
+ *                     - type: object
+ *                       description: Resultado `no_suitable_haircut`.
+ *                       properties:
+ *                         status: { type: string, enum: [no_suitable_haircut] }
+ *                         reason: { type: string, example: Buscas el cabello largo y los cortes disponibles son todos cortos. }
+ *                 message:
+ *                   type: string
+ *                   description: >-
+ *                     "Recomendación de corte generada exitosamente" con `recommended`; con `no_suitable_haircut`
+ *                     es la plantilla fija sobre hablar con el barbero.
+ *                   example: Recomendación de corte generada exitosamente
  *       400:
- *         description: Error de validación de los datos enviados.
+ *         description: >-
+ *           Error de validación de los datos enviados (por ejemplo, `userPreferences` supera los 500 caracteres o falta
+ *           `recommendationParams`) o la foto del cliente no se puede usar: no existe en el bucket o el archivo no es
+ *           una imagen JPEG, PNG o WEBP válida.
  *       401:
  *         description: Token ausente, inválido o el usuario no es un cliente.
  *       404:
  *         description: No se encontró el cliente.
  *       500:
- *         description: Error al comunicarse con el servicio de recomendación o no hay estilos de corte disponibles.
+ *         description: >-
+ *           Error al comunicarse con el servicio de recomendación, no hay estilos de corte disponibles
+ *           o la detección de estructura facial falló por una causa ajena al cliente (por ejemplo, el
+ *           almacenamiento no está disponible).
  */
 router.post('/recommendation/generate', getHaircutRecommendation);
+
+/**
+ * @swagger
+ * /api/presigned-url:
+ *   get:
+ *     summary: Genera un formulario presignado para subir una imagen
+ *     tags: [Storage]
+ *     description: Genera una URL y los campos necesarios para subir una imagen directamente a S3. La carga debe enviarse como multipart/form-data, incluir todos los campos retornados y declarar un Content-Type que comience con image/. El archivo no puede superar los 5 MB.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Formulario presignado generado exitosamente.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [data, message]
+ *               properties:
+ *                 data:
+ *                   type: object
+ *                   required: [url, fields]
+ *                   properties:
+ *                     url:
+ *                       type: string
+ *                       format: uri
+ *                       description: URL de S3 a la que debe enviarse el formulario multipart.
+ *                     fields:
+ *                       type: object
+ *                       additionalProperties:
+ *                         type: string
+ *                       description: Campos firmados que deben incluirse sin modificaciones en el formulario.
+ *                 message:
+ *                   type: string
+ *                   example: Presigned URL generated successfully
+ *       401:
+ *         description: Token ausente, inválido o el usuario no es un cliente.
+ *       502:
+ *         description: No se pudieron resolver las credenciales de AWS.
+ *       500:
+ *         description: Error inesperado al generar el formulario presignado.
+ */
+router.get('/presigned-url', getBucketPresignedURL);
 
 export default router;

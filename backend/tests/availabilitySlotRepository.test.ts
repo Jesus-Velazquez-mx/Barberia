@@ -3,75 +3,42 @@ import {
     getActiveSlotsByBarberAndDay,
     getActiveSlotsByBarberIdsAndDay,
 } from '../src/repositories/availabilitySlotRepository.js';
+import {
+    insertManager,
+    insertShop,
+    insertBarber,
+    insertAvailabilitySlot,
+    cleanupFixtures,
+} from './helpers/availabilityFixtures.js';
+import { generateUniqueName } from './helpers/uniqueValues.js';
 
-const { connectDB, closeDB, getPool } = connection;
+const { connectDB, closeDB } = connection;
 
 describe('availabilitySlotRepository', () => {
-    let managerId: string;
-    let shopId: string;
     let barberA: string;
     let barberB: string;
 
-    let phoneCounter = 6672000000;
-    const getPhone = () => (phoneCounter++).toString();
-    const getEmail = (prefix: string) => `${prefix}_${Date.now()}_${phoneCounter}@mrbarber.test`;
-
-    const insertSlot = async (barberId: string, day: number, start: string, end: string, isActive = true) => {
-        await getPool().query(
-            `INSERT INTO availability_slots (barber_id, shop_id, day_of_week, start_time, end_time, is_active)
-             VALUES ($1, $2, $3, $4, $5, $6)`,
-            [barberId, shopId, day, start, end, isActive]
-        );
-    };
-
     beforeAll(async () => {
         await connectDB();
-        const pool = getPool();
 
-        const shiftId = (await pool.query(`SELECT id FROM shifts LIMIT 1`)).rows[0].id;
+        const manager = await insertManager();
+        const shopId = await insertShop(manager.id, { name: generateUniqueName('Slots Shop') });
 
-        managerId = (
-            await pool.query(
-                `INSERT INTO users (role, email, phone, password_hash, first_name, last_name, birth_date, gender)
-                 VALUES ('manager', $1, $2, 'hash', 'Mgr', 'Test', '1990-01-01', 'other') RETURNING id`,
-                [getEmail('mgr'), getPhone()]
-            )
-        ).rows[0].id;
-        await pool.query(`INSERT INTO managers (user_id) VALUES ($1)`, [managerId]);
+        const createdBarberA = await insertBarber(shopId);
+        const createdBarberB = await insertBarber(shopId);
+        barberA = createdBarberA.id;
+        barberB = createdBarberB.id;
 
-        shopId = (
-            await pool.query(`INSERT INTO shops (name, manager_id) VALUES ($1, $2) RETURNING id`, [
-                `Slots Shop ${Date.now()}`,
-                managerId,
-            ])
-        ).rows[0].id;
-
-        const createBarber = async () =>
-            (
-                await pool.query(
-                    `INSERT INTO barbers (first_name, last_name, email, phone, shop_id, shift_id, birth_date, gender)
-                     VALUES ('Barber', 'Test', $1, $2, $3, $4, '1990-01-01', 'other') RETURNING id`,
-                    [getEmail('barber'), getPhone(), shopId, shiftId]
-                )
-            ).rows[0].id;
-        barberA = await createBarber();
-        barberB = await createBarber();
-
-        await insertSlot(barberA, 1, '09:00', '12:00'); // lunes, activo
-        await insertSlot(barberA, 1, '13:00', '15:00', false); // lunes, inactivo
-        await insertSlot(barberA, 2, '09:00', '12:00'); // martes
-        await insertSlot(barberA, 0, '10:00', '14:00'); // domingo
-        await insertSlot(barberB, 1, '14:00', '18:00'); // lunes, otro barbero
-        await insertSlot(barberB, 3, '08:00', '10:00'); // miércoles
+        await insertAvailabilitySlot(barberA, shopId, 1, '09:00', '12:00', true); // lunes, activo
+        await insertAvailabilitySlot(barberA, shopId, 1, '13:00', '15:00', false); // lunes, inactivo
+        await insertAvailabilitySlot(barberA, shopId, 2, '09:00', '12:00', true); // martes
+        await insertAvailabilitySlot(barberA, shopId, 0, '10:00', '14:00', true); // domingo
+        await insertAvailabilitySlot(barberB, shopId, 1, '14:00', '18:00', true); // lunes, otro barbero
+        await insertAvailabilitySlot(barberB, shopId, 3, '08:00', '10:00', true); // miércoles
     });
 
     afterAll(async () => {
-        const pool = getPool();
-        // availability_slots se borra en cascada con los barberos
-        await pool.query(`DELETE FROM barbers WHERE id = ANY($1::uuid[])`, [[barberA, barberB]]);
-        await pool.query(`DELETE FROM shops WHERE id = $1`, [shopId]);
-        await pool.query(`DELETE FROM managers WHERE user_id = $1`, [managerId]);
-        await pool.query(`DELETE FROM users WHERE id = $1`, [managerId]);
+        await cleanupFixtures();
         await closeDB();
     });
 

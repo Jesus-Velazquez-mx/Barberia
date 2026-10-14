@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -19,7 +20,7 @@ class Settings(BaseSettings):
     # Provider-agnostic LLM params
     LLM_TIMEOUT: float = 90.0  # Seconds
     LLM_MAX_ATTEMPTS: int = 3
-    MAX_TOKENS: int = 1000
+    MAX_TOKENS: int = 2048
     BASE_BACKOFF_SECONDS: float = 1.0
     MAX_BACKOFF_SECONDS: float = 30.0
 
@@ -31,19 +32,28 @@ class Settings(BaseSettings):
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str | None = None
     OLLAMA_NUM_CTX: int = 8192  # Context window (tokens). Ollama's default is small and truncates silently
+    OLLAMA_MAX_TOKENS: int = 4096 # Ollama includes thinking tokens in the count for max output tokens, to it's managed separately
+    OLLAMA_THINK: bool = False  # Thinking models spend part of the context and OLLAMA_MAX_TOKENS on it
     OLLAMA_TEMPERATURE: float = 0.0
     OLLAMA_KEEP_ALIVE: str = "10m"  # How long the model stays loaded in memory
 
-    # Image params (images are downloaded from a URL, processed in memory and
+    # Image params (photos are downloaded from S3, processed in memory and
     # discarded; they are never written to disk)
-    # Comma-separated hosts the service may download images from. Accepts exact
-    # hosts and "*.domain" wildcards, e.g. "my-bucket.s3.us-east-1.amazonaws.com".
-    # Empty = image downloads are rejected (fail closed, avoids SSRF).
-    IMAGE_ALLOWED_HOSTS: str = ""
     IMAGE_MAX_BYTES: int = 10 * 1024 * 1024  # Max size of the downloaded file
     IMAGE_MAX_PIXELS: int = 40_000_000  # Max width * height (decompression bomb guard)
     IMAGE_MAX_SIDE: int = 1024  # Longest side (px) sent to the model
     IMAGE_DOWNLOAD_TIMEOUT: float = 15.0  # Seconds
+
+    # S3 bucket holding the user photos (same bucket and prefix the backend
+    # uses for its presigned POST). The service only needs s3:GetObject on
+    # "<AWS_BUCKET>/<AWS_BUCKET_KEY_PREFIX>*". Empty bucket/region/prefix =
+    # photo downloads are rejected. If the credentials are not set, boto3 falls
+    # back to its default chain (e.g. an instance role).
+    AWS_ACCESS_KEY_ID: str | None = None
+    AWS_SECRET_ACCESS_KEY: SecretStr | None = None
+    AWS_REGION: str = ""
+    AWS_BUCKET: str = ""
+    AWS_BUCKET_KEY_PREFIX: str = ""
 
     # Face shape classifier params. The weights are a pickled PyTorch model, so
     # the URL must be pinned to a commit (never "main") and the file is only

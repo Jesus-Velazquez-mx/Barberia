@@ -3,8 +3,9 @@ import express from 'express';
 import router from '../src/routes/routes.js'; // Importamos tu router principal
 import connection from '../src/connection/connection.js';
 import { getActiveShops } from '../src/repositories/shopRepository.js';
+import { insertManager, insertShop, cleanupFixtures } from './helpers/availabilityFixtures.js';
 
-const { connectDB, closeDB, getPool } = connection;
+const { connectDB, closeDB } = connection;
 
 // Creamos una instancia de app aislada solo para estas pruebas
 const app = express();
@@ -17,53 +18,23 @@ describe('Pruebas de endpoints de Shops (Sucursales)', () => {
     let activeShopId2: string;
     let inactiveShopId: string;
 
-    const createdShopIds: string[] = [];
-
     beforeAll(async () => {
         await connectDB();
-        const pool = getPool();
 
         // 1. Crear un manager necesario para satisfacer la llave foránea (manager_id) de las tiendas
-        const userRes = await pool.query(
-            `INSERT INTO users (role, email, phone, password_hash, first_name, last_name, birth_date, gender) 
-             VALUES ('manager', 'shop_test_manager_${Date.now()}@mrbarber.com', '5555555555', 'hash', 'Shop', 'Manager', '1990-01-01', 'other') RETURNING id`
-        );
-        dummyManagerId = userRes.rows[0].id;
-        await pool.query('INSERT INTO managers (user_id) VALUES ($1)', [dummyManagerId]);
+        const manager = await insertManager();
+        dummyManagerId = manager.id;
 
         // 2. Insertar 2 sucursales activas (A y Z para validar orden)
-        const shop1Res = await pool.query(
-            `INSERT INTO shops (name, manager_id, is_active) VALUES ('A_Active Shop', $1, true) RETURNING id`,
-            [dummyManagerId]
-        );
-        activeShopId1 = shop1Res.rows[0].id;
-        createdShopIds.push(activeShopId1);
-
-        const shop2Res = await pool.query(
-            `INSERT INTO shops (name, manager_id, is_active) VALUES ('Z_Active Shop', $1, true) RETURNING id`,
-            [dummyManagerId]
-        );
-        activeShopId2 = shop2Res.rows[0].id;
-        createdShopIds.push(activeShopId2);
+        activeShopId1 = await insertShop(dummyManagerId, { name: 'A_Active Shop', isActive: true });
+        activeShopId2 = await insertShop(dummyManagerId, { name: 'Z_Active Shop', isActive: true });
 
         // 3. Insertar 1 sucursal inactiva
-        const inactiveShopRes = await pool.query(
-            `INSERT INTO shops (name, manager_id, is_active) VALUES ('Inactive Shop Test', $1, false) RETURNING id`,
-            [dummyManagerId]
-        );
-        inactiveShopId = inactiveShopRes.rows[0].id;
-        createdShopIds.push(inactiveShopId);
+        inactiveShopId = await insertShop(dummyManagerId, { name: 'Inactive Shop Test', isActive: false });
     });
 
     afterAll(async () => {
-        const pool = getPool();
-        if (createdShopIds.length > 0) {
-            await pool.query('DELETE FROM shops WHERE id = ANY($1)', [createdShopIds]);
-        }
-        if (dummyManagerId) {
-            await pool.query('DELETE FROM managers WHERE user_id = $1', [dummyManagerId]);
-            await pool.query('DELETE FROM users WHERE id = $1', [dummyManagerId]);
-        }
+        await cleanupFixtures();
         await closeDB();
     });
 

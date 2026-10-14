@@ -7,7 +7,7 @@ internos y se protege mediante la cabecera (HTTP header) `X-Internal-Api-Key`, e
 
 ## Estado actual
 
-Contiene el endpoint `/jd/analyze` como referencia (será eliminado posteriormente) y `/face/detect-structure`, que clasifica la estructura facial de una foto con un modelo local de PyTorch. La foto se envía como URL https (`photoUrl`, p. ej. una URL prefirmada de S3; el host debe estar en `IMAGE_ALLOWED_HOSTS`) o como base64 (`photo`); se debe enviar exactamente uno de los dos. El modelo se descarga y verifica (SHA256) al iniciar el servicio.
+Contiene el endpoint `/jd/analyze` como referencia (será eliminado posteriormente) y `/face/detect-structure`, que clasifica la estructura facial de una foto con un modelo local de PyTorch. La foto se identifica con su key en el bucket privado de S3 (`photoKey`): el cliente web la sube con la URL prefirmada que genera el backend, el backend envía la key a este servicio y el servicio la descarga con sus propias credenciales de AWS (solo lectura). La key debe estar dentro de `AWS_BUCKET_KEY_PREFIX`. El modelo se descarga y verifica (SHA256) al iniciar el servicio.
 
 ## Arquitectura
 
@@ -93,10 +93,16 @@ OLLAMA_MODEL=gemma4:e4b
 |---|---|---|
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Dirección del servidor de Ollama. |
 | `OLLAMA_MODEL` | *(ninguno, obligatorio)* | Modelo a usar. Debe estar descargado en ese servidor. |
-| `OLLAMA_NUM_CTX` | `8192` | Tamaño de la ventana de contexto. Ollama usa una pequeña por defecto y trunca el prompt sin avisar. |
+| `OLLAMA_NUM_CTX` | `8192` | Tamaño de la ventana de contexto, compartida por el prompt, la imagen y la respuesta del modelo (incluido su razonamiento). Ollama usa una pequeña por defecto y trunca sin avisar. Si las respuestas se cortan, aumenta este valor (p. ej. `16384` o `32768`, según tu memoria). |
+| `OLLAMA_MAX_TOKENS` | `4096` | Máximo de tokens que el modelo puede **generar**; no incluye el prompt. Si `OLLAMA_THINK` está activo, el razonamiento cuenta dentro de este límite. Es independiente de `MAX_TOKENS`, que solo usa Anthropic. Debe caber en `OLLAMA_NUM_CTX` junto con el prompt. |
+| `OLLAMA_THINK` | `false` | Activa el razonamiento (*thinking*) de los modelos que lo soportan. Está desactivado porque consume tokens y contexto, y aquí la salida ya está restringida a un JSON. |
 | `OLLAMA_TEMPERATURE` | `0.0` | Temperatura de generación. |
 | `OLLAMA_KEEP_ALIVE` | `10m` | Tiempo que el modelo permanece cargado en memoria tras una petición. |
-| `IMAGE_ALLOWED_HOSTS` | *(vacío)* | Hosts desde los que se pueden descargar imágenes, separados por comas. Acepta `*.dominio`. Vacío = no se descarga ninguna (evita SSRF). Ej.: `mi-bucket.s3.us-east-1.amazonaws.com`. |
+| `AWS_ACCESS_KEY_ID` | *(ninguno)* | Credenciales del usuario IAM con permiso `s3:GetObject` sobre `<AWS_BUCKET>/<AWS_BUCKET_KEY_PREFIX>*`. Si no se definen, boto3 usa su cadena por defecto (p. ej. un rol de instancia). |
+| `AWS_SECRET_ACCESS_KEY` | *(ninguno)* | Secreto del usuario IAM anterior. |
+| `AWS_REGION` | *(vacío, obligatoria para `photoKey`)* | Región del bucket. |
+| `AWS_BUCKET` | *(vacío, obligatoria para `photoKey`)* | Nombre del bucket (no la URL). |
+| `AWS_BUCKET_KEY_PREFIX` | *(vacío, obligatoria para `photoKey`)* | Prefijo de las keys de las fotos; el mismo que usa el backend. Las keys que no empiecen con él se rechazan. |
 | `IMAGE_MAX_BYTES` | `10485760` | Tamaño máximo del archivo descargado. |
 | `IMAGE_MAX_PIXELS` | `40000000` | Ancho × alto máximo (protege contra *decompression bombs*). |
 | `IMAGE_MAX_SIDE` | `1024` | Lado mayor (px) al que se reduce la imagen antes de enviarla al modelo. |
@@ -248,7 +254,7 @@ Verifica que `ANTHROPIC_API_KEY` sea válida, que el modelo configurado exista y
 - `503` (provider unavailable): Ollama no está corriendo o `OLLAMA_BASE_URL` no es alcanzable desde donde corre el servicio.
 - `500` con mensaje sobre el modelo: el modelo de `OLLAMA_MODEL` no está descargado en ese servidor. Ejecuta `ollama pull <modelo>`.
 - `504` (timeout): la primera petición carga el modelo en memoria y puede tardar. Aumenta `LLM_TIMEOUT` o usa un modelo más pequeño.
-- `502` (invalid output o truncated): el modelo no devolvió un JSON válido o se quedó sin tokens. Aumenta `MAX_TOKENS` o prueba otro modelo.
+- `502` (invalid output o truncated): el modelo no devolvió un JSON válido o se quedó sin tokens. Con Ollama, `MAX_TOKENS` no tiene efecto: revisa que `OLLAMA_THINK` esté en `false` (el razonamiento consume tokens y contexto), aumenta `OLLAMA_NUM_CTX` (ventana compartida por prompt, imagen y respuesta) o `OLLAMA_MAX_TOKENS` (límite de generación), o prueba otro modelo. Con Anthropic, aumenta `MAX_TOKENS`.
 
 ### `provider not supported`
 

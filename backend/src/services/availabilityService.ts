@@ -1,5 +1,5 @@
 import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
-import { getServiceById } from '../repositories/serviceRepository.js';
+import { getServiceById } from '../repositories/offeredServiceRepository.js';
 import { getShopById } from '../repositories/shopRepository.js';
 import { getActiveBarbersByShop } from '../repositories/barberRepository.js';
 import { getActiveSlotsByBarberIdsAndDay } from '../repositories/availabilitySlotRepository.js';
@@ -88,11 +88,11 @@ export const getAvailableSlots = async ({
     serviceId,
 }: GetAvailableSlotsInput): Promise<AvailableSlotsByBarber[]> => {
     const dayStart = parseDate(date);
-    const now = Date.now();
+    const now = Date.now() - new Date().getTimezoneOffset() * MS_PER_MINUTE;
     const todayStart = now - (now % MS_PER_DAY);
 
     if (dayStart < todayStart) {
-        throw new ApiError(ApiErrorCode.INVALID_INPUT, 'Date cannot be in the past');
+        throw new ApiError(ApiErrorCode.INVALID_INPUT, 'La fecha no puede estar en pasado');
     }
     if (dayStart > todayStart + MAX_BOOKING_DAYS_AHEAD * MS_PER_DAY) {
         throw new ApiError(ApiErrorCode.INVALID_INPUT, `Date cannot be more than ${MAX_BOOKING_DAYS_AHEAD} days ahead`);

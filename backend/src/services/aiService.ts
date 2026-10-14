@@ -3,20 +3,31 @@ import globalConfig from '../config/globalConfig.js';
 import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 import { getUserById } from '../repositories/userRepository.js';
 import type {
+    InternalAIFaceDetectionRequest,
+    InternalAIFaceDetectionResponse,
     InternalAIRecommendationRequest,
+    InternalAIRecommendationResponse,
     InternalAIRequest,
     InternalAIResponse,
 } from '../types/dto/ai_service/internalAIService.js';
 import type {
     HaircutRecommendationRequest,
-    HaircutRecommendationResponse,
+    HaircutRecommendationResult,
+    HaircutStyleDTO,
     RecommendationHealthResponse,
 } from '../types/dto/recommendation.interface.js';
+import type { HaircutStyle } from '../types/entities/haircutStyle.interface.js';
 import { isUserSessionValid } from '../utils/userSession.js';
-import { getClientByUserId } from '../repositories/clientRepository.js';
+import { getUserPhotoKey } from '../utils/photoKey.js';
+import { getClientByUserId, updateClientFacialStructure } from '../repositories/clientRepository.js';
 import { getActiveHaircutStyles, getActiveHaircutStylesByFacialStructure } from '../repositories/haircutRepository.js';
 import { calculateAge } from './userService.js';
-import type { FacialStructureType } from '../types/entities/client.interface.js';
+
+/** Plantilla fija que se envía al cliente cuando el LLM descarta todos los cortes; el motivo va aparte en `data.reason`. */
+export const NO_SUITABLE_HAIRCUT_MESSAGE =
+    'Ninguno de los cortes existentes parece ajustarse a tus preferencias, te sugerimos hablar directamente con tu barbero';
+
+export const RECOMMENDATION_GENERATED_MESSAGE = 'Recomendación de corte generada exitosamente';
 
 export const testConnection = async (): Promise<RecommendationHealthResponse> => {
     let res: Response;
@@ -29,13 +40,13 @@ export const testConnection = async (): Promise<RecommendationHealthResponse> =>
         });
     } catch (error) {
         console.error(error);
-        throw new Error('Network error. Could not call AI microservice');
+        throw new ApiError(ApiErrorCode.INTERNAL_SERVER_ERROR, 'Network error. Could not call AI microservice');
     }
 
     if (!res.ok) {
         const errorMsg = `Request to AI microservice failed with status code: ${res.status}`;
         console.error(errorMsg);
-        throw new Error(errorMsg);
+        throw new ApiError(ApiErrorCode.INTERNAL_SERVER_ERROR, errorMsg);
     }
 
     return (await res.json()) as RecommendationHealthResponse;
@@ -44,10 +55,10 @@ export const testConnection = async (): Promise<RecommendationHealthResponse> =>
 /**
  * Función auxiliar para llamar al microservicio de Python y detectar la estructura facial usando la IA.
  */
-export const detectFacialStructure = async (photo: string): Promise<InternalAIResponse<FacialStructureType>> => {
+export const detectFacialStructure = async (photoKey: string): Promise<InternalAIResponse<InternalAIFaceDetectionResponse>> => {
     let res: Response;
 
-    const payload = buildAIServicePayload({ obj: photo });
+    const payload = buildAIServicePayload<InternalAIFaceDetectionRequest>({ obj: { photoKey }, includeProvider: false });
 
     try {
         res = await fetch(`${globalConfig.AI_SERVICE_URL}/face/detect-structure`, {
@@ -67,20 +78,16 @@ export const detectFacialStructure = async (photo: string): Promise<InternalAIRe
     }
 
     if (!res.ok) {
-        const errorMsg = `Facial detection request failed with status code: ${res.status}`;
-        console.error(chalk.red(`\nERROR - ${errorMsg}`));
-        const response = (await res.json()) as unknown;
-        console.error('Response from AI service:\n', response);
-        throw new ApiError(ApiErrorCode.INTERNAL_SERVER_ERROR, errorMsg);
+        throw await buildAIServiceError(res, 'Facial detection request');
     }
 
-    return (await res.json()) as InternalAIResponse<FacialStructureType>;
+    return (await res.json()) as InternalAIResponse<InternalAIFaceDetectionResponse>;
 };
 
 export const generateRecommendation = async (
     recommendationParams: HaircutRecommendationRequest,
     token: string
-): Promise<InternalAIResponse<HaircutRecommendationResponse>> => {
+): Promise<HaircutRecommendationResult> => {
     let res: Response;
 
     const performer = await isUserSessionValid(token);
@@ -96,12 +103,18 @@ export const generateRecommendation = async (
         throw new ApiError(ApiErrorCode.NOT_FOUND, 'Client could not be found');
     }
 
+    const photoKey = getUserPhotoKey(performer.id);
+
     if (!client.facial_structure_type) {
         // Si el cliente no tiene una estructura facial registrada, llamamos a la IA para detectarla con la foto.
-        const facialStructureResponse = await detectFacialStructure(recommendationParams.photo);
+        const facialStructureResponse = await detectFacialStructure(photoKey);
 
         if (facialStructureResponse.data) {
-            client.facial_structure_type = facialStructureResponse.data;
+            client.facial_structure_type = facialStructureResponse.data.facialStructure;
+            
+            // Se guarda para no volver a invocar a la IA en las siguientes recomendaciones.
+            await updateClientFacialStructure(performer.id, client.facial_structure_type);
+
             console.log(
                 chalk.green(
                     `[AI Service] Estructura facial detectada exitosamente por la IA: ${client.facial_structure_type}`
@@ -112,6 +125,12 @@ export const generateRecommendation = async (
         }
     }
 
+    console.log(
+        chalk.green(
+            `Estructura facial obtenida desde la base de datos: ${client.facial_structure_type}`
+        )
+    );
+
     const availableHaircuts =
         (await getActiveHaircutStylesByFacialStructure(client.facial_structure_type)) ??
         (await getActiveHaircutStyles());
@@ -121,11 +140,12 @@ export const generateRecommendation = async (
     }
 
     const payload: InternalAIRecommendationRequest = {
-        suggestedHaircuts: availableHaircuts,
-        photo: recommendationParams.photo,
+        suggestedHaircuts: availableHaircuts.map(toHaircutStyleDTO),
+        photoKey,
         userData: {
             age: calculateAge(user.birth_date),
             gender: user.gender,
+            facialStructure: client.facial_structure_type,
             userPreferences: recommendationParams.userPreferences,
         },
     };
@@ -141,19 +161,81 @@ export const generateRecommendation = async (
         });
     } catch (error) {
         console.error(error);
-        throw new Error('Network error. Could not call AI microservice');
+        throw new ApiError(ApiErrorCode.INTERNAL_SERVER_ERROR, 'Network error. Could not call AI microservice');
     }
 
     if (!res.ok) {
-        const errorMsg = `Request to AI microservice failed with status code: ${res.status}`;
-        console.error(chalk.red(`\nERROR - ${errorMsg}`));
-
-        const response = await res.json();
-        console.error('Response from AI service:\n', response);
-        throw new Error(errorMsg);
+        throw await buildAIServiceError(res, 'Haircut recommendation request');
     }
 
-    return (await res.json()) as InternalAIResponse<HaircutRecommendationResponse>;
+    const aiResponse = (await res.json()) as InternalAIResponse<InternalAIRecommendationResponse>;
+
+    return toRecommendationResult(aiResponse.data);
+};
+
+/**
+ * Convierte la respuesta de la IA en lo que se envía al cliente web. Cuando el LLM considera que ningún corte
+ * encaja con las preferencias, el mensaje es una plantilla fija y solo el motivo (`reason`) lo redacta el LLM.
+ */
+const toRecommendationResult = (data: InternalAIRecommendationResponse | undefined): HaircutRecommendationResult => {
+    if (!data) {
+        console.error(chalk.red('\nERROR - AI service returned a successful response without data'));
+        throw new ApiError(ApiErrorCode.INTERNAL_SERVER_ERROR, 'Haircut recommendation request returned no data');
+    }
+
+    if (data.status === 'no_suitable_haircut') {
+        return {
+            message: NO_SUITABLE_HAIRCUT_MESSAGE,
+            data: { status: 'no_suitable_haircut', reason: data.reasoning },
+        };
+    }
+
+    if (data.suggestionText === undefined || data.confidence === undefined) {
+        console.error(chalk.red('\nERROR - AI service returned an incomplete recommendation:'), data);
+        throw new ApiError(ApiErrorCode.INTERNAL_SERVER_ERROR, 'Haircut recommendation request returned incomplete data');
+    }
+
+    return {
+        message: RECOMMENDATION_GENERATED_MESSAGE,
+        data: {
+            status: 'recommended',
+            haircuts: data.haircuts,
+            suggestionText: data.suggestionText,
+            reasoning: data.reasoning,
+            confidence: data.confidence,
+        },
+    };
+};
+
+/** Solo se envían a la IA los campos que usa; `description` es nullable en la base de datos. */
+const toHaircutStyleDTO = ({ id, name, description }: HaircutStyle): HaircutStyleDTO =>
+    description ? { id, name, description } : { id, name };
+
+/**
+ * Traduce una respuesta de error del microservicio de IA a un ApiError.
+ *
+ * 400/422 significan que el contenido de la petición no se pudo procesar (p. ej. la foto no existe en el bucket
+ * o no es una imagen válida), por lo que se devuelve como 400 al cliente con el detalle que reporta la IA.
+ * Cualquier otro estado es una falla del servicio y se reporta como 500.
+ */
+const buildAIServiceError = async (res: Response, context: string): Promise<ApiError> => {
+    const errorMsg = `${context} failed with status code: ${res.status}`;
+    console.error(chalk.red(`\nERROR - ${errorMsg}`));
+
+    let body: InternalAIResponse<unknown> | undefined;
+    try {
+        body = (await res.json()) as InternalAIResponse<unknown>;
+    } catch {
+        body = undefined;
+    }
+    console.error('Response from AI service:\n', body);
+
+    if (res.status === 400 || res.status === 422) {
+        const detail = body?.errors?.[0]?.detail ?? body?.message;
+        return new ApiError(ApiErrorCode.BAD_REQUEST, detail ?? errorMsg, body?.errors);
+    }
+
+    return new ApiError(ApiErrorCode.INTERNAL_SERVER_ERROR, errorMsg);
 };
 
 interface BuildAIServicePayloadProps<T> {
@@ -167,10 +249,10 @@ const buildAIServicePayload = <T>({
 }: BuildAIServicePayloadProps<T>): InternalAIRequest<T> => {
     return includeProvider
         ? {
-              data: obj,
-              provider: globalConfig.AI_PROVIDER,
-          }
+            data: obj,
+            provider: globalConfig.AI_PROVIDER,
+        }
         : {
-              data: obj,
-          };
+            data: obj,
+        };
 };

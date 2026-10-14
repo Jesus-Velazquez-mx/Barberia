@@ -1,5 +1,6 @@
 import asyncio
 import os
+import base64
 from types import SimpleNamespace
 
 os.environ.setdefault("AI_SERVICE_API_KEY", "test-key")
@@ -8,6 +9,7 @@ os.environ.setdefault("ANTHROPIC_API_KEY", "anthropic-test-key")
 from app.llm.claude_client import ClaudeClient
 from app.llm.llm_exception import LLMClientError, LLMClientErrorCategory
 from app.schemas.custom_model import CustomModel
+from app.schemas.haircut import HaircutRecommendationResponse
 from app.schemas.llm import LLMErrorResponse
 
 
@@ -32,7 +34,6 @@ def test_build_messages_normalizes_prompt_parts() -> None:
     assert messages == [
         {"role": "user", "content": "first"},
         {"role": "user", "content": "second"},
-        {"role": "assistant", "content": "```json"},
     ]
     assert client._normalize_prompt("single") == ["single"]
 
@@ -46,7 +47,6 @@ def test_build_client_params_respects_optional_settings() -> None:
         "model": "claude-test",
         "max_tokens": 100,
         "messages": [],
-        "stop_sequences": ["```"],
         "system": "Be concise",
         "cache_control": {"type": "ephemeral"},
     }
@@ -74,6 +74,27 @@ def test_parse_response_accepts_primary_and_error_schemas() -> None:
 
     assert result == FakeSchema(value="ok")
     assert isinstance(error, LLMErrorResponse)
+
+
+def test_parse_response_distinguishes_haircut_outcomes_by_status() -> None:
+    client = _client()
+    prompt = ["prompt"]
+
+    no_match = client._parse_response(
+        '{"status":"no_suitable_haircut","haircuts":[],"reasoning":"Solo hay cortes cortos."}',
+        HaircutRecommendationResponse,
+        prompt,
+    )
+    insufficient = client._parse_response(
+        '{"status":"insufficient_data","insufficiencyReason":"no face"}',
+        HaircutRecommendationResponse,
+        prompt,
+    )
+
+    assert isinstance(no_match, HaircutRecommendationResponse)
+    assert no_match.status == "no_suitable_haircut"
+    assert no_match.haircuts == []
+    assert isinstance(insufficient, LLMErrorResponse)
 
 
 def test_parse_response_rejects_invalid_payload() -> None:
@@ -119,8 +140,8 @@ def test_generate_structured_response_orchestrates_helpers() -> None:
 
     async def create(**params):
         assert params["messages"][-1] == {
-            "role": "assistant",
-            "content": "```json",
+            "role": "user",
+            "content": "prompt",
         }
         return SimpleNamespace(
             stop_reason="end_turn",
@@ -134,3 +155,24 @@ def test_generate_structured_response_orchestrates_helpers() -> None:
     )
 
     assert result == FakeSchema(value="ok")
+
+def test_build_messages_does_not_prefill_assistant() -> None:
+    messages = ClaudeClient._build_messages(["prompt"])
+
+    assert messages[-1]["role"] == "user"
+
+
+def test_build_messages_attaches_image_to_last_user_message() -> None:
+    messages = ClaudeClient._build_messages(["first", "second"], b"fake-jpeg")
+
+    assert messages[0] == {"role": "user", "content": "first"}
+    content = messages[-1]["content"]
+    assert content[0]["type"] == "image"
+    assert content[0]["source"]["media_type"] == "image/jpeg"
+    assert content[0]["source"]["data"] == base64.b64encode(b"fake-jpeg").decode()
+    assert content[1] == {"type": "text", "text": "second"}
+
+
+def test_strip_code_fence_removes_markdown_fence() -> None:
+    assert ClaudeClient._strip_code_fence('```json\n{"a": 1}\n```') == '{"a": 1}'
+    assert ClaudeClient._strip_code_fence('{"a": 1}') == '{"a": 1}'

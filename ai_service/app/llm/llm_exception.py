@@ -13,6 +13,8 @@ class LLMClientErrorCategory(StrEnum):
     # Non-retriable
     AUTH = "auth"
     INVALID_REQUEST = "invalid_request"
+    # The photo referenced by the request is missing, unreadable or not a valid image
+    INVALID_PHOTO = "invalid_photo"
     UNKNOWN = "unknown"
 
     # Used only by the attempt loop, not the LLM client
@@ -27,6 +29,7 @@ LLM_ERROR_CATEGORY_STATUS = {
     LLMClientErrorCategory.PROVIDER_UNAVAILABLE: 503,
     LLMClientErrorCategory.AUTH: 502,
     LLMClientErrorCategory.INVALID_REQUEST: 500,
+    LLMClientErrorCategory.INVALID_PHOTO: 400,
     LLMClientErrorCategory.UNKNOWN: 500,
     LLMClientErrorCategory.TIMEOUT_EXCEEDED: 504,
 }

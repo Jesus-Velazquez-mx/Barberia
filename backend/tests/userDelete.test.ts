@@ -2,6 +2,7 @@ import request from 'supertest';
 import express from 'express';
 import router from '../src/routes/routes.js';
 import connection from '../src/connection/connection.js';
+import { generateUniqueEmail as uniqueEmail, generateUniquePhone } from './helpers/uniqueValues.js';
 
 const { connectDB, closeDB, getPool } = connection;
 
@@ -12,19 +13,9 @@ app.use('/api', router);
 
 // Arreglo para rastrear los correos creados y borrarlos al finalizar los tests
 const createdEmails: string[] = [];
-let uniqueCounter = 0;
 
-// Función auxiliar para generar un correo único y evitar errores de colisión (UNIQUE constraint)
-const generateUniqueEmail = () => {
-    uniqueCounter += 1;
-    return `del_test_${Date.now()}_${uniqueCounter}@mrbarber.com`;
-};
-
-// Función auxiliar para generar un número de teléfono único de exactamente 10 dígitos
-const generateUniquePhone = () => {
-    uniqueCounter += 1;
-    return `${Date.now()}${uniqueCounter}`.slice(-10);
-};
+// Correo único (basado en randomUUID) para evitar errores de colisión (UNIQUE constraint)
+const generateUniqueEmail = () => uniqueEmail('del_test');
 
 // Setup: Se ejecuta una sola vez antes de comenzar todas las pruebas
 beforeAll(async () => {

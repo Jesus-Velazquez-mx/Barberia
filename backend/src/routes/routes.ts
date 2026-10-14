@@ -7,6 +7,7 @@ import barberRoutes from './barberRoutes.js';
 import recommendationRoutes from './recommendationRoutes.js';
 import { health } from '../controllers/healthController.js';
 import shopRoutes from './shopRoutes.js';
+import offeredServicesRoutes from './offeredServiceRoutes.js'
 
 const router = Router();
 
@@ -17,6 +18,7 @@ router.use(managerRoutes);
 router.use(barberRoutes);
 router.use(recommendationRoutes);
 router.use(shopRoutes);
+router.use(offeredServicesRoutes)
 
 router.get('/health', health);
 

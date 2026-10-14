@@ -8,6 +8,19 @@ export interface AvailableSlot {
     startTime: string;
 }
 
+export interface AvailableSlotsByBarber {
+    barberId: string;
+    /** Horarios de inicio agendables en ISO 8601 UTC (ej. "2026-10-15T15:00:00.000Z") */
+    startTimes: string[];
+}
+
+/** Parámetros necesarios para consultar la disponibilidad */
+export interface GetAvailabilityParams {
+    shopId: string;
+    date: string;      // YYYY-MM-DD
+    serviceId: string; // UUID
+}
+
 /* Estado de un día en el calendario:
    - available: hay al menos un horario libre
    - full: es día laborable pero ya no quedan horarios (cupo lleno)

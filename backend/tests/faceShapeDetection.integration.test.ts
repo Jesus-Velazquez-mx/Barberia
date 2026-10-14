@@ -1,36 +1,29 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
 /*
  * Integración contra el microservicio de IA REAL. No se ejecuta en CI: requiere
- * el servicio corriendo y AI_SERVICE_URL / AI_SERVICE_API_KEY válidos.
+ * el servicio corriendo, AI_SERVICE_URL / AI_SERVICE_API_KEY válidos y una foto
+ * ya subida al bucket cuya key empiece con AWS_BUCKET_KEY_PREFIX.
  *
- *   RUN_AI_INTEGRATION=1 npm test -- faceShapeDetection.integration
+ *   RUN_AI_INTEGRATION=1 AI_INTEGRATION_PHOTO_KEY=user/images/<id>  *     npm test -- faceShapeDetection.integration
  *
- * Sin la variable, el bloque se marca como "skipped". Las pruebas unitarias con
- * mocks están en faceShapeDetection.test.ts.
+ * Opcional: AI_INTEGRATION_EXPECTED_STRUCTURE=heart para comprobar el resultado.
+ * Sin RUN_AI_INTEGRATION el bloque se marca como "skipped". Las pruebas
+ * unitarias con mocks están en faceShapeDetection.test.ts.
  */
 const describeIntegration = process.env.RUN_AI_INTEGRATION === '1' ? describe : describe.skip;
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const FACIAL_STRUCTURES = ['oval', 'triangle', 'heart', 'round', 'diamond', 'square', 'rectangle'];
 
 describeIntegration('Integración con el microservicio de IA - detección facial', () => {
-    const testCases = [
-        { tipo: 'heart', filename: 'images/corazon.jpg', mime: 'image/jpeg' },
-        { tipo: 'oval', filename: 'images/ovalada.png', mime: 'image/png' },
-        { tipo: 'round', filename: 'images/redonda.png', mime: 'image/png' },
-        { tipo: 'square', filename: 'images/cuadrada.png', mime: 'image/png' },
-    ];
-
-    test.each(testCases)('detecta el rostro tipo $tipo', async ({ tipo, filename, mime }) => {
-        const imageBuffer = fs.readFileSync(path.join(__dirname, filename));
-        const photo = `data:${mime};base64,${imageBuffer.toString('base64')}`;
+    test('clasifica la foto almacenada en el bucket a partir de su key', async () => {
+        const photoKey = process.env.AI_INTEGRATION_PHOTO_KEY;
+        if (!photoKey) throw new Error('AI_INTEGRATION_PHOTO_KEY is required');
 
         // Import dinámico: si el bloque se omite no se carga el servicio ni la conexión a la BD
         const { detectFacialStructure } = await import('../src/services/aiService.js');
-        const response = await detectFacialStructure(photo);
+        const response = await detectFacialStructure(photoKey);
 
-        expect(response.data).toBe(tipo);
+        expect(FACIAL_STRUCTURES).toContain(response.data);
+        const expected = process.env.AI_INTEGRATION_EXPECTED_STRUCTURE;
+        if (expected) expect(response.data).toBe(expected);
     });
 });

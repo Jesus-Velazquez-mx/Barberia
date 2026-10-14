@@ -8,7 +8,7 @@ from pydantic import TypeAdapter, ValidationError
 
 from app.core.config import get_settings
 from app.llm.error_handling import enable_error_handling
-from app.llm.image_loader import ImageLoadError, load_image
+from app.llm.image_loader import ImageLoadError, load_image_from_key
 from app.llm.llm_client import MessageRole
 from app.llm.llm_exception import (
     LLMClientError,
@@ -37,6 +37,7 @@ class OllamaClient:
         num_ctx: int | None = None,
         temperature: float | None = None,
         keep_alive: str | None = None,
+        think: bool | None = None,
     ):
         # Los valores se resuelven aquí y no al importar el módulo, para que
         # importar OllamaClient no dependa de que exista la configuración.
@@ -50,7 +51,12 @@ class OllamaClient:
             )
 
         self.model = resolved_model
-        self.max_tokens = max_tokens if max_tokens is not None else settings.MAX_TOKENS
+        # A diferencia de Claude, Ollama cuenta los tokens de razonamiento
+        # (thinking) dentro del máximo de salida, por eso tiene su propio límite.
+        self.max_tokens = (
+            max_tokens if max_tokens is not None else settings.OLLAMA_MAX_TOKENS
+        )
+        self.think = think if think is not None else settings.OLLAMA_THINK
         self.system = system
         self.base_url = base_url or settings.OLLAMA_BASE_URL
         self.num_ctx = num_ctx if num_ctx is not None else settings.OLLAMA_NUM_CTX
@@ -65,10 +71,10 @@ class OllamaClient:
         self,
         prompt: str | list[str],
         schema: type[ModelT],
-        image_url: str | None = None,
+        photo_key: str | None = None,
     ) -> ModelT | LLMErrorResponse:
         """
-        Si se recibe `image_url`, la imagen se descarga, se normaliza y se
+        Si se recibe `photo_key`, la foto se descarga de S3, se normaliza y se
         envía al modelo como bytes. Vive solo en memoria y se descarta al
         terminar cada intento (con éxito o con error). Ver image_loader.
         """
@@ -77,8 +83,8 @@ class OllamaClient:
         chat_params: dict[str, Any] | None = None
 
         try:
-            if image_url:
-                image_bytes = await self._load_image(image_url, normalized_prompt)
+            if photo_key:
+                image_bytes = await self._load_image(photo_key, normalized_prompt)
 
             messages = self._build_messages(
                 normalized_prompt, [image_bytes] if image_bytes else None
@@ -102,14 +108,14 @@ class OllamaClient:
                 chat_params.clear()
             image_bytes = None
 
-    async def _load_image(self, image_url: str, prompt: list[str]) -> bytes:
+    async def _load_image(self, photo_key: str, prompt: list[str]) -> bytes:
         """
         Descarga y prepara la imagen. Traduce los errores del cargador a
         LLMClientError para que el manejo de errores/reintentos los trate
         igual que cualquier otra falla del cliente.
         """
         try:
-            return await load_image(image_url)
+            return await load_image_from_key(photo_key)
         except ImageLoadError as exc:
             raise LLMClientError(
                 exc.category, self.provider, self.model, prompt, exc.desc
@@ -175,15 +181,20 @@ class OllamaClient:
         - format: JSON Schema (structured outputs). A diferencia de
           format="json", que solo garantiza JSON válido, esto restringe la
           generación a los campos del schema (ver _build_format_schema)
-        - num_predict: número máximo de tokens a generar
-        - num_ctx: tamaño de la ventana de contexto. Ollama usa uno pequeño por
-          defecto y trunca el prompt sin avisar, por eso se fija explícitamente
+        - think: activa o desactiva el razonamiento del modelo. Los modelos con
+          thinking lo activan por defecto, y esos tokens consumen tanto
+          num_predict como la ventana de contexto antes de que aparezca el JSON
+        - num_predict: número máximo de tokens a generar (incluye el thinking)
+        - num_ctx: tamaño de la ventana de contexto, compartida por el prompt,
+          la imagen y lo que se genera. Ollama usa uno pequeño por defecto y
+          trunca sin avisar, por eso se fija explícitamente
         - temperature: baja, para respuestas estables y estructuradas
         - keep_alive: tiempo que el modelo se queda cargado en memoria
         """
         return {
             "model": self.model,
             "messages": messages,
+            "think": self.think,
             "format": self._build_format_schema(schema),
             "options": {
                 "num_predict": self.max_tokens,
