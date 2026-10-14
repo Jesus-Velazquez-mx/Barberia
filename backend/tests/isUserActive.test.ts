@@ -1,26 +1,17 @@
 import { isUserActive } from '../src/repositories/userRepository.js';
 import connection from '../src/connection/connection.js';
 import type { UserRole } from '../src/types/entities/user.interface.js';
+import { generateUniqueEmail, generateUniquePhone } from './helpers/uniqueValues.js';
 
 const { connectDB, closeDB, getPool } = connection;
 
 const createdUserIds: string[] = [];
 
-let uniqueCounter = 0;
-const generateUniqueEmail = () => {
-    uniqueCounter += 1;
-    return `is_user_active_test_${Date.now()}_${uniqueCounter}@mrbarber.com`;
-};
-const generateUniquePhone = () => {
-    uniqueCounter += 1;
-    return `${Date.now()}${uniqueCounter}`.slice(-10);
-};
-
 const insertUser = async (role: UserRole): Promise<string> => {
     const result = await getPool().query(
         `INSERT INTO users (role, email, phone, password_hash, first_name, last_name, birth_date, gender)
          VALUES ($1, $2, $3, 'unused', 'Test', 'User', '1990-01-01', 'other') RETURNING id`,
-        [role, generateUniqueEmail(), generateUniquePhone()]
+        [role, generateUniqueEmail('is_user_active_test'), generateUniquePhone()]
     );
     const id = result.rows[0].id;
     createdUserIds.push(id);

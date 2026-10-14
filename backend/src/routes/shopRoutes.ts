@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { list, getById } from '../controllers/shopController.js';
 import { listByShop } from '../controllers/barberController.js';
+import { getAvailability } from '../controllers/availabilitySlotController.js';
 
 const router = Router();
 
@@ -94,4 +95,71 @@ router.get('/shops/:id', getById);
  */
 router.get('/shops/:id/barbers', listByShop);
 
+/**
+ * @swagger
+ * /api/shops/{id}/availability:
+ *   get:
+ *     summary: Consulta los horarios disponibles por barbero para una sucursal, fecha y servicio
+ *     tags: [Shops, Availability]
+ *     description: Calcula los horarios de inicio agendables por cada barbero elegible de la sucursal para un servicio específico en una fecha determinada. Endpoint público.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID único de la sucursal.
+ *       - in: query
+ *         name: date
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *           example: "2026-10-15"
+ *         description: Fecha a consultar en formato YYYY-MM-DD (no puede ser anterior a hoy).
+ *       - in: query
+ *         name: serviceId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID único del servicio que se desea agendar.
+ *     responses:
+ *       200:
+ *         description: Éxito. Retorna los slots de inicio disponibles agrupados por barbero.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       barberId:
+ *                         type: string
+ *                         format: uuid
+ *                       startTimes:
+ *                         type: array
+ *                         items:
+ *                           type: string
+ *                           format: date-time
+ *                 message:
+ *                   type: string
+ *                   example: Available slots retrieved successfully
+ *                 error:
+ *                   nullable: true
+ *                   example: null
+ *       400:
+ *         description: Error de validación (fecha inválida o pasada, serviceId faltante o inválido, id de sucursal inválido).
+ *       404:
+ *         description: Sucursal no encontrada/inactiva o servicio no encontrado/inactivo.
+ *       500:
+ *         description: Error interno del servidor.
+ */
+router.get('/shops/:id/availability', getAvailability);
+
 export default router;
+
