@@ -1,5 +1,5 @@
 import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
-import { getServiceById } from '../repositories/serviceRepository.js';
+import { getServiceById } from '../repositories/offeredServiceRepository.js';
 import { getShopById } from '../repositories/shopRepository.js';
 import { getActiveBarbersByShop } from '../repositories/barberRepository.js';
 import { getActiveSlotsByBarberIdsAndDay } from '../repositories/availabilitySlotRepository.js';

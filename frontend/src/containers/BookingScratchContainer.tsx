@@ -129,11 +129,11 @@ export function BookingScratchContainer() {
     .join(', ');
   const dateLabel = selectedDate
     ? new Date(`${selectedDate}T00:00:00`).toLocaleDateString('es-MX', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric'
-      })
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    })
     : '';
 
   return (
