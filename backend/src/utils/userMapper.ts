@@ -36,6 +36,8 @@ export const toBarberResponse = (barber: Barber): BarberResponse => ({
     shiftId: barber.shift_id,
     bio: barber.bio,
     isAcceptingBookings: barber.is_accepting_bookings,
+    createdAt: barber.created_at,
+    updatedAt: barber.updated_at,
 });
 
 export const toManagerResponse = (manager: Manager): ManagerResponse => ({
