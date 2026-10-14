@@ -1,9 +1,9 @@
 import base64
 
 from click import prompt
-from app.llm.image_loader import ImageLoadError, load_image
+from app.llm.image_loader import ImageLoadError, load_image_from_key
 import base64
-from app.llm.image_loader import ImageLoadError, load_image
+from app.llm.image_loader import ImageLoadError, load_image_from_key
 
 from typing import Any, TypeVar
 
@@ -60,13 +60,13 @@ class ClaudeClient:
         self,
         prompt: str | list[str],
         schema: type[ModelT],
-        image_url: str | None = None,
+        photo_key: str | None = None,
     ) -> ModelT | LLMErrorResponse:
         normalized_prompt = self._normalize_prompt(prompt)
         image_bytes: bytes | None = None
         try:
-            if image_url:
-                image_bytes = await self._load_image(image_url, normalized_prompt)
+            if photo_key:
+                image_bytes = await self._load_image(photo_key, normalized_prompt)
             messages = self._build_messages(normalized_prompt, image_bytes)
             client_params = self._build_client_params(messages)
             response = await self._generate_response(client_params, normalized_prompt)
@@ -76,9 +76,9 @@ class ClaudeClient:
         finally:
             image_bytes = None
 
-    async def _load_image(self, image_url: str, prompt: list[str]) -> bytes:
+    async def _load_image(self, photo_key: str, prompt: list[str]) -> bytes:
         try:
-            return await load_image(image_url)
+            return await load_image_from_key(photo_key)
         except ImageLoadError as exc:
             raise LLMClientError(
                 exc.category, self.provider, self.model, prompt, exc.desc
@@ -98,7 +98,7 @@ class ClaudeClient:
             {"role": MessageRole.USER.value, "content": part} for part in prompt
         ]
         if image:
-            # load_image siempre devuelve JPEG; la imagen va antes del texto
+            # load_image_from_key siempre devuelve JPEG; la imagen va antes del texto
             messages[-1]["content"] = [
                 {
                     "type": "image",

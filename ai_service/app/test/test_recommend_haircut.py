@@ -4,21 +4,29 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.core.config import get_settings
+from app.llm.error_handling import is_retriable
+from app.llm.llm_exception import (
+    LLMClientError,
+    LLMClientErrorCategory,
+    LLMRequestFailedError,
+)
 from app.schemas.api import ApiRequest
 from app.schemas.haircut import (
     HaircutRecommendationRequest,
     HaircutRecommendationResponse,
 )
 from app.schemas.llm import LLMErrorResponse
+from app.services import face_classifier
 from app.services import recommend_haircut as service_module
 from app.services.unprocessable_exception import UnprocessableContentError
 from main import app
 
-PHOTO_URL = "https://example-bucket.s3.amazonaws.com/photos/user-1.jpg"
+PHOTO_KEY = "photos/user-1"
 
 USER_DATA: dict = {
     "age": 25,
     "gender": "male",
+    "facialStructure": "oval",
     "userPreferences": "Bajo mantenimiento, que se vea natural",
 }
 
@@ -38,42 +46,50 @@ class FakeLLMClient:
         self.result = result
         self.calls: list[dict] = []
 
-    async def generate_structured_response(self, prompt, schema, image_url=None):
-        self.calls.append({"prompt": prompt, "schema": schema, "image_url": image_url})
+    async def generate_structured_response(self, prompt, schema, photo_key=None):
+        self.calls.append({"prompt": prompt, "schema": schema, "photo_key": photo_key})
+        if isinstance(self.result, Exception):
+            raise self.result
         return self.result
+
+
+@pytest.fixture(autouse=True)
+def classifier_must_not_run(monkeypatch):
+    """La estructura facial la detecta el backend, no este endpoint"""
+
+    def fail(*args, **kwargs):
+        raise AssertionError("The face classifier must not run when recommending")
+
+    monkeypatch.setattr(face_classifier, "classify_face_shape", fail)
+    monkeypatch.setattr(face_classifier, "classify_image_bytes", fail)
 
 
 @pytest.fixture
 def use_fake_llm(monkeypatch):
-    def _use(result, facial_structure="oval"):
+    def _use(result):
         client = FakeLLMClient(result)
         monkeypatch.setattr(service_module, "get_llm_client", lambda provider: client)
-
-        async def fake_detect(photo):
-            client.classified_photo = photo
-            return facial_structure
-
-        # Evita cargar el modelo de PyTorch y descargar la foto en las pruebas
-        monkeypatch.setattr(service_module, "_detect_facial_structure", fake_detect)
         return client
 
     return _use
 
 
-def build_payload(haircuts=None) -> dict:
+def build_payload(haircuts=None, facial_structure="oval", photo_key=PHOTO_KEY) -> dict:
     return {
         "provider": "anthropic",
         "data": {
             "suggestedHaircuts": HAIRCUTS if haircuts is None else haircuts,
-            "photo": PHOTO_URL,
-            "userData": USER_DATA,
+            "photoKey": photo_key,
+            "userData": {**USER_DATA, "facialStructure": facial_structure},
         },
     }
 
 
-def build_request(haircuts=None) -> ApiRequest[HaircutRecommendationRequest]:
+def build_request(
+    haircuts=None, facial_structure="oval"
+) -> ApiRequest[HaircutRecommendationRequest]:
     return ApiRequest[HaircutRecommendationRequest].model_validate(
-        build_payload(haircuts)
+        build_payload(haircuts, facial_structure)
     )
 
 
@@ -110,14 +126,14 @@ def test_valid_response_is_returned(use_fake_llm):
     assert len(client.calls) == 1
 
 
-def test_photo_url_is_sent_as_image_not_in_prompt(use_fake_llm):
+def test_photo_key_is_sent_to_the_client_not_in_prompt(use_fake_llm):
     client = use_fake_llm(llm_result())
 
     run_service(build_request())
 
     call = client.calls[0]
-    assert call["image_url"] == PHOTO_URL
-    assert PHOTO_URL not in str(call["prompt"])
+    assert call["photo_key"] == PHOTO_KEY
+    assert PHOTO_KEY not in str(call["prompt"])
     assert call["schema"] is HaircutRecommendationResponse
 
 
@@ -131,15 +147,17 @@ def test_prompt_contains_candidate_haircuts(use_fake_llm):
     assert "Pompadour" in prompt
 
 
-def test_detected_facial_structure_is_included_in_prompt(use_fake_llm):
-    client = use_fake_llm(llm_result(), facial_structure="round")
+def test_facial_structure_from_request_is_included_once_in_prompt(use_fake_llm):
+    client = use_fake_llm(llm_result())
 
-    run_service(build_request())
+    run_service(build_request(facial_structure="round"))
 
     prompt = str(client.calls[0]["prompt"])
     block = prompt.split("<facial_structure>")[1].split("</facial_structure>")[0]
+    user_data = prompt.split("<user_data>")[1].split("</user_data>")[0]
     assert block.strip() == "round"
-    assert client.classified_photo == PHOTO_URL
+    assert "facialStructure" not in user_data
+    assert "userPreferences" in user_data
 
 
 def test_name_and_description_come_from_request_not_llm(use_fake_llm):
@@ -239,3 +257,49 @@ def test_endpoint_returns_422_when_content_is_invalid(use_fake_llm):
 
     assert res.status_code == 422
     assert res.json()["errors"]
+
+def test_unusable_photo_returns_400(use_fake_llm):
+    error = LLMClientError(
+        LLMClientErrorCategory.INVALID_PHOTO,
+        "Fake",
+        "fake-model",
+        "prompt",
+        "Photo was not found",
+    )
+    client = use_fake_llm(LLMRequestFailedError(error, attempts=1))
+
+    res = TestClient(app).post(ENDPOINT, json=build_payload(), headers=auth_headers())
+
+    assert res.status_code == 400
+    assert res.json()["message"] == "Photo was not found"
+    assert len(client.calls) == 1
+
+
+def test_empty_photo_key_returns_400(use_fake_llm):
+    client = use_fake_llm(llm_result())
+
+    res = TestClient(app).post(
+        ENDPOINT, json=build_payload(photo_key=""), headers=auth_headers()
+    )
+
+    assert res.status_code == 400
+    assert client.calls == []
+
+
+def test_missing_facial_structure_returns_400(use_fake_llm):
+    client = use_fake_llm(llm_result())
+    payload = build_payload()
+    del payload["data"]["userData"]["facialStructure"]
+
+    res = TestClient(app).post(ENDPOINT, json=payload, headers=auth_headers())
+
+    assert res.status_code == 400
+    assert client.calls == []
+
+
+def test_invalid_photo_is_not_retried():
+    error = LLMClientError(
+        LLMClientErrorCategory.INVALID_PHOTO, "Fake", "fake-model", "prompt", "x"
+    )
+
+    assert not is_retriable(error)

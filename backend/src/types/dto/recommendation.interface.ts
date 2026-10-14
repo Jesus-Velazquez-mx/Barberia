@@ -14,7 +14,7 @@ interface HaircutRecommendationRequest {
 
 interface HaircutRecommendationResponse {
     haircuts: HaircutStyleDTO[];
-    suggestonText: string;
+    suggestionText: string;
     reasoning: string;
     confidence: number;
 }

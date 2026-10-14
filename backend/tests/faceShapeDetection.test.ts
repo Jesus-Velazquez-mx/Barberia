@@ -124,12 +124,11 @@ describe('detectFacialStructure', () => {
     });
 
     test.each([
-        { status: 400, body: { message: 'Request validation failed' } },
         { status: 401, body: { message: 'Invalid or missing API key' } },
-        { status: 422, body: { message: 'unprocessable', errors: [{ field: 'photoKey', detail: 'bad' }] } },
+        { status: 502, body: { message: 'Image storage rejected the credentials' } },
         { status: 503, body: { message: 'Image download timed out' } },
     ])(
-        'lanza ApiError 500 con el código $status cuando el microservicio responde con error',
+        'lanza ApiError 500 con el código $status cuando el microservicio falla por una causa ajena al cliente',
         async ({ status, body }) => {
             fetchMock.mockResolvedValue(jsonResponse(body, status));
 
@@ -140,6 +139,36 @@ describe('detectFacialStructure', () => {
             expect((error as Error).message).toContain(String(status));
         }
     );
+
+    test.each([
+        { status: 400, body: { message: 'Photo was not found' }, expected: 'Photo was not found' },
+        {
+            status: 422,
+            body: { message: 'unprocessable', errors: [{ field: 'photoKey', detail: 'Photo was not found' }] },
+            expected: 'Photo was not found',
+        },
+        { status: 422, body: { message: 'unprocessable' }, expected: 'unprocessable' },
+    ])(
+        'lanza ApiError 400 con el detalle de la IA cuando la foto no se puede procesar ($status)',
+        async ({ status, body, expected }) => {
+            fetchMock.mockResolvedValue(jsonResponse(body, status));
+
+            const error = await detectFacialStructure(PHOTO_KEY).catch((e: unknown) => e);
+
+            expect(error).toBeInstanceOf(ApiError);
+            expect((error as InstanceType<typeof ApiError>).code).toBe(ApiErrorCode.BAD_REQUEST);
+            expect((error as Error).message).toBe(expected);
+        }
+    );
+
+    test('lanza ApiError 500 si la respuesta de error no es JSON', async () => {
+        fetchMock.mockResolvedValue(new Response('<html>bad gateway</html>', { status: 502 }));
+
+        const error = await detectFacialStructure(PHOTO_KEY).catch((e: unknown) => e);
+
+        expect(error).toBeInstanceOf(ApiError);
+        expect((error as InstanceType<typeof ApiError>).code).toBe(ApiErrorCode.INTERNAL_SERVER_ERROR);
+    });
 });
 
 describe('generateRecommendation - detección de estructura facial', () => {
@@ -226,6 +255,77 @@ describe('generateRecommendation - detección de estructura facial', () => {
         await expect(generateRecommendation(params, TOKEN)).rejects.toThrow('db down');
 
         expect(calledUrls()).toEqual([FACE_URL]);
+    });
+
+    test('lanza ApiError 400 si la IA reporta que la foto no se puede procesar al detectar', async () => {
+        getClientByUserId.mockResolvedValue({ user_id: 'user-1', facial_structure_type: null });
+        fetchMock.mockResolvedValueOnce(
+            jsonResponse({ message: 'unprocessable', errors: [{ field: 'photoKey', detail: 'Photo was not found' }] }, 422)
+        );
+
+        const error = await generateRecommendation(params, TOKEN).catch((e: unknown) => e);
+
+        expect(error).toBeInstanceOf(ApiError);
+        expect((error as InstanceType<typeof ApiError>).code).toBe(ApiErrorCode.BAD_REQUEST);
+        expect((error as Error).message).toBe('Photo was not found');
+        expect(calledUrls()).toEqual([FACE_URL]);
+    });
+
+    test('envía la estructura facial del cliente en userData y solo los campos de cada corte que usa la IA', async () => {
+        getClientByUserId.mockResolvedValue({ user_id: 'user-1', facial_structure_type: 'square' });
+        getActiveHaircutStylesByFacialStructure.mockResolvedValue([
+            { id: 'h1', name: 'Fade', description: 'desc', is_active: true, created_at: new Date(), updated_at: new Date() },
+            { id: 'h2', name: 'Buzz', description: null, is_active: true, created_at: new Date(), updated_at: new Date() },
+        ]);
+        fetchMock.mockResolvedValue(jsonResponse({ data: { haircuts: [] }, message: 'ok' }));
+
+        await generateRecommendation(params, TOKEN);
+
+        const { data, provider } = sentBody();
+        expect(provider).toBe(AI_PROVIDER);
+        expect(data.userData).toEqual({
+            age: 30,
+            gender: 'male',
+            facialStructure: 'square',
+            userPreferences: 'corto',
+        });
+        expect(data.suggestedHaircuts).toEqual([
+            { id: 'h1', name: 'Fade', description: 'desc' },
+            { id: 'h2', name: 'Buzz' },
+        ]);
+    });
+
+    test('lanza ApiError 400 si la IA reporta que la foto no se puede usar al recomendar', async () => {
+        getClientByUserId.mockResolvedValue({ user_id: 'user-1', facial_structure_type: 'square' });
+        fetchMock.mockResolvedValue(
+            jsonResponse({ message: 'Photo was not found', errors: [{ detail: 'Photo was not found' }] }, 400)
+        );
+
+        const error = await generateRecommendation(params, TOKEN).catch((e: unknown) => e);
+
+        expect(error).toBeInstanceOf(ApiError);
+        expect((error as InstanceType<typeof ApiError>).code).toBe(ApiErrorCode.BAD_REQUEST);
+        expect((error as Error).message).toBe('Photo was not found');
+    });
+
+    test('lanza ApiError 500 si la IA de recomendación falla por una causa ajena al cliente', async () => {
+        getClientByUserId.mockResolvedValue({ user_id: 'user-1', facial_structure_type: 'square' });
+        fetchMock.mockResolvedValue(jsonResponse({ message: 'down' }, 503));
+
+        const error = await generateRecommendation(params, TOKEN).catch((e: unknown) => e);
+
+        expect(error).toBeInstanceOf(ApiError);
+        expect((error as InstanceType<typeof ApiError>).code).toBe(ApiErrorCode.INTERNAL_SERVER_ERROR);
+    });
+
+    test('lanza ApiError 500 si no se puede contactar a la IA de recomendación', async () => {
+        getClientByUserId.mockResolvedValue({ user_id: 'user-1', facial_structure_type: 'square' });
+        fetchMock.mockRejectedValue(new TypeError('fetch failed'));
+
+        const error = await generateRecommendation(params, TOKEN).catch((e: unknown) => e);
+
+        expect(error).toBeInstanceOf(ApiError);
+        expect((error as InstanceType<typeof ApiError>).code).toBe(ApiErrorCode.INTERNAL_SERVER_ERROR);
     });
 
     test('lanza ApiError 500 si la detección no devuelve una estructura facial', async () => {

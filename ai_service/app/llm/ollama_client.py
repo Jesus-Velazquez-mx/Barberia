@@ -8,7 +8,7 @@ from pydantic import TypeAdapter, ValidationError
 
 from app.core.config import get_settings
 from app.llm.error_handling import enable_error_handling
-from app.llm.image_loader import ImageLoadError, load_image
+from app.llm.image_loader import ImageLoadError, load_image_from_key
 from app.llm.llm_client import MessageRole
 from app.llm.llm_exception import (
     LLMClientError,
@@ -65,10 +65,10 @@ class OllamaClient:
         self,
         prompt: str | list[str],
         schema: type[ModelT],
-        image_url: str | None = None,
+        photo_key: str | None = None,
     ) -> ModelT | LLMErrorResponse:
         """
-        Si se recibe `image_url`, la imagen se descarga, se normaliza y se
+        Si se recibe `photo_key`, la foto se descarga de S3, se normaliza y se
         envía al modelo como bytes. Vive solo en memoria y se descarta al
         terminar cada intento (con éxito o con error). Ver image_loader.
         """
@@ -77,8 +77,8 @@ class OllamaClient:
         chat_params: dict[str, Any] | None = None
 
         try:
-            if image_url:
-                image_bytes = await self._load_image(image_url, normalized_prompt)
+            if photo_key:
+                image_bytes = await self._load_image(photo_key, normalized_prompt)
 
             messages = self._build_messages(
                 normalized_prompt, [image_bytes] if image_bytes else None
@@ -102,14 +102,14 @@ class OllamaClient:
                 chat_params.clear()
             image_bytes = None
 
-    async def _load_image(self, image_url: str, prompt: list[str]) -> bytes:
+    async def _load_image(self, photo_key: str, prompt: list[str]) -> bytes:
         """
         Descarga y prepara la imagen. Traduce los errores del cargador a
         LLMClientError para que el manejo de errores/reintentos los trate
         igual que cualquier otra falla del cliente.
         """
         try:
-            return await load_image(image_url)
+            return await load_image_from_key(photo_key)
         except ImageLoadError as exc:
             raise LLMClientError(
                 exc.category, self.provider, self.model, prompt, exc.desc

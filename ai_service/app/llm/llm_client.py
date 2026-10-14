@@ -17,7 +17,7 @@ class LLMClient(Protocol):
         self,
         prompt: str | list[str],
         schema: type[ModelT],
-        image_url: str | None = None,
+        photo_key: str | None = None,
     ) -> ModelT | LLMErrorResponse: ...
 
 

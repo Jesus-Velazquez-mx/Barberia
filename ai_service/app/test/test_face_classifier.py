@@ -233,7 +233,7 @@ def test_classify_propagates_download_errors(fake_model, monkeypatch) -> None:
     fake_model("Oval")
 
     async def failing(key: str) -> bytes:
-        raise ImageLoadError(LLMClientErrorCategory.INVALID_REQUEST, "Photo was not found")
+        raise ImageLoadError(LLMClientErrorCategory.INVALID_PHOTO, "Photo was not found")
 
     monkeypatch.setattr(face_classifier, "load_image_from_key", failing)
 

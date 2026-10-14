@@ -1,4 +1,5 @@
 from fastapi import APIRouter
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.utils.json_utils import build_json_response
@@ -10,7 +11,7 @@ haircut_router = APIRouter(prefix="/haircut/recommend")
 
 
 @haircut_router.post("")
-async def generate_haircut_recommendation(req: ApiRequest[HaircutRecommendationRequest]) -> JSONResponse:  # type: ignore
+async def generate_haircut_recommendation(req: ApiRequest[HaircutRecommendationRequest]) -> JSONResponse:    
     res = await recommend_haircut(req)
 
     return build_json_response(

@@ -59,6 +59,7 @@ def is_retriable(exc: LLMClientError):
     return exc.category not in [
         LLMClientErrorCategory.AUTH,
         LLMClientErrorCategory.INVALID_REQUEST,
+        LLMClientErrorCategory.INVALID_PHOTO,
         LLMClientErrorCategory.UNKNOWN,
     ]
 

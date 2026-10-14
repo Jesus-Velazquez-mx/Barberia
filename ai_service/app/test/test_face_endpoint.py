@@ -100,7 +100,7 @@ def test_requires_photo_key(client, loaded_keys, data) -> None:
 def test_invalid_key_is_unprocessable_content(client, monkeypatch) -> None:
     async def rejecting(key: str) -> bytes:
         raise ImageLoadError(
-            LLMClientErrorCategory.INVALID_REQUEST, "Photo key is not valid"
+            LLMClientErrorCategory.INVALID_PHOTO, "Photo key is not valid"
         )
 
     monkeypatch.setattr(face_classifier, "load_image_from_key", rejecting)

@@ -96,7 +96,6 @@ OLLAMA_MODEL=gemma4:e4b
 | `OLLAMA_NUM_CTX` | `8192` | Tamaño de la ventana de contexto. Ollama usa una pequeña por defecto y trunca el prompt sin avisar. |
 | `OLLAMA_TEMPERATURE` | `0.0` | Temperatura de generación. |
 | `OLLAMA_KEEP_ALIVE` | `10m` | Tiempo que el modelo permanece cargado en memoria tras una petición. |
-| `IMAGE_ALLOWED_HOSTS` | *(vacío)* | Hosts desde los que se pueden descargar imágenes por URL (las imágenes de las peticiones a los LLM), separados por comas. Acepta `*.dominio`. Vacío = no se descarga ninguna (evita SSRF). No aplica a `photoKey`. |
 | `AWS_ACCESS_KEY_ID` | *(ninguno)* | Credenciales del usuario IAM con permiso `s3:GetObject` sobre `<AWS_BUCKET>/<AWS_BUCKET_KEY_PREFIX>*`. Si no se definen, boto3 usa su cadena por defecto (p. ej. un rol de instancia). |
 | `AWS_SECRET_ACCESS_KEY` | *(ninguno)* | Secreto del usuario IAM anterior. |
 | `AWS_REGION` | *(vacío, obligatoria para `photoKey`)* | Región del bucket. |

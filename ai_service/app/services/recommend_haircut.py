@@ -1,10 +1,6 @@
-import asyncio
 import json
 
-from app.services.face_classifier import classify_image_bytes
-from app.llm.image_loader import ImageLoadError, load_image
 from app.llm.llm_client_factory import get_llm_client
-from app.llm.llm_exception import LLMClientError, LLMRequestFailedError
 from app.schemas.api import ApiRequest, ContentError
 from app.schemas.haircut import (
     HaircutRecommendationRequest,
@@ -17,16 +13,17 @@ from app.services.unprocessable_exception import UnprocessableContentError
 def _build_haircut_prompt(
     result_json_schema,
     haircut_req: HaircutRecommendationRequest,
-    facial_structure: str,
 ) -> str:
     candidate_haircuts = json.dumps(
         [h.model_dump() for h in haircut_req.suggested_haircuts],
         ensure_ascii=False,
         indent=2,
     )
+    # La estructura facial va en su propio bloque del prompt, no se repite aquí
     user_data = haircut_req.user_data.model_dump_json(
-        indent=2, exclude_none=True, by_alias=True
+        indent=2, exclude_none=True, by_alias=True, exclude={"facial_structure"}
     )
+    facial_structure = haircut_req.user_data.facial_structure.value
 
     return f"""
     Your task is to recommend the most suitable haircut for a person and return a
@@ -46,8 +43,8 @@ def _build_haircut_prompt(
     {user_data}
     </user_data>
 
-    The person's facial structure was detected by a dedicated classifier. Treat it as a fact
-    and do not contradict it:
+    The person's facial structure was determined beforehand by a dedicated classifier. Treat it
+    as a fact and do not contradict it:
     <facial_structure>
     {facial_structure}
     </facial_structure>
@@ -109,29 +106,11 @@ def _validate_request_content(req: ApiRequest[HaircutRecommendationRequest]) -> 
                 detail="at least one suggested haircut is required",
             )
         )
-    if not haircut_req.photo.strip():
-        errors.append(ContentError(field="photo", detail="photo url is required"))
+    if not haircut_req.photo_key.strip():
+        errors.append(ContentError(field="photoKey", detail="photo key is required"))
 
     if errors:
         raise UnprocessableContentError(req, errors)
-
-
-async def _detect_facial_structure(photo: str) -> str:
-    """
-    Descarga y normaliza la foto, y la clasifica con el modelo de estructura
-    facial. La inferencia es trabajo de CPU/GPU, por eso corre fuera del
-    event loop. Regresa un valor de FacialStructureType
-    (heart, rectangle, oval, round, square).
-    """
-    try:
-        image_bytes = await load_image(photo)
-    except ImageLoadError as exc:
-        error = LLMClientError(
-            exc.category, "FaceClassifier", "face-shape-model", "photo", exc.desc
-        )
-        raise LLMRequestFailedError(error, attempts=1) from exc
-
-    return await asyncio.to_thread(classify_image_bytes, image_bytes)
 
 
 def _validate_llm_response(
@@ -187,18 +166,15 @@ async def recommend_haircut(
     _validate_request_content(req)
 
     haircut_req = req.data
-    facial_structure = await _detect_facial_structure(haircut_req.photo)
-
     prompt = _build_haircut_prompt(
         HaircutRecommendationResponse.model_json_schema(),
         haircut_req,
-        facial_structure,
     )
 
     llm_client = get_llm_client(req.provider)
 
     haircut_res = await llm_client.generate_structured_response(
-        prompt, HaircutRecommendationResponse, image_url=haircut_req.photo
+        prompt, HaircutRecommendationResponse, photo_key=haircut_req.photo_key
     )
 
     if isinstance(haircut_res, HaircutRecommendationResponse):

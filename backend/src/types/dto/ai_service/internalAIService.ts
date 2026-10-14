@@ -21,6 +21,7 @@ interface InternalAIRecommendationRequest {
     userData: {
         age: number;
         gender: string;
+        facialStructure: FacialStructureType;
         userPreferences?: string;
     };
 }

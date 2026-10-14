@@ -35,12 +35,8 @@ class Settings(BaseSettings):
     OLLAMA_TEMPERATURE: float = 0.0
     OLLAMA_KEEP_ALIVE: str = "10m"  # How long the model stays loaded in memory
 
-    # Image params (images are downloaded from a URL, processed in memory and
+    # Image params (photos are downloaded from S3, processed in memory and
     # discarded; they are never written to disk)
-    # Comma-separated hosts the service may download images from. Accepts exact
-    # hosts and "*.domain" wildcards, e.g. "my-bucket.s3.us-east-1.amazonaws.com".
-    # Empty = image downloads are rejected (fail closed, avoids SSRF).
-    IMAGE_ALLOWED_HOSTS: str = ""
     IMAGE_MAX_BYTES: int = 10 * 1024 * 1024  # Max size of the downloaded file
     IMAGE_MAX_PIXELS: int = 40_000_000  # Max width * height (decompression bomb guard)
     IMAGE_MAX_SIDE: int = 1024  # Longest side (px) sent to the model

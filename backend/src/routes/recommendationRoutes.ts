@@ -57,7 +57,9 @@ router.get('/recommendation/test', testAiService);
  *
  *       Si el cliente aún no tiene estructura facial registrada, esta se detecta a partir de la
  *       foto (JPEG, PNG o WEBP) antes de generar las recomendaciones; en ese caso la foto debe
- *       existir en el bucket y ser una imagen válida.
+ *       existir en el bucket y ser una imagen válida. La estructura facial guardada se descarta
+ *       cada vez que se solicita un formulario de subida (`GET /api/presigned-url`), por lo que
+ *       se vuelve a detectar con la foto nueva.
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -99,12 +101,15 @@ router.get('/recommendation/test', testAiService);
  *                           id: { type: string, format: uuid }
  *                           name: { type: string, example: Fade clásico }
  *                           description: { type: string, example: Degradado progresivo en los laterales. }
- *                     suggestonText: { type: string, example: Este estilo se adapta a tus características. }
+ *                     suggestionText: { type: string, example: Este estilo se adapta a tus características. }
  *                     reasoning: { type: string, example: El corte favorece la estructura facial y tus preferencias. }
  *                     confidence: { type: number, format: float, minimum: 0, maximum: 1, example: 0.92 }
  *                 message: { type: string, example: Recomendación de corte generada exitosamente }
  *       400:
- *         description: Error de validación de los datos enviados (por ejemplo, `userPreferences` supera los 500 caracteres o falta `recommendationParams`).
+ *         description: >-
+ *           Error de validación de los datos enviados (por ejemplo, `userPreferences` supera los 500 caracteres o falta
+ *           `recommendationParams`) o la foto del cliente no se puede usar: no existe en el bucket o el archivo no es
+ *           una imagen JPEG, PNG o WEBP válida.
  *       401:
  *         description: Token ausente, inválido o el usuario no es un cliente.
  *       404:
@@ -112,9 +117,8 @@ router.get('/recommendation/test', testAiService);
  *       500:
  *         description: >-
  *           Error al comunicarse con el servicio de recomendación, no hay estilos de corte disponibles
- *           o la detección de estructura facial falló. Esto último incluye que el cliente no haya
- *           subido su foto al bucket, que el archivo no sea una imagen JPEG, PNG o WEBP válida o que
- *           el almacenamiento no esté disponible.
+ *           o la detección de estructura facial falló por una causa ajena al cliente (por ejemplo, el
+ *           almacenamiento no está disponible).
  */
 router.post('/recommendation/generate', getHaircutRecommendation);
 
