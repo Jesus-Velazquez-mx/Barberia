@@ -185,7 +185,17 @@ def test_name_and_description_come_from_request_not_llm(use_fake_llm):
 @pytest.mark.parametrize(
     "bad_result, expected_field",
     [
-        (llm_result(haircuts=[]), "haircuts"),
+        # model_construct omite el validador del schema: ejercita la defensa del servicio
+        (
+            HaircutRecommendationResponse.model_construct(
+                status="recommended",
+                haircuts=[],
+                suggestion_text="Te recomiendo este corte.",
+                reasoning="Se ajusta a tu tipo de rostro.",
+                confidence=0.9,
+            ),
+            "haircuts",
+        ),
         (
             llm_result(haircuts=[{"id": "999", "name": "x", "description": "x"}]),
             "haircuts[0].id",

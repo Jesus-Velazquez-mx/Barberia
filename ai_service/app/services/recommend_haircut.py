@@ -76,7 +76,7 @@ def _build_haircut_prompt(
     - If userPreferences is present and NONE of the candidates is compatible with it (for example, the person asks
       for long hair and every candidate is a short haircut), do not recommend the closest one. Return
       status "no_suitable_haircut" with an empty haircuts list, and put in reasoning why none of the candidates fits
-      the preferences. Omit suggestionText and confidence in that case.
+      the preferences. Set suggestionText and confidence to null in that case.
     - When status is "recommended", reasoning must (a) state the detected facial structure and explain why the
       recommended haircut suits it, (b) mention at least one other characteristic that is actually visible in the
       photo (hair type, density or current length), and (c) explain how userPreferences is respected, if present.

@@ -2,6 +2,7 @@ import request from 'supertest';
 import express from 'express';
 import router from '../src/routes/routes.js';
 import connection from '../src/connection/connection.js';
+import { getBusinessToday } from '../src/utils/businessTime.js';
 import {
     insertManager,
     insertShop,
@@ -39,7 +40,7 @@ describe('GET /api/shops/:id/availability', () => {
         serviceId = await insertService({ durationMinutes: 30, isActive: true });
 
         // 4. Seleccionar una fecha futura fija para la prueba (mañana o 2 días en el futuro)
-        const targetDate = new Date();
+        const targetDate = new Date(`${getBusinessToday()}T00:00:00Z`);
         targetDate.setUTCDate(targetDate.getUTCDate() + 2);
         targetDateStr = targetDate.toISOString().slice(0, 10);
         const dayOfWeek = targetDate.getUTCDay();
@@ -105,9 +106,7 @@ describe('GET /api/shops/:id/availability', () => {
     });
 
     test('debe responder 400 cuando falta serviceId', async () => {
-        const res = await request(app)
-            .get(`/api/shops/${shopId}/availability`)
-            .query({ date: targetDateStr });
+        const res = await request(app).get(`/api/shops/${shopId}/availability`).query({ date: targetDateStr });
 
         expect(res.status).toBe(400);
         expect(res.body.message).toMatch(/Validation error/i);
@@ -123,13 +122,12 @@ describe('GET /api/shops/:id/availability', () => {
     });
 
     test('debe responder 400 cuando la fecha es anterior a hoy', async () => {
-        const yesterday = new Date();
+        // "Ayer" respecto al día de hoy en la zona horaria del negocio (no la del servidor ni UTC).
+        const yesterday = new Date(`${getBusinessToday()}T00:00:00Z`);
         yesterday.setUTCDate(yesterday.getUTCDate() - 1);
         const pastDateStr = yesterday.toISOString().slice(0, 10);
 
-        const res = await request(app)
-            .get(`/api/shops/${shopId}/availability`)
-            .query({ date: pastDateStr, serviceId });
+        const res = await request(app).get(`/api/shops/${shopId}/availability`).query({ date: pastDateStr, serviceId });
 
         expect(res.status).toBe(400);
         expect(res.body.message).toMatch(/Validation error/i);

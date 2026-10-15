@@ -12,6 +12,8 @@ const loadConfig = () => {
     const AWS_BUCKET = process.env.AWS_BUCKET;
     const AWS_BUCKET_KEY_PREFIX = process.env.AWS_BUCKET_KEY_PREFIX;
 
+    const BUSINESS_TIMEZONE = process.env.BUSINESS_TIMEZONE;
+
     if (!JWT_SECRET || !FRONTEND_URL || !AI_SERVICE_URL || !process.env.AI_SERVICE_API_KEY || !AWS_REGION || !AWS_BUCKET || !AWS_BUCKET_KEY_PREFIX) {
         throw new Error('Missing required environment variables');
     }
@@ -24,7 +26,8 @@ const loadConfig = () => {
         AI_PROVIDER,
         AWS_REGION,
         AWS_BUCKET,
-        AWS_BUCKET_KEY_PREFIX
+        AWS_BUCKET_KEY_PREFIX,
+        BUSINESS_TIMEZONE
     };
 };
 
