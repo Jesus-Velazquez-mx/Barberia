@@ -38,7 +38,7 @@ export const getActiveShopById = async (id: string): Promise<ShopResponse> => {
 };
 
 /**
- * Registra una nueva sucursal (CU-01).
+ * Registra una nueva sucursal.
  * Requiere rol de manager y cuenta activa.
  */
 export const registerShop = async (data: CreateShopRequest, token: string): Promise<ShopResponse> => {
@@ -75,7 +75,7 @@ export const registerShop = async (data: CreateShopRequest, token: string): Prom
 };
 
 /**
- * Edita la información de una sucursal existente (CU-03).
+ * Edita la información de una sucursal existente.
  * Requiere rol de manager y cuenta activa.
  */
 export const editShop = async (
@@ -119,8 +119,8 @@ export const editShop = async (
 };
 
 /**
- * Elimina lógicamente una sucursal (CU-04).
- * Realiza un borrado lógico marcando is_active = false en la base de datos.
+ * Elimina lógicamente una sucursal.
+ * Realiza un borrado lógico marcando is_active = false.
  */
 export const removeShop = async (id: string, token: string): Promise<void> => {
     const performer = decodeToken(token);

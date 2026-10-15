@@ -78,7 +78,7 @@ describe('Pruebas de endpoints de Shops (Sucursales)', () => {
         });
     });
 
-    describe('CU-02: Listar Sucursales (GET /api/shops)', () => {
+    describe('Listar Sucursales (GET /api/shops)', () => {
         test('Debe responder 200 y una lista de sucursales activas sin el manager_id por defecto', async () => {
             const res = await request(app).get('/api/shops');
 
