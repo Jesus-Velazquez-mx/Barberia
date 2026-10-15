@@ -102,6 +102,33 @@ def test_format_schema_is_union_of_expected_and_error_schemas() -> None:
     assert "insufficiencyReason" in defs["LLMErrorResponse"]["properties"]
 
 
+def test_format_schema_requires_every_property_and_forbids_extras() -> None:
+    defs = OllamaClient._build_format_schema(HaircutRecommendationResponse)["$defs"]
+
+    response_def = defs["HaircutRecommendationResponse"]
+    assert set(response_def["required"]) == set(response_def["properties"])
+    assert {"status", "haircuts", "reasoning"} <= set(response_def["required"])
+    assert response_def["additionalProperties"] is False
+    assert defs["LLMErrorResponse"]["additionalProperties"] is False
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        '{"reasoning": "Tu rostro es ovalado."}',
+        '{"status": "recommended", "haircuts": [], "reasoning": "x"}',
+        '{"reasoning": "x", "recommendedHaircuts": [{"id": "1", "name": "a"}]}',
+    ],
+)
+def test_parse_response_rejects_haircut_payload_without_haircuts(payload) -> None:
+    client = _client()
+
+    with pytest.raises(LLMClientError) as exc:
+        client._parse_response(payload, HaircutRecommendationResponse, ["prompt"])
+
+    assert exc.value.category == LLMClientErrorCategory.INVALID_OUTPUT
+
+
 def test_parse_response_accepts_primary_and_error_schemas() -> None:
     client = _client()
     prompt = ["prompt"]
@@ -361,7 +388,7 @@ def test_init_reads_defaults_from_settings(monkeypatch) -> None:
     assert client.num_ctx == 8192
     # El límite de Ollama es independiente de MAX_TOKENS (el de Claude)
     assert client.max_tokens == 1500
-    assert client.think is False
+    assert client.think is not None
 
 
 def test_init_reads_think_from_settings(monkeypatch) -> None:

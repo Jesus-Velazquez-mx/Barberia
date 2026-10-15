@@ -168,8 +168,22 @@ class OllamaClient:
         Ollama restrinja la generación a esas estructuras. Si solo se enviara
         el schema esperado, el modelo no tendría forma de reportar datos
         insuficientes. TypeAdapter se encarga de fusionar los $defs.
+
+        Pydantic omite de `required` los campos con valor por defecto, y
+        Ollama solo garantiza lo que el schema exige: un campo opcional puede
+        quedar fuera de la salida y rellenarse con su default al validar. Por
+        eso se marcan todas las propiedades como requeridas (los campos
+        opcionales siguen aceptando null) y se prohíben claves extra.
         """
-        return TypeAdapter(Union[schema, LLMErrorResponse]).json_schema(by_alias=True)
+        format_schema = TypeAdapter(Union[schema, LLMErrorResponse]).json_schema(
+            by_alias=True
+        )
+        for definition in format_schema.get("$defs", {}).values():
+            properties = definition.get("properties")
+            if definition.get("type") == "object" and properties:
+                definition["required"] = list(properties)
+                definition["additionalProperties"] = False
+        return format_schema
 
     def _build_chat_params(
         self, messages: list[dict[str, Any]], schema: type[ModelT]
