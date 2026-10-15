@@ -1,4 +1,4 @@
-name: Node.js CI with Docker
+name: Test and deploy
 
 on:
   push:
@@ -42,6 +42,16 @@ jobs:
         cd frontend
         npm install --legacy-peer-deps
 
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v10.3.0
+      with:
+        enable-cache: true
+    
+    - name: Install AI service dependencies
+      run: |
+        cd ai_service
+        uv sync --frozen
+
     - name: Load schema into test database
       env:
         PGPASSWORD: postgres
@@ -80,6 +90,13 @@ jobs:
     - name: Prettier check (frontend)
       working-directory: frontend
       run: npm run prettier || echo "::warning title=Prettier::Frontend files are not formatted correctly"
+
+    - name: Test AI service with pytest
+      env:
+        AI_SERVICE_API_KEY: ci-test-ai-key
+      run: |
+        cd ai_service
+        uv run pytest       
 
   frontend-deploy:
     runs-on: ubuntu-latest
