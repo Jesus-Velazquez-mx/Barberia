@@ -4,11 +4,6 @@ import { Plus, X } from 'lucide-react';
 import { SelectField } from '../components/SelectFieldComponent';
 import { AvailabilityCalendar } from '../components/AvailabilityCalendarComponent';
 import { SlotPickerModal } from '../components/SlotPickerModalComponent';
-import {
-  MOCK_SCENARIOS,
-  MOCK_SCENARIO_ERROR,
-  type MockScenario
-} from '../mocks/bookingMock';
 import { getShops, getActiveBarbersByShop, getOfferedServices } from '../services/shopService';
 import { getShopAvailability } from '../services/availabilityService';
 import { ApiError } from '../types/api';
@@ -16,11 +11,12 @@ import type { AvailableSlot, DayAvailability } from '../types/availabilityType';
 import type { Barber } from '../types/barber';
 import { formatSlotTime } from '../utils/availabilityUtils';
 
-interface BookingScratchFormValues {
+interface BookAppointmentFormValues {
   shopId: string;
   services: { serviceId: string }[];
-  scenario: MockScenario;
 }
+
+const DEFAULT_FETCH_ERROR = 'No se pudieron cargar los horarios disponibles. Intenta de nuevo.';
 
 const pad = (value: number) => String(value).padStart(2, '0');
 
@@ -31,8 +27,7 @@ const getTodayLocal = (): string => {
   return new Date(now.getTime() - offsetMs).toISOString().split('T')[0];
 };
 
-/* Para evitar código duplicado, se ha creado una función auxiliar 
-que hace exactamente lo mismo que EditUserModalContainer. */
+/* Convierte errores de la API en mensajes legibles siguiendo el patrón de EditUserModalContainer. */
 const formatApiError = (error: unknown, fallbackMessage: string): string => {
   if (error instanceof ApiError) {
     if (error.status === 400 && error.errors.length > 0) {
@@ -54,9 +49,7 @@ const formatApiError = (error: unknown, fallbackMessage: string): string => {
 // Ventana de reserva: desde hoy hasta 30 días después
 const BOOKING_WINDOW_DAYS = 30;
 
-/* Contenedor temporal con datos mock. Se reemplaza en la tarea
-   "Crear contenedor, página y ruta del flujo de reserva". */
-export function BookingScratchContainer() {
+export function BookAppointmentContainer() {
   const today = getTodayLocal();
   const [todayYear, todayMonth, todayDay] = today.split('-').map(Number);
   const currentMonthIndex = todayYear * 12 + (todayMonth - 1);
@@ -80,11 +73,11 @@ export function BookingScratchContainer() {
   const [isFetchingSlots, setIsFetchingSlots] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-  const { register, watch, control } = useForm<BookingScratchFormValues>({
-    defaultValues: { shopId: '', services: [{ serviceId: '' }], scenario: 'data' }
+  const { register, watch, control } = useForm<BookAppointmentFormValues>({
+    defaultValues: { shopId: '', services: [{ serviceId: '' }] }
   });
   const { fields, append, remove } = useFieldArray({ control, name: 'services' });
-  const { shopId, services, scenario } = watch();
+  const { shopId, services } = watch();
 
   const SHOP_OPTIONS = useMemo(
     () => [{ value: '', label: 'Selecciona una sucursal' }, ...shopOptions],
@@ -96,7 +89,7 @@ export function BookingScratchContainer() {
   const serviceKey = selectedServiceIds.join(',');
   const canAddService = services.length < serviceOptions.length && services.every((s) => s.serviceId);
 
-  /* useEffect con arreglo vacío para cargar sucursales y servicios al montar */
+  /* 1. Cargar sucursales y servicios al montar */
   useEffect(() => {
     let active = true;
 
@@ -115,7 +108,7 @@ export function BookingScratchContainer() {
     };
   }, []);
 
-  /* useEffect que depende de shopId para cargar los barberos activos cuando cambia la sucursal */
+  /* 2. Cargar los barberos activos cuando cambia la sucursal */
   useEffect(() => {
     if (!shopId) {
       setBarbers([]);
@@ -137,7 +130,7 @@ export function BookingScratchContainer() {
     };
   }, [shopId]);
 
-  /* useEffect para calcular la disponibilidad real de cada día del mes visible en el calendario */
+  /* 3. Calcular la disponibilidad real de cada día del mes visible en el calendario */
   useEffect(() => {
     const primaryServiceId = selectedServiceIds[0];
     if (!shopId || !primaryServiceId) {
@@ -173,8 +166,6 @@ export function BookingScratchContainer() {
           };
           return [dateKey, dayAvailability] as const;
         } catch {
-          // Si falla la red al precargar el mes, dejamos el día seleccionable 
-          // para que al abrir el modal se muestre el estado de error legible.
           return [dateKey, { status: 'available', slotsCount: 0 } as DayAvailability] as const;
         }
       })
@@ -188,7 +179,7 @@ export function BookingScratchContainer() {
     };
   }, [shopId, serviceKey, view.year, view.month, today, maxDate]);
 
-  /* 4. useEffect para consultar los slots detallados cada vez que cambie sucursal, fecha o servicio */
+  /* 4. Consultar los slots detallados cada vez que cambie sucursal, fecha o servicio */
   useEffect(() => {
     const primaryServiceId = selectedServiceIds[0];
     if (!shopId || !selectedDate || !primaryServiceId) {
@@ -226,7 +217,7 @@ export function BookingScratchContainer() {
       })
       .catch((error) => {
         if (!active) return;
-        setFetchError(formatApiError(error, MOCK_SCENARIO_ERROR));
+        setFetchError(formatApiError(error, DEFAULT_FETCH_ERROR));
         setFetchedSlots([]);
       })
       .finally(() => {
@@ -253,19 +244,6 @@ export function BookingScratchContainer() {
     setConfirmedSlot(null);
     setIsModalOpen(false);
   };
-
-  // Lo que recibe el modal según el escenario mock elegido
-  let slots: AvailableSlot[] = [];
-  let isLoading = false;
-  let error: string | null = null;
-  if (selectedDate) {
-    if (scenario === 'data') {
-      slots = fetchedSlots;
-      isLoading = isFetchingSlots;
-      error = fetchError;
-    } else if (scenario === 'loading') isLoading = true;
-    else if (scenario === 'error') error = MOCK_SCENARIO_ERROR;
-  }
 
   const viewIndex = view.year * 12 + view.month;
   const handleMonthChange = (delta: number) => {
@@ -305,20 +283,12 @@ export function BookingScratchContainer() {
         {/* Formulario */}
         <div className="flex flex-col gap-6 min-w-fit w-full max-w-190">
           <div className="flex flex-col gap-5 rounded-xl border border-[#2c2c2c] bg-[#1a1a1a] p-6">
-            <div className="grid gap-5 sm:grid-cols-2">
-              <SelectField
-                id="booking-shop"
-                label="Sucursal"
-                options={SHOP_OPTIONS}
-                registerProps={register('shopId', { onChange: resetSelection })}
-              />
-              <SelectField
-                id="booking-scenario"
-                label="Estado de horarios (demo)"
-                options={MOCK_SCENARIOS}
-                registerProps={register('scenario')}
-              />
-            </div>
+            <SelectField
+              id="booking-shop"
+              label="Sucursal"
+              options={SHOP_OPTIONS}
+              registerProps={register('shopId', { onChange: resetSelection })}
+            />
 
             <div className="flex flex-col gap-3">
               {fields.map((field, index) => (
@@ -407,9 +377,9 @@ export function BookingScratchContainer() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         dateLabel={dateLabel}
-        slots={slots}
-        isLoading={isLoading}
-        error={error}
+        slots={fetchedSlots}
+        isLoading={isFetchingSlots}
+        error={fetchError}
         selectedSlot={selectedSlot}
         onSelectSlot={setSelectedSlot}
         onConfirm={handleConfirm}

@@ -7,7 +7,7 @@ import ClientHomePage from './pages/ClientHomePage';
 import { RoleProtectedRoute } from './components/RoleProtectedRoute';
 import { PublicRoute } from './components/PublicRoute';
 import EditUserPage from './pages/EditUserPage';
-import BookingScratchPage from './pages/BookingScratchPage';
+import BookAppointmentPage from './pages/BookAppointmentPage';
 import ManagerLayoutPage from './pages/ManagerLayoutPage';
 import ManagerStaffPage from './pages/ManagerStaffPage';
 import ManagerClientsPage from './pages/ManagerClientsPage';
@@ -19,27 +19,23 @@ const router = createBrowserRouter([
     element: <RoleProtectedRoute allowedRole="client" />,
     children: [
       {
+        // Destino del login para el cliente: abre la primera sección del dashboard
         path: '/client/home',
-        element: <ClientHomePage />
+        element: <Navigate to="/client/booking" replace />
       },
       {
-        path: '/profile',
-        element: <EditUserPage />
-      },
-      {
-        // Temporal: UI de reserva con datos mock
-        path: '/client/booking-scratch',
-        element: <BookingScratchPage />
-      }
-    ]
-  },
-  {
-    /* Barber */
-    element: <RoleProtectedRoute allowedRole="barber" />,
-    children: [
-      {
-        path: '/barber/home',
-        element: <PlaceholderPage title="barber" />
+        // Layout compartido (sidebar + contenido) de las secciones del cliente
+        element: <ClientHomePage />,
+        children: [
+          {
+            path: '/client/booking',
+            element: <BookAppointmentPage />
+          },
+          {
+            path: '/client/profile',
+            element: <EditUserPage />
+          }
+        ]
       }
     ]
   },

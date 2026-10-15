@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { EditUserModalContainer } from '../containers/EditUserModalContainer';
 import { ChangePasswordModalContainer } from '../containers/ChangePasswordModalContainer';
 import { DeleteAccountModalContainer } from '../containers/DeleteAccountModalContainer';
 import { LogoutConfirmModal } from '../components/LogoutConfirmModalComponent';
-import { DashboardSidebar } from '../components/DashboardSidebarComponent';
 import { UserProfile } from '../components/UserProfileComponent';
 import type { User } from '../types/auth';
 import { useAuth } from '../context/AuthContext';
@@ -31,24 +30,13 @@ function EditUserPage() {
 
   return (
     <div className="flex min-h-screen">
-      <DashboardSidebar firstName={authUser.firstName} />
-
-      <main className="flex-1 px-12 py-10">
-        <Link
-          to="/client/home"
-          className="mb-6 inline-flex items-center gap-2 text-lg font-semibold text-[var(--text)] no-underline transition-colors hover:text-[var(--accent)]"
-        >
-          <span aria-hidden="true">←</span> Volver
-        </Link>
-
-        <UserProfile
-          user={authUser}
-          onEdit={() => setIsModalOpen(true)}
-          onChangePassword={() => setIsPasswordModalOpen(true)}
-          onDeleteAccount={() => setIsDeleteModalOpen(true)}
-          onLogout={() => setIsLogoutModalOpen(true)}
-        />
-      </main>
+      <UserProfile
+        user={authUser}
+        onEdit={() => setIsModalOpen(true)}
+        onChangePassword={() => setIsPasswordModalOpen(true)}
+        onDeleteAccount={() => setIsDeleteModalOpen(true)}
+        onLogout={() => setIsLogoutModalOpen(true)}
+      />
 
       <EditUserModalContainer
         user={authUser}

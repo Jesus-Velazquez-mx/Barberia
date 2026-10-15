@@ -1,25 +1,45 @@
-import { Link } from 'react-router-dom';
-import { DashboardSidebar } from '../components/DashboardSidebarComponent';
+import { useState } from 'react';
+import { Outlet, useNavigate } from 'react-router-dom';
+import { CalendarPlus, UserRound } from 'lucide-react';
+import { DashboardSidebar, type SidebarItem } from '../components/DashboardSidebarComponent';
+import { LogoutConfirmModal } from '../components/LogoutConfirmModalComponent';
 import { useAuth } from '../context/AuthContext';
 
+const MANAGER_NAV_ITEMS: SidebarItem[] = [
+  { to: '/client/booking', label: 'Agendar Cita', icon: <CalendarPlus size={20} aria-hidden="true" /> },
+  { to: '/client/profile', label: 'Mi Perfil', icon: <UserRound size={20} aria-hidden="true" /> },
+];
+
+/* Layout compartido por todas las secciones del dashboard del manager: sidebar + contenido de la ruta. */
 function ClientHomePage() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   if (!user) return null;
 
+  const handleConfirmLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
   return (
     <div className="flex min-h-screen">
-      <DashboardSidebar firstName={user.firstName} />
+      <DashboardSidebar
+        firstName={user.firstName}
+        items={MANAGER_NAV_ITEMS}
+        onLogout={() => setIsLogoutModalOpen(true)}
+      />
 
-      <main className="flex-1 px-4 pt-20 sm:px-12 lg:py-10">
-        {/* Temporal: apunta a la UI de reserva con datos mock */}
-        <Link
-          to="/client/booking-scratch"
-          className="inline-block rounded-lg bg-[var(--accent)] px-8 py-3 text-sm font-semibold text-[#141414] no-underline transition-all duration-200 hover:bg-[#B8924A] hover:no-underline hover:shadow-[0_0_18px_rgba(210,172,102,0.6)]"
-        >
-          Selector Citas Mock
-        </Link>
+      <main className="min-w-0 flex-1 px-4 pb-10 pt-20 sm:px-12 lg:py-10">
+        <Outlet />
       </main>
+
+      <LogoutConfirmModal
+        isOpen={isLogoutModalOpen}
+        onClose={() => setIsLogoutModalOpen(false)}
+        onConfirm={handleConfirmLogout}
+      />
     </div>
   );
 }
