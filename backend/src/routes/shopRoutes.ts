@@ -53,7 +53,7 @@ router.get('/shops', list);
  * @swagger
  * /api/shops:
  *   post:
- *     summary: Registra una nueva sucursal (CU-01)
+ *     summary: Registra una nueva sucursal
  *     tags: [Shops]
  *     description: Permite a un administrador o manager registrar una nueva sucursal en el sistema. Requiere token JWT en el header `Authorization`.
  *     security:
@@ -148,7 +148,7 @@ router.get('/shops/:id', getById);
  * @swagger
  * /api/shops/{id}:
  *   put:
- *     summary: Edita una sucursal existente (CU-03)
+ *     summary: Edita una sucursal existente
  *     tags: [Shops]
  *     description: Actualiza los campos especificados de una sucursal. Requiere token de manager.
  *     security:
@@ -216,7 +216,7 @@ router.put('/shops/:id', update);
  * @swagger
  * /api/shops/{id}:
  *   delete:
- *     summary: Elimina lógicamente una sucursal (CU-04)
+ *     summary: Elimina lógicamente una sucursal
  *     tags: [Shops]
  *     description: Realiza un borrado lógico de la sucursal estableciendo su campo `is_active` en false. No elimina físicamente la fila en base de datos para preservar la integridad de datos históricos. Requiere token de manager.
  *     security:
