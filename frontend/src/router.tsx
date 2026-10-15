@@ -3,15 +3,14 @@ import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import PlaceholderPage from './pages/PlaceholderPage';
-import ClientHomePage from './pages/ClientHomePage';
 import { RoleProtectedRoute } from './components/RoleProtectedRoute';
 import { PublicRoute } from './components/PublicRoute';
 import EditUserPage from './pages/EditUserPage';
 import BookAppointmentPage from './pages/BookAppointmentPage';
-import ManagerLayoutPage from './pages/ManagerLayoutPage';
 import ManagerStaffPage from './pages/ManagerStaffPage';
 import ManagerClientsPage from './pages/ManagerClientsPage';
 import ManagerSectionPlaceholderPage from './pages/ManagerSectionPlaceholderPage';
+import DashboardLayout from './pages/DashboardLayout';
 
 const router = createBrowserRouter([
   /* Client */
@@ -25,7 +24,7 @@ const router = createBrowserRouter([
       },
       {
         // Layout compartido (sidebar + contenido) de las secciones del cliente
-        element: <ClientHomePage />,
+        element: <DashboardLayout role="client" />,
         children: [
           {
             path: '/client/booking',
@@ -50,7 +49,7 @@ const router = createBrowserRouter([
       },
       {
         // Layout compartido (sidebar + contenido) de las secciones del dashboard
-        element: <ManagerLayoutPage />,
+        element: <DashboardLayout role="manager" />,
         children: [
           {
             path: '/manager/staff',

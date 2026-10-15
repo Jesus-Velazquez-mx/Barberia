@@ -29,7 +29,7 @@ function EditUserPage() {
   };
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-full w-full max-w-300">
       <UserProfile
         user={authUser}
         onEdit={() => setIsModalOpen(true)}
