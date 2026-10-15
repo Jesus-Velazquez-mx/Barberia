@@ -42,3 +42,8 @@ export const canUpdateBarberProfile = (performer: UserIdentity): boolean => perf
  * canUpdateBarberProfile, kept as its own named permission for clarity.
  */
 export const canDeleteBarber = (performer: UserIdentity): boolean => performer.role === 'manager';
+
+/**
+ * CRUD /shops: Solo los usuarios con rol 'manager' pueden registrar, editar o eliminar sucursales.
+ */
+export const canManageShops = (performer: UserIdentity): boolean => performer.role === 'manager';
