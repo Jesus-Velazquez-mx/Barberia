@@ -8,6 +8,10 @@ const getActiveSlotsByBarberIdsAndDay = jest.fn<(...args: any[]) => Promise<any>
 const getBlockingAppointmentsByBarberIdsAndRange = jest.fn<(...args: any[]) => Promise<any>>();
 const getAllShifts = jest.fn<(...args: any[]) => Promise<any>>();
 
+// La zona horaria del negocio sale de globalConfig; el mock es mutable para fijarla por prueba.
+const mockConfig: { BUSINESS_TIMEZONE?: string } = {};
+
+jest.unstable_mockModule('../src/config/globalConfig.js', () => ({ default: mockConfig }));
 jest.unstable_mockModule('../src/repositories/offeredServiceRepository.js', () => ({ getServiceById }));
 jest.unstable_mockModule('../src/repositories/shopRepository.js', () => ({ getShopById }));
 jest.unstable_mockModule('../src/repositories/barberRepository.js', () => ({ getActiveBarbersByShop }));
@@ -22,6 +26,7 @@ jest.unstable_mockModule('../src/repositories/shiftRepository.js', () => ({ getA
 const { getAvailableSlots, computeStartMinutes, MAX_BOOKING_DAYS_AHEAD } =
     await import('../src/services/availabilityService.js');
 const { ApiError, ApiErrorCode } = await import('../src/errors/ApiError.js');
+const { getBusinessToday } = await import('../src/utils/businessTime.js');
 
 const SHOP = 'shop-1';
 const SERVICE = 'service-1';
@@ -29,8 +34,11 @@ const BARBER = 'barber-1';
 const SHIFT = 'shift-1';
 
 const DAY_MS = 86_400_000;
-const isoDate = (ms: number) => new Date(ms).toISOString().slice(0, 10);
-const TOMORROW = isoDate(Date.now() + DAY_MS);
+/** Suma `days` a una fecha 'YYYY-MM-DD' (calendario, sin zona horaria). */
+const addDays = (date: string, days: number) =>
+    new Date(Date.parse(`${date}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
+// "Hoy" es el de la zona horaria del negocio, igual que en el servicio.
+const TOMORROW = addDays(getBusinessToday(), 1);
 const at = (hhmm: string, date = TOMORROW) => new Date(`${date}T${hhmm}:00.000Z`);
 const iso = (hhmm: string) => at(hhmm).toISOString();
 /** Inicios cada 15 min desde `first` hasta `last` (inclusive), en ISO. */
@@ -183,16 +191,63 @@ describe('getAvailableSlots', () => {
     });
 
     test('rechaza fechas pasadas', async () => {
-        const yesterday = isoDate(Date.now() - DAY_MS);
+        const yesterday = addDays(getBusinessToday(), -1);
         await expect(getAvailableSlots({ shopId: SHOP, date: yesterday, serviceId: SERVICE })).rejects.toMatchObject({
             code: ApiErrorCode.INVALID_INPUT,
         });
     });
 
     test('rechaza fechas más allá del horizonte de reserva', async () => {
-        const tooFar = isoDate(Date.now() + (MAX_BOOKING_DAYS_AHEAD + 1) * DAY_MS);
+        const tooFar = addDays(getBusinessToday(), MAX_BOOKING_DAYS_AHEAD + 1);
         await expect(getAvailableSlots({ shopId: SHOP, date: tooFar, serviceId: SERVICE })).rejects.toMatchObject({
             code: ApiErrorCode.INVALID_INPUT,
+        });
+    });
+
+    describe('"hoy" se calcula en la zona horaria del negocio', () => {
+        afterEach(() => {
+            jest.restoreAllMocks();
+            delete mockConfig.BUSINESS_TIMEZONE;
+        });
+
+        // 05:00Z del día 15 son las 22:00 del día 14 en Tijuana (UTC-7): la fecha UTC y la del negocio difieren.
+        const freeze = (utcIso: string) => jest.spyOn(Date, 'now').mockReturnValue(Date.parse(utcIso));
+
+        test('acepta el día de hoy del negocio aunque en UTC ya sea el día siguiente', async () => {
+            mockConfig.BUSINESS_TIMEZONE = 'America/Tijuana';
+            freeze('2026-10-15T05:00:00Z');
+            await expect(
+                getAvailableSlots({ shopId: SHOP, date: '2026-10-14', serviceId: SERVICE })
+            ).resolves.toBeDefined();
+        });
+
+        test('rechaza el día anterior al de hoy del negocio aunque en UTC todavía sea hoy', async () => {
+            mockConfig.BUSINESS_TIMEZONE = 'America/Tijuana';
+            freeze('2026-10-15T05:00:00Z');
+            await expect(
+                getAvailableSlots({ shopId: SHOP, date: '2026-10-13', serviceId: SERVICE })
+            ).rejects.toMatchObject({ code: ApiErrorCode.INVALID_INPUT });
+        });
+
+        test('con una zona adelantada a UTC, "hoy" ya es el día siguiente en UTC', async () => {
+            mockConfig.BUSINESS_TIMEZONE = 'Asia/Tokyo';
+            freeze('2026-10-14T20:00:00Z'); // 05:00 del 15 en Tokio
+            await expect(
+                getAvailableSlots({ shopId: SHOP, date: '2026-10-14', serviceId: SERVICE })
+            ).rejects.toMatchObject({ code: ApiErrorCode.INVALID_INPUT });
+            await expect(
+                getAvailableSlots({ shopId: SHOP, date: '2026-10-15', serviceId: SERVICE })
+            ).resolves.toBeDefined();
+        });
+
+        test('hoy no ofrece horarios anteriores a la hora de pared del negocio', async () => {
+            mockConfig.BUSINESS_TIMEZONE = 'America/Tijuana';
+            freeze('2026-10-14T17:00:00Z'); // 10:00 en Tijuana
+            getActiveSlotsByBarberIdsAndDay.mockResolvedValue([slot('09:00', '13:00')]);
+            const result = await getAvailableSlots({ shopId: SHOP, date: '2026-10-14', serviceId: SERVICE });
+            // Servicio de 60 min en la ventana 09:00-13:00: el último inicio es 12:00; el primero, 10:00.
+            expect(result[0].startTimes[0]).toBe('2026-10-14T10:00:00.000Z');
+            expect(result[0].startTimes.at(-1)).toBe('2026-10-14T12:00:00.000Z');
         });
     });
 

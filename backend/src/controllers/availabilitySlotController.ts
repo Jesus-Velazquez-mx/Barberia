@@ -4,6 +4,7 @@ import { sendFail, sendInternalServerError, sendSuccess, sendValidationError } f
 import { ApiError } from '../errors/ApiError.js';
 import { getAvailableSlots } from '../services/availabilityService.js';
 import type { AvailableSlotsByBarber } from '../services/availabilityService.js';
+import { getBusinessToday } from '../utils/businessTime.js';
 
 // Validación del ID de la sucursal en los parámetros de la ruta
 const getAvailabilityParamsSchema = z.object({
@@ -15,15 +16,7 @@ const getAvailabilityQuerySchema = z.object({
     date: z
         .string()
         .regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format, expected YYYY-MM-DD')
-        .refine(
-            (val) => {
-                const now = new Date();
-                const offsetMs = now.getTimezoneOffset() * 60_000;
-                const localToday = new Date(now.getTime() - offsetMs).toISOString().slice(0, 10);
-                return val >= localToday;
-            },
-            { message: 'Date cannot be before today' }
-        ),
+        .refine((val) => val >= getBusinessToday(), { message: 'Date cannot be before today' }),
     serviceId: z.uuid('Invalid service ID format'),
 });
 

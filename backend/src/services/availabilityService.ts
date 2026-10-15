@@ -5,6 +5,7 @@ import { getActiveBarbersByShop } from '../repositories/barberRepository.js';
 import { getActiveSlotsByBarberIdsAndDay } from '../repositories/availabilitySlotRepository.js';
 import { getBlockingAppointmentsByBarberIdsAndRange } from '../repositories/appointmentRepository.js';
 import { getAllShifts } from '../repositories/shiftRepository.js';
+import { toBusinessWallClockMs } from '../utils/businessTime.js';
 
 /** Máximo de días de anticipación con los que se puede consultar/agendar. */
 export const MAX_BOOKING_DAYS_AHEAD = 30;
@@ -80,7 +81,8 @@ const parseDate = (date: string): number => {
  * Calcula, por barbero elegible de la sucursal, los horarios de inicio agendables para
  * el servicio en la fecha dada: plantilla semanal acotada por el turno, menos las citas
  * scheduled / checked_in, con cada hueco libre dividido en pasos de SLOT_STEP_MINUTES.
- * Todo en UTC.
+ * Fechas y horarios se manejan como hora de pared "en UTC"; solo "hoy" y "ahora" se
+ * calculan en la zona horaria del negocio (BUSINESS_TIMEZONE).
  */
 export const getAvailableSlots = async ({
     shopId,
@@ -88,7 +90,8 @@ export const getAvailableSlots = async ({
     serviceId,
 }: GetAvailableSlotsInput): Promise<AvailableSlotsByBarber[]> => {
     const dayStart = parseDate(date);
-    const now = Date.now() - new Date().getTimezoneOffset() * MS_PER_MINUTE;
+    // "Ahora" en hora de pared del negocio (BUSINESS_TIMEZONE), no del servidor.
+    const now = toBusinessWallClockMs();
     const todayStart = now - (now % MS_PER_DAY);
 
     if (dayStart < todayStart) {
