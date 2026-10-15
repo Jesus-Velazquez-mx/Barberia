@@ -3,15 +3,14 @@ import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import PlaceholderPage from './pages/PlaceholderPage';
-import ClientHomePage from './pages/ClientHomePage';
 import { RoleProtectedRoute } from './components/RoleProtectedRoute';
 import { PublicRoute } from './components/PublicRoute';
 import EditUserPage from './pages/EditUserPage';
-import BookingScratchPage from './pages/BookingScratchPage';
-import ManagerLayoutPage from './pages/ManagerLayoutPage';
+import BookAppointmentPage from './pages/BookAppointmentPage';
 import ManagerStaffPage from './pages/ManagerStaffPage';
 import ManagerClientsPage from './pages/ManagerClientsPage';
 import ManagerSectionPlaceholderPage from './pages/ManagerSectionPlaceholderPage';
+import DashboardLayout from './pages/DashboardLayout';
 
 const router = createBrowserRouter([
   /* Client */
@@ -19,27 +18,23 @@ const router = createBrowserRouter([
     element: <RoleProtectedRoute allowedRole="client" />,
     children: [
       {
+        // Destino del login para el cliente: abre la primera sección del dashboard
         path: '/client/home',
-        element: <ClientHomePage />
+        element: <Navigate to="/client/booking" replace />
       },
       {
-        path: '/profile',
-        element: <EditUserPage />
-      },
-      {
-        // Temporal: UI de reserva con datos mock
-        path: '/client/booking-scratch',
-        element: <BookingScratchPage />
-      }
-    ]
-  },
-  {
-    /* Barber */
-    element: <RoleProtectedRoute allowedRole="barber" />,
-    children: [
-      {
-        path: '/barber/home',
-        element: <PlaceholderPage title="barber" />
+        // Layout compartido (sidebar + contenido) de las secciones del cliente
+        element: <DashboardLayout role="client" />,
+        children: [
+          {
+            path: '/client/booking',
+            element: <BookAppointmentPage />
+          },
+          {
+            path: '/client/profile',
+            element: <EditUserPage />
+          }
+        ]
       }
     ]
   },
@@ -54,7 +49,7 @@ const router = createBrowserRouter([
       },
       {
         // Layout compartido (sidebar + contenido) de las secciones del dashboard
-        element: <ManagerLayoutPage />,
+        element: <DashboardLayout role="manager" />,
         children: [
           {
             path: '/manager/staff',
