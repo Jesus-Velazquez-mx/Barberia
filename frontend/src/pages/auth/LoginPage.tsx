@@ -1,6 +1,6 @@
 import { Link } from 'react-router';
 import { ArrowLeft } from 'lucide-react';
-import { LoginFormContainer } from '../containers/LoginContainer';
+import { LoginFormContainer } from '../../containers/LoginContainer';
 import mrBarberLogo from '../assets/logos/MrBarberLogo.webp';
 
 function LoginPage() {

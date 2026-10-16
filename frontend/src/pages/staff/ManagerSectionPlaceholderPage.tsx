@@ -1,4 +1,4 @@
-import { ManagerPageHeader } from '../components/ManagerPageHeaderComponent';
+import { ManagerPageHeader } from '../../components/ManagerPageHeaderComponent';
 
 interface ManagerSectionPlaceholderPageProps {
   title: string;

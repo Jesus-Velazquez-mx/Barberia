@@ -1,4 +1,4 @@
-import { ManagerStaffContainer } from '../containers/ManagerStaffContainer';
+import { ManagerStaffContainer } from '../../containers/ManagerStaffContainer';
 
 function ManagerStaffPage() {
   return <ManagerStaffContainer />;

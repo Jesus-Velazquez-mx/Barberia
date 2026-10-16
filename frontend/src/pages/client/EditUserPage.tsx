@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { EditUserModalContainer } from '../containers/EditUserModalContainer';
-import { ChangePasswordModalContainer } from '../containers/ChangePasswordModalContainer';
-import { DeleteAccountModalContainer } from '../containers/DeleteAccountModalContainer';
-import { LogoutConfirmModal } from '../components/LogoutConfirmModalComponent';
-import { UserProfile } from '../components/UserProfileComponent';
-import type { User } from '../types/auth';
-import { useAuth } from '../context/AuthContext';
+import { EditUserModalContainer } from '../../containers/EditUserModalContainer';
+import { ChangePasswordModalContainer } from '../../containers/ChangePasswordModalContainer';
+import { DeleteAccountModalContainer } from '../../containers/DeleteAccountModalContainer';
+import { LogoutConfirmModal } from '../../components/LogoutConfirmModalComponent';
+import { UserProfile } from '../../components/UserProfileComponent';
+import type { User } from '../../types/auth';
+import { useAuth } from '../../context/AuthContext';
 
 function EditUserPage() {
   const { user: authUser, login: loginContext, logout, token } = useAuth();
