@@ -6,13 +6,13 @@ export interface UserIdentity {
 }
 
 /**
- * Authorization matrix for PUT /user (shared-data update):
- * - client: only themselves.
- * - receptionist: clients only, never themselves or other staff.
- * - manager: anyone except another manager; a manager may only update themselves.
+ * Matriz de autorización para PUT /user (actualización de datos compartidos):
+ * - client: solo a sí mismos.
+ * - receptionist: únicamente a clientes, nunca a sí mismos ni a otro personal.
+ * - manager: a cualquiera excepto a otro gerente; un gerente solo puede actualizarse a sí mismo.
  *
- * Barbers are never a UserIdentity here: they have no user account and never
- * authenticate, so they can't be a performer or a target of this endpoint.
+ * Los barberos nunca son UserIdentity aquí: no tienen cuenta de usuario y nunca
+ * se autentican, por lo que no pueden ser actores ni objetivos de este endpoint.
  */
 export const canUpdateUser = (performer: UserIdentity, target: UserIdentity): boolean => {
     switch (performer.role) {
@@ -26,19 +26,24 @@ export const canUpdateUser = (performer: UserIdentity, target: UserIdentity): bo
 };
 
 /**
- * PUT /manager: a manager may only update their own title.
+ * PUT /manager: un gerente solo puede actualizar su propio título.
  */
 export const canUpdateManagerTitle = (performer: UserIdentity, targetId: string): boolean =>
     performer.role === 'manager' && performer.id === targetId;
 
 /**
- * PUT /barber: only managers may update a barber's profile (bio/is_accepting_bookings).
- * Barbers have no user account and can never be the performer, so no target check is needed.
+ * PUT /barber: solo los gerentes pueden actualizar el perfil de un barbero (biografía/estado de reservas).
+ * Los barberos no tienen cuenta de usuario y nunca pueden ser quienes ejecutan la acción, por lo que no se requiere validación de objetivo.
  */
 export const canUpdateBarberProfile = (performer: UserIdentity): boolean => performer.role === 'manager';
 
 /**
- * DELETE /barbers/:id: only managers may soft-delete a barber. Same rule as
- * canUpdateBarberProfile, kept as its own named permission for clarity.
+ * DELETE /barbers/:id: solo los gerentes pueden realizar un borrado lógico de un barbero. Misma regla que
+ * canUpdateBarberProfile, se mantiene como su propia función de permiso nombrada por claridad.
  */
 export const canDeleteBarber = (performer: UserIdentity): boolean => performer.role === 'manager';
+
+/**
+ * /shops: Solo los usuarios con el rol 'manager' pueden registrar, editar o eliminar sucursales.
+ */
+export const canManageShops = (performer: UserIdentity): boolean => performer.role === 'manager';
