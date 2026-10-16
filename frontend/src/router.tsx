@@ -98,6 +98,15 @@ const router = createBrowserRouter([
         element: <DashboardLayout role="receptionist" />,
         children: [
           {
+            path: '/receptionist/appointments',
+            element: (
+              <ManagerSectionPlaceholderPage
+                title="Calendario"
+                subtitle="Citas agendadas"
+              />
+            )
+          },
+          {
             path: '/receptionist/booking',
             element: <BookAppointmentPage />
           },

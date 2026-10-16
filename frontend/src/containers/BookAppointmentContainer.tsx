@@ -367,7 +367,7 @@ export function BookAppointmentContainer() {
             onSelectDay={handleSelectDay}
           />
         ) : (
-          <p className="m-0 rounded-xl border border-dashed border-white/15 px-6 py-12 text-center text-(--text) min-w-fit w-full max-w-160">
+          <p className="m-0 rounded-xl border border-dashed border-white/15 px-6 py-12 text-center text-(--text) min-w-fit w-full max-w-190">
             Selecciona una sucursal y al menos un servicio para ver la disponibilidad.
           </p>
         )}
