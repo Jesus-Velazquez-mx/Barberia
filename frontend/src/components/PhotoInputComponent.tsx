@@ -71,7 +71,7 @@ export function PhotoInput({ photoUrl, error, onFileSelected, onClear }: PhotoIn
       >
         <ImagePlus size={36} className="text-(--accent)" aria-hidden="true" />
         <p className="text-sm text-(--text)">
-          Arrastra una foto aquí o elige una opción. Usa una foto de frente, con buena luz y sin gorra ni lentes.
+          Usa una foto de frente, con buena luz y sin gorra ni lentes.
         </p>
         <div className="flex flex-wrap justify-center gap-3">
           <button
@@ -97,7 +97,6 @@ export function PhotoInput({ photoUrl, error, onFileSelected, onClear }: PhotoIn
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-sm text-(--labels)">Tu foto</span>
       {content}
       {error && (
         <p className="text-sm text-[#ff4d4d]" role="alert">

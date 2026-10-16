@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Sparkles } from 'lucide-react';
+import { CirclePlus } from 'lucide-react';
 import { Button } from '../components/ButtonComponent';
 import { PhotoInput } from '../components/PhotoInputComponent';
 import { RecommendationHistory } from '../components/RecommendationHistoryComponent';
-import { MOCK_RECOMMENDATIONS } from '../mocks/recommendationMock';
+import { useAuth } from '../context/AuthContext';
+import { getRecommendationHistory } from '../services/recommendationService';
 import type { HaircutRecommendation } from '../types/recommendation';
+import { getApiErrorMessage } from '../utils/apiErrorUtils';
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 const MAX_PREFERENCES_LENGTH = 500;
@@ -13,8 +15,34 @@ export function RecommendationContainer() {
   const [photo, setPhoto] = useState<{ file: File; url: string } | null>(null);
   const [photoError, setPhotoError] = useState('');
   const [preferences, setPreferences] = useState('');
-  // TODO: reemplazar el mock por la consulta al servicio de recomendaciones
-  const [history] = useState<HaircutRecommendation[]>(MOCK_RECOMMENDATIONS);
+  const { user, token } = useAuth();
+  const [history, setHistory] = useState<HaircutRecommendation[]>([]);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(true);
+  const [historyError, setHistoryError] = useState('');
+
+  // Carga el historial del cliente autenticado
+  useEffect(() => {
+    if (!user || !token) return;
+
+    let cancelled = false;
+    setIsHistoryLoading(true);
+    setHistoryError('');
+
+    getRecommendationHistory(user.id, token)
+      .then((entries) => {
+        if (!cancelled) setHistory(entries);
+      })
+      .catch((error) => {
+        if (!cancelled) setHistoryError(getApiErrorMessage(error, 'No se pudo cargar el historial. Intenta de nuevo.'));
+      })
+      .finally(() => {
+        if (!cancelled) setIsHistoryLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, token]);
 
   // Libera la URL temporal cuando se reemplaza la foto o se desmonta la página
   useEffect(() => {
@@ -57,7 +85,7 @@ export function RecommendationContainer() {
         className="flex flex-col gap-6 rounded-xl border border-white/10 bg-[#1E1E1E] p-8"
       >
         <div className="flex items-center gap-2 border-b border-white/10 pb-4">
-          <Sparkles size={20} className="text-(--accent)" aria-hidden="true" />
+          <CirclePlus size={28} className="text-(--accent)" aria-hidden="true" />
           <h2 className="m-0 font-sans text-xl font-semibold text-(--text-h)">Nueva recomendación</h2>
         </div>
 
@@ -89,7 +117,7 @@ export function RecommendationContainer() {
         <Button type="submit">Obtener recomendación</Button>
       </form>
 
-      <RecommendationHistory recommendations={history} />
+      <RecommendationHistory recommendations={history} isLoading={isHistoryLoading} error={historyError} />
     </div>
   );
 }

@@ -1,11 +1,18 @@
+/* Resultado de una solicitud guardada en el historial (las solicitudes fallidas no se devuelven). */
+export type RecommendationStatus = 'recommended' | 'no_suitable_haircut';
+
 export interface HaircutRecommendation {
     id: string;
-    /* Fecha de generación en ISO. */
-    createdAt: string;
-    /* Foto con la que se generó; null si ya no está disponible. */
-    photoUrl: string | null;
-    /* Mensaje de preferencias que escribió el cliente. */
-    preferences: string;
-    /* Texto de la recomendación generada. */
-    recommendation: string;
+    status: RecommendationStatus;
+    /* Texto de la recomendación; null cuando ningún corte aplicó. */
+    suggestionText: string | null;
+    /* Porcentaje de confianza (0-100); null cuando ningún corte aplicó. */
+    confidence: number | null;
+    /* Razonamiento de la IA (o el motivo por el que ningún corte aplicó). */
+    reasoning: string | null;
+    /* Primer corte recomendado; null si no hubo recomendación o el corte fue eliminado. */
+    recommendedHaircut: { id: string; name: string } | null;
+    /* Fechas en ISO. */
+    requestedAt: string;
+    completedAt: string | null;
 }

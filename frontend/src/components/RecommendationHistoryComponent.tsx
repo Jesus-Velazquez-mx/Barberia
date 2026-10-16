@@ -4,6 +4,8 @@ import type { HaircutRecommendation } from '../types/recommendation';
 
 interface RecommendationHistoryProps {
   recommendations: HaircutRecommendation[];
+  isLoading?: boolean;
+  error?: string;
 }
 
 const formatDate = (iso: string) =>
@@ -11,6 +13,7 @@ const formatDate = (iso: string) =>
 
 function HistoryItem({ item }: { item: HaircutRecommendation }) {
   const [isOpen, setIsOpen] = useState(false);
+  const isRecommended = item.status === 'recommended';
 
   return (
     <li className="rounded-lg border border-white/10 bg-[#121212]">
@@ -20,17 +23,15 @@ function HistoryItem({ item }: { item: HaircutRecommendation }) {
         aria-expanded={isOpen}
         className="flex w-full cursor-pointer items-center gap-4 border-none bg-transparent p-4 text-left"
       >
-        {item.photoUrl ? (
-          <img src={item.photoUrl} alt="" className="h-14 w-14 shrink-0 rounded-lg object-cover" />
-        ) : (
-          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-[#2A2A2A] text-(--accent)">
-            <Scissors size={22} aria-hidden="true" />
-          </span>
-        )}
+        <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-[#2A2A2A] text-(--accent)">
+          <Scissors size={22} aria-hidden="true" />
+        </span>
 
         <span className="min-w-0 flex-1">
-          <span className="block text-sm font-semibold text-(--text-h)">{formatDate(item.createdAt)}</span>
-          <span className="block truncate text-sm text-(--text)">{item.preferences || 'Sin preferencias'}</span>
+          <span className="block text-sm font-semibold text-(--text-h)">{formatDate(item.requestedAt)}</span>
+          <span className="block truncate text-sm text-(--text)">
+            {isRecommended ? (item.recommendedHaircut?.name ?? 'Recomendación') : 'Sin corte adecuado'}
+          </span>
         </span>
 
         <ChevronDown
@@ -42,31 +43,44 @@ function HistoryItem({ item }: { item: HaircutRecommendation }) {
 
       {isOpen && (
         <div className="flex flex-col gap-3 border-t border-white/10 p-4">
-          {item.preferences && (
+          {item.suggestionText && (
             <div>
-              <span className="text-xs font-semibold uppercase text-(--text)">Tus preferencias</span>
-              <p className="mt-1 text-sm text-(--text-h)">{item.preferences}</p>
+              <span className="text-xs font-semibold uppercase text-(--accent)">Recomendación</span>
+              <p className="mt-1 text-sm text-(--text-h)">{item.suggestionText}</p>
             </div>
           )}
-          <div>
-            <span className="text-xs font-semibold uppercase text-(--accent)">Recomendación</span>
-            <p className="mt-1 text-sm text-(--text-h)">{item.recommendation}</p>
-          </div>
+          {item.reasoning && (
+            <div>
+              <span className="text-xs font-semibold uppercase text-(--text)">
+                {isRecommended ? 'Por qué' : 'Motivo'}
+              </span>
+              <p className="mt-1 text-sm text-(--text-h)">{item.reasoning}</p>
+            </div>
+          )}
+          {item.confidence !== null && (
+            <span className="text-xs text-(--text)">Confianza: {Math.round(item.confidence)}%</span>
+          )}
         </div>
       )}
     </li>
   );
 }
 
-export function RecommendationHistory({ recommendations }: RecommendationHistoryProps) {
+export function RecommendationHistory({ recommendations, isLoading = false, error = '' }: RecommendationHistoryProps) {
   return (
     <section className="flex flex-col gap-5 rounded-xl border border-white/10 bg-[#1E1E1E] p-8">
       <div className="flex items-center gap-2 border-b border-white/10 pb-4">
-        <History size={20} className="text-(--accent)" aria-hidden="true" />
+        <History size={28} className="text-(--accent)" aria-hidden="true" />
         <h2 className="m-0 font-sans text-xl font-semibold text-(--text-h)">Recomendaciones anteriores</h2>
       </div>
 
-      {recommendations.length === 0 ? (
+      {isLoading ? (
+        <p className="py-6 text-center text-sm text-(--text)">Cargando historial...</p>
+      ) : error ? (
+        <p role="alert" className="py-6 text-center text-sm text-red-400">
+          {error}
+        </p>
+      ) : recommendations.length === 0 ? (
         <p className="py-6 text-center text-sm text-(--text)">
           Aún no has generado ninguna recomendación. Sube una foto para obtener la primera.
         </p>
