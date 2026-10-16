@@ -233,15 +233,24 @@ INSERT INTO appointment_services (appointment_id, service_id, price_at_booking, 
 
 -- ---------- AI recommendation history ----------
 
-INSERT INTO recommendation_history (client_id, photo_s3_key, suggestion_text, confidence, error_message, requested_at, completed_at) VALUES
-    ('9df92579-03de-47c4-aa1f-76658d361e2b', 's3://nerv-barbershop-mock/recommendations/asuka-001.jpg',
-     'Based on your oval face shape, a Skin Fade or Classic Haircut with side-swept bangs would suit you well.', 92.50, NULL,
+INSERT INTO recommendation_history (client_id, suggestion_text, confidence, reasoning, recommended_haircut_style_id, error_message, requested_at, completed_at) VALUES
+    ('9df92579-03de-47c4-aa1f-76658d361e2b',
+     'Based on your oval face shape, the Classic Ikari Side Part would suit you well.', 92.50,
+     'Oval faces balance well with a clean side part, and it fits the formal look requested.',
+     '0b18355b-f649-4ee9-a2eb-7c379be103fc', NULL,
      now() - interval '10 days', now() - interval '10 days' + interval '2 minutes'),
-    ('7a3be44f-9740-437b-86d2-c0a0463a0ea2', 's3://nerv-barbershop-mock/recommendations/rei-001.jpg',
-     'Your round facial structure pairs well with a longer top and tapered sides — try the EVA Pilot Crop.', 88.00, NULL,
+    ('7a3be44f-9740-437b-86d2-c0a0463a0ea2',
+     'Your round facial structure pairs well with a longer top and tapered sides — try the EVA Pilot Crop.', 88.00,
+     'Tapered sides add length to a round face, and the crop is low-maintenance as requested.',
+     '09fecd6b-d3c8-4453-8d01-1c9d833bbd37', NULL,
      now() - interval '9 days', now() - interval '9 days' + interval '1 minute'),
-    ('c8d0e26f-6adb-4d84-91ca-4d8fe6e7da97', 's3://nerv-barbershop-mock/recommendations/mari-001.jpg',
-     NULL, NULL, 'Face not detected in the uploaded photo. Please try again with a clearer, front-facing image.',
+    ('9df92579-03de-47c4-aa1f-76658d361e2b',
+     NULL, NULL,
+     'None of the available haircuts keep the requested length while matching the client''s facial structure.',
+     NULL, NULL,
+     now() - interval '7 days', now() - interval '7 days' + interval '1 minute'),
+    ('c8d0e26f-6adb-4d84-91ca-4d8fe6e7da97',
+     NULL, NULL, NULL, NULL, 'Face not detected in the uploaded photo. Please try again with a clearer, front-facing image.',
      now() - interval '6 days', now() - interval '6 days' + interval '30 seconds');
 
 -- ---------- notifications ----------
