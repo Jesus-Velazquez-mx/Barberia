@@ -2,7 +2,10 @@ import { ApiError, type ApiResponse } from '../types/api';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+/* Cuerpo completo de la respuesta, con `data` ya tipado como T */
+export type ApiClientResponse<T> = Omit<ApiResponse<T>, 'data'> & { data: T };
+
+async function request<T>(path: string, options: RequestInit = {}): Promise<ApiClientResponse<T>> {
     let response: Response;
 
     try {
@@ -19,13 +22,13 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
     const body: ApiResponse<T> | undefined = await response.json().catch(() => undefined);
 
-    if (!response.ok || body?.error) {
+    if (!response.ok || body?.error || !body ) {
         const errors = body?.error ?? [];
         const message = body?.message || errors[0] || `Request failed with status ${response.status}`;
         throw new ApiError(message, response.status, errors);
     }
 
-    return body?.data as T;
+    return { data: body?.data as T, message: body.message };
 }
 
 export const apiClient = {

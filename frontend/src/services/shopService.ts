@@ -5,15 +5,15 @@ import type { OfferedService } from '../types/offeredService.ts';
 
 export const getShops = async (): Promise<Shop[]> => {
     const response = await apiClient.get<Shop[]>('/shops');
-    return response;
+    return response.data;
 }
 
 export const getActiveBarbersByShop = async (shopId: string): Promise<Barber[]> => {
     const response = await apiClient.get<Barber[]>(`/shops/${shopId}/barbers`);
-    return response;
+    return response.data;
 }
 
 export const getOfferedServices = async (): Promise<OfferedService[]> => {
     const response = await apiClient.get<OfferedService[]>('/offeredServices')
-    return response;
+    return response.data;
 }

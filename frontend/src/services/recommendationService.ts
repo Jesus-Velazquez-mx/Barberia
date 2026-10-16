@@ -5,17 +5,24 @@ import type { GeneratedRecommendation, HaircutRecommendation, PresignedUploadFor
 const authHeaders = (token: string) => ({ Authorization: `Bearer ${token}` });
 
 /* GET /recommendations?clientId=... => historial del cliente, de la más reciente a la más antigua. */
-export const getRecommendationHistory = async (clientId: string, token: string): Promise<HaircutRecommendation[]> =>
-    apiClient.get<HaircutRecommendation[]>(`/recommendations?clientId=${encodeURIComponent(clientId)}`, {
-        headers: authHeaders(token)
-    });
+export const getRecommendationHistory = async (clientId: string, token: string): Promise<HaircutRecommendation[]> => {
+    const response = await apiClient.get<HaircutRecommendation[]>(
+        `/recommendations?clientId=${encodeURIComponent(clientId)}`,
+        { headers: authHeaders(token) }
+    );
+
+    return response.data;
+};
 
 /*
  * GET /presigned-url => formulario firmado para subir la foto del cliente a S3.
  * Caduca en 2 minutos y, al pedirlo, el backend descarta la estructura facial guardada del cliente.
  */
-export const getPresignedUploadForm = async (token: string): Promise<PresignedUploadForm> =>
-    apiClient.get<PresignedUploadForm>('/presigned-url', { headers: authHeaders(token) });
+export const getPresignedUploadForm = async (token: string): Promise<PresignedUploadForm> => {
+    const response = await apiClient.get<PresignedUploadForm>('/presigned-url', { headers: authHeaders(token) });
+
+    return response.data;
+};
 
 /*
  * Sube la foto directamente a S3 con el formulario presignado. No pasa por apiClient: la petición va
@@ -51,11 +58,13 @@ export const generateRecommendation = async (
 ): Promise<GeneratedRecommendation> => {
     const preferences = userPreferences.trim();
 
-    return apiClient.post<GeneratedRecommendation>(
+    const response = await apiClient.post<GeneratedRecommendation>(
         '/recommendations/generate',
         { recommendationParams: preferences ? { userPreferences: preferences } : {} },
         { headers: authHeaders(token) }
     );
+
+    return response.data;
 };
 
 /*
