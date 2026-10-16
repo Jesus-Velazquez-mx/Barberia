@@ -2,7 +2,6 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
-import PlaceholderPage from './pages/PlaceholderPage';
 import { RoleProtectedRoute } from './components/RoleProtectedRoute';
 import { PublicRoute } from './components/PublicRoute';
 import EditUserPage from './pages/EditUserPage';
@@ -38,8 +37,8 @@ const router = createBrowserRouter([
       }
     ]
   },
+  /* Manager */
   {
-    /* Manager */
     element: <RoleProtectedRoute allowedRole="manager" />,
     children: [
       {
@@ -85,18 +84,53 @@ const router = createBrowserRouter([
       }
     ]
   },
+  /* Receptionist */
   {
-    /* Receptionist */
     element: <RoleProtectedRoute allowedRole="receptionist" />,
     children: [
       {
+        // Destino del login para el recepcionista: abre la primera sección del dashboard
         path: '/receptionist/home',
-        element: <PlaceholderPage title="receptionist" />
+        element: <Navigate to="/receptionist/booking" replace />
+      },
+      {
+        // Layout compartido (sidebar + contenido) de las secciones del recepcionista
+        element: <DashboardLayout role="receptionist" />,
+        children: [
+          {
+            path: '/receptionist/appointments',
+            element: (
+              <ManagerSectionPlaceholderPage
+                title="Calendario"
+                subtitle="Citas agendadas"
+              />
+            )
+          },
+          {
+            path: '/receptionist/booking',
+            element: <BookAppointmentPage />
+          },
+          {
+            path: '/receptionist/clients',
+            element: <ManagerClientsPage />
+          },
+          {
+            // Temporal: se reemplaza por la vista real de insumos
+            path: '/receptionist/inventory',
+            element: (
+              <ManagerSectionPlaceholderPage
+                title="Inventario"
+                subtitle="Control de insumos y existencias."
+                plannedItems={['insumos', 'categorías', 'existencias', 'movimientos de entrada y salida']}
+              />
+            )
+          }
+        ]
       }
     ]
   },
+  /* Public */
   {
-    /* Public */
     element: <PublicRoute />,
     children: [
       {
