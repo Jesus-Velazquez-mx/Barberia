@@ -1,15 +1,16 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
+import LoginPage from './pages/auth/LoginPage';
+import RegisterPage from './pages/auth/RegisterPage';
 import { RoleProtectedRoute } from './components/RoleProtectedRoute';
 import { PublicRoute } from './components/PublicRoute';
-import EditUserPage from './pages/EditUserPage';
+import EditUserPage from './pages/client/EditUserPage';
 import BookAppointmentPage from './pages/BookAppointmentPage';
-import ManagerStaffPage from './pages/ManagerStaffPage';
-import ManagerClientsPage from './pages/ManagerClientsPage';
-import ManagerSectionPlaceholderPage from './pages/ManagerSectionPlaceholderPage';
+import ManagerStaffPage from './pages/staff/ManagerStaffPage';
+import ManagerClientsPage from './pages/staff/StaffClientsPage';
+import ManagerSectionPlaceholderPage from './pages/staff/ManagerSectionPlaceholderPage';
 import DashboardLayout from './pages/DashboardLayout';
+import RecommendationPage from './pages/client/RecommendationPage';
 
 const router = createBrowserRouter([
   /* Client */
@@ -28,6 +29,10 @@ const router = createBrowserRouter([
           {
             path: '/client/booking',
             element: <BookAppointmentPage />
+          },
+          {
+            path: '/client/recommend-haircut',
+            element: <RecommendationPage />
           },
           {
             path: '/client/profile',
