@@ -47,3 +47,10 @@ export const canDeleteBarber = (performer: UserIdentity): boolean => performer.r
  * /shops: Solo los usuarios con el rol 'manager' pueden registrar, editar o eliminar sucursales.
  */
 export const canManageShops = (performer: UserIdentity): boolean => performer.role === 'manager';
+
+/**
+ * GET /recommendations: un cliente solo puede consultar su propio historial de recomendaciones; la recepción y los
+ * gerentes pueden consultar el de cualquier cliente.
+ */
+export const canViewRecommendationHistory = (performer: UserIdentity, targetClientId: string): boolean =>
+    performer.role === 'client' ? performer.id === targetClientId : true;

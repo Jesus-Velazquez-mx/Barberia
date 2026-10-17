@@ -1,7 +1,7 @@
 export interface ApiResponse<T> {
-    data: T | null;
+    data?: T;
     message: string;
-    error: string[] | null;
+    error?: string[];
 }
 
 export class ApiError extends Error {

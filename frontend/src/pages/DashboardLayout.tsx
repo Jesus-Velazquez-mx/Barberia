@@ -4,7 +4,7 @@ import { DashboardSidebar } from '../components/DashboardSidebarComponent';
 import { LogoutConfirmModal } from '../components/LogoutConfirmModalComponent';
 import { useAuth } from '../context/AuthContext';
 import type { UserRole } from '../types/auth';
-import { Users, UserRound, Package, Settings, CalendarPlus, Calendar } from 'lucide-react';
+import { Users, UserRound, Package, Settings, CalendarPlus, Calendar, Sparkles } from 'lucide-react';
 
 const NAV_ITEMS = {
   manager: [
@@ -15,6 +15,7 @@ const NAV_ITEMS = {
   ],
   client: [
     { to: '/client/booking', label: 'Agendar Cita', icon: <CalendarPlus size={20} aria-hidden="true" /> },
+    { to: '/client/recommend-haircut', label: 'Recomendación de corte', icon: <Sparkles aria-hidden="true"/> },
     { to: '/client/profile', label: 'Mi Perfil', icon: <UserRound size={20} aria-hidden="true" /> }
   ],
   receptionist: [

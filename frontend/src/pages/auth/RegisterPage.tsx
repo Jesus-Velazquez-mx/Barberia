@@ -1,7 +1,7 @@
 import { Link } from 'react-router';
 import { ArrowLeft } from 'lucide-react';
 import { RegisterFormContainer } from '../../containers/RegisterContainer';
-import mrBarberLogo from '../assets/logos/MrBarberLogo.webp';
+import mrBarberLogo from '../../assets/logos/MrBarberLogo.webp';
 
 function RegisterPage() {
   return (

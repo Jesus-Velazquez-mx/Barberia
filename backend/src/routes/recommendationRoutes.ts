@@ -1,12 +1,13 @@
 import { Router } from 'express';
 import { testAiService, getHaircutRecommendation } from '../controllers/recommendationController.js';
+import { getClientRecommendationHistory } from '../controllers/recommendationHistoryController.js';
 import { getBucketPresignedURL } from '../controllers/bucketController.js';
 
 const router = Router();
 
 /**
  * @swagger
- * /api/recommendation/test:
+ * /api/recommendations/test:
  *   get:
  *     summary: Verifica la conexión con el microservicio de recomendación
  *     tags: [Recommendation]
@@ -36,11 +37,11 @@ const router = Router();
  *                 message: { type: string, example: Error al conectar con el servicio de recomendación }
  *                 error: { type: array, items: { type: string }, example: ["detalle del error"] }
  */
-router.get('/recommendation/test', testAiService);
+router.get('/recommendations/test', testAiService);
 
 /**
  * @swagger
- * /api/recommendation/generate:
+ * /api/recommendations/generate:
  *   post:
  *     summary: Genera recomendaciones de cortes de cabello
  *     tags: [Recommendation]
@@ -139,7 +140,70 @@ router.get('/recommendation/test', testAiService);
  *           o la detección de estructura facial falló por una causa ajena al cliente (por ejemplo, el
  *           almacenamiento no está disponible).
  */
-router.post('/recommendation/generate', getHaircutRecommendation);
+router.post('/recommendations/generate', getHaircutRecommendation);
+
+/**
+ * @swagger
+ * /api/recommendations:
+ *   get:
+ *     summary: Consulta el historial de recomendaciones de un cliente
+ *     tags: [Recommendation]
+ *     description: >-
+ *       Devuelve las solicitudes de recomendación de un cliente, de la más reciente a la más antigua. Solo incluye
+ *       las que terminaron con un resultado (`recommended` o `no_suitable_haircut`); las solicitudes que fallaron no
+ *       se devuelven. Un cliente solo puede consultar su propio historial; la recepción y los gerentes pueden consultar el de
+ *       cualquier cliente. Requiere un token JWT en el header `Authorization` (formato `Bearer <token>`).
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: clientId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *         description: ID del cliente (su `user_id`).
+ *     responses:
+ *       200:
+ *         description: Historial obtenido. `data` es un arreglo vacío si el cliente aún no ha solicitado recomendaciones.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id: { type: string, format: uuid }
+ *                       status:
+ *                         type: string
+ *                         enum: [recommended, no_suitable_haircut]
+ *                         description: >-
+ *                           `recommended`: la IA recomendó al menos un corte. `no_suitable_haircut`: ningún corte
+ *                           aplicó (el motivo está en `reasoning`).
+ *                       suggestionText: { type: string, nullable: true }
+ *                       confidence: { type: number, nullable: true, minimum: 0, maximum: 100, example: 92.5 }
+ *                       reasoning: { type: string, nullable: true }
+ *                       recommendedHaircut:
+ *                         type: object
+ *                         nullable: true
+ *                         description: Primer corte de la recomendación.
+ *                         properties:
+ *                           id: { type: string, format: uuid }
+ *                           name: { type: string, example: EVA Pilot Crop }
+ *                       requestedAt: { type: string, format: date-time }
+ *                       completedAt: { type: string, format: date-time, nullable: true }
+ *                 message: { type: string, example: Recommendation history retrieved successfully }
+ *       400:
+ *         description: Falta `clientId` o no es un UUID válido, o el token tiene un formato inválido.
+ *       401:
+ *         description: Token ausente o inválido.
+ *       403:
+ *         description: La cuenta está desactivada, o un cliente intenta consultar el historial de otro cliente.
+ *       404:
+ *         description: No se encontró el cliente.
+ */
+router.get('/recommendations', getClientRecommendationHistory);
 
 /**
  * @swagger

@@ -71,7 +71,7 @@ Decided and implemented:
 - **Movement authorship**: `supply_movements.performed_by` is `NOT NULL` and references `users(id)` with no `ON DELETE` action (defaults to `NO ACTION`, i.e. blocks deletion). This relies on the fact that only receptionists and managers ever perform a movement, and both are soft-deleted rather than hard-deleted (see "User deletion" above), so `performed_by` can never be orphaned — no name/role snapshot is needed the way `appointment_services.price_at_booking` needs one for prices.
 - **Availability**: `availability_slots` models a recurring weekly pattern per barber (`day_of_week` 0–6 + `start_time`/`end_time`), scoped to a shop. There is no `availability_exceptions` table (e.g. for one-off time off, holidays) — that's not implemented, unlike what was previously assumed.
 - **Appointments**: `status` is an enum (`scheduled`, `checked_in`, `completed`, `cancelled`, `no_show`); `is_walk_in` and `is_reward_redemption` are explicit boolean flags; `barber_id` is nullable specifically to allow an unassigned walk-in until check-in, enforced by a `CHECK` constraint (`is_walk_in = true OR barber_id IS NOT NULL`). Appointments for **unregistered clients** are supported: `client_id` is nullable (`ON DELETE SET NULL`) and `guest_client_name` holds the only data captured for a guest. Because `client_id` is also `NULL` for a registered client whose account was deleted, an explicit `is_registered_client boolean NOT NULL` (no default, set by the backend at creation, never changed) distinguishes the two, instead of inferring it from a null. The `chk_appointments_client_or_guest` constraint enforces: registered → no guest name (and `client_id` may be `NULL` only after deletion); guest → `client_id` null and a guest name required. Backend queries must use `LEFT JOIN` to clients/users for appointments, and the reminder pipeline must skip rows with `client_id IS NULL`. `appointment_services` snapshots `price_at_booking`/`duration_minutes_at_booking` so past revenue isn't distorted by later catalog price changes.
-- Facial photos are **not** stored in Postgres — `recommendation_history.photo_s3_key` stores only the S3 key (see §1.5).
+- Facial photos are **not** stored in Postgres — each client has a single photo in S3 whose key is derived from the client's id (a new upload overwrites the old one), so `recommendation_history` does not reference it (see §1.5).
 - Every mutable table has a `set_updated_at()` trigger keeping `updated_at` current on `UPDATE`.
 
 Still open:
@@ -82,7 +82,7 @@ Still open:
 
 ### 1.5 Static assets (S3)
 
-Client photos and other static assets (mainly images) are intended to be stored in an S3 bucket, with only the URL/key referenced in Postgres (`recommendation_history.photo_s3_key`). The backend's deploy pipeline already provisions `AWS_S3_BUCKET_NAME` and AWS credentials as environment variables (see §3.1), but no upload/retrieval code exists yet — there's no recommendation-submission endpoint to receive a photo in the first place (see §1.3).
+Client photos and other static assets (mainly images) are intended to be stored in an S3 bucket, with the key derived from the owner's id rather than stored in Postgres (a client's photo lives at one key and is overwritten on upload). The backend's deploy pipeline already provisions `AWS_S3_BUCKET_NAME` and AWS credentials as environment variables (see §3.1), but no upload/retrieval code exists yet — there's no recommendation-submission endpoint to receive a photo in the first place (see §1.3).
 
 ### 1.6 Notifications (WhatsApp / email)
 
