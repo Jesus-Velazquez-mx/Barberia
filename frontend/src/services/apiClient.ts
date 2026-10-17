@@ -1,15 +1,18 @@
 import { ApiError, type ApiResponse } from '../types/api';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
+const API_BASE_IP = import.meta.env.VITE_API_IP;
 
 /* Cuerpo completo de la respuesta, con `data` ya tipado como T */
 export type ApiClientResponse<T> = Omit<ApiResponse<T>, 'data'> & { data: T };
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<ApiClientResponse<T>> {
+async function request<T>(path: string, options: RequestInit = {}, useRawIP: boolean = false): Promise<ApiClientResponse<T>> {
     let response: Response;
 
+    const baseURL = useRawIP ? `${API_BASE_IP}/api` : API_BASE_URL;
+
     try {
-        response = await fetch(`${API_BASE_URL}${path}`, {
+        response = await fetch(`${baseURL}${path}`, {
             ...options,
             headers: {
                 'Content-Type': 'application/json',
@@ -32,10 +35,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<ApiC
 }
 
 export const apiClient = {
-    get: <T>(path: string, init?: RequestInit) => request<T>(path, init),
-    post: <T>(path: string, body?: unknown, init?: RequestInit) =>
-        request<T>(path, { ...init, method: 'POST', body: JSON.stringify(body) }),
-    put: <T>(path: string, body?: unknown, init?: RequestInit) =>
-        request<T>(path, { ...init, method: 'PUT', body: JSON.stringify(body) }),
-    delete: <T>(path: string, init?: RequestInit) => request<T>(path, { ...init, method: 'DELETE' })
+    get: <T>(path: string, init?: RequestInit, useRawIP?: boolean) => request<T>(path, init, useRawIP),
+    post: <T>(path: string, body?: unknown, init?: RequestInit, useRawIP?: boolean) =>
+        request<T>(path, { ...init, method: 'POST', body: JSON.stringify(body) }, useRawIP),
+    put: <T>(path: string, body?: unknown, init?: RequestInit, useRawIP?: boolean) =>
+        request<T>(path, { ...init, method: 'PUT', body: JSON.stringify(body) }, useRawIP),
+    delete: <T>(path: string, init?: RequestInit, useRawIP?: boolean) => request<T>(path, { ...init, method: 'DELETE' }, useRawIP)
 };
