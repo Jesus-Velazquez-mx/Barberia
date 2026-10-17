@@ -116,6 +116,8 @@ router.post('/auth/login', login);
  *               phone: { type: string, example: "3312345678" }
  *               email: { type: string, format: email, example: cliente@mrbarber.com }
  *               password: { type: string, example: password123 }
+ *               birthDate: { type: string, example: 2000-12-01 }
+ *               gender: { type: string, example: male }
  *     responses:
  *       201:
  *         description: Éxito. `data` contiene el usuario creado y el token JWT.
@@ -136,6 +138,8 @@ router.post('/auth/login', login);
  *                         phone: { type: string, nullable: true }
  *                         firstName: { type: string }
  *                         lastName: { type: string }
+ *                         birthDate: { type: string }
+ *                         gender: { type: string }
  *                         createdAt: { type: string, format: date-time }
  *                         updatedAt: { type: string, format: date-time }
  *                         profile:

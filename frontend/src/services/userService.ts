@@ -18,7 +18,7 @@ export const updateUser = async (id: string, values: UpdateUserValues, token: st
         headers: { Authorization: `Bearer ${token}` }
     });
 
-    return response;
+    return response.data;
 };
 
 interface ChangePasswordPayload {
@@ -44,7 +44,7 @@ export const changePassword = async (
         headers: { Authorization: `Bearer ${token}` }
     });
 
-    return response;
+    return response.data;
 };
 
 export const deleteUser = async (id: string, token: string): Promise<void> => {

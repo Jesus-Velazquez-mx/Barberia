@@ -10,5 +10,5 @@ export const getShopAvailability = async ({
     const response = await apiClient.get<AvailableSlotsByBarber[]>(
         `/shops/${shopId}/availability?${query}`
     );
-    return response;
+    return response.data;
 };

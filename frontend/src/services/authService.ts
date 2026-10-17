@@ -4,7 +4,7 @@ import type { LoginFormValues, LoginResponse, RegisterFormValues } from '../type
 export const login = async (values: LoginFormValues): Promise<LoginResponse> => {
     const response = await apiClient.post<LoginResponse>('/auth/login', values);
 
-    return response;
+    return response.data;
 };
 
 export const register = async (values: RegisterFormValues): Promise<LoginResponse> => {
@@ -13,5 +13,5 @@ export const register = async (values: RegisterFormValues): Promise<LoginRespons
 
     const response = await apiClient.post<LoginResponse>('/auth/register', payload);
 
-    return response;
+    return response.data;
 };

@@ -505,9 +505,10 @@ CREATE INDEX idx_haircut_style_facial_structures_type ON haircut_style_facial_st
 CREATE TABLE recommendation_history (
     id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     client_id       uuid NOT NULL REFERENCES clients(user_id) ON DELETE CASCADE,
-    photo_s3_key    varchar(512) NOT NULL, -- S3 object key/URL only, never the blob
     suggestion_text text,
     confidence      numeric(5,2),
+    reasoning       text, -- LLM explanation: why the haircut was chosen, or why no haircut fits
+    recommended_haircut_style_id uuid REFERENCES haircut_styles(id) ON DELETE SET NULL, -- first haircut of the recommendation
     error_message   text,
     requested_at    timestamptz NOT NULL DEFAULT now(),
     completed_at    timestamptz,
