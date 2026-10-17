@@ -1,4 +1,4 @@
-import { apiClient } from './apiClient';
+import { apiClient, type ApiClientResponse } from './apiClient';
 import { ApiError } from '../types/api';
 import type { GeneratedRecommendation, HaircutRecommendation, PresignedUploadForm } from '../types/recommendation';
 
@@ -55,29 +55,38 @@ export const uploadPhotoToS3 = async (form: PresignedUploadForm, photo: File): P
 export const generateRecommendation = async (
     userPreferences: string,
     token: string
-): Promise<GeneratedRecommendation> => {
+): Promise<ApiClientResponse<GeneratedRecommendation>> => {
     const preferences = userPreferences.trim();
 
-    const response = await apiClient.post<GeneratedRecommendation>(
+    return apiClient.post<GeneratedRecommendation>(
         '/recommendations/generate',
         { recommendationParams: preferences ? { userPreferences: preferences } : {} },
         { headers: authHeaders(token) }
     );
-
-    return response.data;
 };
 
 /*
  * Flujo completo de una recomendación nueva:
  *   1. pide el formulario presignado, 2. sube la foto a S3, 3. solicita la recomendación.
+ * Si `photo` es null se omiten los pasos 1 y 2 y se reutiliza la última foto subida (la que ya está en S3).
  * Cualquier paso que falle lanza un ApiError (usar getApiErrorMessage para mostrarlo).
  */
 export const requestHaircutRecommendation = async (
-    photo: File,
+    photo: File | null,
     userPreferences: string,
     token: string
-): Promise<GeneratedRecommendation> => {
-    const form = await getPresignedUploadForm(token);
-    await uploadPhotoToS3(form, photo);
+): Promise<ApiClientResponse<GeneratedRecommendation>> => {
+    if (photo) {
+        const form = await getPresignedUploadForm(token);
+        await uploadPhotoToS3(form, photo);
+    }
+
     return generateRecommendation(userPreferences, token);
 };
+
+/*
+ * Indica si un error de generate se debe a que la foto guardada no se puede usar (no existe en S3 o no es una
+ * imagen válida). El backend lo responde como 400 sin un código propio; con los datos que se envían desde la UI
+ * (preferencias limitadas a 500 caracteres) es la única causa posible de un 400.
+ */
+export const isStoredPhotoError = (error: unknown): boolean => error instanceof ApiError && error.status === 400;
