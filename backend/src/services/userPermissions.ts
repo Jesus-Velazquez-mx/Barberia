@@ -54,3 +54,15 @@ export const canManageShops = (performer: UserIdentity): boolean => performer.ro
  */
 export const canViewRecommendationHistory = (performer: UserIdentity, targetClientId: string): boolean =>
     performer.role === 'client' ? performer.id === targetClientId : true;
+
+/**
+ * /supplies-categories: Solo los usuarios con rol 'manager' pueden crear, editar o eliminar categorías de insumos.
+ */
+export const canManageSuppliesCategories = (performer: UserIdentity): boolean => performer.role === 'manager';
+
+/**
+ * /supplies: Los usuarios con rol 'manager' puede registrar, editar o eliminar insumos.
+ */
+export const canManageSupplies = (performer: UserIdentity): boolean => performer.role === 'manager';
+
+
