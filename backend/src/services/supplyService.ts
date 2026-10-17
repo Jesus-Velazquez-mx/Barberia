@@ -7,6 +7,8 @@ import {
     createSupply as repoCreateSupply,
     updateSupply as repoUpdateSupply,
     deleteSupply as repoDeleteSupply,
+    type CreateSupplyInput,
+    type UpdateSupplyInput,
 } from '../repositories/supplyRepository.js';
 import { getShopById } from '../repositories/shopRepository.js';
 import { getCategoryById } from '../repositories/suppliesCategoryRepository.js';
@@ -54,9 +56,8 @@ export const getSupply = async (id: string, token?: string) => {
 
 /**
  * Registra un nuevo insumo.
- * Valida la existencia de la sucursal y la categoría, así como las restricciones de unicidad.
  */
-export const registerSupply = async (data: any, token: string) => {
+export const registerSupply = async (data: CreateSupplyInput, token: string) => {
     const performer = decodeToken(token);
 
     if (!canManageSupplies(performer)) {
@@ -90,9 +91,8 @@ export const registerSupply = async (data: any, token: string) => {
 
 /**
  * Edita un insumo existente.
- * Valida las llaves foráneas y reglas de unicidad en caso de que dichos campos cambien.
  */
-export const editSupply = async (id: string, data: any, token: string) => {
+export const editSupply = async (id: string, data: UpdateSupplyInput, token: string) => {
     const performer = decodeToken(token);
 
     if (!canManageSupplies(performer)) {

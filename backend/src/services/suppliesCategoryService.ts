@@ -132,9 +132,10 @@ export const removeCategory = async (id: string, token: string): Promise<void> =
 
     try {
         await repoDeleteCategory(id);
-    } catch (error: any) {
+    } catch (error: unknown) {
         // Código 23503 en PostgreSQL: violación de llave foránea (la categoría tiene insumos asignados)
-        if (error.code === '23503') { 
+        const dbError = error as { code?: string };
+        if (dbError.code === '23503') { 
             throw new ApiError(ApiErrorCode.BAD_REQUEST, 'Cannot delete category because it has supplies assigned');
         }
         throw error;
