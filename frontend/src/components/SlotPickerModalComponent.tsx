@@ -28,7 +28,7 @@ export function SlotPickerModal({
   onConfirm
 }: SlotPickerModalProps) {
   return (
-    <Modal isOpen={isOpen} onClose={onClose}>
+    <Modal isOpen={isOpen} onClose={onClose} className='h-full'>
       <div className="relative">
         <button
           type="button"

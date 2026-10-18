@@ -1,4 +1,5 @@
-import { AlertCircle, CalendarX } from 'lucide-react';
+import { AlertCircle, CalendarX, ChevronDown } from 'lucide-react';
+import { useState } from 'react';
 import type { AvailableSlot } from '../types/availabilityType';
 import { formatSlotTime } from '../utils/availabilityUtils';
 
@@ -74,41 +75,79 @@ export function AvailableSlots({ slots, isLoading, error, selectedSlot, onSelect
   return (
     <div className="flex max-h-96 flex-col gap-4 overflow-y-auto">
       {groupSlotsByBarber(slots).map((group) => (
-        <section
+        <BarberSlotsSection
           key={group.barberId}
-          aria-label={`Horarios con ${group.barberName}`}
-          className="rounded-xl border border-white/10 bg-[#161616] p-4"
-        >
-          <h3 className="m-0 mb-3 flex items-center justify-between gap-2 font-sans text-base font-semibold text-(--text-h)">
-            <span className="truncate">{group.barberName}</span>
-            <span className="shrink-0 text-xs font-normal text-(--text)">
-              {group.slots.length} {group.slots.length === 1 ? 'horario' : 'horarios'}
-            </span>
-          </h3>
-
-          <ul className="m-0 grid list-none grid-cols-3 gap-2 p-0 sm:grid-cols-4">
-            {group.slots.map((slot) => {
-              const isSelected = isSameSlot(slot, selectedSlot);
-              return (
-                <li key={slot.startTime}>
-                  <button
-                    type="button"
-                    aria-pressed={isSelected}
-                    onClick={() => onSelectSlot(slot)}
-                    className={`h-10 w-full cursor-pointer rounded-lg border font-semibold transition-colors ${
-                      isSelected
-                        ? 'border-(--accent) bg-(--accent) text-[#141414]'
-                        : 'border-white/10 bg-[#121212] text-(--text-h) hover:border-(--accent)'
-                    }`}
-                  >
-                    {formatSlotTime(slot.startTime)}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
+          group={group}
+          selectedSlot={selectedSlot}
+          onSelectSlot={onSelectSlot}
+        />
       ))}
     </div>
+  );
+}
+
+interface BarberSlotsSectionProps {
+  group: BarberSlots;
+  selectedSlot?: AvailableSlot | null;
+  onSelectSlot: (slot: AvailableSlot) => void;
+}
+
+function BarberSlotsSection({ group, selectedSlot, onSelectSlot }: BarberSlotsSectionProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const slotsId = `barber-slots-${group.barberId}`;
+
+  return (
+    <section
+      aria-label={`Horarios con ${group.barberName}`}
+      className="rounded-xl border border-white/10 bg-[#161616] p-4"
+    >
+      <div className={`flex items-center gap-2 ${isExpanded ? 'mb-3' : ''}`}>
+        <button
+          type="button"
+          aria-controls={slotsId}
+          aria-expanded={isExpanded}
+          aria-label={`${isExpanded ? 'Ocultar' : 'Mostrar'} horarios de ${group.barberName}`}
+          onClick={() => setIsExpanded((expanded) => !expanded)}
+          className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-(--text) transition-colors hover:bg-white/10 hover:text-(--text-h)"
+        >
+          <ChevronDown
+            size={18}
+            aria-hidden="true"
+            className={`transition-transform ${isExpanded ? '' : '-rotate-90'}`}
+          />
+        </button>
+
+        <h3 className="m-0 flex min-w-0 flex-1 items-center justify-between gap-2 font-sans text-base font-semibold text-(--text-h)">
+          <span className="truncate">{group.barberName}</span>
+          <span className="shrink-0 text-xs font-normal text-(--text)">
+            {group.slots.length} {group.slots.length === 1 ? 'horario' : 'horarios'}
+          </span>
+        </h3>
+      </div>
+
+      {isExpanded && (
+        <ul id={slotsId} className="m-0 grid list-none grid-cols-3 gap-2 p-0 sm:grid-cols-4">
+          {group.slots.map((slot) => {
+            const isSelected = isSameSlot(slot, selectedSlot);
+            return (
+              <li key={slot.startTime}>
+                <button
+                  type="button"
+                  aria-pressed={isSelected}
+                  onClick={() => onSelectSlot(slot)}
+                  className={`h-10 w-full cursor-pointer rounded-lg border font-semibold transition-colors ${
+                    isSelected
+                      ? 'border-(--accent) bg-(--accent) text-[#141414]'
+                      : 'border-white/10 bg-[#121212] text-(--text-h) hover:border-(--accent)'
+                  }`}
+                >
+                  {formatSlotTime(slot.startTime)}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
   );
 }
