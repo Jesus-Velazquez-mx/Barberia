@@ -65,4 +65,25 @@ export const canManageSuppliesCategories = (performer: UserIdentity): boolean =>
  */
 export const canManageSupplies = (performer: UserIdentity): boolean => performer.role === 'manager';
 
+/**
+ * POST /appointments:
+ * - client: solo puede agendar para sí mismo (nunca para otro cliente ni para un invitado), en cualquier sucursal.
+ * - receptionist: para cualquier cliente o invitado, únicamente en la sucursal donde trabaja.
+ * - manager: para cualquier cliente o invitado, únicamente en las sucursales que administra.
+ */
+export const canCreateAppointment = (
+    performer: UserIdentity,
+    booking: { clientId: string | null; shopId: string; shopManagerId: string },
+    receptionistShopId: string | null = null
+): boolean => {
+    switch (performer.role) {
+        case 'client':
+            return booking.clientId === performer.id;
+        case 'receptionist':
+            return receptionistShopId === booking.shopId;
+        case 'manager':
+            return booking.shopManagerId === performer.id;
+    }
+};
+
 
