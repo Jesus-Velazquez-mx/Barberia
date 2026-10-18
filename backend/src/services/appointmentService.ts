@@ -68,7 +68,7 @@ export const registerAppointment = async (
         throw new ApiError(ApiErrorCode.NOT_FOUND, 'Barber not found or is not accepting bookings at this shop');
     }
     if (!barberSlots.startTimes.includes(startIso)) {
-        throw new ApiError(ApiErrorCode.USER_ALREADY_EXISTS, 'Selected time slot is not available');
+        throw new ApiError(ApiErrorCode.CONFLICT, 'Selected time slot is not available');
     }
 
     // getAvailableSlots ya confirmó que existe y está activo.
