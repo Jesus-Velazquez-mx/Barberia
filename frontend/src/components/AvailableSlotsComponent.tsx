@@ -13,6 +13,28 @@ interface AvailableSlotsProps {
 const isSameSlot = (a: AvailableSlot, b?: AvailableSlot | null) =>
   !!b && a.barberId === b.barberId && a.startTime === b.startTime;
 
+interface BarberSlots {
+  barberId: string;
+  barberName: string;
+  slots: AvailableSlot[];
+}
+
+/* Agrupa los horarios por barbero (en el orden en que aparece cada uno) y ordena cada grupo por hora. */
+function groupSlotsByBarber(slots: AvailableSlot[]): BarberSlots[] {
+  const groups = new Map<string, BarberSlots>();
+
+  for (const slot of slots) {
+    const group = groups.get(slot.barberId);
+    if (group) group.slots.push(slot);
+    else groups.set(slot.barberId, { barberId: slot.barberId, barberName: slot.barberName, slots: [slot] });
+  }
+
+  return [...groups.values()].map((group) => ({
+    ...group,
+    slots: [...group.slots].sort((a, b) => a.startTime.localeCompare(b.startTime))
+  }));
+}
+
 export function AvailableSlots({ slots, isLoading, error, selectedSlot, onSelectSlot }: AvailableSlotsProps) {
   if (isLoading) {
     return (
@@ -50,29 +72,43 @@ export function AvailableSlots({ slots, isLoading, error, selectedSlot, onSelect
   }
 
   return (
-    <ul className="m-0 grid max-h-72 list-none grid-cols-3 gap-3 overflow-y-auto p-0">
-      {slots.map((slot) => {
-        const isSelected = isSameSlot(slot, selectedSlot);
-        return (
-          <li key={`${slot.barberId}-${slot.startTime}`}>
-            <button
-              type="button"
-              aria-pressed={isSelected}
-              onClick={() => onSelectSlot(slot)}
-              className={`flex h-14 w-full cursor-pointer flex-col items-center justify-center rounded-lg border px-1 transition-colors ${
-                isSelected
-                  ? 'border-(--accent) bg-(--accent) text-[#141414]'
-                  : 'border-white/10 bg-[#121212] text-(--text-h) hover:border-(--accent)'
-              }`}
-            >
-              <span className="font-semibold">{formatSlotTime(slot.startTime)}</span>
-              <span className={`w-full truncate text-xs ${isSelected ? 'text-[#141414]' : 'text-(--text)'}`}>
-                {slot.barberName}
-              </span>
-            </button>
-          </li>
-        );
-      })}
-    </ul>
+    <div className="flex max-h-96 flex-col gap-4 overflow-y-auto">
+      {groupSlotsByBarber(slots).map((group) => (
+        <section
+          key={group.barberId}
+          aria-label={`Horarios con ${group.barberName}`}
+          className="rounded-xl border border-white/10 bg-[#161616] p-4"
+        >
+          <h3 className="m-0 mb-3 flex items-center justify-between gap-2 font-sans text-base font-semibold text-(--text-h)">
+            <span className="truncate">{group.barberName}</span>
+            <span className="shrink-0 text-xs font-normal text-(--text)">
+              {group.slots.length} {group.slots.length === 1 ? 'horario' : 'horarios'}
+            </span>
+          </h3>
+
+          <ul className="m-0 grid list-none grid-cols-3 gap-2 p-0 sm:grid-cols-4">
+            {group.slots.map((slot) => {
+              const isSelected = isSameSlot(slot, selectedSlot);
+              return (
+                <li key={slot.startTime}>
+                  <button
+                    type="button"
+                    aria-pressed={isSelected}
+                    onClick={() => onSelectSlot(slot)}
+                    className={`h-10 w-full cursor-pointer rounded-lg border font-semibold transition-colors ${
+                      isSelected
+                        ? 'border-(--accent) bg-(--accent) text-[#141414]'
+                        : 'border-white/10 bg-[#121212] text-(--text-h) hover:border-(--accent)'
+                    }`}
+                  >
+                    {formatSlotTime(slot.startTime)}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ))}
+    </div>
   );
 }

@@ -31,6 +31,11 @@ const router = createBrowserRouter([
             element: <BookAppointmentPage />
           },
           {
+            // Temporal: se reemplaza por la vista real de citas agendadas
+            path: '/client/appointments',
+            element: <ManagerSectionPlaceholderPage title="Mis citas" subtitle="Citas agendadas" />
+          },
+          {
             path: '/client/recommend-haircut',
             element: <RecommendationPage />
           },
