@@ -16,7 +16,7 @@ from app.llm.llm_exception import (
 )
 from app.schemas.custom_model import CustomModel
 
-PROMPT = "summarize this job description"
+PROMPT = "summarize this text"
 TIMEOUT = 0.05
 MAX_ATTEMPTS = 3
 MAX_BACKOFF_SECONDS = 30

@@ -7,7 +7,7 @@ internos y se protege mediante la cabecera (HTTP header) `X-Internal-Api-Key`, e
 
 ## Estado actual
 
-Contiene el endpoint `/jd/analyze` como referencia (será eliminado posteriormente) y `/face/detect-structure`, que clasifica la estructura facial de una foto con un modelo local de PyTorch. La foto se identifica con su key en el bucket privado de S3 (`photoKey`): el cliente web la sube con la URL prefirmada que genera el backend, el backend envía la key a este servicio y el servicio la descarga con sus propias credenciales de AWS (solo lectura). La key debe estar dentro de `AWS_BUCKET_KEY_PREFIX`. El modelo se descarga y verifica (SHA256) al iniciar el servicio.
+Contiene el endpoint `/haircut/recommend` y `/face/detect-structure`, que clasifica la estructura facial de una foto con un modelo local de PyTorch. La foto se identifica con su key en el bucket privado de S3 (`photoKey`): el cliente web la sube con la URL prefirmada que genera el backend, el backend envía la key a este servicio y el servicio la descarga con sus propias credenciales de AWS (solo lectura). La key debe estar dentro de `AWS_BUCKET_KEY_PREFIX`. El modelo se descarga y verifica (SHA256) al iniciar el servicio.
 
 ## Arquitectura
 
@@ -22,14 +22,14 @@ FastAPI /internal/v1
 			|
 			+-- health ----------------------> respuesta {"status": "ok"}
 			|
-			+-- jd/analyze
+			+-- haircut/recommend
+					|
+					+-- validacion de solicitud
+					+-- servicio de recomendacion
+					+-- LLM client factory
 							|
-							+-- validacion de solicitud
-							+-- servicio de analisis
-							+-- LLM client factory
-											|
-											+-- ClaudeClient -> Anthropic API
-											+-- OllamaClient -> Ollama (modelo local)
+							+-- ClaudeClient -> Anthropic API
+							+-- OllamaClient -> Ollama (modelo local)
 ```
 
 Estructura principal:
@@ -171,52 +171,6 @@ Respuesta esperada:
 {"status":"ok"}
 ```
 
-### Analizar una descripción de puesto (solo de prueba, será eliminado después)
-
-El endpoint requiere el HTTP header `X-Internal-Api-Key` y el proveedor `anthropic`:
-
-**Powershell**
-```powershell
-$headers = @{ "X-Internal-Api-Key" = "clave-interna-local" }
-$body = @{
-	provider = "anthropic"
-	data = @{
-		jobTitle = "Senior Backend Engineer"
-		jobDescriptionRaw = "Descripción del puesto con al menos 50 caracteres..."
-		companyName = "Barberia"
-		location = "Remote"
-		workArrangement = "remote"
-	}
-} | ConvertTo-Json
-
-Invoke-RestMethod `
-	-Method Post `
-	-Uri http://localhost:8000/internal/v1/jd/analyze `
-	-Headers $headers `
-	-ContentType "application/json" `
-	-Body $body
-```
-
-**Thunder Client / Postman**
-| Parámetro | Valor |
-|---|---|
-| Method | `GET` |
-| URL | `http://localhost:8000/internal/v1/jd/analyze` |
-| Headers | `X-Internal-Api-Key = [Valor de la API KEY definida en .env]`
-
-Body:
-```json
-{
-	"provider": "anthropic",
-	"data": {
-		"jobTitle": "Senior Backend Engineer",
-		"jobDescriptionRaw": "Descripción del puesto con al menos 50 caracteres..."
-	}
-}
-```
-
-`jobTitle` debe tener al menos 5 caracteres y `jobDescriptionRaw` al menos 50. Los campos opcionales enviados por el usuario (`companyName`, `location` y `workArrangement`) prevalecen sobre los valores inferidos por el modelo.
-
 ## Pruebas
 
 Ejecuta la suite desde `ai_service`:
@@ -239,11 +193,11 @@ El endpoint protegido no recibió `X-Internal-Api-Key` o su valor no coincide co
 
 ### Respuesta `400 Request validation failed`
 
-Revisa la forma del JSON. Debe incluir `provider` y `data`; dentro de `data` son obligatorios `jobTitle` y `jobDescriptionRaw`. Recuerda que la API usa campos JSON en `camelCase`.
+Revisa la forma del JSON. Debe incluir `provider` y `data`; dentro de `data` son obligatorios los campos del endpoint invocado. Recuerda que la API usa campos JSON en `camelCase`.
 
 ### Respuesta `422`
 
-La solicitud tiene una estructura válida, pero el contenido no es suficiente para analizar el puesto. Revisa `errors` para identificar los campos que no pudieron extraerse o las restricciones de longitud.
+La solicitud tiene una estructura válida, pero el contenido no pudo procesarse (por ejemplo, datos insuficientes). Revisa `errors` para identificar los campos afectados.
 
 ### Errores de Anthropic, timeout o rate limit
 

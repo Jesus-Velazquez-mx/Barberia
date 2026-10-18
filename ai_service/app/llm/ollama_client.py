@@ -293,7 +293,7 @@ class OllamaClient:
     def _candidate_payloads(data: Any, model_cls: type[CustomModel]):
         """
         Genera las formas posibles del payload: primero tal cual y, si el
-        modelo lo anidó bajo una única clave (ej. {"JdAnalysisResult": {...}}),
+        modelo lo anidó bajo una única clave (ej. {"HaircutRecommendationResponse": {...}}),
         también el contenido desenvuelto.
         """
         yield data
@@ -318,7 +318,7 @@ class OllamaClient:
         Pydantic para su manipulación de manera programática.
 
         Tolera que el modelo envuelva el objeto en una clave contenedora
-        (ej. {"JdAnalysisResult": {...}}), algo común en modelos locales.
+        (ej. {"HaircutRecommendationResponse": {...}}), algo común en modelos locales.
         """
         try:
             data = json.loads(payload)
