@@ -151,15 +151,8 @@ export const insertService = async (options?: {
     price?: number;
     isActive?: boolean;
 }): Promise<string> => {
-    let categoryId = options?.categoryId;
-    if (!categoryId) {
-        const catRes = await getPool().query(`SELECT id FROM services_categories LIMIT 1`);
-        if (catRes.rows.length > 0) {
-            categoryId = catRes.rows[0].id;
-        } else {
-            categoryId = await insertServiceCategory();
-        }
-    }
+    // Categoría propia: reutilizar una existente choca con otros archivos de test que corren en paralelo
+    const categoryId = options?.categoryId ?? (await insertServiceCategory());
 
     const name = options?.name ?? generateUniqueFixtureName('Service');
     const durationMinutes = options?.durationMinutes ?? 30;
