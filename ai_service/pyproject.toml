@@ -1,7 +1,7 @@
 [project]
 name = "ai-service"
 version = "0.1.0"
-description = "AI microservice for job position analysis, resume tailoring and profile scoring"
+description = "AI microservice for haircut recommendation and facial structure detection"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
