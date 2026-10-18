@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useState } from 'react';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { DashboardSidebar } from '../components/DashboardSidebarComponent';
 import { LogoutConfirmModal } from '../components/LogoutConfirmModalComponent';
+import { Toast } from '../components/ToastComponent';
 import { useAuth } from '../context/AuthContext';
 import type { UserRole } from '../types/auth';
 import { Users, UserRound, Package, Settings, CalendarPlus, Calendar, Sparkles } from 'lucide-react';
@@ -15,6 +16,7 @@ const NAV_ITEMS = {
   ],
   client: [
     { to: '/client/booking', label: 'Agendar Cita', icon: <CalendarPlus size={20} aria-hidden="true" /> },
+    { to: '/client/appointments', label: 'Mis Citas', icon: <Calendar size={20} aria-hidden="true" /> },
     { to: '/client/recommend-haircut', label: 'Recomendación de corte', icon: <Sparkles aria-hidden="true"/> },
     { to: '/client/profile', label: 'Mi Perfil', icon: <UserRound size={20} aria-hidden="true" /> }
   ],
@@ -34,7 +36,21 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ role }: DashboardLayoutProps) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const dismissToast = useCallback(() => setToastMessage(null), []);
+
+  /* Una página puede pedir un aviso al navegar: navigate(ruta, { state: { toast: 'mensaje' } }).
+     Se muestra aquí porque el layout sigue montado al cambiar de sección; luego se limpia el state
+     para que no reaparezca al recargar. */
+  useEffect(() => {
+    const message = (location.state as { toast?: string } | null)?.toast;
+    if (!message) return;
+
+    setToastMessage(message);
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location, navigate]);
 
   if (!user) return null;
 
@@ -60,6 +76,8 @@ export default function DashboardLayout({ role }: DashboardLayoutProps) {
         onClose={() => setIsLogoutModalOpen(false)}
         onConfirm={handleConfirmLogout}
       />
+
+      <Toast message={toastMessage} type="success" onDismiss={dismissToast} />
     </div>
   );
 }

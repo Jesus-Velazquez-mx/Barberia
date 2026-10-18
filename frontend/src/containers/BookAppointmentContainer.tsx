@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { Plus, X } from 'lucide-react';
+import { Button } from '../components/ButtonComponent';
 import { SelectField } from '../components/SelectFieldComponent';
 import { AvailabilityCalendar } from '../components/AvailabilityCalendarComponent';
 import { SlotPickerModal } from '../components/SlotPickerModalComponent';
 import { getShops, getActiveBarbersByShop, getOfferedServices } from '../services/shopService';
 import { getShopAvailability } from '../services/availabilityService';
+import { useAuth } from '../context/AuthContext';
 import { ApiError } from '../types/api';
 import type { AvailableSlot, DayAvailability } from '../types/availabilityType';
 import type { Barber } from '../types/barber';
@@ -49,7 +52,17 @@ const formatApiError = (error: unknown, fallbackMessage: string): string => {
 // Ventana de reserva: desde hoy hasta 30 días después
 const BOOKING_WINDOW_DAYS = 30;
 
+/* Página (dentro del dashboard) donde cada rol ve las citas agendadas. Hoy es un placeholder. */
+const APPOINTMENTS_ROUTE_BY_ROLE: Record<string, string> = {
+  client: '/client/appointments',
+  receptionist: '/receptionist/appointments'
+};
+
+const BOOKING_SUCCESS_MESSAGE = 'Cita agendada correctamente.';
+
 export function BookAppointmentContainer() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const today = getTodayLocal();
   const [todayYear, todayMonth, todayDay] = today.split('-').map(Number);
   const currentMonthIndex = todayYear * 12 + (todayMonth - 1);
@@ -73,7 +86,7 @@ export function BookAppointmentContainer() {
   const [isFetchingSlots, setIsFetchingSlots] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-  const { register, watch, control } = useForm<BookAppointmentFormValues>({
+  const { register, watch, control, reset } = useForm<BookAppointmentFormValues>({
     defaultValues: { shopId: '', services: [{ serviceId: '' }] }
   });
   const { fields, append, remove } = useFieldArray({ control, name: 'services' });
@@ -245,6 +258,22 @@ export function BookAppointmentContainer() {
     setIsModalOpen(false);
   };
 
+  /* Cancelar: deja el formulario, el calendario y el resumen como al entrar a la página. */
+  const handleCancel = () => {
+    reset({ shopId: '', services: [{ serviceId: '' }] });
+    resetSelection();
+    setView({ year: todayYear, month: todayMonth - 1 });
+  };
+
+  /* Agendar: por ahora no se llama al backend (falta el servicio de crear cita). Muestra la confirmación
+     y manda al usuario a la página de citas agendadas; el aviso viaja en el state y lo pinta DashboardLayout. */
+  const handleBook = () => {
+    if (!canBook) return;
+    navigate(APPOINTMENTS_ROUTE_BY_ROLE[user?.role ?? 'client'] ?? '/client/appointments', {
+      state: { toast: BOOKING_SUCCESS_MESSAGE }
+    });
+  };
+
   const viewIndex = view.year * 12 + view.month;
   const handleMonthChange = (delta: number) => {
     const next = new Date(view.year, view.month + delta, 1);
@@ -262,6 +291,8 @@ export function BookAppointmentContainer() {
     setConfirmedSlot(selectedSlot);
     setIsModalOpen(false);
   };
+
+  const canBook = Boolean(shopId && selectedServiceIds.length > 0 && confirmedSlot);
 
   const shopLabel = shopOptions.find((s) => s.value === shopId)?.label;
   const serviceLabels = selectedServiceIds
@@ -332,6 +363,9 @@ export function BookAppointmentContainer() {
           </div>
           {/* Resumen de la selección */}
           <div className="rounded-xl border border-[#2c2c2c] bg-[#1a1a1a] p-6 text-sm text-(--text)">
+            <h2 className="mb-3 mt-0 font-sans text-lg font-bold tracking-normal text-(--text-h)">
+              Información de la cita
+            </h2>
             <p className="m-0">
               Sucursal: <span className="text-(--text-h)">{shopLabel ?? '—'}</span>
             </p>
@@ -348,6 +382,24 @@ export function BookAppointmentContainer() {
                 {confirmedSlot ? `${formatSlotTime(confirmedSlot.startTime)} · ${confirmedSlot.barberName}` : '—'}
               </span>
             </p>
+
+            <div className="mt-6 flex flex-wrap justify-end gap-3 border-t border-white/10 pt-5">
+              <Button
+                type="button"
+                onClick={handleCancel}
+                className="!h-12 !border !border-solid !border-(--text) !bg-transparent !px-8 !normal-case !text-(--text)"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                onClick={handleBook}
+                disabled={!canBook}
+                className="!h-12 !px-8 !normal-case disabled:!cursor-not-allowed disabled:!opacity-50"
+              >
+                Agendar Cita
+              </Button>
+            </div>
           </div>
         </div>
 
