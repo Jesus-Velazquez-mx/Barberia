@@ -1,7 +1,7 @@
 import { jest } from '@jest/globals';
 
 // ESM: los mocks deben registrarse antes de importar dinámicamente el servicio.
-const getServiceById = jest.fn<(...args: any[]) => Promise<any>>();
+const getServicesByIds = jest.fn<(...args: any[]) => Promise<any>>();
 const getShopById = jest.fn<(...args: any[]) => Promise<any>>();
 const getActiveBarbersByShop = jest.fn<(...args: any[]) => Promise<any>>();
 const getActiveSlotsByBarberIdsAndDay = jest.fn<(...args: any[]) => Promise<any>>();
@@ -12,7 +12,7 @@ const getAllShifts = jest.fn<(...args: any[]) => Promise<any>>();
 const mockConfig: { BUSINESS_TIMEZONE?: string } = {};
 
 jest.unstable_mockModule('../src/config/globalConfig.js', () => ({ default: mockConfig }));
-jest.unstable_mockModule('../src/repositories/offeredServiceRepository.js', () => ({ getServiceById }));
+jest.unstable_mockModule('../src/repositories/offeredServiceRepository.js', () => ({ getServicesByIds }));
 jest.unstable_mockModule('../src/repositories/shopRepository.js', () => ({ getShopById }));
 jest.unstable_mockModule('../src/repositories/barberRepository.js', () => ({ getActiveBarbersByShop }));
 jest.unstable_mockModule('../src/repositories/availabilitySlotRepository.js', () => ({
@@ -60,11 +60,11 @@ const appt = (start: string, end: string, barberId = BARBER) => ({
     scheduled_end: at(end),
 });
 
-const run = () => getAvailableSlots({ shopId: SHOP, date: TOMORROW, serviceId: SERVICE });
+const run = () => getAvailableSlots({ shopId: SHOP, date: TOMORROW, serviceIds: [SERVICE] });
 
 beforeEach(() => {
     jest.resetAllMocks();
-    getServiceById.mockResolvedValue({ id: SERVICE, duration_minutes: 60, is_active: true });
+    getServicesByIds.mockResolvedValue([{ id: SERVICE, duration_minutes: 60, is_active: true }]);
     getShopById.mockResolvedValue({ id: SHOP, is_active: true });
     getActiveBarbersByShop.mockResolvedValue([{ id: BARBER, shift_id: SHIFT }]);
     getAllShifts.mockResolvedValue([{ id: SHIFT, start_time: '08:00:00', end_time: '20:00:00' }]);
@@ -169,13 +169,23 @@ describe('getAvailableSlots', () => {
         ]);
     });
 
+    test('varios servicios: los inicios se calculan con la suma de sus duraciones', async () => {
+        getServicesByIds.mockResolvedValue([
+            { id: SERVICE, duration_minutes: 60, is_active: true },
+            { id: 'service-2', duration_minutes: 30, is_active: true },
+        ]);
+        const result = await getAvailableSlots({ shopId: SHOP, date: TOMORROW, serviceIds: [SERVICE, 'service-2'] });
+        // ventana 09:00-13:00 con 90 min: el último inicio es 11:30
+        expect(result).toEqual([{ barberId: BARBER, startTimes: every15('09:00', '11:30') }]);
+    });
+
     test('servicio desconocido lanza NOT_FOUND', async () => {
-        getServiceById.mockResolvedValue(null);
+        getServicesByIds.mockResolvedValue([]);
         await expect(run()).rejects.toMatchObject({ code: ApiErrorCode.NOT_FOUND });
     });
 
     test('servicio inactivo lanza NOT_FOUND', async () => {
-        getServiceById.mockResolvedValue({ id: SERVICE, duration_minutes: 60, is_active: false });
+        getServicesByIds.mockResolvedValue([{ id: SERVICE, duration_minutes: 60, is_active: false }]);
         await expect(run()).rejects.toMatchObject({ code: ApiErrorCode.NOT_FOUND });
     });
 
@@ -192,14 +202,16 @@ describe('getAvailableSlots', () => {
 
     test('rechaza fechas pasadas', async () => {
         const yesterday = addDays(getBusinessToday(), -1);
-        await expect(getAvailableSlots({ shopId: SHOP, date: yesterday, serviceId: SERVICE })).rejects.toMatchObject({
-            code: ApiErrorCode.INVALID_INPUT,
-        });
+        await expect(getAvailableSlots({ shopId: SHOP, date: yesterday, serviceIds: [SERVICE] })).rejects.toMatchObject(
+            {
+                code: ApiErrorCode.INVALID_INPUT,
+            }
+        );
     });
 
     test('rechaza fechas más allá del horizonte de reserva', async () => {
         const tooFar = addDays(getBusinessToday(), MAX_BOOKING_DAYS_AHEAD + 1);
-        await expect(getAvailableSlots({ shopId: SHOP, date: tooFar, serviceId: SERVICE })).rejects.toMatchObject({
+        await expect(getAvailableSlots({ shopId: SHOP, date: tooFar, serviceIds: [SERVICE] })).rejects.toMatchObject({
             code: ApiErrorCode.INVALID_INPUT,
         });
     });
@@ -217,7 +229,7 @@ describe('getAvailableSlots', () => {
             mockConfig.BUSINESS_TIMEZONE = 'America/Tijuana';
             freeze('2026-10-15T05:00:00Z');
             await expect(
-                getAvailableSlots({ shopId: SHOP, date: '2026-10-14', serviceId: SERVICE })
+                getAvailableSlots({ shopId: SHOP, date: '2026-10-14', serviceIds: [SERVICE] })
             ).resolves.toBeDefined();
         });
 
@@ -225,7 +237,7 @@ describe('getAvailableSlots', () => {
             mockConfig.BUSINESS_TIMEZONE = 'America/Tijuana';
             freeze('2026-10-15T05:00:00Z');
             await expect(
-                getAvailableSlots({ shopId: SHOP, date: '2026-10-13', serviceId: SERVICE })
+                getAvailableSlots({ shopId: SHOP, date: '2026-10-13', serviceIds: [SERVICE] })
             ).rejects.toMatchObject({ code: ApiErrorCode.INVALID_INPUT });
         });
 
@@ -233,10 +245,10 @@ describe('getAvailableSlots', () => {
             mockConfig.BUSINESS_TIMEZONE = 'Asia/Tokyo';
             freeze('2026-10-14T20:00:00Z'); // 05:00 del 15 en Tokio
             await expect(
-                getAvailableSlots({ shopId: SHOP, date: '2026-10-14', serviceId: SERVICE })
+                getAvailableSlots({ shopId: SHOP, date: '2026-10-14', serviceIds: [SERVICE] })
             ).rejects.toMatchObject({ code: ApiErrorCode.INVALID_INPUT });
             await expect(
-                getAvailableSlots({ shopId: SHOP, date: '2026-10-15', serviceId: SERVICE })
+                getAvailableSlots({ shopId: SHOP, date: '2026-10-15', serviceIds: [SERVICE] })
             ).resolves.toBeDefined();
         });
 
@@ -244,7 +256,7 @@ describe('getAvailableSlots', () => {
             mockConfig.BUSINESS_TIMEZONE = 'America/Tijuana';
             freeze('2026-10-14T17:00:00Z'); // 10:00 en Tijuana
             getActiveSlotsByBarberIdsAndDay.mockResolvedValue([slot('09:00', '13:00')]);
-            const result = await getAvailableSlots({ shopId: SHOP, date: '2026-10-14', serviceId: SERVICE });
+            const result = await getAvailableSlots({ shopId: SHOP, date: '2026-10-14', serviceIds: [SERVICE] });
             // Servicio de 60 min en la ventana 09:00-13:00: el último inicio es 12:00; el primero, 10:00.
             expect(result[0].startTimes[0]).toBe('2026-10-14T10:00:00.000Z');
             expect(result[0].startTimes.at(-1)).toBe('2026-10-14T12:00:00.000Z');
@@ -252,8 +264,8 @@ describe('getAvailableSlots', () => {
     });
 
     test('rechaza fechas con formato inválido', async () => {
-        await expect(getAvailableSlots({ shopId: SHOP, date: '2026-02-30', serviceId: SERVICE })).rejects.toMatchObject(
-            { code: ApiErrorCode.INVALID_INPUT }
-        );
+        await expect(
+            getAvailableSlots({ shopId: SHOP, date: '2026-02-30', serviceIds: [SERVICE] })
+        ).rejects.toMatchObject({ code: ApiErrorCode.INVALID_INPUT });
     });
 });

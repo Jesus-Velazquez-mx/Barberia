@@ -1,7 +1,7 @@
 export interface CreateAppointmentRequest {
     shopId: string;
     barberId: string;
-    serviceId: string;
+    serviceIds: string[];
     scheduledStart: string;
     clientId?: string;
     guestClientName?: string;

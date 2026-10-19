@@ -10,8 +10,8 @@ const router = Router();
  *     summary: Agenda una nueva cita
  *     tags: [Appointments]
  *     description: |
- *       Agenda una cita para un barbero, servicio y horario. `scheduledStart` debe ser uno de los `startTimes`
- *       devueltos por `GET /api/shops/{id}/availability` para ese barbero y servicio. Requiere token JWT.
+ *       Agenda una cita para un barbero, uno o más servicios y un horario. `scheduledStart` debe ser uno de los `startTimes`
+ *       devueltos por `GET /api/shops/{id}/availability` para ese barbero y esos mismos servicios. La duración de la cita es la suma de las duraciones de los servicios. Requiere token JWT.
  *       Permisos por rol:
  *       - client: solo para sí mismo (`clientId` se puede omitir); no puede agendar para invitados.
  *       - receptionist: para un cliente registrado (`clientId`) o un invitado (`guestClientName`), solo en su sucursal.
@@ -25,11 +25,15 @@ const router = Router();
  *         application/json:
  *           schema:
  *             type: object
- *             required: [shopId, barberId, serviceId, scheduledStart]
+ *             required: [shopId, barberId, serviceIds, scheduledStart]
  *             properties:
  *               shopId: { type: string, format: uuid }
  *               barberId: { type: string, format: uuid }
- *               serviceId: { type: string, format: uuid }
+ *               serviceIds:
+ *                 type: array
+ *                 minItems: 1
+ *                 items: { type: string, format: uuid }
+ *                 description: Servicios de la cita, sin repetir.
  *               scheduledStart:
  *                 type: string
  *                 format: date-time
@@ -47,9 +51,38 @@ const router = Router();
  *                 maxLength: 500
  *     responses:
  *       201:
- *         description: Cita creada. `data` contiene la cita.
+ *         description: Cita creada. `data` contiene la cita con `barberId` y la lista `services` agendados.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id: { type: string, format: uuid }
+ *                     shopId: { type: string, format: uuid }
+ *                     barberId: { type: string, format: uuid }
+ *                     clientId: { type: string, format: uuid, nullable: true }
+ *                     isRegisteredClient: { type: boolean }
+ *                     guestClientName: { type: string, nullable: true }
+ *                     status: { type: string, example: scheduled }
+ *                     scheduledStart: { type: string, format: date-time }
+ *                     scheduledEnd: { type: string, format: date-time }
+ *                     notes: { type: string, nullable: true }
+ *                     services:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           serviceId: { type: string, format: uuid }
+ *                           priceAtBooking: { type: number, example: 200 }
+ *                           durationMinutesAtBooking: { type: integer, example: 30 }
+ *                     createdAt: { type: string, format: date-time }
+ *                     updatedAt: { type: string, format: date-time }
+ *                 message: { type: string, example: Appointment created successfully }
  *       400:
- *         description: Error de validación en los campos proporcionados.
+ *         description: Error de validación en los campos proporcionados (p. ej. serviceIds vacío o con repetidos).
  *       401:
  *         description: Token ausente o inválido.
  *       403:

@@ -10,7 +10,10 @@ const createAppointmentSchema = z
     .object({
         shopId: z.uuid('Invalid shop ID format'),
         barberId: z.uuid('Invalid barber ID format'),
-        serviceId: z.uuid('Invalid service ID format'),
+        serviceIds: z
+            .array(z.uuid('Invalid service ID format'))
+            .min(1, 'At least one service is required')
+            .refine((ids) => new Set(ids).size === ids.length, { message: 'Duplicate service IDs' }),
         scheduledStart: z.iso.datetime({ message: 'Invalid scheduledStart, expected ISO 8601 date-time' }),
         clientId: z.uuid('Invalid client ID format').optional(),
         guestClientName: z
