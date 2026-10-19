@@ -85,5 +85,12 @@ export const canCreateAppointment = (
             return booking.shopManagerId === performer.id;
     }
 };
+/**
+ * /servicesCategories: Solo los usuarios con rol 'manager' pueden crear, editar o eliminar categorías de servicios.
+ */
+export const canManageServiceCategories = (performer: UserIdentity): boolean => performer.role === 'manager';
 
-
+/**
+ * /services: Solo los usuarios con rol 'manager' pueden registrar, editar o eliminar servicios del catálogo.
+ */
+export const canManageServices = (performer: UserIdentity): boolean => performer.role === 'manager';

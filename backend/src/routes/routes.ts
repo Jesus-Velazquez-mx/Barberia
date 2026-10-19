@@ -11,6 +11,8 @@ import offeredServicesRoutes from './offeredServiceRoutes.js'
 import suppliesCategoryRoutes from './suppliesCategoryRoutes.js';
 import suppliesRoutes from './supplyRoutes.js';
 import appointmentRoutes from './appointmentRoutes.js';
+import serviceCategoryRoutes from './serviceCategoryRoutes.js';
+import serviceRoutes from './serviceRoutes.js';
 
 const router = Router();
 
@@ -21,10 +23,12 @@ router.use(managerRoutes);
 router.use(barberRoutes);
 router.use(recommendationRoutes);
 router.use(shopRoutes);
-router.use(offeredServicesRoutes)
+router.use(offeredServicesRoutes);
 router.use(suppliesCategoryRoutes);
 router.use(suppliesRoutes);
 router.use(appointmentRoutes);
+router.use(serviceCategoryRoutes);
+router.use(serviceRoutes);
 
 router.get('/health', health);
 
