@@ -18,7 +18,7 @@ export interface AvailableSlotsByBarber {
 export interface GetAvailabilityParams {
     shopId: string;
     date: string;      // YYYY-MM-DD
-    serviceId: string; // UUID
+    serviceIds: string[]; // UUIDs, la duración es la suma de los servicios
 }
 
 /* Estado de un día en el calendario:
