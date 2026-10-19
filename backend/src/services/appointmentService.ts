@@ -1,10 +1,9 @@
 import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
-import { createAppointmentWithService } from '../repositories/appointmentRepository.js';
+import { createAppointmentWithServices } from '../repositories/appointmentRepository.js';
 import { getShopById } from '../repositories/shopRepository.js';
 import { getClientByUserId } from '../repositories/clientRepository.js';
 import { getReceptionistByUserId } from '../repositories/receptionistRepository.js';
-import { getServiceById } from '../repositories/offeredServiceRepository.js';
-import { getAvailableSlots } from './availabilityService.js';
+import { getAvailableSlots, getBookableServices } from './availabilityService.js';
 import { canCreateAppointment } from './userPermissions.js';
 import { isUserSessionValid } from '../utils/userSession.js';
 import { toAppointmentResponse } from '../utils/appointmentMapper.js';
@@ -16,7 +15,7 @@ const MS_PER_MINUTE = 60_000;
 /**
  * Agenda una nueva cita para un cliente registrado o un invitado.
  * Discrimina por rol con canCreateAppointment y solo acepta un horario que
- * GET /shops/:id/availability ofrecería para ese barbero y servicio.
+ * GET /shops/:id/availability ofrecería para ese barbero y esos servicios.
  */
 export const registerAppointment = async (
     data: CreateAppointmentRequest,
@@ -55,13 +54,13 @@ export const registerAppointment = async (
     }
 
     // Reutiliza el cálculo de disponibilidad: valida fecha (no pasada, máx. días de anticipación),
-    // servicio, barbero elegible, turno, plantilla semanal y citas existentes.
+    // servicios, barbero elegible, turno, plantilla semanal y citas existentes.
     const scheduledStart = new Date(data.scheduledStart);
     const startIso = scheduledStart.toISOString();
     const availability = await getAvailableSlots({
         shopId: shop.id,
         date: startIso.slice(0, 10),
-        serviceId: data.serviceId,
+        serviceIds: data.serviceIds,
     });
     const barberSlots = availability.find((b) => b.barberId === data.barberId);
     if (!barberSlots) {
@@ -71,21 +70,24 @@ export const registerAppointment = async (
         throw new ApiError(ApiErrorCode.CONFLICT, 'Selected time slot is not available');
     }
 
-    // getAvailableSlots ya confirmó que existe y está activo.
-    const service = (await getServiceById(data.serviceId))!;
+    // getAvailableSlots ya confirmó que existen y están activos.
+    const services = await getBookableServices(data.serviceIds);
+    const durationMinutes = services.reduce((sum, s) => sum + s.duration_minutes, 0);
 
-    const appointment = await createAppointmentWithService({
+    const { appointment, services: bookedServices } = await createAppointmentWithServices({
         shopId: shop.id,
         barberId: data.barberId,
         clientId,
         guestClientName: data.guestClientName ?? null,
         scheduledStart,
-        scheduledEnd: new Date(scheduledStart.getTime() + service.duration_minutes * MS_PER_MINUTE),
+        scheduledEnd: new Date(scheduledStart.getTime() + durationMinutes * MS_PER_MINUTE),
         notes: data.notes ?? null,
-        serviceId: service.id,
-        priceAtBooking: service.price,
-        durationMinutesAtBooking: service.duration_minutes,
+        services: services.map((s) => ({
+            serviceId: s.id,
+            priceAtBooking: s.price,
+            durationMinutesAtBooking: s.duration_minutes,
+        })),
     });
 
-    return toAppointmentResponse(appointment);
+    return toAppointmentResponse(appointment, bookedServices);
 };

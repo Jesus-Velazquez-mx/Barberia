@@ -276,9 +276,9 @@ router.get('/shops/:id/barbers', listByShop);
  * @swagger
  * /api/shops/{id}/availability:
  *   get:
- *     summary: Consulta los horarios disponibles por barbero para una sucursal, fecha y servicio
+ *     summary: Consulta los horarios disponibles por barbero para una sucursal, fecha y servicios
  *     tags: [Shops, Availability]
- *     description: Calcula los horarios de inicio agendables por cada barbero elegible de la sucursal para un servicio específico en una fecha determinada. Endpoint público.
+ *     description: Calcula los horarios de inicio agendables por cada barbero elegible de la sucursal para uno o más servicios en una fecha determinada; la duración considerada es la suma de las duraciones de los servicios. Endpoint público.
  *     parameters:
  *       - in: path
  *         name: id
@@ -296,12 +296,16 @@ router.get('/shops/:id/barbers', listByShop);
  *           example: "2026-10-15"
  *         description: Fecha a consultar en formato YYYY-MM-DD (no puede ser anterior a hoy).
  *       - in: query
- *         name: serviceId
+ *         name: serviceIds
  *         required: true
+ *         style: form
+ *         explode: true
  *         schema:
- *           type: string
- *           format: uuid
- *         description: ID único del servicio que se desea agendar.
+ *           type: array
+ *           items:
+ *             type: string
+ *             format: uuid
+ *         description: IDs de los servicios que se desean agendar, sin repetir. Se repite el parámetro (?serviceIds=a&serviceIds=b) o se separan por comas (?serviceIds=a,b).
  *     responses:
  *       200:
  *         description: Éxito. Retorna los slots de inicio disponibles agrupados por barbero.
@@ -330,9 +334,9 @@ router.get('/shops/:id/barbers', listByShop);
  *                   nullable: true
  *                   example: null
  *       400:
- *         description: Error de validación (fecha inválida o pasada, serviceId faltante o inválido, id de sucursal inválido).
+ *         description: Error de validación (fecha inválida o pasada, serviceIds faltante, inválido o con repetidos, id de sucursal inválido).
  *       404:
- *         description: Sucursal no encontrada/inactiva o servicio no encontrado/inactivo.
+ *         description: Sucursal no encontrada/inactiva o algún servicio no encontrado/inactivo.
  *       500:
  *         description: Error interno del servidor.
  */

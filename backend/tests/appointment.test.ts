@@ -55,6 +55,7 @@ describe('POST /api/appointments', () => {
     let shopId: string;
     let barberId: string;
     let serviceId: string;
+    let shortServiceId: string;
     let dateStr: string;
     let managerToken: string;
     let foreignReceptionistToken: string;
@@ -66,7 +67,7 @@ describe('POST /api/appointments', () => {
         request(app)
             .post('/api/appointments')
             .set('Authorization', `Bearer ${token}`)
-            .send({ shopId, barberId, serviceId, ...body });
+            .send({ shopId, barberId, serviceIds: [serviceId], ...body });
 
     beforeAll(async () => {
         await connectDB();
@@ -95,12 +96,13 @@ describe('POST /api/appointments', () => {
 
         barberId = (await insertBarber(shopId)).id;
         serviceId = await insertService({ durationMinutes: 30 });
+        shortServiceId = await insertService({ durationMinutes: 15 });
 
         const date = new Date(`${getBusinessToday()}T00:00:00Z`);
         date.setUTCDate(date.getUTCDate() + 2);
         dateStr = date.toISOString().slice(0, 10);
-        // 12:00 - 14:00 cae dentro de ambos turnos (mañana 8-16, tarde 12-20)
-        await insertAvailabilitySlot(barberId, shopId, date.getUTCDay(), '12:00', '14:00');
+        // 12:00 - 15:00 cae dentro de ambos turnos (mañana 8-16, tarde 12-20)
+        await insertAvailabilitySlot(barberId, shopId, date.getUTCDay(), '12:00', '15:00');
     });
 
     afterEach(async () => {
@@ -166,5 +168,48 @@ describe('POST /api/appointments', () => {
         expect(res.status).toBe(201);
         expect(res.body.data.isRegisteredClient).toBe(false);
         expect(res.body.data.guestClientName).toBe('Invitado');
+    });
+
+    test('una cita con varios servicios suma sus duraciones y guarda cada servicio', async () => {
+        const res = await book(clientTokens[0], {
+            scheduledStart: at('14:00'),
+            serviceIds: [serviceId, shortServiceId],
+        });
+
+        expect(res.status).toBe(201);
+        expect(res.body.data.barberId).toBe(barberId);
+        expect(new Date(res.body.data.scheduledEnd).toISOString()).toBe(at('14:45'));
+        expect(res.body.data.services).toEqual(
+            expect.arrayContaining([
+                { serviceId, priceAtBooking: 200, durationMinutesAtBooking: 30 },
+                { serviceId: shortServiceId, priceAtBooking: 200, durationMinutesAtBooking: 15 },
+            ])
+        );
+        expect(res.body.data.services).toHaveLength(2);
+
+        const services = await getPool().query(
+            `SELECT service_id, duration_minutes_at_booking FROM appointment_services WHERE appointment_id = $1
+             ORDER BY duration_minutes_at_booking DESC`,
+            [res.body.data.id]
+        );
+        expect(services.rows).toEqual([
+            { service_id: serviceId, duration_minutes_at_booking: 30 },
+            { service_id: shortServiceId, duration_minutes_at_booking: 15 },
+        ]);
+    });
+
+    test('409 si la suma de duraciones no cabe en el hueco', async () => {
+        // 12:30 - 13:00 está libre, pero 45 min chocan con la cita de las 13:00
+        const res = await book(clientTokens[0], {
+            scheduledStart: at('12:30'),
+            serviceIds: [serviceId, shortServiceId],
+        });
+        expect(res.status).toBe(409);
+    });
+
+    test('400 con serviceIds vacío o repetido', async () => {
+        expect((await book(clientTokens[0], { scheduledStart: at('12:30'), serviceIds: [] })).status).toBe(400);
+        const dup = await book(clientTokens[0], { scheduledStart: at('12:30'), serviceIds: [serviceId, serviceId] });
+        expect(dup.status).toBe(400);
     });
 });

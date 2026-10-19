@@ -14,6 +14,18 @@ export const getServiceById = async (id: string): Promise<OfferedService | null>
 };
 
 /**
+ * Busca varios servicios por sus IDs. No filtra por is_active; los IDs inexistentes se omiten.
+ */
+export const getServicesByIds = async (ids: string[]): Promise<OfferedService[]> => {
+    const result = await db.getPool().query(
+        `SELECT id, category_id, name, description, duration_minutes, price, is_active, created_at, updated_at
+         FROM services WHERE id = ANY($1::uuid[])`,
+        [ids]
+    );
+    return result.rows;
+};
+
+/**
  * Obtiene todos los servicios activos del catálogo ordenados por nombre.
  */
 export const getActiveServices = async (): Promise<OfferedService[]> => {
