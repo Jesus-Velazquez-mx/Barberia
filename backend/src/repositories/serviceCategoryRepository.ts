@@ -69,7 +69,8 @@ export const createCategory = async (data: CreateServiceCategoryInput): Promise<
 };
 
 /**
- * Actualiza los campos especificados de una categoría.
+ * Actualiza los campos especificados de una categoría. Si la categoría se inactiva
+ * (isActive = false), desactiva también sus servicios en la misma transacción.
  */
 export const updateCategory = async (id: string, fields: UpdateServiceCategoryInput): Promise<ServiceCategory> => {
     const pool = db.getPool();
@@ -103,11 +104,31 @@ export const updateCategory = async (id: string, fields: UpdateServiceCategoryIn
         WHERE id = $${values.length}
         RETURNING ${COLUMNS}
     `;
-    const result = await pool.query(query, values);
-    if (result.rows.length === 0) {
-        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Category not found');
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        const result = await client.query(query, values);
+        if (result.rows.length === 0) {
+            throw new ApiError(ApiErrorCode.NOT_FOUND, 'Category not found');
+        }
+
+        if (fields.isActive === false) {
+            await client.query(
+                `UPDATE services SET is_active = false WHERE category_id = $1 AND is_active = true`,
+                [id]
+            );
+        }
+
+        await client.query('COMMIT');
+        return result.rows[0];
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
     }
-    return result.rows[0];
 };
 
 /**

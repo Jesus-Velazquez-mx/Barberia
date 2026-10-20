@@ -10,7 +10,6 @@ import {
 import { isUserActive } from '../repositories/userRepository.js';
 import { decodeToken } from './jwtTokenService.js';
 import { canManageServiceCategories } from './userPermissions.js';
-import { deactivateServicesByCategoryId } from '../repositories/offeredServiceRepository.js';
 
 /**
  * Recupera el listado completo de categorías de servicios.
@@ -115,15 +114,8 @@ export const editCategory = async (
         }
     }
 
-    // Actualiza los datos de la categoría en la base de datos
-    const updatedCategory = await repoUpdateCategory(id, data);
-
-    // Si el manager apaga la categoría, inactiva todos sus servicios hijos
-    if (data.isActive === false) {
-        await deactivateServicesByCategoryId(id);
-    }
-
-    return updatedCategory;
+    // Actualiza la categoría; si se inactiva, el repositorio desactiva sus servicios en la misma transacción
+    return await repoUpdateCategory(id, data);
 };
 
 /**

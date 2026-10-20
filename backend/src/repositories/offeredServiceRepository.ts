@@ -174,13 +174,3 @@ export const softDeleteService = async (id: string): Promise<Service> => {
     if (result.rows.length === 0) throw new ApiError(ApiErrorCode.NOT_FOUND, 'Service not found');
     return result.rows[0];
 };
-
-/**
- * Apaga en cascada todos los servicios vinculados a una categoría inhabilitada.
- */
-export const deactivateServicesByCategoryId = async (categoryId: string): Promise<void> => {
-    await db.getPool().query(
-        `UPDATE services SET is_active = false WHERE category_id = $1`,
-        [categoryId]
-    );
-};
