@@ -2,16 +2,18 @@ import db from '../connection/connection.js';
 import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 import type { ServiceCategory } from '../types/entities/serviceCategory.interface.js';
 
-export type CreateServiceCategoryInput = { name: string; description?: string | null };
+export type CreateServiceCategoryInput = { name: string; description?: string | null; isActive?: boolean };
 export type UpdateServiceCategoryInput = Partial<CreateServiceCategoryInput>;
 
+const COLUMNS = 'id, name, description, is_active, created_at, updated_at';
+
 /**
- * Recupera todas las categorías de servicios ordenadas alfabéticamente por nombre.
+ * Recupera todas las categorías de servicios.
  */
 export const getAllCategories = async (): Promise<ServiceCategory[]> => {
     const pool = db.getPool();
     const query = `
-        SELECT id, name, description, created_at, updated_at
+        SELECT ${COLUMNS}
         FROM services_categories 
         ORDER BY name ASC
     `;
@@ -20,12 +22,12 @@ export const getAllCategories = async (): Promise<ServiceCategory[]> => {
 };
 
 /**
- * Busca una categoría de servicios por su identificador único (UUID).
+ * Busca una categoría por ID.
  */
 export const getCategoryById = async (id: string): Promise<ServiceCategory | null> => {
     const pool = db.getPool();
     const query = `
-        SELECT id, name, description, created_at, updated_at
+        SELECT ${COLUMNS}
         FROM services_categories 
         WHERE id = $1
     `;
@@ -34,12 +36,12 @@ export const getCategoryById = async (id: string): Promise<ServiceCategory | nul
 };
 
 /**
- * Busca una categoría de servicios por su nombre exacto (insensible a mayúsculas y minúsculas).
+ * Busca una categoría por nombre.
  */
 export const getCategoryByName = async (name: string): Promise<ServiceCategory | null> => {
     const pool = db.getPool();
     const query = `
-        SELECT id, name, description, created_at, updated_at
+        SELECT ${COLUMNS}
         FROM services_categories 
         WHERE LOWER(name) = LOWER($1)
     `;
@@ -48,27 +50,33 @@ export const getCategoryByName = async (name: string): Promise<ServiceCategory |
 };
 
 /**
- * Inserta una nueva categoría de servicios.
+ * Inserta una nueva categoría.
  */
 export const createCategory = async (data: CreateServiceCategoryInput): Promise<ServiceCategory> => {
     const pool = db.getPool();
     const query = `
-        INSERT INTO services_categories (name, description)
-        VALUES ($1, $2)
-        RETURNING id, name, description, created_at, updated_at
+        INSERT INTO services_categories (name, description, is_active)
+        VALUES ($1, $2, $3)
+        RETURNING ${COLUMNS}
     `;
-    const result = await pool.query(query, [data.name, data.description ?? null]);
+    const values = [
+        data.name, 
+        data.description ?? null, 
+        data.isActive !== undefined ? data.isActive : true
+    ];
+    const result = await pool.query(query, values);
     return result.rows[0];
 };
 
 /**
- * Actualiza los campos especificados de una categoría de servicios existente.
+ * Actualiza los campos especificados de una categoría.
  */
 export const updateCategory = async (id: string, fields: UpdateServiceCategoryInput): Promise<ServiceCategory> => {
     const pool = db.getPool();
     const columnByField: [keyof UpdateServiceCategoryInput, string][] = [
         ['name', 'name'],
         ['description', 'description'],
+        ['isActive', 'is_active'],
     ];
 
     const setClauses: string[] = [];
@@ -93,7 +101,7 @@ export const updateCategory = async (id: string, fields: UpdateServiceCategoryIn
         UPDATE services_categories
         SET ${setClauses.join(', ')}
         WHERE id = $${values.length}
-        RETURNING id, name, description, created_at, updated_at
+        RETURNING ${COLUMNS}
     `;
     const result = await pool.query(query, values);
     if (result.rows.length === 0) {
@@ -103,7 +111,7 @@ export const updateCategory = async (id: string, fields: UpdateServiceCategoryIn
 };
 
 /**
- * Elimina físicamente una categoría de servicios.
+ * Elimina físicamente una categoría.
  */
 export const deleteCategory = async (id: string): Promise<void> => {
     const pool = db.getPool();

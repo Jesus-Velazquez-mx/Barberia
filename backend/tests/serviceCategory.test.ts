@@ -30,6 +30,7 @@ describe('Pruebas de endpoints de Categorías de Servicios (Service Categories)'
 
     let categoryId1: string;
     let categoryId2: string;
+    let inactiveCategoryId: string;
 
     const createdCategoryIds: string[] = [];
     const createdServiceIds: string[] = [];
@@ -47,7 +48,13 @@ describe('Pruebas de endpoints de Categorías de Servicios (Service Categories)'
         // 2. Insertar categorías base para probar consultas
         categoryId1 = await insertServiceCategory(generateUniqueFixtureName('CatA'));
         categoryId2 = await insertServiceCategory(generateUniqueFixtureName('CatZ'));
-        createdCategoryIds.push(categoryId1, categoryId2);
+        
+        // Categoría inactiva para probar el filtrado en GET
+        const pool = getPool();
+        inactiveCategoryId = await insertServiceCategory(generateUniqueFixtureName('CatInactiva'));
+        await pool.query('UPDATE services_categories SET is_active = false WHERE id = $1', [inactiveCategoryId]);
+
+        createdCategoryIds.push(categoryId1, categoryId2, inactiveCategoryId);
     });
 
     afterAll(async () => {
@@ -63,7 +70,7 @@ describe('Pruebas de endpoints de Categorías de Servicios (Service Categories)'
     });
 
     describe('Listar Categorías (GET /api/servicesCategories)', () => {
-        test('Debe responder 200 y listar las categorías para un usuario manager', async () => {
+        test('Debe responder 200 y listar todas las categorías (activas e inactivas) para un usuario manager', async () => {
             const res = await request(app)
                 .get('/api/servicesCategories')
                 .set('Authorization', `Bearer ${managerToken}`);
@@ -71,20 +78,24 @@ describe('Pruebas de endpoints de Categorías de Servicios (Service Categories)'
             expect(res.status).toBe(200);
             expect(Array.isArray(res.body.data)).toBe(true);
 
-            const cat1 = res.body.data.find((c: any) => c.id === categoryId1);
-            expect(cat1).toBeDefined();
-
-            const cat2 = res.body.data.find((c: any) => c.id === categoryId2);
-            expect(cat2).toBeDefined();
+            const catIds = res.body.data.map((c: any) => c.id);
+            expect(catIds).toContain(categoryId1);
+            expect(catIds).toContain(categoryId2);
+            expect(catIds).toContain(inactiveCategoryId); // Manager ve la inactiva
         });
 
-        test('Debe responder 403 si un cliente intenta listar las categorías de servicios', async () => {
+        test('Debe responder 200 y listar SOLO categorías activas para un usuario cliente', async () => {
             const res = await request(app)
                 .get('/api/servicesCategories')
                 .set('Authorization', `Bearer ${clientToken}`);
 
-            expect(res.status).toBe(403);
-            expect(res.body.message).toMatch(/Not authorized/i);
+            expect(res.status).toBe(200);
+            expect(Array.isArray(res.body.data)).toBe(true);
+
+            const catIds = res.body.data.map((c: any) => c.id);
+            expect(catIds).toContain(categoryId1);
+            expect(catIds).toContain(categoryId2);
+            expect(catIds).not.toContain(inactiveCategoryId); // Cliente NO ve la inactiva
         });
 
         test('Debe responder 401 si no se envía token de autenticación', async () => {
@@ -96,14 +107,23 @@ describe('Pruebas de endpoints de Categorías de Servicios (Service Categories)'
     });
 
     describe('Obtener Categoría por ID (GET /api/servicesCategories/:id)', () => {
-        test('Debe responder 200 y retornar la información de la categoría solicitada', async () => {
+        test('Debe responder 200 y retornar la información de la categoría activa para un cliente', async () => {
             const res = await request(app)
                 .get(`/api/servicesCategories/${categoryId1}`)
-                .set('Authorization', `Bearer ${managerToken}`);
+                .set('Authorization', `Bearer ${clientToken}`);
 
             expect(res.status).toBe(200);
             expect(res.body.data).toBeDefined();
             expect(res.body.data.id).toBe(categoryId1);
+        });
+
+        test('Debe responder 404 cuando un cliente intenta consultar una categoría inactiva', async () => {
+            const res = await request(app)
+                .get(`/api/servicesCategories/${inactiveCategoryId}`)
+                .set('Authorization', `Bearer ${clientToken}`);
+
+            expect(res.status).toBe(404);
+            expect(res.body.message).toMatch(/Category not found/i);
         });
 
         test('Debe responder 404 cuando la categoría no existe en el sistema', async () => {
@@ -123,14 +143,6 @@ describe('Pruebas de endpoints de Categorías de Servicios (Service Categories)'
 
             expect(res.status).toBe(400);
             expect(res.body.error).toBeDefined();
-        });
-
-        test('Debe responder 403 cuando un cliente intenta consultar la categoría', async () => {
-            const res = await request(app)
-                .get(`/api/servicesCategories/${categoryId1}`)
-                .set('Authorization', `Bearer ${clientToken}`);
-
-            expect(res.status).toBe(403);
         });
 
         test('Debe responder 401 si no se envía el header de autorización', async () => {
@@ -162,7 +174,6 @@ describe('Pruebas de endpoints de Categorías de Servicios (Service Categories)'
         });
 
         test('Debe responder 409 si el nombre de la categoría ya existe', async () => {
-            // Obtenemos el nombre de la categoría 1 para intentar duplicarlo
             const existingCat = await getPool().query('SELECT name FROM services_categories WHERE id = $1', [categoryId1]);
             const existingName = existingCat.rows[0].name;
 
@@ -205,10 +216,21 @@ describe('Pruebas de endpoints de Categorías de Servicios (Service Categories)'
 
     describe('Editar Categoría (PUT /api/servicesCategories/:id)', () => {
         let categoryToEditId: string;
+        let categoryForCascadeId: string;
+        let associatedServiceId1: string;
+        let associatedServiceId2: string;
 
         beforeAll(async () => {
             categoryToEditId = await insertServiceCategory(generateUniqueFixtureName('CatEdit'));
             createdCategoryIds.push(categoryToEditId);
+
+            // Preparación para la prueba de desactivación en cascada
+            categoryForCascadeId = await insertServiceCategory(generateUniqueFixtureName('CatCascade'));
+            createdCategoryIds.push(categoryForCascadeId);
+
+            associatedServiceId1 = await insertService({ categoryId: categoryForCascadeId, name: generateUniqueFixtureName('SvcC1') });
+            associatedServiceId2 = await insertService({ categoryId: categoryForCascadeId, name: generateUniqueFixtureName('SvcC2') });
+            createdServiceIds.push(associatedServiceId1, associatedServiceId2);
         });
 
         test('Debe responder 200 y actualizar correctamente el nombre y la descripción', async () => {
@@ -226,6 +248,34 @@ describe('Pruebas de endpoints de Categorías de Servicios (Service Categories)'
             expect(res.body.data.id).toBe(categoryToEditId);
             expect(res.body.data.name).toBe(updatedData.name);
             expect(res.body.data.description).toBe(updatedData.description);
+        });
+
+        test('Debe desactivar EN CASCADA todos los servicios asociados si isActive se actualiza a false', async () => {
+            // Confirmamos que los servicios están activos inicialmente
+            const pool = getPool();
+            const checkInitial = await pool.query('SELECT is_active FROM services WHERE id IN ($1, $2)', [associatedServiceId1, associatedServiceId2]);
+            expect(checkInitial.rows[0].is_active).toBe(true);
+            expect(checkInitial.rows[1].is_active).toBe(true);
+
+            // Desactivamos la categoría
+            const res = await request(app)
+                .put(`/api/servicesCategories/${categoryForCascadeId}`)
+                .set('Authorization', `Bearer ${managerToken}`)
+                .send({ isActive: false });
+
+            expect(res.status).toBe(200);
+            
+            // Verificamos en BD que los servicios se desactivaron
+            const checkFinal = await pool.query('SELECT is_active FROM services WHERE id IN ($1, $2)', [associatedServiceId1, associatedServiceId2]);
+            expect(checkFinal.rows[0].is_active).toBe(false);
+            expect(checkFinal.rows[1].is_active).toBe(false);
+
+            // Verificamos que los servicios ya no aparezcan listados para el cliente
+            const clientRes = await request(app)
+                .get(`/api/offeredServices?categoryId=${categoryForCascadeId}`)
+                .set('Authorization', `Bearer ${clientToken}`);
+            
+            expect(clientRes.body.data.length).toBe(0);
         });
 
         test('Debe responder 404 si la categoría a editar no existe', async () => {

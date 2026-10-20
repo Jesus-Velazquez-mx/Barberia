@@ -207,6 +207,7 @@ CREATE TABLE services_categories (
     id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     name        varchar(100) NOT NULL UNIQUE,
     description text,
+    is_active   boolean NOT NULL DEFAULT true,
     created_at  timestamptz NOT NULL DEFAULT now(),
     updated_at  timestamptz NOT NULL DEFAULT now()
 );
