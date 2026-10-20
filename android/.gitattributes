@@ -1,0 +1,3 @@
+# gradlew se ejecuta en sh: debe conservar LF aunque core.autocrlf esté activo
+gradlew text eol=lf
+*.bat text eol=crlf

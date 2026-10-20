@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Logo de Mr Barber centrado en el lienzo de 108dp del ícono adaptable.
+     Márgenes calculados para mantener la proporción del PNG (380x407)
+     y que el logo quede dentro de la zona segura de 66dp. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/mrbarber_logo"
+    android:insetLeft="24dp"
+    android:insetRight="24dp"
+    android:insetTop="22dp"
+    android:insetBottom="22dp" />
