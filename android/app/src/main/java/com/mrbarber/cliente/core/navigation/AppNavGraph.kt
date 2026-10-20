@@ -15,7 +15,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.mrbarber.cliente.features.home.presentation.HomeRoute
 import com.mrbarber.cliente.features.login.presentation.LoginRoute
-import com.mrbarber.cliente.features.perfil.presentation.ProfileRoute
+import com.mrbarber.cliente.features.profile.presentation.ProfileRoute
 
 @Composable
 fun AppNavGraph(

@@ -12,17 +12,12 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -36,8 +31,6 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -47,6 +40,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mrbarber.cliente.ui.theme.MrBarberTheme
 import com.mrbarber.cliente.R
 import com.mrbarber.cliente.features.login.domain.model.User
+import com.mrbarber.cliente.ui.components.AppTextField
+import com.mrbarber.cliente.ui.components.LoadingButton
+import com.mrbarber.cliente.ui.components.PasswordTextField
 import com.mrbarber.cliente.ui.theme.Dorado
 import com.mrbarber.cliente.ui.theme.GrisClaro
 import com.mrbarber.cliente.ui.theme.GrisOscuro
@@ -106,7 +102,7 @@ fun Login(
 
                 Image(
                     painter = painterResource(id = R.drawable.mrbarber_logo),
-                    contentDescription = "Foto de perfil del usuario",
+                    contentDescription = "Logo de Mr Barber",
                     modifier = Modifier.requiredSize(100.dp)
                 )
                 Spacer(Modifier.height(12.dp))
@@ -133,38 +129,22 @@ fun Login(
                         Text("Inicia sesión para ver tu cuenta", fontSize = 15.sp, color = GrisClaro, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(12.dp))
 
-                        OutlinedTextField(
+                        AppTextField(
                             value = state.email,
                             onValueChange = onEmailChange,
-                            label = { Text("Correo electrónico") },
-                            singleLine = true,
+                            label = "Correo electrónico",
                             enabled = !state.isLoading,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.fillMaxWidth()
+                            keyboardType = KeyboardType.Email
                         )
 
                         Spacer(Modifier.height(12.dp))
 
-                        OutlinedTextField(
+                        PasswordTextField(
                             value = state.password,
                             onValueChange = onPasswordChange,
-                            label = { Text("Contraseña") },
-                            singleLine = true,
-                            enabled = !state.isLoading,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                            visualTransformation = if (state.isPasswordVisible) {
-                                VisualTransformation.None
-                            } else {
-                                PasswordVisualTransformation()
-                            },
-                            trailingIcon = {
-                                TextButton(onClick = onTogglePasswordVisibility) {
-                                    Text(if (state.isPasswordVisible) "Ocultar" else "Ver", color = Dorado)
-                                }
-                            },
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.fillMaxWidth()
+                            isVisible = state.isPasswordVisible,
+                            onToggleVisibility = onTogglePasswordVisibility,
+                            enabled = !state.isLoading
                         )
 
                         Spacer(Modifier.height(8.dp))
@@ -189,22 +169,12 @@ fun Login(
 
                         Spacer(Modifier.height(10.dp))
 
-                        Button(
+                        LoadingButton(
+                            text = "INICIAR SESIÓN",
                             onClick = onLoginClick,
                             enabled = state.canSubmit,
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.fillMaxWidth()
-
-                        ) {
-                            if (state.isLoading) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    strokeWidth = 2.dp
-                                )
-                            } else {
-                                Text("INICIAR SESIÓN", fontWeight = FontWeight.Bold)
-                            }
-                        }
+                            isLoading = state.isLoading
+                        )
                         Spacer(Modifier.height(16.dp))
 
                         Text(
