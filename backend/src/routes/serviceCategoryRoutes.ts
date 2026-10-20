@@ -167,9 +167,9 @@ router.put('/servicesCategories/:id', update);
  * @swagger
  * /api/servicesCategories/{id}:
  *   delete:
- *     summary: Elimina una categoría de servicios
+ *     summary: Elimina (desactiva) una categoría de servicios
  *     tags: [Service Categories]
- *     description: Elimina la categoría de servicios especificada. Requiere token de manager. Falla si existen servicios asignados.
+ *     description: Eliminación lógica. Marca la categoría especificada y todos sus servicios asociados como inactivos (is_active = false), conservando el historial de citas. Es idempotente. Requiere token de manager.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -182,9 +182,9 @@ router.put('/servicesCategories/:id', update);
  *         description: ID de la categoría a eliminar.
  *     responses:
  *       200:
- *         description: Categoría eliminada exitosamente.
+ *         description: Categoría y sus servicios desactivados exitosamente.
  *       400:
- *         description: Formato de ID inválido o la categoría tiene servicios vinculados.
+ *         description: Formato de ID inválido.
  *       401:
  *         description: Token no proporcionado o inválido.
  *       403:

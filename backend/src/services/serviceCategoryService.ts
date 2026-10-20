@@ -5,7 +5,7 @@ import {
     getCategoryByName,
     createCategory as repoCreateCategory,
     updateCategory as repoUpdateCategory,
-    deleteCategory as repoDeleteCategory,
+    softDeleteCategory as repoSoftDeleteCategory,
 } from '../repositories/serviceCategoryRepository.js';
 import { isUserActive } from '../repositories/userRepository.js';
 import { decodeToken } from './jwtTokenService.js';
@@ -127,8 +127,8 @@ export const editCategory = async (
 };
 
 /**
- * Elimina una categoría de servicios del sistema.
- * Previene la eliminación si cuenta con servicios asociados por integridad referencial.
+ * Elimina lógicamente una categoría de servicios: la desactiva junto con todos sus
+ * servicios asociados, conservando el historial de citas.
  */
 export const removeCategory = async (id: string, token: string): Promise<void> => {
     const performer = decodeToken(token);
@@ -146,14 +146,5 @@ export const removeCategory = async (id: string, token: string): Promise<void> =
         throw new ApiError(ApiErrorCode.NOT_FOUND, 'Category not found');
     }
 
-    try {
-        await repoDeleteCategory(id);
-    } catch (error: unknown) {
-        // Captura errores de violación de llave foránea en PostgreSQL (códigos 23503 y 23001)
-        const dbError = error as { code?: string };
-        if (dbError.code === '23503' || dbError.code === '23001') {
-            throw new ApiError(ApiErrorCode.BAD_REQUEST, 'Cannot delete category because it has services assigned');
-        }
-        throw error;
-    }
+    await repoSoftDeleteCategory(id);
 };

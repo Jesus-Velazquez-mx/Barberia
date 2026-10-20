@@ -347,15 +347,6 @@ describe('Pruebas de endpoints de Categorías de Servicios (Service Categories)'
             createdServiceIds.push(svcId);
         });
 
-        test('Debe responder 400 y denegar la eliminación si la categoría tiene servicios vinculados', async () => {
-            const res = await request(app)
-                .delete(`/api/servicesCategories/${categoryWithServicesId}`)
-                .set('Authorization', `Bearer ${managerToken}`);
-
-            expect(res.status).toBe(400);
-            expect(res.body.message).toMatch(/Cannot delete category because it has services assigned/i);
-        });
-
         test('Debe responder 404 si la categoría a eliminar no existe', async () => {
             const fakeUuid = '550e8400-e29b-41d4-a716-446655440000';
             const res = await request(app)
@@ -366,7 +357,7 @@ describe('Pruebas de endpoints de Categorías de Servicios (Service Categories)'
             expect(res.body.message).toMatch(/Category not found/i);
         });
 
-        test('Debe responder 200 y eliminar la categoría correctamente cuando no tiene servicios', async () => {
+        test('Debe responder 200 y desactivar la categoría (sin borrarla) cuando no tiene servicios', async () => {
             const res = await request(app)
                 .delete(`/api/servicesCategories/${emptyCategoryId}`)
                 .set('Authorization', `Bearer ${managerToken}`);
@@ -374,10 +365,35 @@ describe('Pruebas de endpoints de Categorías de Servicios (Service Categories)'
             expect(res.status).toBe(200);
             expect(res.body.message).toMatch(/Category deleted successfully/i);
 
-            // Verificar que no exista en base de datos
+            // La fila debe conservarse con is_active = false
             const pool = getPool();
-            const check = await pool.query('SELECT id FROM services_categories WHERE id = $1', [emptyCategoryId]);
-            expect(check.rows.length).toBe(0);
+            const check = await pool.query('SELECT is_active FROM services_categories WHERE id = $1', [emptyCategoryId]);
+            expect(check.rows.length).toBe(1);
+            expect(check.rows[0].is_active).toBe(false);
+        });
+
+        test('Debe responder 200 y desactivar la categoría junto con todos sus servicios', async () => {
+            const res = await request(app)
+                .delete(`/api/servicesCategories/${categoryWithServicesId}`)
+                .set('Authorization', `Bearer ${managerToken}`);
+
+            expect(res.status).toBe(200);
+
+            const pool = getPool();
+            const category = await pool.query('SELECT is_active FROM services_categories WHERE id = $1', [categoryWithServicesId]);
+            expect(category.rows[0].is_active).toBe(false);
+
+            const services = await pool.query('SELECT is_active FROM services WHERE category_id = $1', [categoryWithServicesId]);
+            expect(services.rows.length).toBeGreaterThan(0);
+            expect(services.rows.every(s => s.is_active === false)).toBe(true);
+        });
+
+        test('Debe ser idempotente: responder 200 al eliminar una categoría ya inactiva', async () => {
+            const res = await request(app)
+                .delete(`/api/servicesCategories/${emptyCategoryId}`)
+                .set('Authorization', `Bearer ${managerToken}`);
+
+            expect(res.status).toBe(200);
         });
 
         test('Debe responder 403 si un cliente intenta eliminar la categoría', async () => {

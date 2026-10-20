@@ -111,13 +111,35 @@ export const updateCategory = async (id: string, fields: UpdateServiceCategoryIn
 };
 
 /**
- * Elimina físicamente una categoría.
+ * Elimina lógicamente una categoría: la marca como inactiva junto con todos sus
+ * servicios en una sola transacción, para conservar el historial de citas.
+ * Es idempotente: si la categoría ya estaba inactiva, no hay error.
  */
-export const deleteCategory = async (id: string): Promise<void> => {
+export const softDeleteCategory = async (id: string): Promise<void> => {
     const pool = db.getPool();
-    const query = `DELETE FROM services_categories WHERE id = $1`;
-    const result = await pool.query(query, [id]);
-    if (result.rowCount === 0) {
-        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Category not found');
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        const result = await client.query(
+            `UPDATE services_categories SET is_active = false WHERE id = $1`,
+            [id]
+        );
+        if (result.rowCount === 0) {
+            throw new ApiError(ApiErrorCode.NOT_FOUND, 'Category not found');
+        }
+
+        await client.query(
+            `UPDATE services SET is_active = false WHERE category_id = $1 AND is_active = true`,
+            [id]
+        );
+
+        await client.query('COMMIT');
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
     }
 };

@@ -121,8 +121,8 @@ export const update: ApiHandler<ServiceCategory> = async (req, res) => {
 };
 
 /**
- * Controlador para eliminar una categoría de servicios.
- * Previene la eliminación si existen servicios asignados por integridad referencial.
+ * Controlador para eliminar lógicamente una categoría de servicios.
+ * Desactiva la categoría y todos sus servicios asociados.
  */
 export const remove: ApiHandler<void> = async (req, res) => {
     try {
