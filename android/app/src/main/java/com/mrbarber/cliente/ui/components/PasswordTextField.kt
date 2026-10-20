@@ -18,7 +18,8 @@ fun PasswordTextField(
     onToggleVisibility: () -> Unit,
     modifier: Modifier = Modifier,
     label: String = "Contraseña",
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    supportingText: String? = null
 ) {
     AppTextField(
         value = value,
@@ -26,6 +27,7 @@ fun PasswordTextField(
         label = label,
         modifier = modifier,
         enabled = enabled,
+        supportingText = supportingText,
         keyboardType = KeyboardType.Password,
         visualTransformation = if (isVisible) VisualTransformation.None else PasswordVisualTransformation(),
         trailingIcon = {

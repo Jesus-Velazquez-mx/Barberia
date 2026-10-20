@@ -21,6 +21,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,9 +35,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mrbarber.cliente.R
+import com.mrbarber.cliente.features.login.domain.model.User
+import com.mrbarber.cliente.features.profile.domain.model.Gender
 import com.mrbarber.cliente.ui.components.AppTextField
 import com.mrbarber.cliente.ui.components.BirthDateField
+import com.mrbarber.cliente.ui.components.GenderSelector
 import com.mrbarber.cliente.ui.components.LoadingButton
 import com.mrbarber.cliente.ui.components.PasswordTextField
 import com.mrbarber.cliente.ui.theme.Dorado
@@ -46,12 +52,44 @@ import com.mrbarber.cliente.ui.theme.MrBarberTheme
 import java.time.LocalDate
 
 @Composable
+fun RegisterRoute(
+    onRegisterSuccess: (User) -> Unit,
+    onLoginClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: RegisterViewModel = hiltViewModel()
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(state.registeredUser) {
+        state.registeredUser?.let(onRegisterSuccess)
+    }
+
+    Register(
+        state = state,
+        onFirstNameChange = viewModel::onFirstNameChange,
+        onLastNameChange = viewModel::onLastNameChange,
+        onPhoneChange = viewModel::onPhoneChange,
+        onBirthDateChange = viewModel::onBirthDateChange,
+        onGenderChange = viewModel::onGenderChange,
+        onEmailChange = viewModel::onEmailChange,
+        onPasswordChange = viewModel::onPasswordChange,
+        onConfirmPasswordChange = viewModel::onConfirmPasswordChange,
+        onTogglePasswordVisibility = viewModel::onTogglePasswordVisibility,
+        onToggleConfirmPasswordVisibility = viewModel::onToggleConfirmPasswordVisibility,
+        onRegisterClick = viewModel::onRegisterClick,
+        onLoginClick = onLoginClick,
+        modifier = modifier
+    )
+}
+
+@Composable
 fun Register(
     state: RegisterUiState,
     onFirstNameChange: (String) -> Unit,
     onLastNameChange: (String) -> Unit,
     onPhoneChange: (String) -> Unit,
     onBirthDateChange: (LocalDate) -> Unit,
+    onGenderChange: (Gender) -> Unit,
     onEmailChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
     onConfirmPasswordChange: (String) -> Unit,
@@ -100,43 +138,59 @@ fun Register(
                         fontWeight = FontWeight.Bold
                     )
 
-                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Los campos con * son obligatorios",
+                        fontSize = 12.sp,
+                        color = GrisClaro,
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
                     AppTextField(
                         value = state.firstName,
                         onValueChange = onFirstNameChange,
-                        label = "Nombre",
+                        label = "Nombre *",
                         enabled = !state.isLoading
                     )
                     AppTextField(
                         value = state.lastName,
                         onValueChange = onLastNameChange,
-                        label = "Apellidos",
+                        label = "Apellidos *",
                         enabled = !state.isLoading
                     )
                     AppTextField(
                         value = state.phone,
                         onValueChange = onPhoneChange,
-                        label = "Teléfono (10 dígitos)",
+                        label = "Teléfono (opcional)",
+                        supportingText = "10 dígitos",
                         keyboardType = KeyboardType.Phone,
                         enabled = !state.isLoading
                     )
                     BirthDateField(
                         value = state.birthDate,
                         onValueChange = onBirthDateChange,
+                        label = "Fecha de nacimiento *",
+                        enabled = !state.isLoading,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    GenderSelector(
+                        selected = state.gender,
+                        onSelect = onGenderChange,
+                        label = "Género *",
                         enabled = !state.isLoading,
                         modifier = Modifier.fillMaxWidth()
                     )
                     AppTextField(
                         value = state.email,
                         onValueChange = onEmailChange,
-                        label = "Correo electrónico",
+                        label = "Correo electrónico *",
                         keyboardType = KeyboardType.Email,
                         enabled = !state.isLoading
                     )
                     PasswordTextField(
                         value = state.password,
                         onValueChange = onPasswordChange,
+                        label = "Contraseña *",
+                        supportingText = "Mínimo 6 caracteres",
                         isVisible = state.isPasswordVisible,
                         onToggleVisibility = onTogglePasswordVisibility,
                         enabled = !state.isLoading
@@ -144,7 +198,7 @@ fun Register(
                     PasswordTextField(
                         value = state.confirmPassword,
                         onValueChange = onConfirmPasswordChange,
-                        label = "Confirmar contraseña",
+                        label = "Confirmar contraseña *",
                         isVisible = state.isConfirmPasswordVisible,
                         onToggleVisibility = onToggleConfirmPasswordVisibility,
                         enabled = !state.isLoading
@@ -208,6 +262,7 @@ fun RegisterPreview() {
             onLastNameChange = { state = state.copy(lastName = it) },
             onPhoneChange = { state = state.copy(phone = it) },
             onBirthDateChange = { state = state.copy(birthDate = it) },
+            onGenderChange = { state = state.copy(gender = it) },
             onEmailChange = { state = state.copy(email = it) },
             onPasswordChange = { state = state.copy(password = it) },
             onConfirmPasswordChange = { state = state.copy(confirmPassword = it) },

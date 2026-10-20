@@ -1,6 +1,7 @@
 package com.mrbarber.cliente.features.login.presentation
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -50,6 +51,7 @@ import com.mrbarber.cliente.ui.theme.GrisOscuro
 @Composable
 fun LoginRoute(
     onLoginSuccess: (User) -> Unit,
+    onRegisterClick: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: LoginViewModel = hiltViewModel()
 ) {
@@ -65,6 +67,7 @@ fun LoginRoute(
         onPasswordChange = viewModel::onPasswordChange,
         onTogglePasswordVisibility = viewModel::onTogglePasswordVisibility,
         onLoginClick = viewModel::onLoginClick,
+        onRegisterClick = onRegisterClick,
         modifier = modifier
     )
 }
@@ -76,6 +79,7 @@ fun Login(
     onPasswordChange: (String) -> Unit,
     onTogglePasswordVisibility: () -> Unit,
     onLoginClick: () -> Unit,
+    onRegisterClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -180,6 +184,7 @@ fun Login(
                         Text(
                             fontSize = 12.sp,
                             color = GrisClaro,
+                            modifier = Modifier.clickable(enabled = !state.isLoading, onClick = onRegisterClick),
                             text = buildAnnotatedString {
                                 append("¿Aún no tienes cuenta con nosotros? ")
                                 withStyle(style = SpanStyle(fontWeight = FontWeight.Bold, color = Dorado)) {
@@ -203,7 +208,8 @@ fun LoginPreview() {
             onEmailChange = {},
             onPasswordChange = {},
             onTogglePasswordVisibility = {},
-            onLoginClick = {}
+            onLoginClick = {},
+            onRegisterClick = {}
         )
     }
 }

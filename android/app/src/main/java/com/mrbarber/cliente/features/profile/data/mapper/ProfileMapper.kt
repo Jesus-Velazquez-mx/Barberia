@@ -47,7 +47,7 @@ private fun String?.toGender(): Gender? = when (this) {
     else -> null
 }
 
-private fun Gender.toApi(): String = when (this) {
+fun Gender.toApi(): String = when (this) {
     Gender.MALE -> "male"
     Gender.FEMALE -> "female"
     Gender.OTHER -> "other"

@@ -1,9 +1,17 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+}
+
+fun localProperty(key: String): String? {
+    val file = rootProject.file("local.properties")
+    if (!file.exists()) return null
+    return Properties().apply { file.inputStream().use(::load) }.getProperty(key)?.trim()?.ifEmpty { null }
 }
 
 android {
@@ -24,9 +32,11 @@ android {
 
     buildTypes {
         debug {
-            // Requiere "adb reverse tcp:3000 tcp:3000" (celular por USB o emulador)
-            // para que localhost:3000 del dispositivo llegue al backend de la PC.
-            buildConfigField("String", "BASE_URL", "\"http://localhost:3000/\"")
+            // Cada quien define "api.baseUrl" en su local.properties (no se sube a git), por ejemplo
+            // api.baseUrl=http://192.168.1.50:3000/ para usar el celular por Wi-Fi con la IP de la PC.
+            // Sin esa propiedad se usa localhost, que requiere "adb reverse tcp:3000 tcp:3000"
+            // (celular por USB o emulador) para llegar al backend de la PC.
+            buildConfigField("String", "BASE_URL", "\"${localProperty("api.baseUrl") ?: "http://localhost:3000/"}\"")
         }
         release {
             // TODO: reemplazar por la URL del backend en producción

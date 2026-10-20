@@ -21,12 +21,14 @@ fun AppTextField(
     enabled: Boolean = true,
     keyboardType: KeyboardType = KeyboardType.Text,
     visualTransformation: VisualTransformation = VisualTransformation.None,
-    trailingIcon: (@Composable () -> Unit)? = null
+    trailingIcon: (@Composable () -> Unit)? = null,
+    supportingText: String? = null
 ) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
         label = { Text(label) },
+        supportingText = supportingText?.let { { Text(it) } },
         singleLine = true,
         enabled = enabled,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),

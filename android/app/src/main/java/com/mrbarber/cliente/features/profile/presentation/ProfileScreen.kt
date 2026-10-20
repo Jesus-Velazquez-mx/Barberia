@@ -1,8 +1,6 @@
 package com.mrbarber.cliente.features.profile.presentation
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,7 +13,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -43,6 +40,7 @@ import com.mrbarber.cliente.ui.components.BackButton
 import com.mrbarber.cliente.ui.components.BirthDateField
 import com.mrbarber.cliente.ui.components.ConfirmDialog
 import com.mrbarber.cliente.ui.components.FullScreenLoading
+import com.mrbarber.cliente.ui.components.GenderSelector
 import com.mrbarber.cliente.ui.components.InitialsAvatar
 import com.mrbarber.cliente.ui.components.LoadingButton
 import com.mrbarber.cliente.ui.components.SectionCard
@@ -172,17 +170,11 @@ fun Profile(
                     enabled = !state.isBusy
                 )
 
-                Text("Género", fontSize = 14.sp, color = GrisClaro)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Gender.entries.forEach { gender ->
-                        FilterChip(
-                            selected = state.gender == gender,
-                            onClick = { onGenderChange(gender) },
-                            label = { Text(gender.label()) },
-                            enabled = !state.isBusy
-                        )
-                    }
-                }
+                GenderSelector(
+                    selected = state.gender,
+                    onSelect = onGenderChange,
+                    enabled = !state.isBusy
+                )
 
                 state.error?.let {
                     Text(text = it, color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
@@ -262,12 +254,6 @@ fun Profile(
             }
         )
     }
-}
-
-private fun Gender.label(): String = when (this) {
-    Gender.MALE -> "Masculino"
-    Gender.FEMALE -> "Femenino"
-    Gender.OTHER -> "Otro"
 }
 
 @Preview(showBackground = true)

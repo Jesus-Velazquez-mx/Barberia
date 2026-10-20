@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+   Solo para builds debug (reemplaza al de src/main): permite HTTP hacia cualquier host para poder
+   usar el backend local desde un celular físico con la IP de la PC en la red Wi-Fi, que cambia
+   según la red y la persona. Release sigue usando la configuración restringida de src/main.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>
