@@ -10,7 +10,7 @@ import {
     removeCategory,
 } from '../services/serviceCategoryService.js';
 import { extractBearerFromHeader } from '../utils/headerHandling.js';
-
+import type { ServiceCategory } from '../types/entities/serviceCategory.interface.js';
 
 // Valida que el ID en los parámetros de la ruta sea un UUID válido
 const categoryIdParamSchema = z.object({
@@ -37,7 +37,7 @@ const updateCategorySchema = z.object({
  * Controlador para listar las categorías de servicios disponibles.
  * Extrae el token de autorización y delega al servicio el filtrado por roles.
  */
-export const list: ApiHandler<any> = async (req, res) => {
+export const list: ApiHandler<ServiceCategory[]> = async (req, res) => {
     try {
         const token = extractBearerFromHeader(req);
         const result = await listCategories(token);
@@ -55,7 +55,7 @@ export const list: ApiHandler<any> = async (req, res) => {
  * Controlador para obtener los detalles de una categoría específica por su ID.
  * Valida el formato UUID del parámetro y aplica reglas de visibilidad por rol.
  */
-export const getById: ApiHandler<any> = async (req, res) => {
+export const getById: ApiHandler<ServiceCategory> = async (req, res) => {
     try {
         const token = extractBearerFromHeader(req);
         const validParams = categoryIdParamSchema.parse({ id: req.params.id });
@@ -77,7 +77,7 @@ export const getById: ApiHandler<any> = async (req, res) => {
 /**
  * Controlador para registrar una nueva categoría de servicios.
  */
-export const create: ApiHandler<any> = async (req, res) => {
+export const create: ApiHandler<ServiceCategory> = async (req, res) => {
     try {
         const token = extractBearerFromHeader(req);
         const validData = createCategorySchema.parse(req.body);
@@ -100,7 +100,7 @@ export const create: ApiHandler<any> = async (req, res) => {
  * Controlador para actualizar una categoría de servicios existente.
  * Si se inactiva (isActive = false), desencadena la desactivación en cascada de sus servicios.
  */
-export const update: ApiHandler<any> = async (req, res) => {
+export const update: ApiHandler<ServiceCategory> = async (req, res) => {
     try {
         const token = extractBearerFromHeader(req);
         const validParams = categoryIdParamSchema.parse({ id: req.params.id });
