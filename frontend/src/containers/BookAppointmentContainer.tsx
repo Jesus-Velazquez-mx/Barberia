@@ -145,8 +145,7 @@ export function BookAppointmentContainer() {
 
   /* 3. Calcular la disponibilidad real de cada día del mes visible en el calendario */
   useEffect(() => {
-    const primaryServiceId = selectedServiceIds[0];
-    if (!shopId || !primaryServiceId) {
+    if (!shopId || selectedServiceIds.length === 0) {
       setAvailabilityByDate({});
       return;
     }
@@ -168,7 +167,7 @@ export function BookAppointmentContainer() {
           const data = await getShopAvailability({
             shopId,
             date: dateKey,
-            serviceId: primaryServiceId
+            serviceIds: selectedServiceIds
           });
           const totalSlots = data.reduce((sum, item) => sum + item.startTimes.length, 0);
           const isSunday = new Date(`${dateKey}T00:00:00`).getDay() === 0;
@@ -194,8 +193,7 @@ export function BookAppointmentContainer() {
 
   /* 4. Consultar los slots detallados cada vez que cambie sucursal, fecha o servicio */
   useEffect(() => {
-    const primaryServiceId = selectedServiceIds[0];
-    if (!shopId || !selectedDate || !primaryServiceId) {
+    if (!shopId || !selectedDate || selectedServiceIds.length === 0) {
       setFetchedSlots([]);
       setFetchError(null);
       return;
@@ -208,7 +206,7 @@ export function BookAppointmentContainer() {
     getShopAvailability({
       shopId,
       date: selectedDate,
-      serviceId: primaryServiceId
+      serviceIds: selectedServiceIds
     })
       .then((availabilityData) => {
         if (!active) return;

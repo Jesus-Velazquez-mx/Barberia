@@ -11,13 +11,20 @@ const getAvailabilityParamsSchema = z.object({
     id: z.uuid('Invalid shop ID format'),
 });
 
-// Validación de los parámetros de consulta (query params): fecha y servicio
+// Validación de los parámetros de consulta (query params): fecha y servicios.
+// serviceIds acepta el parámetro repetido (?serviceIds=a&serviceIds=b) o separado por comas (?serviceIds=a,b).
 const getAvailabilityQuerySchema = z.object({
     date: z
         .string()
         .regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format, expected YYYY-MM-DD')
         .refine((val) => val >= getBusinessToday(), { message: 'Date cannot be before today' }),
-    serviceId: z.uuid('Invalid service ID format'),
+    serviceIds: z.preprocess(
+        (val) => (typeof val === 'string' ? val.split(',') : val),
+        z
+            .array(z.uuid('Invalid service ID format'), 'serviceIds is required')
+            .min(1, 'At least one service is required')
+            .refine((ids) => new Set(ids).size === ids.length, { message: 'Duplicate service IDs' })
+    ),
 });
 
 // Handler público para calcular y consultar los slots de disponibilidad de una sucursal
@@ -31,7 +38,7 @@ export const getAvailability: ApiHandler<AvailableSlotsByBarber[]> = async (req,
         const result = await getAvailableSlots({
             shopId: validParams.id,
             date: validQuery.date,
-            serviceId: validQuery.serviceId,
+            serviceIds: validQuery.serviceIds,
         });
 
         // Retorna respuesta exitosa con los slots disponibles

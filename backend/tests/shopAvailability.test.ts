@@ -62,7 +62,7 @@ describe('GET /api/shops/:id/availability', () => {
     test('debe devolver 200 y el payload de slots excluyendo correctamente el horario de la cita insertada', async () => {
         const res = await request(app)
             .get(`/api/shops/${shopId}/availability`)
-            .query({ date: targetDateStr, serviceId });
+            .query({ date: targetDateStr, serviceIds: serviceId });
 
         expect(res.status).toBe(200);
         expect(res.body.message).toMatch(/Available slots retrieved successfully/i);
@@ -99,23 +99,23 @@ describe('GET /api/shops/:id/availability', () => {
     test('debe responder 400 cuando la fecha está mal formada', async () => {
         const res = await request(app)
             .get(`/api/shops/${shopId}/availability`)
-            .query({ date: 'invalid-date', serviceId });
+            .query({ date: 'invalid-date', serviceIds: serviceId });
 
         expect(res.status).toBe(400);
         expect(res.body.message).toMatch(/Validation error/i);
     });
 
-    test('debe responder 400 cuando falta serviceId', async () => {
+    test('debe responder 400 cuando falta serviceIds', async () => {
         const res = await request(app).get(`/api/shops/${shopId}/availability`).query({ date: targetDateStr });
 
         expect(res.status).toBe(400);
         expect(res.body.message).toMatch(/Validation error/i);
     });
 
-    test('debe responder 400 cuando el serviceId no es un UUID válido', async () => {
+    test('debe responder 400 cuando serviceIds no es un UUID válido', async () => {
         const res = await request(app)
             .get(`/api/shops/${shopId}/availability`)
-            .query({ date: targetDateStr, serviceId: 'not-a-valid-uuid' });
+            .query({ date: targetDateStr, serviceIds: 'not-a-valid-uuid' });
 
         expect(res.status).toBe(400);
         expect(res.body.message).toMatch(/Validation error/i);
@@ -127,7 +127,9 @@ describe('GET /api/shops/:id/availability', () => {
         yesterday.setUTCDate(yesterday.getUTCDate() - 1);
         const pastDateStr = yesterday.toISOString().slice(0, 10);
 
-        const res = await request(app).get(`/api/shops/${shopId}/availability`).query({ date: pastDateStr, serviceId });
+        const res = await request(app)
+            .get(`/api/shops/${shopId}/availability`)
+            .query({ date: pastDateStr, serviceIds: serviceId });
 
         expect(res.status).toBe(400);
         expect(res.body.message).toMatch(/Validation error/i);
@@ -137,7 +139,7 @@ describe('GET /api/shops/:id/availability', () => {
         const nonExistentShopId = '00000000-0000-0000-0000-000000000000';
         const res = await request(app)
             .get(`/api/shops/${nonExistentShopId}/availability`)
-            .query({ date: targetDateStr, serviceId });
+            .query({ date: targetDateStr, serviceIds: serviceId });
 
         expect(res.status).toBe(404);
         expect(res.body.message).toMatch(/Shop not found/i);
@@ -147,7 +149,7 @@ describe('GET /api/shops/:id/availability', () => {
         const nonExistentServiceId = '00000000-0000-0000-0000-000000000000';
         const res = await request(app)
             .get(`/api/shops/${shopId}/availability`)
-            .query({ date: targetDateStr, serviceId: nonExistentServiceId });
+            .query({ date: targetDateStr, serviceIds: nonExistentServiceId });
 
         expect(res.status).toBe(404);
         expect(res.body.message).toMatch(/Service not found/i);
@@ -157,9 +159,29 @@ describe('GET /api/shops/:id/availability', () => {
         const inactiveServiceId = await insertService({ durationMinutes: 30, isActive: false });
         const res = await request(app)
             .get(`/api/shops/${shopId}/availability`)
-            .query({ date: targetDateStr, serviceId: inactiveServiceId });
+            .query({ date: targetDateStr, serviceIds: inactiveServiceId });
 
         expect(res.status).toBe(404);
         expect(res.body.message).toMatch(/Service not found or is inactive/i);
+    });
+
+    test('varios servicios: los horarios usan la suma de sus duraciones', async () => {
+        // 30 + 30 min: en 09:00-11:00 con la cita 09:30-10:00, solo cabe 10:00-11:00
+        const secondServiceId = await insertService({ durationMinutes: 30, isActive: true });
+        const res = await request(app)
+            .get(`/api/shops/${shopId}/availability`)
+            .query({ date: targetDateStr, serviceIds: `${serviceId},${secondServiceId}` });
+
+        expect(res.status).toBe(200);
+        const barberSlots = res.body.data.find((b: { barberId: string }) => b.barberId === barberId);
+        expect(barberSlots.startTimes).toEqual([`${targetDateStr}T10:00:00.000Z`]);
+    });
+
+    test('debe responder 400 con serviceIds repetidos', async () => {
+        const res = await request(app)
+            .get(`/api/shops/${shopId}/availability`)
+            .query({ date: targetDateStr, serviceIds: `${serviceId},${serviceId}` });
+
+        expect(res.status).toBe(400);
     });
 });

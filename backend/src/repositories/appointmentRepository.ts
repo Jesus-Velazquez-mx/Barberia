@@ -1,5 +1,6 @@
 import db from '../connection/connection.js';
 import type { Appointment } from '../types/entities/appointment.interface.js';
+import type { AppointmentService } from '../types/entities/appointmentService.interface.js';
 import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 
 export interface CreateAppointmentInput {
@@ -10,9 +11,7 @@ export interface CreateAppointmentInput {
     scheduledStart: Date;
     scheduledEnd: Date;
     notes: string | null;
-    serviceId: string;
-    priceAtBooking: number;
-    durationMinutesAtBooking: number;
+    services: { serviceId: string; priceAtBooking: number; durationMinutesAtBooking: number }[];
 }
 
 /**
@@ -37,7 +36,7 @@ export const getBlockingAppointmentsByBarberIdsAndRange = async (
 };
 
 /**
- * Crea la cita y su servicio en una sola transacción.
+ * Crea la cita y sus servicios en una sola transacción.
  * Evita que dos reservas simultáneas ocupen el mismo horario de un barbero:
  * SELECT ... FOR UPDATE bloquea la fila del barbero (el mismo candado que toma
  * softDeleteBarberById), así que las reservas concurrentes para ese barbero se
@@ -45,7 +44,9 @@ export const getBlockingAppointmentsByBarberIdsAndRange = async (
  * su verificación de traslape sí ve la cita recién insertada y se rechaza con 409.
  * Cualquier otra escritura que mueva citas de un barbero debe tomar este mismo candado.
  */
-export const createAppointmentWithService = async (data: CreateAppointmentInput): Promise<Appointment> => {
+export const createAppointmentWithServices = async (
+    data: CreateAppointmentInput
+): Promise<{ appointment: Appointment; services: AppointmentService[] }> => {
     const pool = db.getPool();
     const client = await pool.connect();
 
@@ -94,14 +95,19 @@ export const createAppointmentWithService = async (data: CreateAppointmentInput)
         );
         const appointment: Appointment = result.rows[0];
 
-        await client.query(
-            `INSERT INTO appointment_services (appointment_id, service_id, price_at_booking, duration_minutes_at_booking)
-             VALUES ($1, $2, $3, $4)`,
-            [appointment.id, data.serviceId, data.priceAtBooking, data.durationMinutesAtBooking]
-        );
+        const services: AppointmentService[] = [];
+        for (const service of data.services) {
+            const inserted = await client.query(
+                `INSERT INTO appointment_services (appointment_id, service_id, price_at_booking, duration_minutes_at_booking)
+                 VALUES ($1, $2, $3, $4)
+                 RETURNING id, appointment_id, service_id, price_at_booking, duration_minutes_at_booking, created_at`,
+                [appointment.id, service.serviceId, service.priceAtBooking, service.durationMinutesAtBooking]
+            );
+            services.push(inserted.rows[0]);
+        }
 
         await client.query('COMMIT');
-        return appointment;
+        return { appointment, services };
     } catch (error) {
         await client.query('ROLLBACK');
         throw error;

@@ -1,11 +1,12 @@
 import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
-import { getServiceById } from '../repositories/offeredServiceRepository.js';
+import { getServicesByIds } from '../repositories/offeredServiceRepository.js';
 import { getShopById } from '../repositories/shopRepository.js';
 import { getActiveBarbersByShop } from '../repositories/barberRepository.js';
 import { getActiveSlotsByBarberIdsAndDay } from '../repositories/availabilitySlotRepository.js';
 import { getBlockingAppointmentsByBarberIdsAndRange } from '../repositories/appointmentRepository.js';
 import { getAllShifts } from '../repositories/shiftRepository.js';
 import { toBusinessWallClockMs } from '../utils/businessTime.js';
+import type { OfferedService } from '../types/entities/offeredService.interface.js';
 
 /** Máximo de días de anticipación con los que se puede consultar/agendar. */
 export const MAX_BOOKING_DAYS_AHEAD = 30;
@@ -20,7 +21,8 @@ export interface GetAvailableSlotsInput {
     shopId: string;
     /** Fecha en formato YYYY-MM-DD, interpretada en UTC. */
     date: string;
-    serviceId: string;
+    /** Servicios de la cita; los horarios se calculan con la suma de sus duraciones. */
+    serviceIds: string[];
 }
 
 export interface AvailableSlotsByBarber {
@@ -78,16 +80,27 @@ const parseDate = (date: string): number => {
 };
 
 /**
+ * Devuelve los servicios pedidos, o lanza 404 si alguno no existe o está inactivo.
+ */
+export const getBookableServices = async (serviceIds: string[]): Promise<OfferedService[]> => {
+    const services = await getServicesByIds(serviceIds);
+    if (services.length !== new Set(serviceIds).size || services.some((s) => !s.is_active)) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Service not found or is inactive');
+    }
+    return services;
+};
+
+/**
  * Calcula, por barbero elegible de la sucursal, los horarios de inicio agendables para
- * el servicio en la fecha dada: plantilla semanal acotada por el turno, menos las citas
- * scheduled / checked_in, con cada hueco libre dividido en pasos de SLOT_STEP_MINUTES.
+ * los servicios en la fecha dada (duración = suma de sus duraciones): plantilla semanal
+ * acotada por el turno, menos las citas scheduled / checked_in, con cada hueco libre dividido en pasos de SLOT_STEP_MINUTES.
  * Fechas y horarios se manejan como hora de pared "en UTC"; solo "hoy" y "ahora" se
  * calculan en la zona horaria del negocio (BUSINESS_TIMEZONE).
  */
 export const getAvailableSlots = async ({
     shopId,
     date,
-    serviceId,
+    serviceIds,
 }: GetAvailableSlotsInput): Promise<AvailableSlotsByBarber[]> => {
     const dayStart = parseDate(date);
     // "Ahora" en hora de pared del negocio (BUSINESS_TIMEZONE), no del servidor.
@@ -101,10 +114,8 @@ export const getAvailableSlots = async ({
         throw new ApiError(ApiErrorCode.INVALID_INPUT, `Date cannot be more than ${MAX_BOOKING_DAYS_AHEAD} days ahead`);
     }
 
-    const service = await getServiceById(serviceId);
-    if (!service || !service.is_active) {
-        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Service not found or is inactive');
-    }
+    const services = await getBookableServices(serviceIds);
+    const duration = services.reduce((sum, s) => sum + s.duration_minutes, 0);
 
     const shop = await getShopById(shopId);
     if (!shop || !shop.is_active) {
@@ -146,7 +157,7 @@ export const getAvailableSlots = async ({
 
         return {
             barberId: barber.id,
-            startTimes: computeStartMinutes(windows, busy, service.duration_minutes, notBefore).map((m) =>
+            startTimes: computeStartMinutes(windows, busy, duration, notBefore).map((m) =>
                 new Date(dayStart + m * MS_PER_MINUTE).toISOString()
             ),
         };
