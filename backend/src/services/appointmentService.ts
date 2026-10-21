@@ -1,16 +1,26 @@
 import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
-import { createAppointmentWithServices } from '../repositories/appointmentRepository.js';
-import { getShopById } from '../repositories/shopRepository.js';
+import {
+    createAppointmentWithServices,
+    getAppointments,
+    getServicesByAppointmentIds,
+} from '../repositories/appointmentRepository.js';
+import { getShopById, getShopIdsByManagerId } from '../repositories/shopRepository.js';
 import { getClientByUserId } from '../repositories/clientRepository.js';
 import { getReceptionistByUserId } from '../repositories/receptionistRepository.js';
 import { getAvailableSlots, getBookableServices } from './availabilityService.js';
-import { canCreateAppointment } from './userPermissions.js';
+import { canCreateAppointment, canViewShopAppointments } from './userPermissions.js';
 import { isUserSessionValid } from '../utils/userSession.js';
 import { toAppointmentResponse } from '../utils/appointmentMapper.js';
-import type { CreateAppointmentRequest } from '../types/dto/appointmentRequest.interface.js';
+import { getBusinessDayStart } from '../utils/businessTime.js';
+import type { AppointmentListFilters } from '../repositories/appointmentRepository.js';
+import type { AppointmentService } from '../types/entities/appointmentService.interface.js';
+import type { CreateAppointmentRequest, ListAppointmentsQuery } from '../types/dto/appointmentRequest.interface.js';
 import type { AppointmentResponse } from '../types/dto/appointmentResponse.interface.js';
 
 const MS_PER_MINUTE = 60_000;
+const MS_PER_DAY = 24 * 60 * MS_PER_MINUTE;
+const DEFAULT_WINDOW_DAYS = 30;
+const MAX_WINDOW_DAYS = 366;
 
 /**
  * Agenda una nueva cita para un cliente registrado o un invitado.
@@ -90,4 +100,83 @@ export const registerAppointment = async (
     });
 
     return toAppointmentResponse(appointment, bookedServices);
+};
+
+/**
+ * Rango de búsqueda por inicio programado. Sin from ni to: hoy 00:00 hasta el día 30 a las 23:59:59.999
+ * (hora del negocio). Si falta solo uno, se completa: from = hoy 00:00; to = from + 30 días.
+ */
+const resolveWindow = (query: ListAppointmentsQuery): { from: Date; to: Date } => {
+    const from = query.from ?? getBusinessDayStart(0);
+    const to =
+        query.to ??
+        (query.from
+            ? new Date(from.getTime() + DEFAULT_WINDOW_DAYS * MS_PER_DAY - 1)
+            : new Date(getBusinessDayStart(DEFAULT_WINDOW_DAYS).getTime() - 1));
+
+    if (to < from) {
+        throw new ApiError(ApiErrorCode.BAD_REQUEST, 'to must not be before from');
+    }
+    if (to.getTime() - from.getTime() > MAX_WINDOW_DAYS * MS_PER_DAY) {
+        throw new ApiError(ApiErrorCode.BAD_REQUEST, `Date range must not exceed ${MAX_WINDOW_DAYS} days`);
+    }
+    return { from, to };
+};
+
+/**
+ * Lista citas según el rol:
+ * - client: solo las propias; los filtros exclusivos del personal se ignoran.
+ * - receptionist: las de su sucursal.
+ * - manager: las de las sucursales que administra.
+ * El alcance se resuelve aquí y se aplica en SQL; shopId fuera de alcance responde 403.
+ */
+export const listAppointments = async (
+    query: ListAppointmentsQuery,
+    token: string
+): Promise<AppointmentResponse[]> => {
+    const performer = await isUserSessionValid(token);
+    const { from, to } = resolveWindow(query);
+
+    const filters: AppointmentListFilters = { from, to, statuses: query.status };
+
+    if (performer.role === 'client') {
+        filters.clientId = performer.id;
+    } else {
+        let accessibleShopIds: string[];
+        if (performer.role === 'receptionist') {
+            const receptionist = await getReceptionistByUserId(performer.id);
+            if (!receptionist) {
+                throw new ApiError(ApiErrorCode.FORBIDDEN, 'Receptionist is not assigned to a shop');
+            }
+            accessibleShopIds = [receptionist.shop_id];
+        } else {
+            accessibleShopIds = await getShopIdsByManagerId(performer.id);
+        }
+
+        if (query.shopId !== undefined) {
+            if (!canViewShopAppointments(query.shopId, accessibleShopIds)) {
+                throw new ApiError(ApiErrorCode.FORBIDDEN, 'Not authorized to view appointments of this shop');
+            }
+            accessibleShopIds = [query.shopId];
+        }
+
+        filters.shopIds = accessibleShopIds;
+        filters.clientId = query.clientId;
+        filters.barberId = query.barberId;
+        if (query.clientType !== undefined) {
+            filters.isRegisteredClient = query.clientType === 'registered';
+        }
+    }
+
+    const appointments = await getAppointments(filters);
+    const services = await getServicesByAppointmentIds(appointments.map((a) => a.id));
+
+    const servicesByAppointment = new Map<string, AppointmentService[]>();
+    for (const service of services) {
+        const list = servicesByAppointment.get(service.appointment_id) ?? [];
+        list.push(service);
+        servicesByAppointment.set(service.appointment_id, list);
+    }
+
+    return appointments.map((a) => toAppointmentResponse(a, servicesByAppointment.get(a.id) ?? []));
 };

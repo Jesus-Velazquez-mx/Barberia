@@ -85,6 +85,14 @@ export const canCreateAppointment = (
             return booking.shopManagerId === performer.id;
     }
 };
+
+/**
+ * GET /appointments: la recepción y los gerentes solo pueden consultar las citas de las sucursales a las que
+ * pertenecen (la sucursal donde trabaja la recepción; las que administra el gerente).
+ */
+export const canViewShopAppointments = (shopId: string, accessibleShopIds: string[]): boolean =>
+    accessibleShopIds.includes(shopId);
+
 /**
  * /servicesCategories: Solo los usuarios con rol 'manager' pueden crear, editar o eliminar categorías de servicios.
  */
