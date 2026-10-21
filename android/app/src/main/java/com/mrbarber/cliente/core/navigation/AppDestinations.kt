@@ -16,4 +16,4 @@ data object ProfileDestination
 
 
 @Serializable
-data object BookingDestination
+data object AppointmentDestination

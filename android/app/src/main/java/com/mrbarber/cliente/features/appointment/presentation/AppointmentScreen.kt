@@ -1,4 +1,4 @@
-package com.mrbarber.cliente.features.booking.presentation
+package com.mrbarber.cliente.features.appointment.presentation
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
@@ -41,6 +41,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,6 +55,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mrbarber.cliente.ui.components.BackButton
 import com.mrbarber.cliente.ui.components.InitialsAvatar
 import com.mrbarber.cliente.ui.components.LoadingButton
@@ -70,12 +73,38 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 @Composable
-fun Booking(
-    state: BookingUiState,
+fun AppointmentRoute(
     onBack: () -> Unit,
-    onShopSelected: (Int) -> Unit,
-    onServiceToggled: (Int) -> Unit,
-    onBarberSelected: (Int) -> Unit,
+    onAppointmentCreated: () -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: AppointmentViewModel = hiltViewModel()
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(state.createdAppointment) {
+        if (state.createdAppointment != null) onAppointmentCreated()
+    }
+
+    Appointment(
+        state = state,
+        onBack = onBack,
+        onShopSelected = viewModel::onShopSelected,
+        onServiceToggled = viewModel::onServiceToggled,
+        onBarberSelected = viewModel::onBarberSelected,
+        onDateSelected = viewModel::onDateSelected,
+        onTimeSelected = viewModel::onTimeSelected,
+        onConfirmClick = viewModel::onConfirmClick,
+        modifier = modifier
+    )
+}
+
+@Composable
+fun Appointment(
+    state: AppointmentUiState,
+    onBack: () -> Unit,
+    onShopSelected: (String) -> Unit,
+    onServiceToggled: (String) -> Unit,
+    onBarberSelected: (String) -> Unit,
     onDateSelected: (LocalDate) -> Unit,
     onTimeSelected: (LocalTime) -> Unit,
     onConfirmClick: () -> Unit,
@@ -197,7 +226,7 @@ fun Booking(
 
                     Spacer(Modifier.height(16.dp))
 
-                    BookingSummary(state = state)
+                    AppointmentSummary(state = state)
 
                     state.error?.let {
                         Spacer(Modifier.height(12.dp))
@@ -226,7 +255,7 @@ private fun ShopDropdown(
     shops: List<ShopOption>,
     selectedShop: ShopOption?,
     enabled: Boolean,
-    onShopSelected: (Int) -> Unit
+    onShopSelected: (String) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -378,7 +407,7 @@ private fun DateItem(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun TimeSlots(
-    state: BookingUiState,
+    state: AppointmentUiState,
     onTimeSelected: (LocalTime) -> Unit
 ) {
     when {
@@ -419,7 +448,7 @@ private fun TimeSlots(
 }
 
 @Composable
-private fun BookingSummary(state: BookingUiState) {
+private fun AppointmentSummary(state: AppointmentUiState) {
     SectionCard(title = "Resumen") {
         SummaryRow("Sucursal", state.selectedShop?.name)
         SummaryRow("Servicios", state.selectedServices.joinToString { it.name }.ifEmpty { null })
@@ -482,26 +511,26 @@ private val TIME_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("h:mm a
 
 @Preview(showBackground = true, heightDp = 1800)
 @Composable
-fun BookingPreview() {
+fun AppointmentPreview() {
     // Estado local solo para poder interactuar con el diseño en el modo interactivo del preview.
     var state by remember {
         mutableStateOf(
-            BookingUiState(
+            AppointmentUiState(
                 shops = listOf(
-                    ShopOption(1, "Mr. Barber Centro", "Av. Juárez 123, Centro"),
-                    ShopOption(2, "Mr. Barber Norte", "Blvd. Las Torres 456, Col. Norte")
+                    ShopOption("1", "Mr. Barber Centro", "Av. Juárez 123, Centro"),
+                    ShopOption("2", "Mr. Barber Norte", "Blvd. Las Torres 456, Col. Norte")
                 ),
                 services = listOf(
-                    ServiceOption(1, "Corte de cabello", 40, 180.0),
-                    ServiceOption(2, "Arreglo de barba", 25, 120.0),
-                    ServiceOption(3, "Afeitado clásico", 30, 150.0),
-                    ServiceOption(4, "Lavado y peinado", 20, 90.0)
+                    ServiceOption("1", "Corte de cabello", 40, 180.0),
+                    ServiceOption("2", "Arreglo de barba", 25, 120.0),
+                    ServiceOption("3", "Afeitado clásico", 30, 150.0),
+                    ServiceOption("4", "Lavado y peinado", 20, 90.0)
                 ),
                 barbers = listOf(
-                    BarberOption(1, "Carlos Méndez"),
-                    BarberOption(2, "Luis Ortega"),
-                    BarberOption(3, "Miguel Ríos"),
-                    BarberOption(4, "Andrés Pérez")
+                    BarberOption("1", "Carlos Méndez"),
+                    BarberOption("2", "Luis Ortega"),
+                    BarberOption("3", "Miguel Ríos"),
+                    BarberOption("4", "Andrés Pérez")
                 ),
                 availableDates = (0L..13L).map { LocalDate.now().plusDays(it) },
                 timeSlots = (10..19).flatMap { hour ->
@@ -515,7 +544,7 @@ fun BookingPreview() {
     }
 
     MrBarberTheme {
-        Booking(
+        Appointment(
             state = state,
             onBack = {},
             onShopSelected = { state = state.copy(selectedShopId = it) },

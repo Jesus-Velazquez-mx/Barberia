@@ -1,23 +1,24 @@
-package com.mrbarber.cliente.features.booking.presentation
+package com.mrbarber.cliente.features.appointment.presentation
 
+import com.mrbarber.cliente.features.appointment.domain.model.Appointment
 import java.time.LocalDate
 import java.time.LocalTime
 
 data class ShopOption(
-    val id: Int,
+    val id: String,
     val name: String,
     val address: String
 )
 
 data class ServiceOption(
-    val id: Int,
+    val id: String,
     val name: String,
     val durationMinutes: Int,
     val price: Double
 )
 
 data class BarberOption(
-    val id: Int,
+    val id: String,
     val name: String
 )
 
@@ -26,22 +27,23 @@ data class TimeSlotOption(
     val isAvailable: Boolean
 )
 
-data class BookingUiState(
+data class AppointmentUiState(
     // Paso 1: sucursal y servicios
     val shops: List<ShopOption> = emptyList(),
-    val selectedShopId: Int? = null,
+    val selectedShopId: String? = null,
     val services: List<ServiceOption> = emptyList(),
-    val selectedServiceIds: Set<Int> = emptySet(),
+    val selectedServiceIds: Set<String> = emptySet(),
     // Paso 2: barbero, día y horario
     val barbers: List<BarberOption> = emptyList(),
-    val selectedBarberId: Int? = null,
+    val selectedBarberId: String? = null,
     val availableDates: List<LocalDate> = emptyList(),
     val selectedDate: LocalDate? = null,
     val timeSlots: List<TimeSlotOption> = emptyList(),
     val selectedTime: LocalTime? = null,
     val isLoadingSlots: Boolean = false,
     val isSubmitting: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val createdAppointment: Appointment? = null
 ) {
     val selectedShop: ShopOption? get() = shops.find { it.id == selectedShopId }
     val selectedServices: List<ServiceOption> get() = services.filter { it.id in selectedServiceIds }
