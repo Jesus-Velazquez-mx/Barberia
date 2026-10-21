@@ -3,6 +3,7 @@ import {
     canUpdateManagerTitle,
     canUpdateBarberProfile,
     canDeleteBarber,
+    canViewShopAppointments,
 } from '../src/services/userPermissions.js';
 import type { UserRole } from '../src/types/entities/user.interface.js';
 
@@ -85,5 +86,13 @@ describe('canDeleteBarber', () => {
     const nonManagerRoles: UserRole[] = ['client', 'receptionist'];
     test.each(nonManagerRoles)('%s no puede eliminar a un barbero', (role) => {
         expect(canDeleteBarber({ id: A, role })).toBe(false);
+    });
+});
+
+describe('canViewShopAppointments', () => {
+    test('permite solo sucursales dentro del alcance', () => {
+        expect(canViewShopAppointments(A, [A, B])).toBe(true);
+        expect(canViewShopAppointments(B, [A])).toBe(false);
+        expect(canViewShopAppointments(A, [])).toBe(false);
     });
 });

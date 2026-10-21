@@ -50,6 +50,15 @@ export const getShopById = async (id: string): Promise<Shop | null> => {
 };
 
 /**
+ * IDs de todas las sucursales (activas e inactivas) que administra un gerente.
+ */
+export const getShopIdsByManagerId = async (managerId: string): Promise<string[]> => {
+    const pool = db.getPool();
+    const result = await pool.query('SELECT id FROM shops WHERE manager_id = $1', [managerId]);
+    return result.rows.map((row) => row.id);
+};
+
+/**
  * Busca una sucursal por nombre (sin distinguir mayúsculas/minúsculas).
  */
 export const getShopByName = async (name: string): Promise<Shop | null> => {
