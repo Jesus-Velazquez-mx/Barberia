@@ -13,3 +13,7 @@ data object HomeDestination
 
 @Serializable
 data object ProfileDestination
+
+
+@Serializable
+data object BookingDestination

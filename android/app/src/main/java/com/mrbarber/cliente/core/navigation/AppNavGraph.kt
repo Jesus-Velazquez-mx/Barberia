@@ -17,6 +17,8 @@ import com.mrbarber.cliente.features.home.presentation.HomeRoute
 import com.mrbarber.cliente.features.login.presentation.LoginRoute
 import com.mrbarber.cliente.features.profile.presentation.ProfileRoute
 import com.mrbarber.cliente.features.register.presentation.RegisterRoute
+import com.mrbarber.cliente.features.booking.presentation.BookingRoute
+
 
 @Composable
 fun AppNavGraph(
@@ -67,6 +69,12 @@ fun AppNavGraph(
         }
         composable<ProfileDestination> {
             ProfileRoute(
+                onBack = { navController.popBackStack() },
+                onLoggedOut = { navController.navigateToLoginClearingStack() }
+            )
+        }
+        composable<BookingDestination> {
+            BookingRoute(
                 onBack = { navController.popBackStack() },
                 onLoggedOut = { navController.navigateToLoginClearingStack() }
             )
