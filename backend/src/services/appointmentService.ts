@@ -5,6 +5,7 @@ import {
     getServicesByAppointmentIds,
 } from '../repositories/appointmentRepository.js';
 import { getShopById, getShopIdsByManagerId } from '../repositories/shopRepository.js';
+import { getBarberById } from '../repositories/barberRepository.js';
 import { getClientByUserId } from '../repositories/clientRepository.js';
 import { getReceptionistByUserId } from '../repositories/receptionistRepository.js';
 import { getAvailableSlots, getBookableServices } from './availabilityService.js';
@@ -41,7 +42,14 @@ export const registerAppointment = async (
         throw new ApiError(ApiErrorCode.INVALID_INPUT, 'Either clientId or guestClientName is required');
     }
 
-    const shop = await getShopById(data.shopId);
+    // Un barbero pertenece a una sola sucursal, así que shopId se deriva de barberId
+    // en vez de pedirse por separado (y poder no coincidir con la del barbero).
+    const barber = await getBarberById(data.barberId);
+    if (!barber) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Barber not found');
+    }
+
+    const shop = await getShopById(barber.shop_id);
     if (!shop || !shop.is_active) {
         throw new ApiError(ApiErrorCode.NOT_FOUND, 'Shop not found or is inactive');
     }
@@ -64,7 +72,7 @@ export const registerAppointment = async (
     }
 
     // Reutiliza el cálculo de disponibilidad: valida fecha (no pasada, máx. días de anticipación),
-    // servicios, barbero elegible, turno, plantilla semanal y citas existentes.
+    // servicios, barbero elegible, turno (día abierto) y citas existentes.
     const scheduledStart = new Date(data.scheduledStart);
     const startIso = scheduledStart.toISOString();
     const availability = await getAvailableSlots({

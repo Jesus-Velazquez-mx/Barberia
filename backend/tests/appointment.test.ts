@@ -66,7 +66,7 @@ describe('POST /api/appointments', () => {
         request(app)
             .post('/api/appointments')
             .set('Authorization', `Bearer ${token}`)
-            .send({ shopId, barberId, serviceIds: [serviceId], ...body });
+            .send({ barberId, serviceIds: [serviceId], ...body });
 
     beforeAll(async () => {
         await connectDB();
