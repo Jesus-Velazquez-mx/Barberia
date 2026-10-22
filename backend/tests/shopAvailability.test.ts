@@ -7,11 +7,12 @@ import {
     insertManager,
     insertShop,
     insertBarber,
-    insertAvailabilitySlot,
+    insertShift,
     insertService,
     insertAppointment,
     cleanupFixtures,
 } from './helpers/availabilityFixtures.js';
+import { generateUniqueName } from './helpers/uniqueValues.js';
 
 const { connectDB, closeDB } = connection;
 
@@ -32,21 +33,21 @@ describe('GET /api/shops/:id/availability', () => {
         const manager = await insertManager();
         shopId = await insertShop(manager.id, { name: 'Availability Integration Shop', isActive: true });
 
-        // 2. Crear barbero con shift asignado
-        const barber = await insertBarber(shopId, { isAcceptingBookings: true });
+        // 2. Crear un turno acotado a 09:00-11:00 UTC para que la ventana disponible sea exacta y predecible
+        const shiftId = await insertShift(generateUniqueName('Shift'), '09:00', '11:00');
+
+        // 3. Crear barbero con ese turno
+        const barber = await insertBarber(shopId, { isAcceptingBookings: true, shiftId });
         barberId = barber.id;
 
-        // 3. Crear servicio de 30 minutos
+        // 4. Crear servicio de 30 minutos
         serviceId = await insertService({ durationMinutes: 30, isActive: true });
 
-        // 4. Seleccionar una fecha futura fija para la prueba (mañana o 2 días en el futuro)
+        // 5. Seleccionar una fecha futura fija para la prueba (2 días en el futuro, evitando domingo porque cierra)
         const targetDate = new Date(`${getBusinessToday()}T00:00:00Z`);
         targetDate.setUTCDate(targetDate.getUTCDate() + 2);
+        if (targetDate.getUTCDay() === 0) targetDate.setUTCDate(targetDate.getUTCDate() + 1);
         targetDateStr = targetDate.toISOString().slice(0, 10);
-        const dayOfWeek = targetDate.getUTCDay();
-
-        // 5. Insertar plantilla de disponibilidad de 09:00 a 11:00 UTC para ese día de la semana
-        await insertAvailabilitySlot(barberId, shopId, dayOfWeek, '09:00', '11:00', true);
 
         // 6. Insertar una cita entre 09:30 y 10:00 UTC
         const apptStart = new Date(`${targetDateStr}T09:30:00.000Z`);

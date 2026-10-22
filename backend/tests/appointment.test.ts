@@ -12,7 +12,6 @@ import {
     insertUser,
     insertBarber,
     insertService,
-    insertAvailabilitySlot,
     cleanupFixtures,
     createdAppointmentIds,
 } from './helpers/availabilityFixtures.js';
@@ -100,9 +99,10 @@ describe('POST /api/appointments', () => {
 
         const date = new Date(`${getBusinessToday()}T00:00:00Z`);
         date.setUTCDate(date.getUTCDate() + 2);
+        // Las sucursales cierran domingo: si cae domingo, se recorre un día más.
+        if (date.getUTCDay() === 0) date.setUTCDate(date.getUTCDate() + 1);
         dateStr = date.toISOString().slice(0, 10);
         // 12:00 - 15:00 cae dentro de ambos turnos (mañana 8-16, tarde 12-20)
-        await insertAvailabilitySlot(barberId, shopId, date.getUTCDay(), '12:00', '15:00');
     });
 
     afterEach(async () => {

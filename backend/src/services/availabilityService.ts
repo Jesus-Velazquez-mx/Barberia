@@ -2,7 +2,6 @@ import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 import { getServicesByIds } from '../repositories/offeredServiceRepository.js';
 import { getShopById } from '../repositories/shopRepository.js';
 import { getActiveBarbersByShop } from '../repositories/barberRepository.js';
-import { getActiveSlotsByBarberIdsAndDay } from '../repositories/availabilitySlotRepository.js';
 import { getBlockingAppointmentsByBarberIdsAndRange } from '../repositories/appointmentRepository.js';
 import { getAllShifts } from '../repositories/shiftRepository.js';
 import type { OfferedService } from '../types/entities/offeredService.interface.js';
@@ -10,6 +9,9 @@ import { timeToMinutes, toBusinessWallClockMs } from '../utils/businessTime.js';
 
 /** Máximo de días de anticipación con los que se puede consultar/agendar. */
 export const MAX_BOOKING_DAYS_AHEAD = 30;
+
+/** Días de la semana en que las sucursales abren (0 = domingo, igual que en la BD). Todas cierran domingo. */
+export const OPEN_DAYS_OF_WEEK = [1, 2, 3, 4, 5, 6];
 
 /** Separación entre horarios de inicio candidatos dentro de cada hueco libre. */
 export const SLOT_STEP_MINUTES = 15;
@@ -86,8 +88,9 @@ export const getBookableServices = async (serviceIds: string[]): Promise<Offered
 
 /**
  * Calcula, por barbero elegible de la sucursal, los horarios de inicio agendables para
- * los servicios en la fecha dada (duración = suma de sus duraciones): plantilla semanal
- * acotada por el turno, menos las citas scheduled / checked_in, con cada hueco libre dividido en pasos de SLOT_STEP_MINUTES.
+ * los servicios en la fecha dada (duración = suma de sus duraciones): ventana del turno
+ * del barbero (si la sucursal abre ese día), menos las citas scheduled / checked_in, con
+ * cada hueco libre dividido en pasos de SLOT_STEP_MINUTES.
  * Fechas y horarios se manejan como hora de pared "en UTC"; solo "hoy" y "ahora" se
  * calculan en la zona horaria del negocio (BUSINESS_TIMEZONE).
  */
@@ -122,8 +125,12 @@ export const getAvailableSlots = async ({
     const barberIds: string[] = barbers.map((b: { id: string }) => b.id);
     const dayOfWeek = new Date(dayStart).getUTCDay(); // 0 = domingo, igual que la BD
 
-    const [slots, appointments, shifts] = await Promise.all([
-        getActiveSlotsByBarberIdsAndDay(barberIds, dayOfWeek),
+    // Ninguna sucursal abre en domingo: ningún barbero tiene horarios ese día.
+    if (!OPEN_DAYS_OF_WEEK.includes(dayOfWeek)) {
+        return barbers.map((barber: { id: string }) => ({ barberId: barber.id, startTimes: [] }));
+    }
+
+    const [appointments, shifts] = await Promise.all([
         getBlockingAppointmentsByBarberIdsAndRange(barberIds, new Date(dayStart), new Date(dayStart + MS_PER_DAY)),
         getAllShifts(),
     ]);
@@ -134,16 +141,7 @@ export const getAvailableSlots = async ({
 
     return barbers.map((barber: { id: string; shift_id: string }) => {
         const shift = shifts.find((s) => s.id === barber.shift_id);
-        const shiftStart = shift ? timeToMinutes(shift.start_time) : 0;
-        const shiftEnd = shift ? timeToMinutes(shift.end_time) : 0;
-
-        const windows = slots
-            .filter((s) => s.barber_id === barber.id && s.shop_id === shopId)
-            .map((s): Interval => [
-                Math.max(timeToMinutes(s.start_time), shiftStart),
-                Math.min(timeToMinutes(s.end_time), shiftEnd),
-            ])
-            .filter(([start, end]) => start < end);
+        const windows: Interval[] = shift ? [[timeToMinutes(shift.start_time), timeToMinutes(shift.end_time)]] : [];
 
         const busy = appointments
             .filter((a) => a.barber_id === barber.id)
