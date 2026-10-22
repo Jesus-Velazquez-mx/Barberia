@@ -12,7 +12,7 @@ import { getAvailableSlots, getBookableServices } from './availabilityService.js
 import { canCreateAppointment, canViewShopAppointments } from './userPermissions.js';
 import { isUserSessionValid } from '../utils/userSession.js';
 import { toAppointmentResponse } from '../utils/appointmentMapper.js';
-import { getBusinessDayStart } from '../utils/businessTime.js';
+import { getBusinessDayStart, getBusinessToday } from '../utils/businessTime.js';
 import type { AppointmentListFilters } from '../repositories/appointmentRepository.js';
 import type { AppointmentService } from '../types/entities/appointmentService.interface.js';
 import type { CreateAppointmentRequest, ListAppointmentsQuery } from '../types/dto/appointmentRequest.interface.js';
@@ -73,11 +73,14 @@ export const registerAppointment = async (
 
     // Reutiliza el cálculo de disponibilidad: valida fecha (no pasada, máx. días de anticipación),
     // servicios, barbero elegible, turno (día abierto) y citas existentes.
+    // scheduledStart es un instante UTC real; el día de negocio al que pertenece se calcula en
+    // BUSINESS_TIMEZONE (no recortando el ISO en UTC: cerca de medianoche el día de calendario
+    // del negocio puede no coincidir con el día de calendario en UTC).
     const scheduledStart = new Date(data.scheduledStart);
     const startIso = scheduledStart.toISOString();
     const availability = await getAvailableSlots({
         shopId: shop.id,
-        date: startIso.slice(0, 10),
+        date: getBusinessToday(scheduledStart.getTime()),
         serviceIds: data.serviceIds,
     });
     const barberSlots = availability.find((b) => b.barberId === data.barberId);

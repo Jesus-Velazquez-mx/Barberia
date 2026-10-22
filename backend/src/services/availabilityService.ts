@@ -5,7 +5,7 @@ import { getActiveBarbersByShop } from '../repositories/barberRepository.js';
 import { getBlockingAppointmentsByBarberIdsAndRange } from '../repositories/appointmentRepository.js';
 import { getAllShifts } from '../repositories/shiftRepository.js';
 import type { OfferedService } from '../types/entities/offeredService.interface.js';
-import { timeToMinutes, toBusinessWallClockMs } from '../utils/businessTime.js';
+import { timeToMinutes, toBusinessWallClockMs, businessWallClockToUtcMs } from '../utils/businessTime.js';
 
 /** Máximo de días de anticipación con los que se puede consultar/agendar. */
 export const MAX_BOOKING_DAYS_AHEAD = 30;
@@ -91,8 +91,11 @@ export const getBookableServices = async (serviceIds: string[]): Promise<Offered
  * los servicios en la fecha dada (duración = suma de sus duraciones): ventana del turno
  * del barbero (si la sucursal abre ese día), menos las citas scheduled / checked_in, con
  * cada hueco libre dividido en pasos de SLOT_STEP_MINUTES.
- * Fechas y horarios se manejan como hora de pared "en UTC"; solo "hoy" y "ahora" se
- * calculan en la zona horaria del negocio (BUSINESS_TIMEZONE).
+ * `date` es la fecha de calendario del negocio (zona BUSINESS_TIMEZONE). Internamente, turnos,
+ * ventanas y huecos se calculan en hora de pared del negocio (mismo truco que toBusinessWallClockMs:
+ * un ms "ficticio-UTC" que, leído con getters UTC, muestra esa hora de pared); los `startTimes` que
+ * se devuelven son instantes UTC reales (convertidos con businessWallClockToUtcMs), igual que
+ * `scheduled_start`/`scheduled_end` en la base de datos.
  */
 export const getAvailableSlots = async ({
     shopId,
@@ -130,12 +133,20 @@ export const getAvailableSlots = async ({
         return barbers.map((barber: { id: string }) => ({ barberId: barber.id, startTimes: [] }));
     }
 
+    // El día de negocio [dayStart, dayStart + 1 día) en hora de pared corresponde a este rango
+    // real en UTC; las citas se buscan en ese rango, no en el literal [dayStart, dayStart + 1 día).
     const [appointments, shifts] = await Promise.all([
-        getBlockingAppointmentsByBarberIdsAndRange(barberIds, new Date(dayStart), new Date(dayStart + MS_PER_DAY)),
+        getBlockingAppointmentsByBarberIdsAndRange(
+            barberIds,
+            new Date(businessWallClockToUtcMs(dayStart)),
+            new Date(businessWallClockToUtcMs(dayStart + MS_PER_DAY))
+        ),
         getAllShifts(),
     ]);
 
-    const toMinutes = (d: Date) => (new Date(d).getTime() - dayStart) / MS_PER_MINUTE;
+    // scheduled_start/scheduled_end son instantes UTC reales; se pasan a hora de pared del
+    // negocio antes de compararlos con las ventanas (que ya están en esa misma convención).
+    const toMinutes = (d: Date) => (toBusinessWallClockMs(new Date(d).getTime()) - dayStart) / MS_PER_MINUTE;
     // Hoy no se ofrecen inicios que ya pasaron.
     const notBefore = dayStart === todayStart ? (now - dayStart) / MS_PER_MINUTE : -Infinity;
 
@@ -150,7 +161,7 @@ export const getAvailableSlots = async ({
         return {
             barberId: barber.id,
             startTimes: computeStartMinutes(windows, busy, duration, notBefore).map((m) =>
-                new Date(dayStart + m * MS_PER_MINUTE).toISOString()
+                new Date(businessWallClockToUtcMs(dayStart + m * MS_PER_MINUTE)).toISOString()
             ),
         };
     });

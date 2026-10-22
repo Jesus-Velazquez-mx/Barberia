@@ -22,7 +22,7 @@ jest.unstable_mockModule('../src/repositories/shiftRepository.js', () => ({ getA
 const { getAvailableSlots, computeStartMinutes, MAX_BOOKING_DAYS_AHEAD } =
     await import('../src/services/availabilityService.js');
 const { ApiError, ApiErrorCode } = await import('../src/errors/ApiError.js');
-const { getBusinessToday } = await import('../src/utils/businessTime.js');
+const { getBusinessToday, businessWallClockToUtcMs } = await import('../src/utils/businessTime.js');
 
 const SHOP = 'shop-1';
 const SERVICE = 'service-1';
@@ -44,7 +44,9 @@ const nextDayOfWeek = (date: string, dayOfWeek: number) => {
 const tomorrowCandidate = addDays(getBusinessToday(), 1);
 const TOMORROW =
     new Date(`${tomorrowCandidate}T00:00:00Z`).getUTCDay() === 0 ? addDays(tomorrowCandidate, 1) : tomorrowCandidate;
-const at = (hhmm: string, date = TOMORROW) => new Date(`${date}T${hhmm}:00.000Z`);
+// `at` recibe la hora de pared del negocio (dígitos literales) y devuelve el instante UTC real
+// correspondiente, igual que hace el servicio (businessWallClockToUtcMs), no el string "Z" literal.
+const at = (hhmm: string, date = TOMORROW) => new Date(businessWallClockToUtcMs(Date.parse(`${date}T${hhmm}:00.000Z`)));
 const iso = (hhmm: string) => at(hhmm).toISOString();
 /** Inicios cada 15 min desde `first` hasta `last` (inclusive), en ISO. */
 const every15 = (first: string, last: string) => {
@@ -265,9 +267,11 @@ describe('getAvailableSlots', () => {
             mockConfig.BUSINESS_TIMEZONE = 'America/Tijuana';
             freeze('2026-10-14T17:00:00Z'); // 10:00 en Tijuana
             const result = await getAvailableSlots({ shopId: SHOP, date: '2026-10-14', serviceIds: [SERVICE] });
-            // Turno 09:00-13:00, servicio de 60 min: el último inicio es 12:00; el primero, 10:00.
-            expect(result[0].startTimes[0]).toBe('2026-10-14T10:00:00.000Z');
-            expect(result[0].startTimes.at(-1)).toBe('2026-10-14T12:00:00.000Z');
+            // Turno 09:00-13:00 hora de Tijuana, servicio de 60 min: el último inicio es 12:00; el primero, 10:00.
+            const atTijuana = (hhmm: string) =>
+                new Date(businessWallClockToUtcMs(Date.parse(`2026-10-14T${hhmm}:00.000Z`), 'America/Tijuana')).toISOString();
+            expect(result[0].startTimes[0]).toBe(atTijuana('10:00'));
+            expect(result[0].startTimes.at(-1)).toBe(atTijuana('12:00'));
         });
     });
 

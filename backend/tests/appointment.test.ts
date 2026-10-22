@@ -2,7 +2,7 @@ import request from 'supertest';
 import express from 'express';
 import router from '../src/routes/routes.js';
 import connection from '../src/connection/connection.js';
-import { getBusinessToday } from '../src/utils/businessTime.js';
+import { getBusinessToday, businessWallClockToUtcMs } from '../src/utils/businessTime.js';
 import { signToken } from '../src/services/jwtTokenService.js';
 import { canCreateAppointment } from '../src/services/userPermissions.js';
 import type { User, UserRole } from '../src/types/entities/user.interface.js';
@@ -61,7 +61,8 @@ describe('POST /api/appointments', () => {
     let receptionistId: string;
     const clientTokens: string[] = [];
 
-    const at = (time: string) => new Date(`${dateStr}T${time}:00.000Z`).toISOString();
+    // Hora de pared de la sucursal (dígitos literales) -> instante UTC real, igual que hace el servicio.
+    const at = (time: string) => new Date(businessWallClockToUtcMs(Date.parse(`${dateStr}T${time}:00.000Z`))).toISOString();
     const book = (token: string, body: Record<string, unknown>) =>
         request(app)
             .post('/api/appointments')
