@@ -5,8 +5,8 @@ import { getActiveBarbersByShop } from '../repositories/barberRepository.js';
 import { getActiveSlotsByBarberIdsAndDay } from '../repositories/availabilitySlotRepository.js';
 import { getBlockingAppointmentsByBarberIdsAndRange } from '../repositories/appointmentRepository.js';
 import { getAllShifts } from '../repositories/shiftRepository.js';
-import { toBusinessWallClockMs } from '../utils/businessTime.js';
 import type { OfferedService } from '../types/entities/offeredService.interface.js';
+import { timeToMinutes, toBusinessWallClockMs } from '../utils/businessTime.js';
 
 /** Máximo de días de anticipación con los que se puede consultar/agendar. */
 export const MAX_BOOKING_DAYS_AHEAD = 30;
@@ -33,12 +33,6 @@ export interface AvailableSlotsByBarber {
 
 /** Intervalo semiabierto [start, end) en minutos desde la medianoche UTC de la fecha. */
 export type Interval = [number, number];
-
-/** 'HH:MM[:SS]' (columna time de Postgres) -> minutos desde medianoche. */
-const timeToMinutes = (time: string): number => {
-    const [h, m] = time.split(':').map(Number);
-    return h * 60 + m;
-};
 
 /**
  * Lógica pura: a cada ventana le resta los intervalos ocupados y divide cada hueco libre

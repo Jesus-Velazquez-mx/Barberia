@@ -41,6 +41,12 @@ export const toBusinessWallClockMs = (utcMs: number = Date.now(), timeZone: stri
     return Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second, millis);
 };
 
+/** 'HH:MM[:SS]' (columna time de Postgres) -> minutos desde medianoche. */
+export const timeToMinutes = (time: string): number => {
+    const [h, m] = time.split(':').map(Number);
+    return h * 60 + m;
+};
+
 /** Fecha de hoy ('YYYY-MM-DD') en la zona horaria del negocio. */
 export const getBusinessToday = (utcMs: number = Date.now(), timeZone: string = getBusinessTimezone()): string =>
     new Date(toBusinessWallClockMs(utcMs, timeZone)).toISOString().slice(0, 10);

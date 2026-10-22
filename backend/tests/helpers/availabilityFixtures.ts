@@ -69,7 +69,7 @@ export const insertShop = async (
  * Inserta un turno en la tabla 'shifts' o reutiliza uno existente si ya existe uno con ese nombre.
  */
 export const insertShift = async (
-    name: 'morning' | 'afternoon',
+    name: string,
     startTime = '08:00',
     endTime = '16:00'
 ): Promise<string> => {
