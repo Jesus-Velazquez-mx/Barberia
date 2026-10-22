@@ -23,7 +23,6 @@ CREATE TYPE appointment_status AS ENUM (
 );
 
 CREATE TYPE notification_status AS ENUM ('sent', 'failed', 'pending');
-CREATE TYPE shift_name AS ENUM ('morning', 'afternoon');
 
 -- ---------- updated_at trigger helper ----------
 
@@ -122,16 +121,19 @@ CREATE INDEX idx_shops_manager ON shops (manager_id);
 CREATE TRIGGER trg_shops_updated_at BEFORE UPDATE ON shops
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
--- ---------- shifts (fixed catalog) ----------
--- Only two shifts exist today. Every barber works one shift, Monday–Saturday.
+-- ---------- shifts (manager-managed catalog) ----------
+-- Every barber and receptionist works one shift, Monday–Saturday. Managers create, edit and delete
+-- shifts; overlapping shifts are allowed, but two shifts cannot share the exact same time range.
+-- The 4/6/8-hour length rule is enforced by the API, not here.
 
 CREATE TABLE shifts (
     id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    name        shift_name NOT NULL UNIQUE,
+    name        varchar(50) NOT NULL UNIQUE,
     start_time  time NOT NULL,
     end_time    time NOT NULL CHECK (end_time > start_time),
     created_at  timestamptz NOT NULL DEFAULT now(),
-    updated_at  timestamptz NOT NULL DEFAULT now()
+    updated_at  timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT shifts_time_range_unique UNIQUE (start_time, end_time)
 );
 
 CREATE TRIGGER trg_shifts_updated_at BEFORE UPDATE ON shifts
