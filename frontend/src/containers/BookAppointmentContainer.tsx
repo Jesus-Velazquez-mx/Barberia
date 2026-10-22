@@ -61,7 +61,7 @@ const APPOINTMENTS_ROUTE_BY_ROLE: Record<string, string> = {
 const BOOKING_SUCCESS_MESSAGE = 'Cita agendada correctamente.';
 
 export function BookAppointmentContainer() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const navigate = useNavigate();
   const today = getTodayLocal();
   const [todayYear, todayMonth, todayDay] = today.split('-').map(Number);
@@ -104,9 +104,10 @@ export function BookAppointmentContainer() {
 
   /* 1. Cargar sucursales y servicios al montar */
   useEffect(() => {
+    if (!token) return;
     let active = true;
 
-    Promise.all([getShops(), getOfferedServices()])
+    Promise.all([getShops(), getOfferedServices(token)])
       .then(([shopsData, servicesData]) => {
         if (!active) return;
         setShopOptions(shopsData.map((shop) => ({ value: shop.id, label: shop.name })));
@@ -119,7 +120,7 @@ export function BookAppointmentContainer() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [token]);
 
   /* 2. Cargar los barberos activos cuando cambia la sucursal */
   useEffect(() => {
