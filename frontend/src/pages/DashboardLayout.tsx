@@ -11,6 +11,7 @@ const NAV_ITEMS = {
   manager: [
     { to: '/manager/staff', label: 'Personal', icon: <Users size={20} aria-hidden="true" /> },
     { to: '/manager/clients', label: 'Clientes', icon: <UserRound size={20} aria-hidden="true" /> },
+    { to: '/manager/appointments', label: 'Citas', icon: <Calendar size={20} aria-hidden="true" /> },
     { to: '/manager/inventory', label: 'Inventario', icon: <Package size={20} aria-hidden="true" /> },
     { to: '/manager/management', label: 'Gestión', icon: <Settings size={20} aria-hidden="true" /> }
   ],
@@ -21,7 +22,7 @@ const NAV_ITEMS = {
     { to: '/client/profile', label: 'Mi Perfil', icon: <UserRound size={20} aria-hidden="true" /> }
   ],
   receptionist: [
-    { to: '/receptionist/appointments', label: 'Calendario', icon: <Calendar size={20} aria-hidden="true" /> },
+    { to: '/receptionist/appointments', label: 'Citas', icon: <Calendar size={20} aria-hidden="true" /> },
     { to: '/receptionist/booking', label: 'Agendar Cita', icon: <CalendarPlus size={20} aria-hidden="true" /> },
     { to: '/receptionist/clients', label: 'Clientes', icon: <UserRound size={20} aria-hidden="true" /> },
     { to: '/receptionist/inventory', label: 'Inventario', icon: <Package size={20} aria-hidden="true" /> },
