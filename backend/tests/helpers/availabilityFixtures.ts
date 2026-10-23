@@ -6,7 +6,6 @@ const { getPool } = connection;
 
 // Estado centralizado de fixtures para rastreo y limpieza segura en cascada
 export const createdAppointmentIds: string[] = [];
-export const createdAvailabilitySlotIds: string[] = [];
 export const createdServiceIds: string[] = [];
 export const createdServiceCategoryIds: string[] = [];
 export const createdBarberIds: string[] = [];
@@ -170,27 +169,6 @@ export const insertService = async (options?: {
 };
 
 /**
- * Inserta una plantilla de disponibilidad en 'availability_slots'.
- */
-export const insertAvailabilitySlot = async (
-    barberId: string,
-    shopId: string,
-    dayOfWeek: number,
-    startTime: string,
-    endTime: string,
-    isActive = true
-): Promise<string> => {
-    const result = await getPool().query(
-        `INSERT INTO availability_slots (barber_id, shop_id, day_of_week, start_time, end_time, is_active)
-         VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-        [barberId, shopId, dayOfWeek, startTime, endTime, isActive]
-    );
-    const id = result.rows[0].id;
-    createdAvailabilitySlotIds.push(id);
-    return id;
-};
-
-/**
  * Inserta una cita en la tabla 'appointments'.
  */
 export const insertAppointment = async (
@@ -224,14 +202,13 @@ export const insertAppointment = async (
 /**
  * Limpieza respetando estrictamente el orden de llaves foráneas:
  * 1. appointments (depende de barbers, shops, clients/users)
- * 2. availability_slots (depende de barbers, shops)
- * 3. services (depende de services_categories)
- * 4. services_categories
- * 5. barbers (depende de shops, shifts)
- * 6. shops (depende de managers)
- * 7. managers (depende de users)
- * 8. users
- * 9. shifts (si se crearon turnos adicionales de prueba)
+ * 2. services (depende de services_categories)
+ * 3. services_categories
+ * 4. barbers (depende de shops, shifts)
+ * 5. shops (depende de managers)
+ * 6. managers (depende de users)
+ * 7. users
+ * 8. shifts (si se crearon turnos adicionales de prueba)
  */
 export const cleanupFixtures = async () => {
     const pool = getPool();
@@ -239,11 +216,6 @@ export const cleanupFixtures = async () => {
     if (createdAppointmentIds.length > 0) {
         await pool.query(`DELETE FROM appointments WHERE id = ANY($1::uuid[])`, [createdAppointmentIds]);
         createdAppointmentIds.length = 0;
-    }
-
-    if (createdAvailabilitySlotIds.length > 0) {
-        await pool.query(`DELETE FROM availability_slots WHERE id = ANY($1::uuid[])`, [createdAvailabilitySlotIds]);
-        createdAvailabilitySlotIds.length = 0;
     }
 
     if (createdServiceIds.length > 0) {

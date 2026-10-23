@@ -10,7 +10,7 @@ const router = Router();
  *     summary: Agenda una nueva cita
  *     tags: [Appointments]
  *     description: |
- *       Agenda una cita para un barbero, uno o más servicios y un horario. `scheduledStart` debe ser uno de los `startTimes`
+ *       Agenda una cita para un barbero, uno o más servicios y un horario. La sucursal se deriva del barbero (`barberId`), ya que cada barbero trabaja en una sola sucursal. `scheduledStart` debe ser uno de los `startTimes`
  *       devueltos por `GET /api/shops/{id}/availability` para ese barbero y esos mismos servicios. La duración de la cita es la suma de las duraciones de los servicios. Requiere token JWT.
  *       Permisos por rol:
  *       - client: solo para sí mismo (`clientId` se puede omitir); no puede agendar para invitados.
@@ -25,9 +25,8 @@ const router = Router();
  *         application/json:
  *           schema:
  *             type: object
- *             required: [shopId, barberId, serviceIds, scheduledStart]
+ *             required: [barberId, serviceIds, scheduledStart]
  *             properties:
- *               shopId: { type: string, format: uuid }
  *               barberId: { type: string, format: uuid }
  *               serviceIds:
  *                 type: array

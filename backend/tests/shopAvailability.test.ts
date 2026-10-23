@@ -2,16 +2,17 @@ import request from 'supertest';
 import express from 'express';
 import router from '../src/routes/routes.js';
 import connection from '../src/connection/connection.js';
-import { getBusinessToday } from '../src/utils/businessTime.js';
+import { getBusinessToday, businessWallClockToUtcMs } from '../src/utils/businessTime.js';
 import {
     insertManager,
     insertShop,
     insertBarber,
-    insertAvailabilitySlot,
+    insertShift,
     insertService,
     insertAppointment,
     cleanupFixtures,
 } from './helpers/availabilityFixtures.js';
+import { generateUniqueName } from './helpers/uniqueValues.js';
 
 const { connectDB, closeDB } = connection;
 
@@ -25,6 +26,9 @@ describe('GET /api/shops/:id/availability', () => {
     let serviceId: string;
     let targetDateStr: string;
 
+    // Hora de pared del negocio (dígitos literales) -> instante UTC real, igual que hace el servicio.
+    const at = (hhmm: string) => new Date(businessWallClockToUtcMs(Date.parse(`${targetDateStr}T${hhmm}:00.000Z`)));
+
     beforeAll(async () => {
         await connectDB();
 
@@ -32,26 +36,24 @@ describe('GET /api/shops/:id/availability', () => {
         const manager = await insertManager();
         shopId = await insertShop(manager.id, { name: 'Availability Integration Shop', isActive: true });
 
-        // 2. Crear barbero con shift asignado
-        const barber = await insertBarber(shopId, { isAcceptingBookings: true });
+        // 2. Crear un turno acotado a 09:00-11:00 UTC para que la ventana disponible sea exacta y predecible
+        const shiftId = await insertShift(generateUniqueName('Shift'), '09:00', '11:00');
+
+        // 3. Crear barbero con ese turno
+        const barber = await insertBarber(shopId, { isAcceptingBookings: true, shiftId });
         barberId = barber.id;
 
-        // 3. Crear servicio de 30 minutos
+        // 4. Crear servicio de 30 minutos
         serviceId = await insertService({ durationMinutes: 30, isActive: true });
 
-        // 4. Seleccionar una fecha futura fija para la prueba (mañana o 2 días en el futuro)
+        // 5. Seleccionar una fecha futura fija para la prueba (2 días en el futuro, evitando domingo porque cierra)
         const targetDate = new Date(`${getBusinessToday()}T00:00:00Z`);
         targetDate.setUTCDate(targetDate.getUTCDate() + 2);
+        if (targetDate.getUTCDay() === 0) targetDate.setUTCDate(targetDate.getUTCDate() + 1);
         targetDateStr = targetDate.toISOString().slice(0, 10);
-        const dayOfWeek = targetDate.getUTCDay();
 
-        // 5. Insertar plantilla de disponibilidad de 09:00 a 11:00 UTC para ese día de la semana
-        await insertAvailabilitySlot(barberId, shopId, dayOfWeek, '09:00', '11:00', true);
-
-        // 6. Insertar una cita entre 09:30 y 10:00 UTC
-        const apptStart = new Date(`${targetDateStr}T09:30:00.000Z`);
-        const apptEnd = new Date(`${targetDateStr}T10:00:00.000Z`);
-        await insertAppointment(shopId, barberId, apptStart, apptEnd, { status: 'scheduled' });
+        // 6. Insertar una cita entre 09:30 y 10:00, hora de la sucursal
+        await insertAppointment(shopId, barberId, at('09:30'), at('10:00'), { status: 'scheduled' });
     });
 
     afterAll(async () => {
@@ -76,15 +78,15 @@ describe('GET /api/shops/:id/availability', () => {
         // Con ventana de 09:00 a 11:00 (duración 30 min) y cita de 09:30 a 10:00:
         // Hueco 1: 09:00 a 09:30 -> inicio a las 09:00
         // Hueco 2: 10:00 a 11:00 -> inicios a las 10:00, 10:15, 10:30
-        const expectedSlot9 = new Date(`${targetDateStr}T09:00:00.000Z`).toISOString();
-        const expectedSlot10 = new Date(`${targetDateStr}T10:00:00.000Z`).toISOString();
-        const expectedSlot1015 = new Date(`${targetDateStr}T10:15:00.000Z`).toISOString();
-        const expectedSlot1030 = new Date(`${targetDateStr}T10:30:00.000Z`).toISOString();
+        const expectedSlot9 = at('09:00').toISOString();
+        const expectedSlot10 = at('10:00').toISOString();
+        const expectedSlot1015 = at('10:15').toISOString();
+        const expectedSlot1030 = at('10:30').toISOString();
 
         // Horarios bloqueados por la cita:
-        const blockedSlot915 = new Date(`${targetDateStr}T09:15:00.000Z`).toISOString();
-        const blockedSlot930 = new Date(`${targetDateStr}T09:30:00.000Z`).toISOString();
-        const blockedSlot945 = new Date(`${targetDateStr}T09:45:00.000Z`).toISOString();
+        const blockedSlot915 = at('09:15').toISOString();
+        const blockedSlot930 = at('09:30').toISOString();
+        const blockedSlot945 = at('09:45').toISOString();
 
         expect(startTimes).toContain(expectedSlot9);
         expect(startTimes).toContain(expectedSlot10);
@@ -174,7 +176,7 @@ describe('GET /api/shops/:id/availability', () => {
 
         expect(res.status).toBe(200);
         const barberSlots = res.body.data.find((b: { barberId: string }) => b.barberId === barberId);
-        expect(barberSlots.startTimes).toEqual([`${targetDateStr}T10:00:00.000Z`]);
+        expect(barberSlots.startTimes).toEqual([at('10:00').toISOString()]);
     });
 
     test('debe responder 400 con serviceIds repetidos', async () => {

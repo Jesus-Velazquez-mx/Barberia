@@ -1,7 +1,6 @@
 import type { AppointmentStatus } from '../entities/appointment.interface.js';
 
 export interface CreateAppointmentRequest {
-    shopId: string;
     barberId: string;
     serviceIds: string[];
     scheduledStart: string;
