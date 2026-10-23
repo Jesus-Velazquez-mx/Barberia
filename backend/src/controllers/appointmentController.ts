@@ -8,7 +8,6 @@ import { extractBearerFromHeader } from '../utils/headerHandling.js';
 
 const createAppointmentSchema = z
     .object({
-        shopId: z.uuid('Invalid shop ID format'),
         barberId: z.uuid('Invalid barber ID format'),
         serviceIds: z
             .array(z.uuid('Invalid service ID format'))

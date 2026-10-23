@@ -13,7 +13,9 @@ export const getActiveBarbersByShop = async (shopId: string): Promise<Barber[]> 
     return response.data;
 }
 
-export const getOfferedServices = async (): Promise<OfferedService[]> => {
-    const response = await apiClient.get<OfferedService[]>('/offeredServices')
+export const getOfferedServices = async (token: string): Promise<OfferedService[]> => {
+    const response = await apiClient.get<OfferedService[]>('/offeredServices', {
+        headers: { Authorization: `Bearer ${token}` }
+    });
     return response.data;
 }
