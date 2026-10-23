@@ -63,6 +63,7 @@ fun AppNavGraph(
         }
         composable<HomeDestination> {
             HomeRoute(
+                onBookAppointmentClick = { navController.navigate(AppointmentDestination) },
                 onProfileClick = { navController.navigate(ProfileDestination) },
                 onLoggedOut = { navController.navigateToLoginClearingStack() }
             )

@@ -4,12 +4,11 @@ import kotlinx.serialization.Serializable
 import java.time.OffsetDateTime
 
 /**
- * Cuerpo de POST /api/appointments.
+ * Cuerpo de POST /api/appointments. La sucursal no se envía: el backend la deriva del barbero.
  */
 
 @Serializable
 data class CreateAppointmentRequestDto (
-    val shopId: String,
     val barberId: String,
     val serviceIds: List<String>,
     val scheduledStart: String,

@@ -24,7 +24,6 @@ class CreateAppointmentUseCase @Inject constructor(
     private fun validate(appointment: NewAppointment): String? {
     val now = OffsetDateTime.now()
     return when {
-        appointment.shopId.isBlank() -> "Selecciona una sucursal"
         appointment.serviceIds.isEmpty() -> "Selecciona al menos un servicio"
         appointment.barberId.isBlank() -> "Selecciona un barbero"
         !appointment.scheduledStart.isAfter(now) -> "La fecha de la cita ya pasó"

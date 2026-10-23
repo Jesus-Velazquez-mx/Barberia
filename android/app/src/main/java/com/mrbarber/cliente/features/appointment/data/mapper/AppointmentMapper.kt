@@ -7,7 +7,6 @@ import com.mrbarber.cliente.features.appointment.domain.model.NewAppointment
 import java.time.OffsetDateTime
 
 fun NewAppointment.toRequestDto(): CreateAppointmentRequestDto = CreateAppointmentRequestDto(
-    shopId = shopId,
     barberId = barberId,
     serviceIds = serviceIds,
     // El backend solo acepta fechas en UTC con "Z" (p. ej. 2026-10-20T15:00:00Z).

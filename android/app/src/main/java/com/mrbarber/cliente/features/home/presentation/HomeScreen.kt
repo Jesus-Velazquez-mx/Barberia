@@ -30,11 +30,13 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mrbarber.cliente.R
 import com.mrbarber.cliente.ui.components.FullScreenLoading
+import com.mrbarber.cliente.ui.components.LoadingButton
 import com.mrbarber.cliente.ui.theme.Dorado
 import com.mrbarber.cliente.ui.theme.MrBarberTheme
 
 @Composable
 fun HomeRoute(
+    onBookAppointmentClick: () -> Unit,
     onProfileClick: () -> Unit,
     onLoggedOut: () -> Unit,
     modifier: Modifier = Modifier,
@@ -48,6 +50,7 @@ fun HomeRoute(
 
     Home(
         state = state,
+        onBookAppointmentClick = onBookAppointmentClick,
         onProfileClick = onProfileClick,
         modifier = modifier
     )
@@ -56,6 +59,7 @@ fun HomeRoute(
 @Composable
 fun Home(
     state: HomeUiState,
+    onBookAppointmentClick: () -> Unit,
     onProfileClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -98,6 +102,10 @@ fun Home(
                 )
             }
 
+            LoadingButton(text = "AGENDAR CITA", onClick = onBookAppointmentClick)
+
+            Spacer(Modifier.height(12.dp))
+
             OutlinedButton(
                 onClick = onProfileClick,
                 shape = RoundedCornerShape(8.dp),
@@ -116,6 +124,7 @@ fun HomePreview() {
     MrBarberTheme {
         Home(
             state = HomeUiState(isLoading = false, userName = "Asuka Langley Soryu"),
+            onBookAppointmentClick = {},
             onProfileClick = {}
         )
     }

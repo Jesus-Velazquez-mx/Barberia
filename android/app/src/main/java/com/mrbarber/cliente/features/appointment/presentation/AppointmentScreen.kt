@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -40,8 +41,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,6 +58,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mrbarber.cliente.features.appointment.domain.model.Appointment as BookedAppointment
+import com.mrbarber.cliente.features.appointment.domain.model.BUSINESS_ZONE
+import com.mrbarber.cliente.features.appointment.domain.model.Barber
+import com.mrbarber.cliente.features.appointment.domain.model.OfferedService
+import com.mrbarber.cliente.features.appointment.domain.model.Shop
 import com.mrbarber.cliente.ui.components.BackButton
 import com.mrbarber.cliente.ui.components.InitialsAvatar
 import com.mrbarber.cliente.ui.components.LoadingButton
@@ -81,13 +87,20 @@ fun AppointmentRoute(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(state.createdAppointment) {
-        if (state.createdAppointment != null) onAppointmentCreated()
+    // Se confirma la cita al usuario antes de salir de la pantalla.
+    state.createdAppointment?.let { appointment ->
+        AppointmentCreatedDialog(
+            appointment = appointment,
+            shopName = state.selectedShop?.name,
+            barberName = state.selectedBarber?.name,
+            onDismiss = onAppointmentCreated
+        )
     }
 
     Appointment(
         state = state,
         onBack = onBack,
+        onRetryCatalog = viewModel::loadCatalog,
         onShopSelected = viewModel::onShopSelected,
         onServiceToggled = viewModel::onServiceToggled,
         onBarberSelected = viewModel::onBarberSelected,
@@ -102,6 +115,7 @@ fun AppointmentRoute(
 fun Appointment(
     state: AppointmentUiState,
     onBack: () -> Unit,
+    onRetryCatalog: () -> Unit,
     onShopSelected: (String) -> Unit,
     onServiceToggled: (String) -> Unit,
     onBarberSelected: (String) -> Unit,
@@ -134,6 +148,18 @@ fun Appointment(
             )
 
             Spacer(Modifier.height(24.dp))
+
+            if (state.isLoadingCatalog) {
+                Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = Dorado)
+                }
+                return@Column
+            }
+
+            state.catalogError?.let { message ->
+                CatalogError(message = message, onRetry = onRetryCatalog)
+                return@Column
+            }
 
             SectionCard(title = "1. Sucursal") {
                 ShopDropdown(
@@ -176,32 +202,14 @@ fun Appointment(
 
             Spacer(Modifier.height(16.dp))
 
-            // Barbero, día y horario solo se habilitan con sucursal y servicios elegidos.
+            // Día, horario y barbero solo se habilitan con sucursal y servicios elegidos.
             if (!state.canChooseSchedule) {
-                LockedHint("Selecciona una sucursal y al menos un servicio para elegir barbero y horario.")
+                LockedHint("Selecciona una sucursal y al menos un servicio para elegir día, horario y barbero.")
             }
 
             AnimatedVisibility(visible = state.canChooseSchedule) {
                 Column {
-                    SectionCard(title = "3. Barbero") {
-                        Row(
-                            modifier = Modifier.horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            state.barbers.forEach { barber ->
-                                BarberItem(
-                                    barber = barber,
-                                    selected = barber.id == state.selectedBarberId,
-                                    enabled = !state.isSubmitting,
-                                    onClick = { onBarberSelected(barber.id) }
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(Modifier.height(16.dp))
-
-                    SectionCard(title = "4. Día y horario") {
+                    SectionCard(title = "3. Día y horario") {
                         Text("Día", fontSize = 14.sp, color = GrisClaro)
                         Row(
                             modifier = Modifier.horizontalScroll(rememberScrollState()),
@@ -222,6 +230,47 @@ fun Appointment(
                             state = state,
                             onTimeSelected = onTimeSelected
                         )
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+
+                    // Solo se ofrecen los barberos libres en el horario elegido.
+                    SectionCard(title = "4. Barbero") {
+                        when {
+                            state.selectedTime == null ->
+                                Text(
+                                    "Elige un horario para ver los barberos disponibles.",
+                                    fontSize = 13.sp,
+                                    color = GrisClaro
+                                )
+
+                            state.isLoadingBarbers ->
+                                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator(color = Dorado, modifier = Modifier.size(28.dp))
+                                }
+
+                            state.availableBarbers.isEmpty() ->
+                                Text(
+                                    "No hay barberos disponibles en este horario.",
+                                    fontSize = 13.sp,
+                                    color = GrisClaro
+                                )
+
+                            else ->
+                                Row(
+                                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    state.availableBarbers.forEach { barber ->
+                                        BarberItem(
+                                            barber = barber,
+                                            selected = barber.id == state.selectedBarberId,
+                                            enabled = !state.isSubmitting,
+                                            onClick = { onBarberSelected(barber.id) }
+                                        )
+                                    }
+                                }
+                        }
                     }
 
                     Spacer(Modifier.height(16.dp))
@@ -252,8 +301,8 @@ fun Appointment(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ShopDropdown(
-    shops: List<ShopOption>,
-    selectedShop: ShopOption?,
+    shops: List<Shop>,
+    selectedShop: Shop?,
     enabled: Boolean,
     onShopSelected: (String) -> Unit
 ) {
@@ -300,7 +349,7 @@ private fun ShopDropdown(
 
 @Composable
 private fun ServiceRow(
-    service: ServiceOption,
+    service: OfferedService,
     selected: Boolean,
     enabled: Boolean,
     onToggle: () -> Unit
@@ -338,7 +387,7 @@ private fun ServiceRow(
 
 @Composable
 private fun BarberItem(
-    barber: BarberOption,
+    barber: Barber,
     selected: Boolean,
     enabled: Boolean,
     onClick: () -> Unit
@@ -411,9 +460,9 @@ private fun TimeSlots(
     onTimeSelected: (LocalTime) -> Unit
 ) {
     when {
-        state.selectedBarberId == null || state.selectedDate == null ->
+        state.selectedDate == null ->
             Text(
-                "Elige un barbero y un día para ver los horarios disponibles.",
+                "Elige un día para ver los horarios disponibles.",
                 fontSize = 13.sp,
                 color = GrisClaro
             )
@@ -423,7 +472,7 @@ private fun TimeSlots(
                 CircularProgressIndicator(color = Dorado, modifier = Modifier.size(28.dp))
             }
 
-        state.timeSlots.none { it.isAvailable } ->
+        state.timeSlots.isEmpty() ->
             Text("No hay horarios disponibles para este día.", fontSize = 13.sp, color = GrisClaro)
 
         else ->
@@ -431,12 +480,12 @@ private fun TimeSlots(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                state.timeSlots.forEach { slot ->
+                state.timeSlots.forEach { time ->
                     FilterChip(
-                        selected = slot.time == state.selectedTime,
-                        onClick = { onTimeSelected(slot.time) },
-                        enabled = slot.isAvailable && !state.isSubmitting,
-                        label = { Text(slot.time.format(TIME_FORMAT)) },
+                        selected = time == state.selectedTime,
+                        onClick = { onTimeSelected(time) },
+                        enabled = !state.isSubmitting,
+                        label = { Text(time.format(TIME_FORMAT)) },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = Dorado,
                             selectedLabelColor = Negro
@@ -452,12 +501,12 @@ private fun AppointmentSummary(state: AppointmentUiState) {
     SectionCard(title = "Resumen") {
         SummaryRow("Sucursal", state.selectedShop?.name)
         SummaryRow("Servicios", state.selectedServices.joinToString { it.name }.ifEmpty { null })
-        SummaryRow("Barbero", state.selectedBarber?.name)
         SummaryRow(
             "Fecha",
             state.selectedDate?.format(FULL_DATE_FORMAT)?.replaceFirstChar { it.uppercase() }
         )
         SummaryRow("Hora", state.selectedTime?.format(TIME_FORMAT))
+        SummaryRow("Barbero", state.selectedBarber?.name)
         HorizontalDivider(color = GrisClaro.copy(alpha = 0.3f))
         Row(modifier = Modifier.fillMaxWidth()) {
             Text("Total", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
@@ -499,6 +548,49 @@ private fun LockedHint(text: String) {
     }
 }
 
+@Composable
+private fun CatalogError(message: String, onRetry: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(message, color = MaterialTheme.colorScheme.error, fontSize = 14.sp, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(12.dp))
+        TextButton(onClick = onRetry) {
+            Text("REINTENTAR", color = Dorado, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun AppointmentCreatedDialog(
+    appointment: BookedAppointment,
+    shopName: String?,
+    barberName: String?,
+    onDismiss: () -> Unit
+) {
+    // El backend responde en UTC: se muestra en la hora de la sucursal.
+    val start = appointment.scheduledStart.atZoneSameInstant(BUSINESS_ZONE)
+    val date = start.format(FULL_DATE_FORMAT).replaceFirstChar { it.uppercase() }
+    val details = buildString {
+        append("$date a las ${start.format(TIME_FORMAT)}")
+        barberName?.let { append(" con $it") }
+        shopName?.let { append(" en $it") }
+        append('.')
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("¡Cita agendada!") },
+        text = { Text(details) },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("ACEPTAR", color = Dorado, fontWeight = FontWeight.Bold)
+            }
+        }
+    )
+}
+
 private val LOCALE_MX: Locale = Locale.forLanguageTag("es-MX")
 
 private fun Double.toCurrency(): String = NumberFormat.getCurrencyInstance(LOCALE_MX).format(this)
@@ -517,27 +609,25 @@ fun AppointmentPreview() {
         mutableStateOf(
             AppointmentUiState(
                 shops = listOf(
-                    ShopOption("1", "Mr. Barber Centro", "Av. Juárez 123, Centro"),
-                    ShopOption("2", "Mr. Barber Norte", "Blvd. Las Torres 456, Col. Norte")
+                    Shop("1", "Mr. Barber Centro", "Av. Juárez 123, Centro"),
+                    Shop("2", "Mr. Barber Norte", "Blvd. Las Torres 456, Col. Norte")
                 ),
                 services = listOf(
-                    ServiceOption("1", "Corte de cabello", 40, 180.0),
-                    ServiceOption("2", "Arreglo de barba", 25, 120.0),
-                    ServiceOption("3", "Afeitado clásico", 30, 150.0),
-                    ServiceOption("4", "Lavado y peinado", 20, 90.0)
+                    OfferedService("1", "Corte de cabello", 40, 180.0),
+                    OfferedService("2", "Arreglo de barba", 25, 120.0),
+                    OfferedService("3", "Afeitado clásico", 30, 150.0),
+                    OfferedService("4", "Lavado y peinado", 20, 90.0)
                 ),
                 barbers = listOf(
-                    BarberOption("1", "Carlos Méndez"),
-                    BarberOption("2", "Luis Ortega"),
-                    BarberOption("3", "Miguel Ríos"),
-                    BarberOption("4", "Andrés Pérez")
+                    Barber("1", "Carlos Méndez"),
+                    Barber("2", "Luis Ortega"),
+                    Barber("3", "Miguel Ríos"),
+                    Barber("4", "Andrés Pérez")
                 ),
                 availableDates = (0L..13L).map { LocalDate.now().plusDays(it) },
-                timeSlots = (10..19).flatMap { hour ->
-                    listOf(
-                        TimeSlotOption(LocalTime.of(hour, 0), isAvailable = hour % 3 != 0),
-                        TimeSlotOption(LocalTime.of(hour, 30), isAvailable = hour % 4 != 1)
-                    )
+                timesByBarber = listOf("1", "2", "3", "4").associateWith { barberId ->
+                    (10..19).flatMap { hour -> listOf(LocalTime.of(hour, 0), LocalTime.of(hour, 30)) }
+                        .filterIndexed { i, _ -> (i + barberId.toInt()) % 3 != 0 }
                 }
             )
         )
@@ -547,6 +637,7 @@ fun AppointmentPreview() {
         Appointment(
             state = state,
             onBack = {},
+            onRetryCatalog = {},
             onShopSelected = { state = state.copy(selectedShopId = it) },
             onServiceToggled = { id ->
                 val ids = state.selectedServiceIds
