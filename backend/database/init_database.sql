@@ -16,6 +16,7 @@ CREATE TYPE facial_structure_type AS ENUM ('oval', 'triangle', 'heart', 'round',
 
 CREATE TYPE appointment_status AS ENUM (
     'scheduled',    -- booked ahead of time, not yet arrived
+    'rescheduled',
     'checked_in',   -- client has arrived (walk-in lands here immediately on creation)
     'completed',
     'cancelled',
