@@ -18,14 +18,20 @@ export const DEFAULT_DAYS_BACK = 60;
 export const STATUS_LABELS: Record<AppointmentStatus, string> = {
     scheduled: 'Agendada',
     rescheduled: 'Reagendada',
-    cancelled: 'Cancelada'
+    checkedIn: 'Iniciada',
+    completed: 'Completada',
+    cancelled: 'Cancelada',
+    noShow: 'Ausencia'
 };
 
 export const STATUS_OPTIONS: SelectOption[] = [
     { value: 'all', label: 'Todos los estados' },
     { value: 'scheduled', label: STATUS_LABELS.scheduled },
     { value: 'rescheduled', label: STATUS_LABELS.rescheduled },
-    { value: 'cancelled', label: STATUS_LABELS.cancelled }
+    { value: 'checkedIn', label: STATUS_LABELS.checkedIn },
+    { value: 'completed', label: STATUS_LABELS.completed },
+    { value: 'cancelled', label: STATUS_LABELS.cancelled },
+    { value: 'noShow', label: STATUS_LABELS.noShow }
 ];
 
 /* ---------- Fechas ---------- */

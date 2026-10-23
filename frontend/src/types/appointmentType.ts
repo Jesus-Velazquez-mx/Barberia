@@ -1,5 +1,11 @@
 /* Estados que muestra la vista de citas del personal. */
-export type AppointmentStatus = 'scheduled' | 'rescheduled' | 'cancelled';
+export type AppointmentStatus =
+    'scheduled' |
+    'rescheduled' |
+    'checkedIn' |
+    'completed' |
+    'cancelled' |
+    'noShow';
 
 export interface AppointmentServiceItem {
     serviceId: string;
