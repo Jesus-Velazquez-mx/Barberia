@@ -41,6 +41,45 @@ export const toBusinessWallClockMs = (utcMs: number = Date.now(), timeZone: stri
     return Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second, millis);
 };
 
+/**
+ * Inversa de toBusinessWallClockMs: dado un instante expresado como "hora de pared ficticia en UTC"
+ * (p. ej. el que arma parseDate, o dayStart + minutos dentro de availabilityService), devuelve el
+ * instante real (UTC) cuyo reloj de pared en `timeZone` marca esa fecha y hora. Itera dos veces para
+ * acertar también justo en una transición de horario de verano (el primer intento puede caer del lado
+ * equivocado del cambio).
+ */
+export const businessWallClockToUtcMs = (
+    wallClockFakeUtcMs: number,
+    timeZone: string = getBusinessTimezone()
+): number => {
+    let instantMs = wallClockFakeUtcMs;
+    for (let i = 0; i < 2; i++) {
+        instantMs = wallClockFakeUtcMs - (toBusinessWallClockMs(instantMs, timeZone) - instantMs);
+    }
+    return instantMs;
+};
+
+/** 'HH:MM[:SS]' (columna time de Postgres) -> minutos desde medianoche. */
+export const timeToMinutes = (time: string): number => {
+    const [h, m] = time.split(':').map(Number);
+    return h * 60 + m;
+};
+
 /** Fecha de hoy ('YYYY-MM-DD') en la zona horaria del negocio. */
 export const getBusinessToday = (utcMs: number = Date.now(), timeZone: string = getBusinessTimezone()): string =>
     new Date(toBusinessWallClockMs(utcMs, timeZone)).toISOString().slice(0, 10);
+
+/**
+ * Instante real (UTC) en que empieza, a las 00:00 de la zona horaria del negocio, el día que está
+ * `daysFromToday` días después de hoy (0 = hoy). Parte de la hora de pared deseada y le resta el
+ * desfase de la zona; el desfase se vuelve a calcular una vez para acertar en zonas con horario de verano.
+ */
+export const getBusinessDayStart = (
+    daysFromToday: number = 0,
+    utcMs: number = Date.now(),
+    timeZone: string = getBusinessTimezone()
+): Date => {
+    const todayWallMs = Date.parse(`${getBusinessToday(utcMs, timeZone)}T00:00:00.000Z`);
+    const targetWallMs = todayWallMs + daysFromToday * 24 * 60 * 60 * 1000;
+    return new Date(businessWallClockToUtcMs(targetWallMs, timeZone));
+};

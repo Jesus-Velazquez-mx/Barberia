@@ -66,6 +66,17 @@ export const canManageSuppliesCategories = (performer: UserIdentity): boolean =>
 export const canManageSupplies = (performer: UserIdentity): boolean => performer.role === 'manager';
 
 /**
+ * GET /shifts: el personal (recepcionistas y gerentes) puede consultar los turnos; los clientes no.
+ */
+export const canViewShifts = (performer: UserIdentity): boolean =>
+    performer.role === 'manager' || performer.role === 'receptionist';
+
+/**
+ * POST/PUT/DELETE /shifts: solo los gerentes pueden crear, editar o eliminar turnos.
+ */
+export const canManageShifts = (performer: UserIdentity): boolean => performer.role === 'manager';
+
+/**
  * POST /appointments:
  * - client: solo puede agendar para sí mismo (nunca para otro cliente ni para un invitado), en cualquier sucursal.
  * - receptionist: para cualquier cliente o invitado, únicamente en la sucursal donde trabaja.
@@ -85,6 +96,14 @@ export const canCreateAppointment = (
             return booking.shopManagerId === performer.id;
     }
 };
+
+/**
+ * GET /appointments: la recepción y los gerentes solo pueden consultar las citas de las sucursales a las que
+ * pertenecen (la sucursal donde trabaja la recepción; las que administra el gerente).
+ */
+export const canViewShopAppointments = (shopId: string, accessibleShopIds: string[]): boolean =>
+    accessibleShopIds.includes(shopId);
+
 /**
  * /servicesCategories: Solo los usuarios con rol 'manager' pueden crear, editar o eliminar categorías de servicios.
  */

@@ -25,7 +25,7 @@ Deleting a user is immediate and permanent (decided) — there is no deactivatio
 
 ### 3.1 Appointment Booking & Scheduling
 
-Clients book appointments against a barber's availability. Walk-ins are also supported alongside scheduled bookings — the shop isn't appointment-only (decided). Barbers manage their calendar and see upcoming bookings — one appointment at a time per barber (no multiple chairs). Every barber is assigned to one of two fixed shifts — morning (8:00–16:00) or afternoon (12:00–20:00) — and works Monday through Saturday; only a manager can set or change a barber's shift assignment. Scheduling policy (cancellations, no-shows, reschedules, waitlists) still needs to be defined — see open questions.
+Clients book appointments against a barber's availability. Walk-ins are also supported alongside scheduled bookings — the shop isn't appointment-only (decided). Barbers manage their calendar and see upcoming bookings — one appointment at a time per barber (no multiple chairs). Every barber is assigned to one shift (initially morning 8:00–16:00 or afternoon 12:00–20:00; managers can define others) and works Monday through Saturday; only a manager can set or change a barber's shift assignment. Scheduling policy (cancellations, no-shows, reschedules, waitlists) still needs to be defined — see open questions.
 
 Appointments can also be booked for **unregistered clients** (decided): staff record only the client's name, with no account, phone, or email. Every appointment is therefore either for a registered client or for a guest, and this is recorded explicitly so the two can always be told apart in reporting — even if a registered client's account is later deleted, their past appointments still count as registered-client appointments. Guest appointments don't earn loyalty credit and don't get reminders, since there is no account or contact info to attach them to.
 
@@ -77,8 +77,8 @@ These decisions materially affect the product and need to be settled up front.
 - Can rewards be combined with other promotions?
 
 **Appointments & scheduling**
-- Barbers work one of two fixed shifts — 8:00–16:00 or 12:00–20:00 — Monday through Saturday; shift assignment is set only by managers (decided).
-- Shop hours are effectively 8:00–20:00, Monday through Saturday (closed Sunday), based on the two shift windows (decided) — still need to confirm whether every shop staffs both shifts.
+- Shifts are defined by managers: each lasts exactly 4, 6 or 8 hours, overlaps are allowed, exact duplicate time ranges are not; receptionists can view them. A shift can't be deleted if it's the only one or has staff assigned. Barbers work one shift Monday through Saturday; shift assignment is set only by managers (decided).
+- Shop hours are effectively 8:00–20:00, Monday through Saturday (closed Sunday), based on the seeded shift windows (decided) — still need to confirm whether every shop staffs both shifts, and how shop hours follow once managers add other shifts.
 - One appointment at a time per barber, no multiple chairs (decided).
 - How are cancellations/no-shows/reschedules handled — cutoff windows, penalties, waitlists?
 

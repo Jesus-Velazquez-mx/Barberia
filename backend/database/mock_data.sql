@@ -136,15 +136,6 @@ INSERT INTO haircut_style_facial_structures (haircut_style_id, facial_structure_
     ('df283b6c-dc95-41b1-9336-5bd32ceda854', 'triangle'),
     ('df283b6c-dc95-41b1-9336-5bd32ceda854', 'square');
 
--- ---------- barber availability ----------
--- One slot per barber per working day (Monday-Saturday), matching their shift hours.
-
-INSERT INTO availability_slots (barber_id, shop_id, day_of_week, start_time, end_time)
-SELECT b.id, b.shop_id, d.day, s.start_time, s.end_time
-FROM barbers b
-JOIN shifts s ON s.id = b.shift_id
-CROSS JOIN generate_series(1, 6) AS d(day);
-
 -- ---------- appointments ----------
 
 INSERT INTO appointments (

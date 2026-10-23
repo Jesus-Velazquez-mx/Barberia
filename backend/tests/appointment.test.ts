@@ -2,7 +2,7 @@ import request from 'supertest';
 import express from 'express';
 import router from '../src/routes/routes.js';
 import connection from '../src/connection/connection.js';
-import { getBusinessToday } from '../src/utils/businessTime.js';
+import { getBusinessToday, businessWallClockToUtcMs } from '../src/utils/businessTime.js';
 import { signToken } from '../src/services/jwtTokenService.js';
 import { canCreateAppointment } from '../src/services/userPermissions.js';
 import type { User, UserRole } from '../src/types/entities/user.interface.js';
@@ -12,7 +12,6 @@ import {
     insertUser,
     insertBarber,
     insertService,
-    insertAvailabilitySlot,
     cleanupFixtures,
     createdAppointmentIds,
 } from './helpers/availabilityFixtures.js';
@@ -62,12 +61,13 @@ describe('POST /api/appointments', () => {
     let receptionistId: string;
     const clientTokens: string[] = [];
 
-    const at = (time: string) => new Date(`${dateStr}T${time}:00.000Z`).toISOString();
+    // Hora de pared de la sucursal (dígitos literales) -> instante UTC real, igual que hace el servicio.
+    const at = (time: string) => new Date(businessWallClockToUtcMs(Date.parse(`${dateStr}T${time}:00.000Z`))).toISOString();
     const book = (token: string, body: Record<string, unknown>) =>
         request(app)
             .post('/api/appointments')
             .set('Authorization', `Bearer ${token}`)
-            .send({ shopId, barberId, serviceIds: [serviceId], ...body });
+            .send({ barberId, serviceIds: [serviceId], ...body });
 
     beforeAll(async () => {
         await connectDB();
@@ -100,9 +100,10 @@ describe('POST /api/appointments', () => {
 
         const date = new Date(`${getBusinessToday()}T00:00:00Z`);
         date.setUTCDate(date.getUTCDate() + 2);
+        // Las sucursales cierran domingo: si cae domingo, se recorre un día más.
+        if (date.getUTCDay() === 0) date.setUTCDate(date.getUTCDate() + 1);
         dateStr = date.toISOString().slice(0, 10);
         // 12:00 - 15:00 cae dentro de ambos turnos (mañana 8-16, tarde 12-20)
-        await insertAvailabilitySlot(barberId, shopId, date.getUTCDay(), '12:00', '15:00');
     });
 
     afterEach(async () => {

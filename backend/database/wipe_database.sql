@@ -27,7 +27,6 @@ $$;
 
 -- Remove application enum types and any remaining dependencies.
 DROP TYPE IF EXISTS supply_movement_type CASCADE;
-DROP TYPE IF EXISTS shift_name CASCADE;
 DROP TYPE IF EXISTS notification_status CASCADE;
 DROP TYPE IF EXISTS appointment_status CASCADE;
 DROP TYPE IF EXISTS facial_structure_type CASCADE;

@@ -8,6 +8,7 @@ import EditUserPage from './pages/client/EditUserPage';
 import BookAppointmentPage from './pages/BookAppointmentPage';
 import ManagerStaffPage from './pages/staff/ManagerStaffPage';
 import ManagerClientsPage from './pages/staff/StaffClientsPage';
+import StaffAppointmentsPage from './pages/staff/StaffAppointmentsPage';
 import ManagerSectionPlaceholderPage from './pages/staff/ManagerSectionPlaceholderPage';
 import DashboardLayout from './pages/DashboardLayout';
 import RecommendationPage from './pages/client/RecommendationPage';
@@ -69,6 +70,10 @@ const router = createBrowserRouter([
             element: <ManagerClientsPage />
           },
           {
+            path: '/manager/appointments',
+            element: <StaffAppointmentsPage />
+          },
+          {
             // Temporal: se reemplaza por la vista real de insumos
             path: '/manager/inventory',
             element: (
@@ -109,12 +114,7 @@ const router = createBrowserRouter([
         children: [
           {
             path: '/receptionist/appointments',
-            element: (
-              <ManagerSectionPlaceholderPage
-                title="Calendario"
-                subtitle="Citas agendadas"
-              />
-            )
+            element: <StaffAppointmentsPage />
           },
           {
             path: '/receptionist/booking',

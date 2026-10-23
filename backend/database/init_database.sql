@@ -16,6 +16,7 @@ CREATE TYPE facial_structure_type AS ENUM ('oval', 'triangle', 'heart', 'round',
 
 CREATE TYPE appointment_status AS ENUM (
     'scheduled',    -- booked ahead of time, not yet arrived
+    'rescheduled',
     'checked_in',   -- client has arrived (walk-in lands here immediately on creation)
     'completed',
     'cancelled',
@@ -23,7 +24,6 @@ CREATE TYPE appointment_status AS ENUM (
 );
 
 CREATE TYPE notification_status AS ENUM ('sent', 'failed', 'pending');
-CREATE TYPE shift_name AS ENUM ('morning', 'afternoon');
 
 -- ---------- updated_at trigger helper ----------
 
@@ -122,16 +122,19 @@ CREATE INDEX idx_shops_manager ON shops (manager_id);
 CREATE TRIGGER trg_shops_updated_at BEFORE UPDATE ON shops
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
--- ---------- shifts (fixed catalog) ----------
--- Only two shifts exist today. Every barber works one shift, Monday–Saturday.
+-- ---------- shifts (manager-managed catalog) ----------
+-- Every barber and receptionist works one shift, Monday–Saturday. Managers create, edit and delete
+-- shifts; overlapping shifts are allowed, but two shifts cannot share the exact same time range.
+-- The 4/6/8-hour length rule is enforced by the API, not here.
 
 CREATE TABLE shifts (
     id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    name        shift_name NOT NULL UNIQUE,
+    name        varchar(50) NOT NULL UNIQUE,
     start_time  time NOT NULL,
     end_time    time NOT NULL CHECK (end_time > start_time),
     created_at  timestamptz NOT NULL DEFAULT now(),
-    updated_at  timestamptz NOT NULL DEFAULT now()
+    updated_at  timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT shifts_time_range_unique UNIQUE (start_time, end_time)
 );
 
 CREATE TRIGGER trg_shifts_updated_at BEFORE UPDATE ON shifts
@@ -319,25 +322,12 @@ CREATE TABLE supply_movements (
 CREATE INDEX idx_supply_movements_supply_created ON supply_movements (supply_id, created_at DESC);
 CREATE INDEX idx_supply_movements_performed_by   ON supply_movements (performed_by);
 
--- ---------- barber availability ----------
-
-CREATE TABLE availability_slots (
-    id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    barber_id   uuid NOT NULL REFERENCES barbers(id) ON DELETE CASCADE,
-    shop_id     uuid NOT NULL REFERENCES shops(id) ON DELETE RESTRICT,
-    day_of_week smallint NOT NULL CHECK (day_of_week BETWEEN 0 AND 6), -- 0 = Sunday
-    start_time  time NOT NULL,
-    end_time    time NOT NULL CHECK (end_time > start_time),
-    is_active   boolean NOT NULL DEFAULT true,
-    created_at  timestamptz NOT NULL DEFAULT now(),
-    updated_at  timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE INDEX idx_availability_slots_barber_day ON availability_slots (barber_id, day_of_week);
-CREATE TRIGGER trg_availability_slots_updated_at BEFORE UPDATE ON availability_slots
-    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-
 -- ---------- appointments ----------
+-- Barber availability is computed on the backend from shifts (barbers.shift_id) and
+-- is_accepting_bookings, bounded to Monday-Saturday — see availabilityService.ts.
+-- There is no availability_slots table: a weekly-template table mirroring shifts
+-- (and never diverging from them, since nothing writes to it independently) would
+-- just be a second source of truth for data shifts/is_accepting_bookings already hold.
 
 CREATE TABLE appointments (
     id                   uuid PRIMARY KEY DEFAULT gen_random_uuid(),
