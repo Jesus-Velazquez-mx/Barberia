@@ -12,6 +12,8 @@ import StaffAppointmentsPage from './pages/staff/StaffAppointmentsPage';
 import ManagerSectionPlaceholderPage from './pages/staff/ManagerSectionPlaceholderPage';
 import DashboardLayout from './pages/DashboardLayout';
 import RecommendationPage from './pages/client/RecommendationPage';
+import { ClientAppointmentsPage } from './pages/client/ClientAppointmentPage';
+import { ClientAppointmentDetailPage } from './pages/client/ClientAppointmentDetailPage';
 
 const router = createBrowserRouter([
   /* Client */
@@ -34,7 +36,11 @@ const router = createBrowserRouter([
           {
             // Temporal: se reemplaza por la vista real de citas agendadas
             path: '/client/appointments',
-            element: <ManagerSectionPlaceholderPage title="Mis citas" subtitle="Citas agendadas" />
+            element: <ClientAppointmentsPage />
+          },
+          {
+            path: '/client/appointments/:appointmentId',
+            element: <ClientAppointmentDetailPage />
           },
           {
             path: '/client/recommend-haircut',
