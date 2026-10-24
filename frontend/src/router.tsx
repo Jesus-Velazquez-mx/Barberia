@@ -12,8 +12,8 @@ import StaffAppointmentsPage from './pages/staff/StaffAppointmentsPage';
 import ManagerSectionPlaceholderPage from './pages/staff/ManagerSectionPlaceholderPage';
 import DashboardLayout from './pages/DashboardLayout';
 import RecommendationPage from './pages/client/RecommendationPage';
-import { ClientAppointmentsPage } from './pages/client/ClientAppointmentPage';
-import { ClientAppointmentDetailPage } from './pages/client/ClientAppointmentDetailPage';
+import ClientAppointmentsPage from './pages/client/ClientAppointmentPage';
+import ClientAppointmentDetailPage from './pages/client/ClientAppointmentDetailPage';
 
 const router = createBrowserRouter([
   /* Client */

@@ -114,6 +114,7 @@ export function AppointmentDetailContent({ appointment, showClient = true }: App
         <InfoTile label="Fecha">{formatAppointmentDate(appointment.scheduledStart)}</InfoTile>
         <InfoTile label="Horario">
           {formatAppointmentTime(appointment.scheduledStart)} - {formatAppointmentTime(appointment.scheduledEnd)}
+          <span className="ml-2 text-xs font-normal text-[var(--text)]">{getAppointmentDuration(appointment)} min</span>
         </InfoTile>
         <InfoTile label="Sucursal">{appointment.shopName}</InfoTile>
         <InfoTile label="Barbero">{appointment.barberName}</InfoTile>
@@ -134,7 +135,6 @@ export function AppointmentDetailContent({ appointment, showClient = true }: App
 
         <InfoTile label="Total" className={showClient ? 'col-span-2 lg:col-span-1' : 'col-span-2 lg:col-span-4'}>
           <span className="text-[var(--accent)]">{formatPrice(getAppointmentTotal(appointment))}</span>
-          <span className="ml-2 text-xs font-normal text-[var(--text)]">{getAppointmentDuration(appointment)} min</span>
         </InfoTile>
       </div>
 
