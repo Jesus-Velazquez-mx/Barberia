@@ -50,7 +50,7 @@ describe('Pruebas de endpoints de Barberos (Barbers)', () => {
         shiftId = shiftRes.rows[0].id;
 
         // 3. Crear una sucursal (shop) de prueba asignada al manager
-        // CORRECCIÓN AQUÍ: Usamos un prefijo muy corto ('ShopB') para no pasarnos de 50 caracteres.
+        // Usamos un prefijo muy corto ('ShopB') para no pasarnos de 50 caracteres.
         const shopRes = await pool.query(
             `INSERT INTO shops (name, manager_id) VALUES ($1, $2) RETURNING id`,
             [generateUniqueFixtureName('ShopB'), dummyManager.id]
@@ -74,7 +74,6 @@ describe('Pruebas de endpoints de Barberos (Barbers)', () => {
     describe('Registrar Barbero (POST /api/barbers)', () => {
         let activeBarberEmail: string;
         let inactiveBarberEmail: string;
-        let reactivatedBarberId: string;
 
         beforeAll(() => {
             activeBarberEmail = `active_${Date.now()}@test.com`;
@@ -196,8 +195,6 @@ describe('Pruebas de endpoints de Barberos (Barbers)', () => {
             // 5. Verificamos que deleted_at ahora es NULL
             const checkReactivated = await pool.query('SELECT deleted_at FROM barbers WHERE id = $1', [barberToDeactivateId]);
             expect(checkReactivated.rows[0].deleted_at).toBeNull();
-            
-            reactivatedBarberId = barberToDeactivateId;
         });
 
         test('Debe responder 400 si faltan campos obligatorios en el registro (Zod)', async () => {
