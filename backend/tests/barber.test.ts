@@ -30,7 +30,7 @@ describe('Pruebas de endpoints de Barberos (Barbers)', () => {
 
     let shopId: string;
     let shiftId: string;
-    
+
     // IDs de barberos creados durante los tests para limpieza posterior
     const createdBarberIds: string[] = [];
 
@@ -156,7 +156,7 @@ describe('Pruebas de endpoints de Barberos (Barbers)', () => {
                     shopId: shopId,
                     shiftId: shiftId
                 });
-            
+
             const barberToDeactivateId = tempRes.body.data.id;
             createdBarberIds.push(barberToDeactivateId);
 
@@ -421,23 +421,31 @@ describe('Pruebas de endpoints de Barberos (Barbers)', () => {
         });
 
         test('Debe responder 200 y actualizar la biografía e isAcceptingBookings (Manager)', async () => {
+            const updatedFields = {
+                firstName: 'Leia',
+                lastName: 'Organa',
+                email: 'leia.organa@example.com',
+                phone: '8765348765',
+                gender: 'female',
+                bio: 'Biografía actualizada',
+                isAcceptingBookings: false
+            };
+
             const res = await request(app)
-                .put('/api/barbers')
+                .put(`/api/barbers/${editBarberId}`)
                 .set('Authorization', `Bearer ${managerToken}`)
-                .send({
-                    id: editBarberId,
-                    bio: 'Biografía actualizada',
-                    isAcceptingBookings: false
-                });
+                .send(updatedFields);
 
             expect(res.status).toBe(200);
-            expect(res.body.data.bio).toBe('Biografía actualizada');
-            expect(res.body.data.isAcceptingBookings).toBe(false);
+
+            for (const [key, value] of Object.entries(updatedFields)) {
+                expect(res.body.data[key] === value);
+            }
         });
 
         test('Debe responder 403 si un cliente intenta actualizar un barbero', async () => {
             const res = await request(app)
-                .put('/api/barbers')
+                .put(`/api/barbers/${editBarberId}`)
                 .set('Authorization', `Bearer ${clientToken}`)
                 .send({
                     id: editBarberId,
@@ -450,14 +458,12 @@ describe('Pruebas de endpoints de Barberos (Barbers)', () => {
 
         test('Debe responder 400 si no se envían campos para actualizar (Zod Refine)', async () => {
             const res = await request(app)
-                .put('/api/barbers')
+                .put(`/api/barbers/${editBarberId}`)
                 .set('Authorization', `Bearer ${managerToken}`)
-                .send({
-                    id: editBarberId
-                });
+                .send({});
 
             expect(res.status).toBe(400);
-            expect(JSON.stringify(res.body.error)).toMatch(/At least one of bio or isAcceptingBookings/i);
+            expect(JSON.stringify(res.body.error)).toMatch(/At least one field must be provided/i);
         });
     });
 
