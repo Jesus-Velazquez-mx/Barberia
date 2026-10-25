@@ -192,6 +192,8 @@ router.post('/barbers', create);
  *         description: Prohibido. Solo un manager puede editar el perfil del barbero.
  *       404:
  *         description: No se encontró el barbero a actualizar.
+ *       409:
+ *         description: El barbero ha sido eliminado. Es necesario una reactivación antes de realizar una modificación de sus datos.
  *       500:
  *         description: Error interno del servidor.
  */

@@ -18,6 +18,7 @@ import { getShopById } from '../repositories/shopRepository.js';
 import type { BarberResponse, PublicBarberResponse } from '../types/dto/barberResponse.interface.js';
 import { toBarberResponse, toPublicBarberResponse } from '../utils/barberMapper.js';
 import { canViewFullBarberData } from './userPermissions.js';
+import { getShiftById } from '../repositories/shiftRepository.js';
 
 const BARBER_HAS_PENDING_APPOINTMENTS_ERROR_CODE = 'BB001';
 
@@ -96,6 +97,9 @@ export const registerBarber = async (data: CreateBarberInput, token: string): Pr
     // Validar que la sucursal asignada exista
     const shop = await getShopById(data.shopId);
     if (!shop) throw new ApiError(ApiErrorCode.NOT_FOUND, 'Shop not found');
+    
+    const shift = await getShiftById(data.shiftId);
+    if (!shift) throw new ApiError(ApiErrorCode.NOT_FOUND, 'Shift not found');
 
     // 1. Verificamos duplicidad de Email y aplicamos regla de Reactivación
     const existingByEmail = await getBarberByEmail(data.email);
@@ -147,6 +151,16 @@ export const updateBarber = async (target: UpdateBarberInput, token: string): Pr
 
     if (!(await isUserActive(performer.id))) {
         throw new ApiError(ApiErrorCode.ACCOUNT_DEACTIVATED, 'Account is deactivated');
+    }
+
+    const barber = await getBarberById(target.id);
+
+    if (!barber) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Barber not found');
+    }
+
+    if (barber.deleted_at !== null) {
+        throw new ApiError(ApiErrorCode.CONFLICT, 'Barber has been deleted. Reactivation is needed to modify barber data');
     }
 
     const updated = await updateBarberProfileById({
