@@ -3,35 +3,34 @@ import { useParams } from 'react-router-dom';
 import { Pencil, RotateCw, XCircle } from 'lucide-react';
 import type { AppointmentRecord } from '../types/appointmentType';
 import { useAuth } from '../context/AuthContext';
-import { buildMockAppointments } from '../mocks/clientAppointmentMocks';
+//import { buildMockAppointments } from '../mocks/clientAppointmentMocks';
 import { AppointmentDetailContent } from '../components/AppointmentDetailContentComponent';
 import { AppointmentStatusBadge } from '../components/AppointmentStatusBadgeComponent';
+import { getAppointmentById } from '../services/appointmentService';
 
 
 export const CLIENT_APPOINTMENTS_PATH = '/client/appointments';
-const MOCK_DELAY_MS = 400;
 
 export function ClientAppointmentDetailContainer() {
   const { appointmentId } = useParams<{ appointmentId: string }>();
-  const { user } = useAuth();
-
+  const { user, token } = useAuth();
   const [appointment, setAppointment] = useState<AppointmentRecord | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
   const load = async () => {
-    const client = {
-      id: user?.id ?? 'mock-client',
-      name: user ? `${user.firstName} ${user.lastName}` : 'Cliente de prueba',
-      email: user?.email ?? 'cliente@email.com'
-    };
+    if (!user || !token || !appointmentId) return;
 
     setIsLoading(true);
     setError('');
     try {
-      await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
-      // Solo se muestra si la cita es del cliente logeado.
-      const found = buildMockAppointments(client).find((a) => a.id === appointmentId && a.clientId === client.id);
+      // No hay GET /appointments/:id: el servicio la busca dentro del rango de fechas por defecto.
+      const found = await getAppointmentById(token, appointmentId, {
+        id: user.id,
+        name: `${user.firstName} ${user.lastName}`,
+        email: user.email
+      });
+
       if (!found) {
         setAppointment(null);
         setError('No encontramos esta cita.');
@@ -47,7 +46,7 @@ export function ClientAppointmentDetailContainer() {
 
   useEffect(() => {
     void load();
-  }, [user?.id, appointmentId]);
+  }, [user?.id, token, appointmentId]);
 
   // Solo se puede editar o cancelar una cita agendada o reagendada que aún no ha terminado.
   const canModify =

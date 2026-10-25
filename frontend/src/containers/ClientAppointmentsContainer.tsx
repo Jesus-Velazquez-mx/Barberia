@@ -4,13 +4,15 @@ import { useNavigate } from 'react-router-dom';
 import type { AppointmentFilterValues, AppointmentRecord, SortDirection } from '../types/appointmentType';
 import { AppointmentTabs, type AppointmentTab } from '../components/AppointmentTabsComponent';
 import { useAuth } from '../context/AuthContext';
-import { buildMockAppointments } from '../mocks/clientAppointmentMocks';
+//import { buildMockAppointments } from '../mocks/clientAppointmentMocks';
 import { AppointmentFilters, FilterToggleButton } from '../components/AppointmentFiltersComponent';
 import { AppointmentTable } from '../components/AppointmentTableComponent';
 import { CLIENT_APPOINTMENTS_PATH } from './ClientAppointmentDetailContainer';
+import { getMyAppointments } from '../services/appointmentService';
 
 const PAGE_SIZE = 8;
-const MOCK_DELAY_MS = 600; // simula la latencia de red para ver el skeleton
+
+//const MOCK_DELAY_MS = 600; // simula la latencia de red para ver el skeleton
 
 function classify(appointment: AppointmentRecord, now: number): AppointmentTab {
   if (appointment.status === 'cancelled') return 'cancelled';
@@ -68,7 +70,7 @@ function matchesFilters(a: AppointmentRecord, f: AppointmentFilterValues): boole
 }
 
 export function ClientAppointmentsContainer() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const navigate = useNavigate();
 
   const [appointments, setAppointments] = useState<AppointmentRecord[]>([]);
@@ -130,22 +132,20 @@ export function ClientAppointmentsContainer() {
     setPage(1);
   }, [filtersKey]);
 
-  /* ---------- Carga (mock) ---------- */
+  /* ---------- Carga (backend) ---------- */
   const load = async () => {
-    // Con mock data, si no hay sesión se usa un cliente de prueba.
-    const client = {
-      id: user?.id ?? 'mock-client',
-      name: user ? `${user.firstName} ${user.lastName}` : 'Cliente de prueba',
-      email: user?.email ?? 'cliente@email.com'
-    };
+    if (!user || !token) return;
 
     setIsLoading(true);
     setError('');
     try {
-      await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
-      const data = buildMockAppointments(client);
-      // Solo las citas del cliente logeado.
-      setAppointments(data.filter((a) => a.clientId === client.id));
+      // El backend devuelve solo las citas del cliente autenticado.
+      const data = await getMyAppointments(token, {
+        id: user.id,
+        name: `${user.firstName} ${user.lastName}`,
+        email: user.email
+      });
+      setAppointments(data);
     } catch {
       setError('No se pudieron cargar tus citas.');
     } finally {
@@ -155,7 +155,8 @@ export function ClientAppointmentsContainer() {
 
   useEffect(() => {
     void load();
-  }, [user?.id]);
+  }, [user?.id, token]);
+
 
   /* ---------- Agrupar, filtrar y ordenar ---------- */
   const { counts, rows } = useMemo(() => {
