@@ -28,8 +28,8 @@ export function SlotPickerModal({
   onConfirm
 }: SlotPickerModalProps) {
   return (
-    <Modal isOpen={isOpen} onClose={onClose} className='h-full'>
-      <div className="relative">
+    <Modal isOpen={isOpen} onClose={onClose} className="flex h-fit flex-col overflow-hidden">
+      <div className="flex min-h-0 h-full flex-col">
         <button
           type="button"
           aria-label="Cerrar"
@@ -42,17 +42,19 @@ export function SlotPickerModal({
         <h2 className="m-0 text-center text-(--text-h)">Horarios disponibles</h2>
         <p className="mb-6 mt-1 text-center capitalize text-(--text)">{dateLabel}</p>
 
-        <AvailableSlots
-          slots={slots}
-          isLoading={isLoading}
-          error={error}
-          selectedSlot={selectedSlot}
-          onSelectSlot={onSelectSlot}
-        />
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <AvailableSlots
+            slots={slots}
+            isLoading={isLoading}
+            error={error}
+            selectedSlot={selectedSlot}
+            onSelectSlot={onSelectSlot}
+          />
+        </div>
 
         <Button
           type="button"
-          className="mt-6 w-full disabled:cursor-not-allowed disabled:opacity-50 mb-6"
+          className="mt-6 mb-6 w-full shrink-0 disabled:cursor-not-allowed disabled:opacity-50"
           disabled={!selectedSlot}
           onClick={onConfirm}
         >

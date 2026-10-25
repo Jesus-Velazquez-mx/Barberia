@@ -11,7 +11,7 @@ import { getShopAvailability } from '../services/availabilityService';
 import { useAuth } from '../context/AuthContext';
 import { ApiError } from '../types/api';
 import type { AvailableSlot, DayAvailability } from '../types/availabilityType';
-import type { Barber } from '../types/barber';
+import type { PublicBarber } from '../types/barber';
 import { formatSlotTime } from '../utils/availabilityUtils';
 
 interface BookAppointmentFormValues {
@@ -80,7 +80,7 @@ export function BookAppointmentContainer() {
   /* Arreglos con datos reales del backend */
   const [shopOptions, setShopOptions] = useState<{ value: string; label: string }[]>([]);
   const [serviceOptions, setServiceOptions] = useState<{ value: string; label: string }[]>([]);
-  const [barbers, setBarbers] = useState<Barber[]>([]);
+  const [barbers, setBarbers] = useState<PublicBarber[]>([]);
   const [availabilityByDate, setAvailabilityByDate] = useState<Record<string, DayAvailability>>({});
   const [fetchedSlots, setFetchedSlots] = useState<AvailableSlot[]>([]);
   const [isFetchingSlots, setIsFetchingSlots] = useState(false);
@@ -386,7 +386,7 @@ export function BookAppointmentContainer() {
               <Button
                 type="button"
                 onClick={handleCancel}
-                className="!h-12 !border !border-solid !border-(--text) !bg-transparent !px-8 !normal-case !text-(--text)"
+                className="h-12! border! border-solid! border-(--text)! bg-transparent! px-8! normal-case! text-(--text)!"
               >
                 Cancelar
               </Button>
@@ -394,7 +394,7 @@ export function BookAppointmentContainer() {
                 type="button"
                 onClick={handleBook}
                 disabled={!canBook}
-                className="!h-12 !px-8 !normal-case disabled:!cursor-not-allowed disabled:!opacity-50"
+                className="h-12! px-8! normal-case! disabled:cursor-not-allowed! disabled:opacity-50!"
               >
                 Agendar Cita
               </Button>
