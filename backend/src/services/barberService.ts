@@ -9,12 +9,14 @@ import {
     updateBarberProfileById,
     softDeleteBarberById,
     getActiveBarbersByShop,
+    getBarbersByShop,
     type CreateBarberInput
 } from '../repositories/barberRepository.js';
 import { isUserActive } from '../repositories/userRepository.js';
 import { getShopById } from '../repositories/shopRepository.js';
-import type { BarberResponse } from '../types/dto/barberResponse.interface.js';
-import { toBarberResponse } from '../utils/barberMapper.js';
+import type { BarberResponse, PublicBarberResponse } from '../types/dto/barberResponse.interface.js';
+import { toBarberResponse, toPublicBarberResponse } from '../utils/barberMapper.js';
+import { canViewFullBarberData } from './userPermissions.js';
 
 export interface UpdateBarberRequest {
     id: string;
@@ -23,9 +25,10 @@ export interface UpdateBarberRequest {
 }
 
 /**
- * Obtiene el detalle de un barbero por su ID.
+ * Obtiene el detalle de un barbero por su ID. El personal recibe el perfil completo de cualquier
+ * barbero; los clientes solo la vista pública y únicamente de barberos activos que aceptan reservas.
  */
-export const getBarberDetails = async (id: string, token: string): Promise<BarberResponse> => {
+export const getBarberDetails = async (id: string, token: string): Promise<BarberResponse | PublicBarberResponse> => {
     const performer = decodeToken(token);
 
     if (!(await isUserActive(performer.id))) {
@@ -37,16 +40,30 @@ export const getBarberDetails = async (id: string, token: string): Promise<Barbe
         throw new ApiError(ApiErrorCode.NOT_FOUND, 'Barber not found');
     }
 
-    return toBarberResponse(barber);
+    if (canViewFullBarberData(performer)) {
+        return toBarberResponse(barber);
+    }
+
+    if (barber.deleted_at !== null || !barber.is_accepting_bookings) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Barber not found');
+    }
+    return toPublicBarberResponse(barber);
 };
 
 /**
- * Obtiene los barberos activos de una sucursal.
+ * Obtiene los barberos de una sucursal. Endpoint público: sin token (o con token de cliente) devuelve
+ * la vista pública de los barberos activos que aceptan reservas. El personal recibe el perfil completo
+ * de los barberos no dados de baja, o también los dados de baja si includeInactive es true; para los
+ * demás usuarios includeInactive se ignora.
  */
-export const listActiveBarbersByShop = async (shopId: string, token: string): Promise<BarberResponse[]> => {
-    const performer = decodeToken(token);
+export const listBarbersByShop = async (
+    shopId: string,
+    token: string | undefined,
+    includeInactive = false
+): Promise<BarberResponse[] | PublicBarberResponse[]> => {
+    const performer = token ? decodeToken(token) : null;
 
-    if (!(await isUserActive(performer.id))) {
+    if (performer && !(await isUserActive(performer.id))) {
         throw new ApiError(ApiErrorCode.ACCOUNT_DEACTIVATED, 'Account is deactivated');
     }
 
@@ -55,8 +72,13 @@ export const listActiveBarbersByShop = async (shopId: string, token: string): Pr
         throw new ApiError(ApiErrorCode.NOT_FOUND, 'Shop not found');
     }
 
+    if (performer && canViewFullBarberData(performer)) {
+        const barbers = await getBarbersByShop(shopId, includeInactive);
+        return barbers.map(toBarberResponse);
+    }
+
     const barbers = await getActiveBarbersByShop(shopId);
-    return barbers.map(toBarberResponse);
+    return barbers.map(toPublicBarberResponse);
 };
 
 /**

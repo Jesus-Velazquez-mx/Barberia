@@ -1,59 +1,7 @@
 import { Router } from 'express';
-import { getById, listByShop, create, update, remove } from '../controllers/barberController.js';
+import { getById, create, update, remove } from '../controllers/barberController.js';
 
 const router = Router();
-
-/**
- * @swagger
- * /api/barbers/shop/{id}:
- *   get:
- *     summary: Obtiene el catálogo de barberos activos de una sucursal
- *     tags: [Barbers]
- *     security:
- *       - bearerAuth: []
- *     description: Retorna la lista de todos los barberos asignados a una sucursal específica que actualmente están aceptando reservas y no han sido dados de baja. Cualquier usuario autenticado en el sistema puede acceder a esta información.
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: ID de la sucursal (shop_id) a consultar.
- *     responses:
- *       200:
- *         description: Éxito. `data` contiene el arreglo de barberos disponibles.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 data:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       id: { type: string, format: uuid, example: "550e8400-e29b-41d4-a716-446655440000" }
- *                       firstName: { type: string, example: "Juan" }
- *                       lastName: { type: string, example: "Pérez" }
- *                       email: { type: string, format: email, example: "juan.perez@barberia.com" }
- *                       phone: { type: string, example: "5551234567" }
- *                       shopId: { type: string, format: uuid }
- *                       shiftId: { type: string, format: uuid }
- *                       bio: { type: string, example: "Especialista en cortes clásicos y barba." }
- *                       isAcceptingBookings: { type: boolean, example: true }
- *                 message: { type: string, example: Barbers retrieved successfully }
- *                 error: { type: array, items: { type: string }, nullable: true, example: null }
- *       400:
- *         description: El formato del ID de la sucursal no es un UUID válido.
- *       401:
- *         description: No autorizado. Token faltante, expirado o inválido.
- *       404:
- *         description: La sucursal indicada no existe en el sistema.
- *       500:
- *         description: Error interno del servidor.
- */
-router.get('/barbers/shop/:id', listByShop);
 
 /**
  * @swagger
@@ -63,7 +11,7 @@ router.get('/barbers/shop/:id', listByShop);
  *     tags: [Barbers]
  *     security:
  *       - bearerAuth: []
- *     description: Busca y retorna la información detallada de un barbero a partir de su identificador UUID. Cualquier usuario autenticado puede realizar esta consulta.
+ *     description: Busca y retorna la información de un barbero a partir de su identificador UUID. Requiere token JWT. Los datos devueltos dependen del rol. Los clientes reciben solo la vista pública (`id`, `firstName`, `lastName`, `shopId`, `shiftId`, `bio`) y únicamente de barberos activos que aceptan reservas (si el barbero está dado de baja o no acepta reservas responde 404). El personal (gerentes y recepcionistas) recibe el perfil completo de cualquier barbero, incluidos los dados de baja.
  *     parameters:
  *       - in: path
  *         name: id
@@ -74,7 +22,7 @@ router.get('/barbers/shop/:id', listByShop);
  *         description: ID único del barbero a consultar.
  *     responses:
  *       200:
- *         description: Barbero encontrado exitosamente.
+ *         description: Barbero encontrado exitosamente. Los campos marcados como "solo personal" únicamente se incluyen para gerentes y recepcionistas.
  *         content:
  *           application/json:
  *             schema:
@@ -86,12 +34,17 @@ router.get('/barbers/shop/:id', listByShop);
  *                     id: { type: string, format: uuid, example: "550e8400-e29b-41d4-a716-446655440000" }
  *                     firstName: { type: string, example: "Juan" }
  *                     lastName: { type: string, example: "Pérez" }
- *                     email: { type: string, format: email, example: "juan.perez@barberia.com" }
- *                     phone: { type: string, example: "5551234567" }
  *                     shopId: { type: string, format: uuid }
  *                     shiftId: { type: string, format: uuid }
- *                     bio: { type: string, example: "Especialista en cortes clásicos y barba." }
- *                     isAcceptingBookings: { type: boolean, example: true }
+ *                     bio: { type: string, nullable: true, example: "Especialista en cortes clásicos y barba." }
+ *                     email: { type: string, format: email, nullable: true, example: "juan.perez@barberia.com", description: Solo personal }
+ *                     phone: { type: string, nullable: true, example: "5551234567", description: Solo personal }
+ *                     birthDate: { type: string, format: date-time, description: Solo personal }
+ *                     gender: { type: string, example: "M", description: Solo personal }
+ *                     isAcceptingBookings: { type: boolean, example: true, description: Solo personal }
+ *                     deletedAt: { type: string, format: date-time, nullable: true, example: null, description: Solo personal }
+ *                     createdAt: { type: string, format: date-time, description: Solo personal }
+ *                     updatedAt: { type: string, format: date-time, description: Solo personal }
  *                 message: { type: string, example: Barber retrieved successfully }
  *                 error: { type: array, items: { type: string }, nullable: true, example: null }
  *       400:
@@ -99,7 +52,7 @@ router.get('/barbers/shop/:id', listByShop);
  *       401:
  *         description: No autorizado.
  *       404:
- *         description: No se encontró el barbero solicitado.
+ *         description: No se encontró el barbero solicitado (o, para un cliente, está dado de baja o no acepta reservas).
  *       500:
  *         description: Error interno del servidor.
  */

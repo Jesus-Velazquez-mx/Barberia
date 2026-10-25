@@ -210,3 +210,20 @@ export const getActiveBarbersByShop = async (shopId: string): Promise<Barber[]> 
     const result = await pool.query<Barber>(query, [shopId]);
     return result.rows;
 };
+
+/**
+ * Obtiene los barberos de una sucursal sin filtrar por is_accepting_bookings. Por defecto excluye
+ * a los dados de baja (deleted_at IS NOT NULL); con includeDeleted los incluye.
+ */
+export const getBarbersByShop = async (shopId: string, includeDeleted = false): Promise<Barber[]> => {
+    const pool = db.getPool();
+    const query = `
+        SELECT ${BARBER_COLUMNS}
+        FROM barbers
+        WHERE shop_id = $1
+          ${includeDeleted ? '' : 'AND deleted_at IS NULL'}
+        ORDER BY first_name, last_name
+    `;
+    const result = await pool.query<Barber>(query, [shopId]);
+    return result.rows;
+};

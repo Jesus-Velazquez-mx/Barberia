@@ -1,16 +1,16 @@
 import { z, ZodError } from 'zod';
-import type { BarberResponse } from '../types/dto/barberResponse.interface.js';
+import type { BarberResponse, PublicBarberResponse } from '../types/dto/barberResponse.interface.js';
 import type { ApiHandler } from '../utils/apiResponse.js';
 import { sendFail, sendInternalServerError, sendSuccess, sendValidationError } from '../utils/apiResponse.js';
 import { ApiError } from '../errors/ApiError.js';
 import { 
     updateBarber, 
     deleteBarber, 
-    listActiveBarbersByShop, 
-    registerBarber, 
-    getBarberDetails 
+    listBarbersByShop,
+    registerBarber,
+    getBarberDetails
 } from '../services/barberService.js';
-import { extractBearerFromHeader } from '../utils/headerHandling.js';
+import { extractBearerFromHeader, extractOptionalBearerFromHeader } from '../utils/headerHandling.js';
 
 const barberIdParamSchema = z.object({
     id: z.uuid('Invalid ID format'),
@@ -41,7 +41,7 @@ const updateBarberSchema = z.object({
     message: 'At least one of bio or isAcceptingBookings must be provided',
 });
 
-export const getById: ApiHandler<BarberResponse> = async (req, res) => {
+export const getById: ApiHandler<BarberResponse | PublicBarberResponse> =async (req, res) => {
     try {
         const token = extractBearerFromHeader(req);
         const validParams = barberIdParamSchema.parse({ id: req.params.id });
@@ -61,12 +61,13 @@ export const getById: ApiHandler<BarberResponse> = async (req, res) => {
     }
 };
 
-export const listByShop: ApiHandler<BarberResponse[]> = async (req, res) => {
+export const listByShop: ApiHandler<BarberResponse[] | PublicBarberResponse[]> = async (req, res) => {
     try {
-        const token = extractBearerFromHeader(req);
+        const token = extractOptionalBearerFromHeader(req);
         const validParams = getBarbersByShopSchema.parse({ id: req.params.id });
+        const includeInactive = req.query.includeInactive === 'true';
 
-        const result = await listActiveBarbersByShop(validParams.id, token);
+        const result = await listBarbersByShop(validParams.id, token, includeInactive);
         sendSuccess({ res, data: result, message: 'Barbers retrieved successfully' });
     } catch (error: unknown) {
         if (error instanceof ZodError) {

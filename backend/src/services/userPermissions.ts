@@ -44,6 +44,13 @@ export const canUpdateBarberProfile = (performer: UserIdentity): boolean => perf
 export const canDeleteBarber = (performer: UserIdentity): boolean => performer.role === 'manager';
 
 /**
+ * GET /shops/:id/barbers y GET /barbers/:id: el personal (recepcionistas y gerentes) ve el perfil completo del
+ * barbero, incluidos los dados de baja; los clientes solo ven la vista pública de barberos activos.
+ */
+export const canViewFullBarberData = (performer: UserIdentity): boolean =>
+    performer.role === 'manager' || performer.role === 'receptionist';
+
+/**
  * /shops: Solo los usuarios con el rol 'manager' pueden registrar, editar o eliminar sucursales.
  */
 export const canManageShops = (performer: UserIdentity): boolean => performer.role === 'manager';

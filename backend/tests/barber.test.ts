@@ -212,54 +212,190 @@ describe('Pruebas de endpoints de Barberos (Barbers)', () => {
     });
 
     describe('Listar y Obtener Barberos (GET)', () => {
-        let sampleBarberId: string;
+        const PUBLIC_KEYS = ['bio', 'firstName', 'id', 'lastName', 'shiftId', 'shopId'];
+        const STAFF_KEYS = [
+            ...PUBLIC_KEYS,
+            'birthDate', 'createdAt', 'deletedAt', 'email', 'gender', 'isAcceptingBookings', 'phone', 'updatedAt'
+        ].sort();
 
-        beforeAll(async () => {
+        let sampleBarberId: string;
+        let notAcceptingBarberId: string;
+        let deletedBarberId: string;
+        let receptionistToken: string;
+
+        const createBarber = async (firstName: string, extra: Record<string, unknown> = {}): Promise<string> => {
             const res = await request(app)
                 .post('/api/barbers')
                 .set('Authorization', `Bearer ${managerToken}`)
                 .send({
-                    firstName: 'Carlos',
+                    firstName,
                     lastName: 'Gómez',
-                    email: `carlos_${Date.now()}@test.com`,
+                    email: `${firstName.toLowerCase()}_${Date.now()}@test.com`,
                     birthDate: '1992-03-15',
                     gender: 'M',
                     shopId: shopId,
-                    shiftId: shiftId
+                    shiftId: shiftId,
+                    ...extra
                 });
-            sampleBarberId = res.body.data.id;
-            createdBarberIds.push(sampleBarberId);
+            expect(res.status).toBe(201);
+            createdBarberIds.push(res.body.data.id);
+            return res.body.data.id;
+        };
+
+        const listShopBarbers = (token?: string, query = '') => {
+            const req = request(app).get(`/api/shops/${shopId}/barbers${query}`);
+            return token ? req.set('Authorization', `Bearer ${token}`) : req;
+        };
+
+        beforeAll(async () => {
+            const receptionist = await insertUser('receptionist');
+            receptionistToken = mintToken(receptionist.id, 'receptionist', receptionist.email);
+
+            sampleBarberId = await createBarber('Carlos');
+            notAcceptingBarberId = await createBarber('Nacho', { isAcceptingBookings: false });
+            deletedBarberId = await createBarber('Dario');
+
+            const del = await request(app)
+                .delete(`/api/barbers/${deletedBarberId}`)
+                .set('Authorization', `Bearer ${managerToken}`);
+            expect(del.status).toBe(200);
         });
 
-        test('Debe responder 200 y retornar los barberos activos de la sucursal para cualquier usuario', async () => {
-            const res = await request(app)
-                .get(`/api/barbers/shop/${shopId}`)
-                .set('Authorization', `Bearer ${clientToken}`);
+        describe('GET /api/shops/:id/barbers', () => {
+            test('Usuario anónimo: 200 sin token, solo vista pública de barberos activos que aceptan reservas', async () => {
+                const res = await listShopBarbers();
 
-            expect(res.status).toBe(200);
-            expect(Array.isArray(res.body.data)).toBe(true);
-            
-            const ids = res.body.data.map((b: any) => b.id);
-            expect(ids).toContain(sampleBarberId);
+                expect(res.status).toBe(200);
+                const ids = res.body.data.map((b: any) => b.id);
+                expect(ids).toContain(sampleBarberId);
+                expect(ids).not.toContain(notAcceptingBarberId);
+                expect(ids).not.toContain(deletedBarberId);
+                for (const barber of res.body.data) {
+                    expect(Object.keys(barber).sort()).toEqual(PUBLIC_KEYS);
+                }
+            });
+
+            test('Cliente: recibe la misma vista pública y includeInactive se ignora', async () => {
+                const res = await listShopBarbers(clientToken, '?includeInactive=true');
+
+                expect(res.status).toBe(200);
+                const ids = res.body.data.map((b: any) => b.id);
+                expect(ids).toContain(sampleBarberId);
+                expect(ids).not.toContain(notAcceptingBarberId);
+                expect(ids).not.toContain(deletedBarberId);
+                for (const barber of res.body.data) {
+                    expect(Object.keys(barber).sort()).toEqual(PUBLIC_KEYS);
+                }
+            });
+
+            test.each([
+                ['Gerente', () => managerToken],
+                ['Recepcionista', () => receptionistToken],
+            ])('%s: perfil completo, incluye a quienes no aceptan reservas y excluye a los dados de baja por defecto', async (_role, getToken) => {
+                const res = await listShopBarbers(getToken());
+
+                expect(res.status).toBe(200);
+                const ids = res.body.data.map((b: any) => b.id);
+                expect(ids).toContain(sampleBarberId);
+                expect(ids).toContain(notAcceptingBarberId);
+                expect(ids).not.toContain(deletedBarberId);
+                for (const barber of res.body.data) {
+                    expect(Object.keys(barber).sort()).toEqual(STAFF_KEYS);
+                    expect(barber.deletedAt).toBeNull();
+                }
+            });
+
+            test.each([
+                ['Gerente', () => managerToken],
+                ['Recepcionista', () => receptionistToken],
+            ])('%s: includeInactive=true incluye a los barberos dados de baja', async (_role, getToken) => {
+                const res = await listShopBarbers(getToken(), '?includeInactive=true');
+
+                expect(res.status).toBe(200);
+                const deleted = res.body.data.find((b: any) => b.id === deletedBarberId);
+                expect(deleted).toBeDefined();
+                expect(deleted.deletedAt).not.toBeNull();
+                expect(res.body.data.map((b: any) => b.id)).toContain(sampleBarberId);
+            });
+
+            test('Debe responder 401 si el token es inválido', async () => {
+                const res = await listShopBarbers('token-invalido');
+
+                expect(res.status).toBe(401);
+            });
+
+            test('Debe responder 403 si la cuenta del personal está desactivada', async () => {
+                const inactiveManager = await insertManager();
+                await getPool().query('UPDATE managers SET deleted_at = NOW() WHERE user_id = $1', [inactiveManager.id]);
+                const token = mintToken(inactiveManager.id, 'manager', inactiveManager.email);
+
+                const res = await listShopBarbers(token);
+
+                expect(res.status).toBe(403);
+            });
+
+            test('Debe responder 400 si el ID de la sucursal no es un UUID válido', async () => {
+                const res = await request(app).get('/api/shops/invalid-id/barbers');
+
+                expect(res.status).toBe(400);
+                expect(JSON.stringify(res.body.error)).toMatch(/Invalid shop ID format/i);
+            });
+
+            test('Debe responder 404 si la sucursal no existe', async () => {
+                const res = await request(app).get('/api/shops/00000000-0000-4000-8000-000000000000/barbers');
+
+                expect(res.status).toBe(404);
+            });
+
+            test('La ruta anterior GET /api/barbers/shop/:id ya no existe', async () => {
+                const res = await request(app)
+                    .get(`/api/barbers/shop/${shopId}`)
+                    .set('Authorization', `Bearer ${clientToken}`);
+
+                expect(res.status).toBe(404);
+            });
         });
 
-        test('Debe responder 200 y retornar el detalle de un barbero', async () => {
-            const res = await request(app)
-                .get(`/api/barbers/${sampleBarberId}`)
-                .set('Authorization', `Bearer ${clientToken}`);
+        describe('GET /api/barbers/:id', () => {
+            test('Cliente: 200 con la vista pública del barbero', async () => {
+                const res = await request(app)
+                    .get(`/api/barbers/${sampleBarberId}`)
+                    .set('Authorization', `Bearer ${clientToken}`);
 
-            expect(res.status).toBe(200);
-            expect(res.body.data.id).toBe(sampleBarberId);
-            expect(res.body.data.firstName).toBe('Carlos');
-        });
+                expect(res.status).toBe(200);
+                expect(res.body.data.id).toBe(sampleBarberId);
+                expect(res.body.data.firstName).toBe('Carlos');
+                expect(Object.keys(res.body.data).sort()).toEqual(PUBLIC_KEYS);
+            });
 
-        test('Debe responder 400 si el ID de la sucursal no es un UUID válido', async () => {
-            const res = await request(app)
-                .get('/api/barbers/shop/invalid-id')
-                .set('Authorization', `Bearer ${clientToken}`);
+            test('Cliente: 404 si el barbero está dado de baja o no acepta reservas', async () => {
+                for (const id of [deletedBarberId, notAcceptingBarberId]) {
+                    const res = await request(app)
+                        .get(`/api/barbers/${id}`)
+                        .set('Authorization', `Bearer ${clientToken}`);
 
-            expect(res.status).toBe(400);
-            expect(JSON.stringify(res.body.error)).toMatch(/Invalid shop ID format/i);
+                    expect(res.status).toBe(404);
+                }
+            });
+
+            test.each([
+                ['Gerente', () => managerToken],
+                ['Recepcionista', () => receptionistToken],
+            ])('%s: perfil completo, incluso de un barbero dado de baja', async (_role, getToken) => {
+                const res = await request(app)
+                    .get(`/api/barbers/${deletedBarberId}`)
+                    .set('Authorization', `Bearer ${getToken()}`);
+
+                expect(res.status).toBe(200);
+                expect(Object.keys(res.body.data).sort()).toEqual(STAFF_KEYS);
+                expect(res.body.data.deletedAt).not.toBeNull();
+            });
+
+            test('Debe responder 401 sin token', async () => {
+                const res = await request(app).get(`/api/barbers/${sampleBarberId}`);
+
+                expect(res.status).toBe(401);
+            });
         });
     });
 
