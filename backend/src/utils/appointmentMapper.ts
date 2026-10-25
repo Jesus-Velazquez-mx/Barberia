@@ -14,10 +14,17 @@ export const toClientAppointmentResponse = (
         id: appointment.id,
         shopId: appointment.shop_id,
         barberId: appointment.barber_id,
+        isWalkIn: appointment.is_walk_in,
         status: appointment.status,
+        originalScheduledStart: appointment.original_scheduled_start,
         scheduledStart: appointment.scheduled_start,
         scheduledEnd: appointment.scheduled_end,
+        checkedInAt: appointment.checked_in_at,
+        completedAt: appointment.completed_at,
+        cancelledAt: appointment.cancelled_at,
+        cancelationReason: appointment.cancellation_reason,
         notes: appointment.notes,
+        isRewardRedemption: appointment.is_reward_redemption,
         services: services.map((s) => ({
             serviceId: s.service_id,
             priceAtBooking: s.price_at_booking,
@@ -38,5 +45,6 @@ export const toAppointmentResponse = (
         client,
         isRegisteredClient: appointment.is_registered_client,
         guestClientName: appointment.guest_client_name,
+        clientEmail: appointment.client_email,
     };
 };

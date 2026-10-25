@@ -82,12 +82,12 @@ INSERT INTO services_categories (id, name, description) VALUES
     ('fc2c1299-9731-498e-8332-f0add96ac5ad', 'Kids',          'Services for children under 12.');
 
 INSERT INTO services (id, category_id, name, description, duration_minutes, price) VALUES
-    ('208bea03-e5d3-490a-9f43-54a1ee0decca', '5750bab7-2364-4955-829c-44bcb11b3b1f', 'Classic Haircut',  'Scissor cut with clippers on the sides.', 30, 15.00),
-    ('ade5fab3-14a5-4455-8ccd-853439ca35fa', '5750bab7-2364-4955-829c-44bcb11b3b1f', 'Skin Fade',         'High-contrast fade with a razor finish.', 45, 20.00),
-    ('d4d0d57a-01e0-48f8-83ef-1fc1fcd1aeb4', 'bae72ba4-252c-42f9-a854-87c85f37a185', 'Beard Trim',        'Shape and trim with straight razor edging.', 20, 10.00),
-    ('3d4c9ce3-31e5-4825-8fa4-cbfae2b7f341', 'bae72ba4-252c-42f9-a854-87c85f37a185', 'Hot Towel Shave',   'Traditional straight razor shave.', 30, 18.00),
-    ('49dfa392-f57e-4632-9c03-f06a37d03aca', '9d90d1c7-9eae-45e0-863e-90ecc30f4c20', 'Full Color',        'Full head hair coloring.', 90, 45.00),
-    ('532342cc-94fb-4fdc-8dba-cee063e7554c', 'fc2c1299-9731-498e-8332-f0add96ac5ad', 'Kids Haircut',      'Haircut for clients under 12.', 25, 12.00);
+    ('208bea03-e5d3-490a-9f43-54a1ee0decca', '5750bab7-2364-4955-829c-44bcb11b3b1f', 'Classic Haircut',  'Scissor cut with clippers on the sides.', 30, 150.00),
+    ('ade5fab3-14a5-4455-8ccd-853439ca35fa', '5750bab7-2364-4955-829c-44bcb11b3b1f', 'Skin Fade',         'High-contrast fade with a razor finish.', 45, 200.00),
+    ('d4d0d57a-01e0-48f8-83ef-1fc1fcd1aeb4', 'bae72ba4-252c-42f9-a854-87c85f37a185', 'Beard Trim',        'Shape and trim with straight razor edging.', 20, 100.00),
+    ('3d4c9ce3-31e5-4825-8fa4-cbfae2b7f341', 'bae72ba4-252c-42f9-a854-87c85f37a185', 'Hot Towel Shave',   'Traditional straight razor shave.', 30, 180.00),
+    ('49dfa392-f57e-4632-9c03-f06a37d03aca', '9d90d1c7-9eae-45e0-863e-90ecc30f4c20', 'Full Color',        'Full head hair coloring.', 90, 450.00),
+    ('532342cc-94fb-4fdc-8dba-cee063e7554c', 'fc2c1299-9731-498e-8332-f0add96ac5ad', 'Kids Haircut',      'Haircut for clients under 12.', 25, 120.00);
 
 -- ---------- supplies (per-shop inventory) ----------
 
@@ -207,21 +207,54 @@ INSERT INTO appointments (
      false, 'completed',
      date_trunc('day', now() - interval '14 days') + interval '10 hours', date_trunc('day', now() - interval '14 days') + interval '10 hours 45 minutes',
      NULL, date_trunc('day', now() - interval '14 days') + interval '10 hours 45 minutes', NULL, NULL,
-     NULL, false);
+     NULL, false),
+     -- A10: cancelled in advance at Tokyo-3 (6 days ago, 13:00-13:45)
+     ('7f9d8e6a-6c4b-4d1a-9f2e-8b7c6a5d4e3f', '064e25fa-26c1-4ec8-9d49-78fc5f520519',
+     'c8d0e26f-6adb-4d84-91ca-4d8fe6e7da97', true, NULL, 'f06b06dd-132f-4b72-a124-b89fe9dd4a0c',
+     false, 'cancelled',
+     date_trunc('day', now() - interval '6 days') + interval '13 hours', date_trunc('day', now() - interval '6 days') + interval '13 hours 45 minutes',
+     NULL, NULL, now() - interval '8 days', 'Client cancelled due to illness.',
+     NULL, false),
+     -- A11: no-show at Tokyo-3 (4 days ago, 09:30-10:00)
+     ('8a6e5d4c-3b2f-4a1e-9d8c-7b6a5f4e3d2c', '064e25fa-26c1-4ec8-9d49-78fc5f520519',
+     '25cb4434-8409-4473-bfce-82ba2f9084c2', true, NULL, '60bdbfde-b471-4a48-a8dc-208a709793de',
+     false, 'no_show',
+     date_trunc('day', now() - interval '4 days') + interval '9 hours 30 minutes', date_trunc('day', now() - interval '4 days') + interval '10 hours',
+     NULL, NULL, NULL, NULL,
+     'Client did not arrive and could not be reached.', false);
+
+INSERT INTO appointments (
+    id, shop_id, client_id, is_registered_client, guest_client_name, barber_id,
+    is_walk_in, status, original_scheduled_start, scheduled_start, scheduled_end,
+    checked_in_at, completed_at, cancelled_at, cancellation_reason,
+    notes, is_reward_redemption
+) VALUES
+     -- A12: rescheduled Tokyo-3 booking (in 5 days, 15:00-15:45)
+     ('9b7c6d5e-4f3a-4b2c-8d1e-6f5a4b3c2d1e', '064e25fa-26c1-4ec8-9d49-78fc5f520519',
+     '7a3be44f-9740-437b-86d2-c0a0463a0ea2', true, NULL, '0d67c12d-3947-4ac2-8667-83410cfd5ce1',
+     false, 'rescheduled',
+     date_trunc('day', now() + interval '2 days') + interval '12 hours',
+     date_trunc('day', now() + interval '5 days') + interval '15 hours', 
+     date_trunc('day', now() + interval '5 days') + interval '15 hours 45 minutes',
+     NULL, NULL, NULL, NULL,
+     'Rescheduled from the original morning appointment at the client''s request.', false);
 
 -- ---------- appointment_services ----------
 
 INSERT INTO appointment_services (appointment_id, service_id, price_at_booking, duration_minutes_at_booking) VALUES
-    ('0d6f42e6-eecc-4fd9-a372-80498da48af7', '208bea03-e5d3-490a-9f43-54a1ee0decca', 15.00, 30), -- A1: Classic Haircut
-    ('0d6f42e6-eecc-4fd9-a372-80498da48af7', 'd4d0d57a-01e0-48f8-83ef-1fc1fcd1aeb4', 10.00, 20), -- A1: Beard Trim
+    ('0d6f42e6-eecc-4fd9-a372-80498da48af7', '208bea03-e5d3-490a-9f43-54a1ee0decca', 150.00, 30), -- A1: Classic Haircut
+    ('0d6f42e6-eecc-4fd9-a372-80498da48af7', 'd4d0d57a-01e0-48f8-83ef-1fc1fcd1aeb4', 100.00, 20), -- A1: Beard Trim
     ('20340241-ed64-4b80-88e0-2d7d008e324e', 'ade5fab3-14a5-4455-8ccd-853439ca35fa',  0.00, 45), -- A2: Skin Fade (free, reward)
-    ('d6fb73f4-c624-4a8c-aa8d-7e1a4f80c488', '3d4c9ce3-31e5-4825-8fa4-cbfae2b7f341', 18.00, 30), -- A3: Hot Towel Shave
-    ('a2497faa-c04e-49b1-8320-6c03297af2a4', '208bea03-e5d3-490a-9f43-54a1ee0decca', 15.00, 30), -- A4: Classic Haircut
-    ('d1bbd7c1-75fc-4895-8855-157b81ce6619', 'ade5fab3-14a5-4455-8ccd-853439ca35fa', 20.00, 45), -- A5: Skin Fade
-    ('b3b710e6-bc10-4911-a573-1f6a361ee879', '208bea03-e5d3-490a-9f43-54a1ee0decca', 15.00, 30), -- A6: Classic Haircut
-    ('0a1367bf-e1ef-46c7-9bce-c474fa3aa77a', 'd4d0d57a-01e0-48f8-83ef-1fc1fcd1aeb4', 10.00, 20), -- A7: Beard Trim
-    ('044f613f-5e29-4f1d-94a1-56ea545ff529', '532342cc-94fb-4fdc-8dba-cee063e7554c', 12.00, 25), -- A8: Kids Haircut
-    ('5c088974-46e9-4077-955a-6b66e8e10c8a', 'ade5fab3-14a5-4455-8ccd-853439ca35fa', 20.00, 45); -- A9: Skin Fade
+    ('d6fb73f4-c624-4a8c-aa8d-7e1a4f80c488', '3d4c9ce3-31e5-4825-8fa4-cbfae2b7f341', 180.00, 30), -- A3: Hot Towel Shave
+    ('a2497faa-c04e-49b1-8320-6c03297af2a4', '208bea03-e5d3-490a-9f43-54a1ee0decca', 150.00, 30), -- A4: Classic Haircut
+    ('d1bbd7c1-75fc-4895-8855-157b81ce6619', 'ade5fab3-14a5-4455-8ccd-853439ca35fa', 200.00, 45), -- A5: Skin Fade
+    ('b3b710e6-bc10-4911-a573-1f6a361ee879', '208bea03-e5d3-490a-9f43-54a1ee0decca', 150.00, 30), -- A6: Classic Haircut
+    ('0a1367bf-e1ef-46c7-9bce-c474fa3aa77a', 'd4d0d57a-01e0-48f8-83ef-1fc1fcd1aeb4', 100.00, 20), -- A7: Beard Trim
+    ('044f613f-5e29-4f1d-94a1-56ea545ff529', '532342cc-94fb-4fdc-8dba-cee063e7554c', 120.00, 25), -- A8: Kids Haircut
+    ('5c088974-46e9-4077-955a-6b66e8e10c8a', 'ade5fab3-14a5-4455-8ccd-853439ca35fa', 200.00, 45), -- A9: Skin Fade
+    ('7f9d8e6a-6c4b-4d1a-9f2e-8b7c6a5d4e3f', '3d4c9ce3-31e5-4825-8fa4-cbfae2b7f341', 180.00, 30), -- A10: Hot Towel Shave
+    ('8a6e5d4c-3b2f-4a1e-9d8c-7b6a5f4e3d2c', '208bea03-e5d3-490a-9f43-54a1ee0decca', 150.00, 30), -- A11: Classic Haircut
+    ('9b7c6d5e-4f3a-4b2c-8d1e-6f5a4b3c2d1e', 'ade5fab3-14a5-4455-8ccd-853439ca35fa', 200.00, 45); -- A12: Skin Fade
 
 -- ---------- AI recommendation history ----------
 

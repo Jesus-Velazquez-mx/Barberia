@@ -64,6 +64,7 @@ export default function DashboardLayout({ role }: DashboardLayoutProps) {
     <div className="flex min-h-screen">
       <DashboardSidebar
         firstName={user.firstName}
+        gender={user.gender}
         items={NAV_ITEMS[role as keyof typeof NAV_ITEMS] ?? NAV_ITEMS.client}
         onLogout={() => setIsLogoutModalOpen(true)}
       />

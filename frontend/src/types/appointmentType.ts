@@ -27,6 +27,8 @@ export interface AppointmentRecord {
     /* ISO 8601 (UTC). */
     scheduledStart: string;
     scheduledEnd: string;
+    checkedInAt: string | null;
+    completedAt: string | null;
     /* Solo en citas reagendadas: fecha y hora en que estaba agendada originalmente. */
     originalScheduledStart: string | null;
     /* Solo en citas canceladas. */

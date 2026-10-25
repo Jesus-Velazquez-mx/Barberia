@@ -1,5 +1,5 @@
 import { apiClient } from './apiClient';
-import type { Barber } from '../types/barber';
+import type { PublicBarber } from '../types/barber';
 import type { AppointmentRecord, AppointmentStatus } from '../types/appointmentType';
 import { getShops, getActiveBarbersByShop, getOfferedServices } from './shopService';
 
@@ -22,13 +22,21 @@ interface AppointmentApi {
     id: string;
     shopId: string;
     barberId: string;
-    client?: AppointmentClientApi | null;
-    isRegisteredClient?: boolean;
-    guestClientName?: string | null;
+    isWalkIn: boolean;
     status: string;
+    client?: AppointmentClientApi | null;
+    guestClientName?: string | null;
+    clientEmail: string;
+    isRegisteredClient?: boolean;
+    originalScheduledStart: string;
     scheduledStart: string;
     scheduledEnd: string;
+    checkedInAt: string | null;
+    completedAt: string | null;
+    cancelledAt: string | null;
+    cancellationReason: string | null;
     notes: string | null;
+    isRewardRedemption: boolean;
     services: { serviceId: string; priceAtBooking: number; durationMinutesAtBooking: number }[];
     createdAt: string;
     updatedAt: string;
@@ -72,7 +80,7 @@ interface Catalogs {
     services: Map<string, string>;
 }
 
-const barberFullName = (b: Barber) => `${b.firstName} ${b.lastName}`.trim();
+const barberFullName = (b: PublicBarber) => `${b.firstName} ${b.lastName}`.trim();
 
 /* Si un catálogo falla (o la entidad ya no está activa), la cita se muestra igual con un nombre genérico. */
 async function loadCatalogs(token: string, shopIds: string[]): Promise<Catalogs> {
@@ -95,7 +103,7 @@ async function loadCatalogs(token: string, shopIds: string[]): Promise<Catalogs>
     const barbers = new Map<string, string>();
     barbersResults.forEach((result) => {
         if (result.status === 'fulfilled') {
-            (result.value as Barber[]).forEach((b) => barbers.set(b.id, barberFullName(b)));
+            (result.value as PublicBarber[]).forEach((b) => barbers.set(b.id, barberFullName(b)));
         }
     });
 
@@ -139,10 +147,12 @@ function toRecord(a: AppointmentApi, catalogs: Catalogs, client?: AppointmentCli
         status: STATUS_MAP[a.status] ?? 'scheduled',
         scheduledStart: a.scheduledStart,
         scheduledEnd: a.scheduledEnd,
+        checkedInAt: a.checkedInAt,
+        completedAt: a.completedAt,
         // El backend no tiene "reagendada" ni estos datos todavía.
-        originalScheduledStart: null,
-        cancelledAt: null,
-        cancellationReason: null,
+        originalScheduledStart: a.originalScheduledStart,
+        cancelledAt: a.cancelledAt,
+        cancellationReason: a.cancellationReason,
         notes: a.notes,
         services: a.services.map((s) => ({
             serviceId: s.serviceId,

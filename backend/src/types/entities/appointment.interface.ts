@@ -6,10 +6,11 @@ export interface Appointment {
     client_id: string | null;
     is_registered_client: boolean;
     guest_client_name: string | null;
-    // La columna es nullable, pero la app exige barbero en toda cita al crearla.
+    client_email: string;
     barber_id: string;
     is_walk_in: boolean;
     status: AppointmentStatus;
+    original_scheduled_start: Date;
     scheduled_start: Date;
     scheduled_end: Date;
     checked_in_at: Date | null;

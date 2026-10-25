@@ -59,7 +59,14 @@ const DOT_COLORS: Record<AppointmentStatus, string> = {
 
 /* Eventos en orden cronológico: lo más reciente (lo más relevante) queda al final y resaltado. */
 function buildTimeline(appointment: AppointmentRecord): TimelineEvent[] {
-  const events: TimelineEvent[] = [{ key: 'created', title: 'Cita creada', at: appointment.createdAt }];
+  const events: TimelineEvent[] = [
+    {
+      key: 'scheduled',
+      title: 'Cita agendada',
+      at: appointment.createdAt,
+      status: 'scheduled'
+    }
+  ];
 
   if (appointment.status === 'rescheduled' && appointment.originalScheduledStart) {
     events.push({
@@ -71,6 +78,25 @@ function buildTimeline(appointment: AppointmentRecord): TimelineEvent[] {
     });
   }
 
+  if (appointment.status === 'checkedIn') {
+    events.push({
+      key: 'checkedIn',
+      title: 'Cita iniciada',
+      at: appointment.scheduledStart,
+      status: 'checkedIn'
+    });
+  }
+
+  if (appointment.status === 'noShow') {
+    events.push({
+      key: 'noShow',
+      title: 'Cliente ausente',
+      at: appointment.scheduledStart,
+      detail: 'El cliente no se presentó',
+      status: 'noShow'
+    });
+  }
+
   if (appointment.status === 'cancelled') {
     events.push({
       key: 'cancelled',
@@ -78,6 +104,15 @@ function buildTimeline(appointment: AppointmentRecord): TimelineEvent[] {
       at: appointment.cancelledAt ?? appointment.updatedAt,
       detail: appointment.cancellationReason ?? undefined,
       status: 'cancelled'
+    });
+  }
+
+  if (appointment.status === 'completed') {
+    events.push({
+      key: 'completed',
+      title: 'Cita completada',
+      at: appointment.scheduledEnd,
+      status: 'completed'
     });
   }
 

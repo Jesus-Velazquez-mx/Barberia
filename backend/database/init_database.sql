@@ -330,31 +330,32 @@ CREATE INDEX idx_supply_movements_performed_by   ON supply_movements (performed_
 -- just be a second source of truth for data shifts/is_accepting_bookings already hold.
 
 CREATE TABLE appointments (
-    id                   uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    shop_id              uuid NOT NULL REFERENCES shops(id) ON DELETE RESTRICT,
+    id                          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    shop_id                     uuid NOT NULL REFERENCES shops(id) ON DELETE RESTRICT,
     -- client_id is NULL either for a guest booking, or for a registered client whose
     -- account was later deleted (SET NULL keeps the appointment as history).
     -- is_registered_client tells the two cases apart and never changes after creation.
-    client_id            uuid REFERENCES clients(user_id) ON DELETE SET NULL,
-    is_registered_client boolean NOT NULL,
+    client_id                   uuid REFERENCES clients(user_id) ON DELETE SET NULL,
+    is_registered_client        boolean NOT NULL,
     -- Snapshot of the registered client's email, filled automatically on insert by
     -- trg_appointments_set_client_email. Survives client deletion (client_id goes NULL)
     -- so the appointment keeps partial traceability. NULL for guest bookings.
-    client_email         varchar(255),
-    guest_client_name    varchar(100), -- only name is captured for unregistered clients
-    barber_id            uuid REFERENCES barbers(id) ON DELETE RESTRICT, -- Should this remain nullable?
-    is_walk_in           boolean NOT NULL DEFAULT false,
-    status               appointment_status NOT NULL DEFAULT 'scheduled',
-    scheduled_start      timestamptz NOT NULL,
-    scheduled_end        timestamptz NOT NULL,
-    checked_in_at        timestamptz,
-    completed_at         timestamptz,
-    cancelled_at         timestamptz,
-    cancellation_reason  varchar(255),
-    notes                text,
-    is_reward_redemption boolean NOT NULL DEFAULT false,
-    created_at           timestamptz NOT NULL DEFAULT now(),
-    updated_at           timestamptz NOT NULL DEFAULT now(),
+    client_email                varchar(255),
+    guest_client_name           varchar(100), -- only name is captured for unregistered clients
+    barber_id                   uuid REFERENCES barbers(id) ON DELETE RESTRICT NOT NULL,
+    is_walk_in                  boolean NOT NULL DEFAULT false,
+    status                      appointment_status NOT NULL DEFAULT 'scheduled',
+    original_scheduled_start    timestamptz NOT NULL,
+    scheduled_start             timestamptz NOT NULL,
+    scheduled_end               timestamptz NOT NULL,
+    checked_in_at               timestamptz,
+    completed_at                timestamptz,
+    cancelled_at                timestamptz,
+    cancellation_reason         varchar(255),
+    notes                       text,
+    is_reward_redemption        boolean NOT NULL DEFAULT false,
+    created_at                  timestamptz NOT NULL DEFAULT now(),
+    updated_at                  timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT chk_appointments_barber_required CHECK (is_walk_in = true OR barber_id IS NOT NULL),
     CONSTRAINT chk_appointments_time_order CHECK (scheduled_end > scheduled_start),
     -- registered: no guest name (client_id may be NULL after account deletion);
@@ -364,6 +365,21 @@ CREATE TABLE appointments (
         OR (NOT is_registered_client AND client_id IS NULL AND guest_client_name IS NOT NULL)
     )
 );
+
+-- The original start is captured from the first scheduled start when callers
+-- do not provide a historical value, such as when creating a new appointment.
+CREATE FUNCTION set_original_appointment_start() RETURNS trigger AS $$
+BEGIN
+    IF NEW.original_scheduled_start IS NULL THEN
+        NEW.original_scheduled_start := NEW.scheduled_start;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_appointments_set_original_start
+    BEFORE INSERT ON appointments
+    FOR EACH ROW EXECUTE FUNCTION set_original_appointment_start();
 
 CREATE INDEX idx_appointments_barber_start ON appointments (barber_id, scheduled_start);
 CREATE INDEX idx_appointments_client_start ON appointments (client_id, scheduled_start DESC);

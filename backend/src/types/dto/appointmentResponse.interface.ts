@@ -9,10 +9,17 @@ export interface ClientAppointmentResponse {
     id: string;
     shopId: string;
     barberId: string;
+    isWalkIn: boolean;
     status: AppointmentStatus;
+    originalScheduledStart: Date;
     scheduledStart: Date;
     scheduledEnd: Date;
+    checkedInAt: Date | null;
+    completedAt: Date | null;
+    cancelledAt: Date | null;
+    cancelationReason: string | null;
     notes: string | null;
+    isRewardRedemption: boolean;
     services: AppointmentServiceResponse[];
     createdAt: Date;
     updatedAt: Date;
@@ -20,8 +27,9 @@ export interface ClientAppointmentResponse {
 
 export interface AppointmentResponse extends ClientAppointmentResponse {
     client: AppointmentClient | null;
-    isRegisteredClient: boolean;
     guestClientName: string | null;
+    clientEmail: string;
+    isRegisteredClient: boolean;
 }
 
 export interface AppointmentClient {

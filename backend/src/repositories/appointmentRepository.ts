@@ -4,7 +4,7 @@ import type { AppointmentService } from '../types/entities/appointmentService.in
 import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 
 const APPOINTMENT_COLUMNS = `id, shop_id, client_id, is_registered_client, guest_client_name, barber_id, is_walk_in,
-    status, scheduled_start, scheduled_end, checked_in_at, completed_at, cancelled_at,
+    status, original_scheduled_start, scheduled_start, scheduled_end, checked_in_at, completed_at, cancelled_at,
     cancellation_reason, notes, is_reward_redemption, created_at, updated_at`;
 
 export interface AppointmentListFilters {

@@ -12,6 +12,7 @@ export interface SidebarItem {
 
 interface DashboardSidebarProps {
   firstName: string;
+  gender: string;
   /* Secciones de navegación del rol. */
   items: SidebarItem[];
   /* Si se pasa, se muestra el botón "Cerrar sesión" debajo de las pestañas. */
@@ -21,7 +22,7 @@ interface DashboardSidebarProps {
 const NAV_LINK_CLASSES = ({ isActive }: { isActive: boolean }) =>
   `flex items-center gap-3 px-4 py-3 transition-colors ${isActive ? 'bg-[var(--accent)]/60' : 'hover:bg-white/5'}`;
 
-export function DashboardSidebar({ firstName, items, onLogout }: DashboardSidebarProps) {
+export function DashboardSidebar({ firstName, gender, items, onLogout }: DashboardSidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -55,7 +56,9 @@ export function DashboardSidebar({ firstName, items, onLogout }: DashboardSideba
       >
         <div className="flex flex-col items-center gap-5 border-b border-white/10 px-4 py-8">
           <img src={mrBarberLogo} alt="Mr. Barber" className="h-24 w-24" />
-          <p className="text-center text-base text-[var(--text-h)]">Bienvenido, {firstName}</p>
+          <p className="text-center text-base text-[var(--text-h)] font-bold">
+            {gender === 'female' ? `Bienvenida, ${firstName}` : `Bienvenido, ${firstName}`}
+          </p>
         </div>
 
         <nav className="flex flex-col gap-3 py-9 text-sm font-semibold text-[var(--text-h)]">
