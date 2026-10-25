@@ -28,7 +28,7 @@ export const getAllSupplies = async (shopId?: string): Promise<Supply[]> => {
         query += ` WHERE shop_id = $1`;
         values.push(shopId);
     }
-    
+
     query += ` ORDER BY name ASC`;
 
     const result = await pool.query(query, values);

@@ -209,9 +209,9 @@ describe('Pruebas de endpoints de Turnos (Shifts)', () => {
 
         test('Campos faltantes o con formato inválido responden 400', async () => {
             expect((await postShift(managerToken, { name: 'x' })).status).toBe(400);
-            expect(
-                (await postShift(managerToken, { name: 'x', start_time: '8am', end_time: '16:00' })).status
-            ).toBe(400);
+            expect((await postShift(managerToken, { name: 'x', start_time: '8am', end_time: '16:00' })).status).toBe(
+                400
+            );
             expect((await postShift(managerToken, { name: ' ', ...TIMES.other })).status).toBe(400);
         });
     });

@@ -19,4 +19,3 @@ export interface StaffBarber extends PublicBarber {
     createdAt: string;
     updatedAt: string;
 }
-

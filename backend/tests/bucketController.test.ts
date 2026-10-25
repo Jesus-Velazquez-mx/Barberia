@@ -32,9 +32,7 @@ describe('GET /api/presigned-url', () => {
     });
 
     test('returns a presigned POST and forwards the bearer token', async () => {
-        const response = await request(app)
-            .get('/api/presigned-url')
-            .set('Authorization', 'Bearer valid-token');
+        const response = await request(app).get('/api/presigned-url').set('Authorization', 'Bearer valid-token');
 
         expect(response.status).toBe(200);
         expect(response.body).toEqual({
@@ -56,12 +54,10 @@ describe('GET /api/presigned-url', () => {
 
     test('returns the service ApiError status and message', async () => {
         generatePresignedURL.mockRejectedValue(
-            new ApiError(ApiErrorCode.UNAUTHORIZED, 'This feature is only available for clients'),
+            new ApiError(ApiErrorCode.UNAUTHORIZED, 'This feature is only available for clients')
         );
 
-        const response = await request(app)
-            .get('/api/presigned-url')
-            .set('Authorization', 'Bearer staff-token');
+        const response = await request(app).get('/api/presigned-url').set('Authorization', 'Bearer staff-token');
 
         expect(response.status).toBe(ApiErrorCode.UNAUTHORIZED);
         expect(response.body).toMatchObject({
@@ -72,9 +68,7 @@ describe('GET /api/presigned-url', () => {
     test('returns 500 for unexpected service errors', async () => {
         generatePresignedURL.mockRejectedValue(new Error('S3 unavailable'));
 
-        const response = await request(app)
-            .get('/api/presigned-url')
-            .set('Authorization', 'Bearer valid-token');
+        const response = await request(app).get('/api/presigned-url').set('Authorization', 'Bearer valid-token');
 
         expect(response.status).toBe(ApiErrorCode.INTERNAL_SERVER_ERROR);
         expect(response.body).toMatchObject({

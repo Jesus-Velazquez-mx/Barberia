@@ -107,7 +107,7 @@ export const updateCategory = async (id: string, fields: UpdateCategoryInput): P
  */
 export const deleteCategory = async (id: string): Promise<void> => {
     const pool = db.getPool();
-    
+
     const query = `DELETE FROM supplies_categories WHERE id = $1`;
     const result = await pool.query(query, [id]);
     if (result.rowCount === 0) {

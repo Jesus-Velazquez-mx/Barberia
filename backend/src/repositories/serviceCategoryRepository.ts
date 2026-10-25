@@ -59,11 +59,7 @@ export const createCategory = async (data: CreateServiceCategoryInput): Promise<
         VALUES ($1, $2, $3)
         RETURNING ${COLUMNS}
     `;
-    const values = [
-        data.name, 
-        data.description ?? null, 
-        data.isActive !== undefined ? data.isActive : true
-    ];
+    const values = [data.name, data.description ?? null, data.isActive !== undefined ? data.isActive : true];
     const result = await pool.query(query, values);
     return result.rows[0];
 };
@@ -115,10 +111,9 @@ export const updateCategory = async (id: string, fields: UpdateServiceCategoryIn
         }
 
         if (fields.isActive === false) {
-            await client.query(
-                `UPDATE services SET is_active = false WHERE category_id = $1 AND is_active = true`,
-                [id]
-            );
+            await client.query(`UPDATE services SET is_active = false WHERE category_id = $1 AND is_active = true`, [
+                id,
+            ]);
         }
 
         await client.query('COMMIT');
@@ -143,18 +138,12 @@ export const softDeleteCategory = async (id: string): Promise<void> => {
     try {
         await client.query('BEGIN');
 
-        const result = await client.query(
-            `UPDATE services_categories SET is_active = false WHERE id = $1`,
-            [id]
-        );
+        const result = await client.query(`UPDATE services_categories SET is_active = false WHERE id = $1`, [id]);
         if (result.rowCount === 0) {
             throw new ApiError(ApiErrorCode.NOT_FOUND, 'Category not found');
         }
 
-        await client.query(
-            `UPDATE services SET is_active = false WHERE category_id = $1 AND is_active = true`,
-            [id]
-        );
+        await client.query(`UPDATE services SET is_active = false WHERE category_id = $1 AND is_active = true`, [id]);
 
         await client.query('COMMIT');
     } catch (error) {

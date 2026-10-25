@@ -8,7 +8,7 @@ import {
     deleteBarber,
     listBarbersByShop,
     registerBarber,
-    getBarberDetails
+    getBarberDetails,
 } from '../services/barberService.js';
 import { extractBearerFromHeader, extractOptionalBearerFromHeader } from '../utils/headerHandling.js';
 
@@ -30,26 +30,34 @@ const createBarberSchema = z.object({
     shopId: z.uuid('Invalid shop ID'),
     shiftId: z.uuid('Invalid shift ID'),
     bio: z.string().trim().max(2000).optional().nullable(),
-    isAcceptingBookings: z.boolean().optional()
+    isAcceptingBookings: z.boolean().optional(),
 });
 
-const updateBarberSchema = z.object({
-    firstName: z.string().max(100).optional(),
-    lastName: z.string().max(100).optional(),
-    email: z.string().max(255).optional(),
-    phone: z.string().max(10).optional(),
-    birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format must be YYYY-MM-DD').optional(),
-    gender: z.string().max(10).optional(),
-    bio: z.string().max(2000).optional(),
-    isAcceptingBookings: z.boolean().optional(),
-}).refine((data) => {
-    for (const value of Object.values(data)) {
-        if (value !== undefined) return true;
-    }
-    return false;
-}, {
-    message: 'At least one field must be provided',
-});
+const updateBarberSchema = z
+    .object({
+        firstName: z.string().max(100).optional(),
+        lastName: z.string().max(100).optional(),
+        email: z.string().max(255).optional(),
+        phone: z.string().max(10).optional(),
+        birthDate: z
+            .string()
+            .regex(/^\d{4}-\d{2}-\d{2}$/, 'Format must be YYYY-MM-DD')
+            .optional(),
+        gender: z.string().max(10).optional(),
+        bio: z.string().max(2000).optional(),
+        isAcceptingBookings: z.boolean().optional(),
+    })
+    .refine(
+        (data) => {
+            for (const value of Object.values(data)) {
+                if (value !== undefined) return true;
+            }
+            return false;
+        },
+        {
+            message: 'At least one field must be provided',
+        }
+    );
 
 export const getById: ApiHandler<BarberResponse | PublicBarberResponse> = async (req, res) => {
     try {

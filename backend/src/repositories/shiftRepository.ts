@@ -14,9 +14,7 @@ const SHIFT_COLUMNS = 'id, name, start_time, end_time, created_at, updated_at';
  * Catálogo completo de turnos, ordenado por hora de inicio.
  */
 export const getAllShifts = async (): Promise<Shift[]> => {
-    const result = await db
-        .getPool()
-        .query(`SELECT ${SHIFT_COLUMNS} FROM shifts ORDER BY start_time ASC, name ASC`);
+    const result = await db.getPool().query(`SELECT ${SHIFT_COLUMNS} FROM shifts ORDER BY start_time ASC, name ASC`);
     return result.rows;
 };
 

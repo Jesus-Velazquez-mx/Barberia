@@ -8,7 +8,6 @@ import { AppointmentDetailContent } from '../components/AppointmentDetailContent
 import { AppointmentStatusBadge } from '../components/AppointmentStatusBadgeComponent';
 import { getAppointmentById } from '../services/appointmentService';
 
-
 export const CLIENT_APPOINTMENTS_PATH = '/client/appointments';
 
 export function ClientAppointmentDetailContainer() {

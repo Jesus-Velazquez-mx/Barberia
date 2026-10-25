@@ -78,11 +78,7 @@ export const registerShop = async (data: CreateShopRequest, token: string): Prom
  * Edita la información de una sucursal existente.
  * Requiere rol de manager y cuenta activa.
  */
-export const editShop = async (
-    id: string,
-    data: UpdateShopRequest,
-    token: string
-): Promise<ShopResponse> => {
+export const editShop = async (id: string, data: UpdateShopRequest, token: string): Promise<ShopResponse> => {
     const performer = decodeToken(token);
 
     if (!canManageShops(performer)) {

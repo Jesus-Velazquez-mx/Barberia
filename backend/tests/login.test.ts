@@ -15,7 +15,6 @@ app.use('/api', router);
 /* Correos creados por las pruebas, para poder limpiarlos al finalizar */
 const createdEmails: string[] = [];
 
-
 /* Crea directamente en la base de datos un manager con contraseña conocida, para
    poder ejercitar POST /api/login (no solo firmar un token) con un rol de staff. */
 const insertManagerWithPassword = async (password: string) => {

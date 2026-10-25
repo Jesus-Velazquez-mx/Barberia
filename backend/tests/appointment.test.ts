@@ -62,7 +62,8 @@ describe('POST /api/appointments', () => {
     const clientTokens: string[] = [];
 
     // Hora de pared de la sucursal (dígitos literales) -> instante UTC real, igual que hace el servicio.
-    const at = (time: string) => new Date(businessWallClockToUtcMs(Date.parse(`${dateStr}T${time}:00.000Z`))).toISOString();
+    const at = (time: string) =>
+        new Date(businessWallClockToUtcMs(Date.parse(`${dateStr}T${time}:00.000Z`))).toISOString();
     const book = (token: string, body: Record<string, unknown>) =>
         request(app)
             .post('/api/appointments')

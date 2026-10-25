@@ -20,8 +20,7 @@ app.use(express.json());
 app.use('/api', router);
 
 // Función para generar JWT
-const mintToken = (id: string, role: UserRole, email: string): string =>
-    signToken({ id, role, email } as User);
+const mintToken = (id: string, role: UserRole, email: string): string => signToken({ id, role, email } as User);
 
 // Helpers locales para insertar categorías e insumos rápido en BD para los tests
 const insertCategory = async (name: string): Promise<string> => {
@@ -32,7 +31,12 @@ const insertCategory = async (name: string): Promise<string> => {
     return res.rows[0].id;
 };
 
-const insertSupply = async (shopId: string, categoryId: string, name: string, sku: string | null = null): Promise<string> => {
+const insertSupply = async (
+    shopId: string,
+    categoryId: string,
+    name: string,
+    sku: string | null = null
+): Promise<string> => {
     const res = await getPool().query(
         `INSERT INTO supplies (shop_id, category_id, name, unit, sku) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
         [shopId, categoryId, name, 'unit', sku]
@@ -44,13 +48,13 @@ describe('Pruebas de endpoints de Insumos (Supplies) - Completo', () => {
     let dummyManager: { id: string; email: string };
     let dummyReceptionist: { id: string; email: string };
     let clientUser: { id: string; email: string };
-    
+
     let managerToken: string;
     let receptionistToken: string;
     let clientToken: string;
 
     let shopId1: string;
-    let shopId2: string; 
+    let shopId2: string;
     let categoryId: string;
     let initialSupplyId: string;
 
@@ -84,7 +88,7 @@ describe('Pruebas de endpoints de Insumos (Supplies) - Completo', () => {
             await pool.query('DELETE FROM supplies WHERE id = ANY($1)', [createdSupplyIds]);
         }
         await pool.query('DELETE FROM supplies_categories WHERE id = $1', [categoryId]);
-        
+
         await cleanupFixtures();
         await closeDB();
     });
@@ -96,7 +100,7 @@ describe('Pruebas de endpoints de Insumos (Supplies) - Completo', () => {
                 categoryId: categoryId,
                 name: 'Toallas Blancas',
                 sku: 'TOA-001',
-                unit: 'piece'
+                unit: 'piece',
             };
 
             const res = await request(app)
@@ -114,7 +118,7 @@ describe('Pruebas de endpoints de Insumos (Supplies) - Completo', () => {
                 shopId: shopId1,
                 categoryId: categoryId,
                 name: 'Gel Capilar',
-                sku: 'GEL-001'
+                sku: 'GEL-001',
             };
 
             const res = await request(app)
@@ -177,24 +181,18 @@ describe('Pruebas de endpoints de Insumos (Supplies) - Completo', () => {
 
     describe('Listar y Consultar Insumos (GET /api/supplies)', () => {
         test('Debe responder 200 y listar todos los insumos si el usuario es MANAGER', async () => {
-            const res = await request(app)
-                .get('/api/supplies')
-                .set('Authorization', `Bearer ${managerToken}`);
+            const res = await request(app).get('/api/supplies').set('Authorization', `Bearer ${managerToken}`);
             expect(res.status).toBe(200);
             expect(Array.isArray(res.body.data)).toBe(true);
         });
 
         test('Debe responder 403 si una RECEPCIONISTA intenta listar insumos', async () => {
-            const res = await request(app)
-                .get('/api/supplies')
-                .set('Authorization', `Bearer ${receptionistToken}`);
+            const res = await request(app).get('/api/supplies').set('Authorization', `Bearer ${receptionistToken}`);
             expect(res.status).toBe(403);
         });
 
         test('Debe responder 403 si un CLIENTE intenta listar insumos', async () => {
-            const res = await request(app)
-                .get('/api/supplies')
-                .set('Authorization', `Bearer ${clientToken}`);
+            const res = await request(app).get('/api/supplies').set('Authorization', `Bearer ${clientToken}`);
             expect(res.status).toBe(403);
         });
 

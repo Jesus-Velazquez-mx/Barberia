@@ -31,7 +31,7 @@ export const clearClientFacialStructure = async (userId: string): Promise<void> 
     await pool.query(`UPDATE clients SET facial_structure_type = NULL WHERE user_id = $1`, [userId]);
 };
 
-export const getAppointmentClientsById = async(clientIds: string[]): Promise<AppointmentClient[]> => {
+export const getAppointmentClientsById = async (clientIds: string[]): Promise<AppointmentClient[]> => {
     if (clientIds.length === 0) return [];
 
     const result = await db.getPool().query(
@@ -44,4 +44,4 @@ export const getAppointmentClientsById = async(clientIds: string[]): Promise<App
     );
 
     return result.rows;
-}
+};

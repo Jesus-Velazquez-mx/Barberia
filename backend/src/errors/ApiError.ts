@@ -9,7 +9,7 @@ export enum ApiErrorCode {
     CONFLICT = 409,
     INVALID_INPUT = 422,
     INTERNAL_SERVER_ERROR = 500,
-    BAD_GATEWAY = 502
+    BAD_GATEWAY = 502,
 }
 
 export class ApiError extends Error {

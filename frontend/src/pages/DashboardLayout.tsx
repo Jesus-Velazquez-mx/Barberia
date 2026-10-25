@@ -18,14 +18,14 @@ const NAV_ITEMS = {
   client: [
     { to: '/client/booking', label: 'Agendar Cita', icon: <CalendarPlus size={20} aria-hidden="true" /> },
     { to: '/client/appointments', label: 'Mis Citas', icon: <Calendar size={20} aria-hidden="true" /> },
-    { to: '/client/recommend-haircut', label: 'Recomendación de corte', icon: <Sparkles aria-hidden="true"/> },
+    { to: '/client/recommend-haircut', label: 'Recomendación de corte', icon: <Sparkles aria-hidden="true" /> },
     { to: '/client/profile', label: 'Mi Perfil', icon: <UserRound size={20} aria-hidden="true" /> }
   ],
   receptionist: [
     { to: '/receptionist/appointments', label: 'Citas', icon: <Calendar size={20} aria-hidden="true" /> },
     { to: '/receptionist/booking', label: 'Agendar Cita', icon: <CalendarPlus size={20} aria-hidden="true" /> },
     { to: '/receptionist/clients', label: 'Clientes', icon: <UserRound size={20} aria-hidden="true" /> },
-    { to: '/receptionist/inventory', label: 'Inventario', icon: <Package size={20} aria-hidden="true" /> },
+    { to: '/receptionist/inventory', label: 'Inventario', icon: <Package size={20} aria-hidden="true" /> }
   ]
 };
 

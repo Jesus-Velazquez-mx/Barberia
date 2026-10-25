@@ -11,7 +11,7 @@ import {
     getActiveBarbersByShop,
     getBarbersByShop,
     type CreateBarberInput,
-    type UpdateBarberInput
+    type UpdateBarberInput,
 } from '../repositories/barberRepository.js';
 import { isUserActive } from '../repositories/userRepository.js';
 import { getShopById } from '../repositories/shopRepository.js';
@@ -97,26 +97,29 @@ export const registerBarber = async (data: CreateBarberInput, token: string): Pr
     // Validar que la sucursal asignada exista
     const shop = await getShopById(data.shopId);
     if (!shop) throw new ApiError(ApiErrorCode.NOT_FOUND, 'Shop not found');
-    
+
     const shift = await getShiftById(data.shiftId);
     if (!shift) throw new ApiError(ApiErrorCode.NOT_FOUND, 'Shift not found');
 
     // 1. Verificamos duplicidad de Email y aplicamos regla de Reactivación
     const existingByEmail = await getBarberByEmail(data.email);
-    
+
     if (existingByEmail) {
         if (existingByEmail.deleted_at === null) {
             // Si el correo existe y el barbero está ACTIVO, rechazamos la creación.
             throw new ApiError(ApiErrorCode.USER_ALREADY_EXISTS, 'Email already in use by an active barber');
         } else {
             // Si el correo existe pero está INACTIVO, lo reactivamos.
-            
+
             // Antes de reactivarlo, revisamos si proporcionó un teléfono y si este choca con OTRO barbero.
             if (data.phone) {
                 const existingByPhone = await getBarberByPhone(data.phone);
                 // Si el teléfono existe y no le pertenece al barbero que estamos reactivando, marcamos error.
                 if (existingByPhone && existingByPhone.id !== existingByEmail.id) {
-                    throw new ApiError(ApiErrorCode.USER_ALREADY_EXISTS, 'Phone number already in use by another barber');
+                    throw new ApiError(
+                        ApiErrorCode.USER_ALREADY_EXISTS,
+                        'Phone number already in use by another barber'
+                    );
                 }
             }
 
@@ -160,7 +163,10 @@ export const updateBarber = async (target: UpdateBarberInput, token: string): Pr
     }
 
     if (barber.deleted_at !== null) {
-        throw new ApiError(ApiErrorCode.CONFLICT, 'Barber has been deleted. Reactivation is needed to modify barber data');
+        throw new ApiError(
+            ApiErrorCode.CONFLICT,
+            'Barber has been deleted. Reactivation is needed to modify barber data'
+        );
     }
 
     const updated = await updateBarberProfileById({

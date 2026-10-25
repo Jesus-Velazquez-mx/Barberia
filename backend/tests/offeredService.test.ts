@@ -21,8 +21,7 @@ app.use(express.json());
 app.use('/api', router);
 
 // Función utilitaria para generar tokens JWT de prueba
-const mintToken = (id: string, role: UserRole, email: string): string =>
-    signToken({ id, role, email } as User);
+const mintToken = (id: string, role: UserRole, email: string): string => signToken({ id, role, email } as User);
 
 describe('Pruebas de endpoints de Catálogo de Servicios (OfferedServices)', () => {
     let dummyManager: { id: string; email: string };
@@ -93,9 +92,7 @@ describe('Pruebas de endpoints de Catálogo de Servicios (OfferedServices)', () 
 
     describe('Listar Servicios (GET /api/offeredServices)', () => {
         test('Debe responder 200 y listar TODOS los servicios (activos e inactivos) para un manager', async () => {
-            const res = await request(app)
-                .get('/api/offeredServices')
-                .set('Authorization', `Bearer ${managerToken}`);
+            const res = await request(app).get('/api/offeredServices').set('Authorization', `Bearer ${managerToken}`);
 
             expect(res.status).toBe(200);
             expect(Array.isArray(res.body.data)).toBe(true);
@@ -107,9 +104,7 @@ describe('Pruebas de endpoints de Catálogo de Servicios (OfferedServices)', () 
         });
 
         test('Debe responder 200 y listar SOLO los servicios ACTIVOS para un cliente', async () => {
-            const res = await request(app)
-                .get('/api/offeredServices')
-                .set('Authorization', `Bearer ${clientToken}`);
+            const res = await request(app).get('/api/offeredServices').set('Authorization', `Bearer ${clientToken}`);
 
             expect(res.status).toBe(200);
             expect(Array.isArray(res.body.data)).toBe(true);
@@ -126,7 +121,7 @@ describe('Pruebas de endpoints de Catálogo de Servicios (OfferedServices)', () 
                 .set('Authorization', `Bearer ${managerToken}`);
 
             expect(res.status).toBe(200);
-            
+
             const ids = res.body.data.map((s: any) => s.id);
             expect(ids).toContain(activeServiceId1);
             expect(ids).toContain(inactiveServiceId);
@@ -378,7 +373,7 @@ describe('Pruebas de endpoints de Catálogo de Servicios (OfferedServices)', () 
             const clientRes = await request(app)
                 .get(`/api/offeredServices/${serviceToDeleteId}`)
                 .set('Authorization', `Bearer ${clientToken}`);
-            
+
             expect(clientRes.status).toBe(404);
         });
 

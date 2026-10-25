@@ -19,8 +19,7 @@ app.use(express.json());
 app.use('/api', router);
 
 // Función utilitaria para generar tokens JWT de prueba
-const mintToken = (id: string, role: UserRole, email: string): string =>
-    signToken({ id, role, email } as User);
+const mintToken = (id: string, role: UserRole, email: string): string => signToken({ id, role, email } as User);
 
 describe('Pruebas de endpoints de Barberos (Barbers)', () => {
     let dummyManager: { id: string; email: string };
@@ -51,10 +50,10 @@ describe('Pruebas de endpoints de Barberos (Barbers)', () => {
 
         // 3. Crear una sucursal (shop) de prueba asignada al manager
         // Usamos un prefijo muy corto ('ShopB') para no pasarnos de 50 caracteres.
-        const shopRes = await pool.query(
-            `INSERT INTO shops (name, manager_id) VALUES ($1, $2) RETURNING id`,
-            [generateUniqueFixtureName('ShopB'), dummyManager.id]
-        );
+        const shopRes = await pool.query(`INSERT INTO shops (name, manager_id) VALUES ($1, $2) RETURNING id`, [
+            generateUniqueFixtureName('ShopB'),
+            dummyManager.id,
+        ]);
         shopId = shopRes.rows[0].id;
     });
 
@@ -91,7 +90,7 @@ describe('Pruebas de endpoints de Barberos (Barbers)', () => {
                 shopId: shopId,
                 shiftId: shiftId,
                 bio: 'Excelente barbero clásico.',
-                isAcceptingBookings: true
+                isAcceptingBookings: true,
             };
 
             const res = await request(app)
@@ -116,7 +115,7 @@ describe('Pruebas de endpoints de Barberos (Barbers)', () => {
                     birthDate: '1995-01-01',
                     gender: 'M',
                     shopId: shopId,
-                    shiftId: shiftId
+                    shiftId: shiftId,
                 });
 
             expect(res.status).toBe(403);
@@ -124,19 +123,16 @@ describe('Pruebas de endpoints de Barberos (Barbers)', () => {
         });
 
         test('Debe responder 409 si se intenta registrar un correo de un barbero ACTIVO', async () => {
-            const res = await request(app)
-                .post('/api/barbers')
-                .set('Authorization', `Bearer ${managerToken}`)
-                .send({
-                    firstName: 'Clon',
-                    lastName: 'Pérez',
-                    email: activeBarberEmail, // Mismo correo del barbero activo
-                    phone: '5559998888',
-                    birthDate: '1990-05-20',
-                    gender: 'M',
-                    shopId: shopId,
-                    shiftId: shiftId
-                });
+            const res = await request(app).post('/api/barbers').set('Authorization', `Bearer ${managerToken}`).send({
+                firstName: 'Clon',
+                lastName: 'Pérez',
+                email: activeBarberEmail, // Mismo correo del barbero activo
+                phone: '5559998888',
+                birthDate: '1990-05-20',
+                gender: 'M',
+                shopId: shopId,
+                shiftId: shiftId,
+            });
 
             expect(res.status).toBe(409);
             expect(res.body.message).toMatch(/Email already in use/i);
@@ -154,7 +150,7 @@ describe('Pruebas de endpoints de Barberos (Barbers)', () => {
                     birthDate: '1985-10-10',
                     gender: 'M',
                     shopId: shopId,
-                    shiftId: shiftId
+                    shiftId: shiftId,
                 });
 
             const barberToDeactivateId = tempRes.body.data.id;
@@ -167,7 +163,9 @@ describe('Pruebas de endpoints de Barberos (Barbers)', () => {
 
             // 3. Verificamos que esté de baja en BD
             const pool = getPool();
-            const checkDeleted = await pool.query('SELECT deleted_at FROM barbers WHERE id = $1', [barberToDeactivateId]);
+            const checkDeleted = await pool.query('SELECT deleted_at FROM barbers WHERE id = $1', [
+                barberToDeactivateId,
+            ]);
             expect(checkDeleted.rows[0].deleted_at).not.toBeNull();
 
             // 4. Intentamos crear un barbero con el MISMO correo, pero con datos nuevos
@@ -183,7 +181,7 @@ describe('Pruebas de endpoints de Barberos (Barbers)', () => {
                     gender: 'M',
                     shopId: shopId,
                     shiftId: shiftId,
-                    bio: 'Volví a la barbería.'
+                    bio: 'Volví a la barbería.',
                 });
 
             // Debería retornar 201 indicando que el proceso fue exitoso
@@ -193,18 +191,17 @@ describe('Pruebas de endpoints de Barberos (Barbers)', () => {
             expect(reactivateRes.body.data.bio).toBe('Volví a la barbería.');
 
             // 5. Verificamos que deleted_at ahora es NULL
-            const checkReactivated = await pool.query('SELECT deleted_at FROM barbers WHERE id = $1', [barberToDeactivateId]);
+            const checkReactivated = await pool.query('SELECT deleted_at FROM barbers WHERE id = $1', [
+                barberToDeactivateId,
+            ]);
             expect(checkReactivated.rows[0].deleted_at).toBeNull();
         });
 
         test('Debe responder 400 si faltan campos obligatorios en el registro (Zod)', async () => {
-            const res = await request(app)
-                .post('/api/barbers')
-                .set('Authorization', `Bearer ${managerToken}`)
-                .send({
-                    firstName: 'Incompleto'
-                    // Faltan lastName, email, etc.
-                });
+            const res = await request(app).post('/api/barbers').set('Authorization', `Bearer ${managerToken}`).send({
+                firstName: 'Incompleto',
+                // Faltan lastName, email, etc.
+            });
 
             expect(res.status).toBe(400);
             expect(res.body.error).toBeDefined();
@@ -215,7 +212,14 @@ describe('Pruebas de endpoints de Barberos (Barbers)', () => {
         const PUBLIC_KEYS = ['bio', 'firstName', 'id', 'lastName', 'shiftId', 'shopId'];
         const STAFF_KEYS = [
             ...PUBLIC_KEYS,
-            'birthDate', 'createdAt', 'deletedAt', 'email', 'gender', 'isAcceptingBookings', 'phone', 'updatedAt'
+            'birthDate',
+            'createdAt',
+            'deletedAt',
+            'email',
+            'gender',
+            'isAcceptingBookings',
+            'phone',
+            'updatedAt',
         ].sort();
 
         let sampleBarberId: string;
@@ -235,7 +239,7 @@ describe('Pruebas de endpoints de Barberos (Barbers)', () => {
                     gender: 'M',
                     shopId: shopId,
                     shiftId: shiftId,
-                    ...extra
+                    ...extra,
                 });
             expect(res.status).toBe(201);
             createdBarberIds.push(res.body.data.id);
@@ -291,19 +295,22 @@ describe('Pruebas de endpoints de Barberos (Barbers)', () => {
             test.each([
                 ['Gerente', () => managerToken],
                 ['Recepcionista', () => receptionistToken],
-            ])('%s: perfil completo, incluye a quienes no aceptan reservas y excluye a los dados de baja por defecto', async (_role, getToken) => {
-                const res = await listShopBarbers(getToken());
+            ])(
+                '%s: perfil completo, incluye a quienes no aceptan reservas y excluye a los dados de baja por defecto',
+                async (_role, getToken) => {
+                    const res = await listShopBarbers(getToken());
 
-                expect(res.status).toBe(200);
-                const ids = res.body.data.map((b: any) => b.id);
-                expect(ids).toContain(sampleBarberId);
-                expect(ids).toContain(notAcceptingBarberId);
-                expect(ids).not.toContain(deletedBarberId);
-                for (const barber of res.body.data) {
-                    expect(Object.keys(barber).sort()).toEqual(STAFF_KEYS);
-                    expect(barber.deletedAt).toBeNull();
+                    expect(res.status).toBe(200);
+                    const ids = res.body.data.map((b: any) => b.id);
+                    expect(ids).toContain(sampleBarberId);
+                    expect(ids).toContain(notAcceptingBarberId);
+                    expect(ids).not.toContain(deletedBarberId);
+                    for (const barber of res.body.data) {
+                        expect(Object.keys(barber).sort()).toEqual(STAFF_KEYS);
+                        expect(barber.deletedAt).toBeNull();
+                    }
                 }
-            });
+            );
 
             test.each([
                 ['Gerente', () => managerToken],
@@ -326,7 +333,9 @@ describe('Pruebas de endpoints de Barberos (Barbers)', () => {
 
             test('Debe responder 403 si la cuenta del personal está desactivada', async () => {
                 const inactiveManager = await insertManager();
-                await getPool().query('UPDATE managers SET deleted_at = NOW() WHERE user_id = $1', [inactiveManager.id]);
+                await getPool().query('UPDATE managers SET deleted_at = NOW() WHERE user_id = $1', [
+                    inactiveManager.id,
+                ]);
                 const token = mintToken(inactiveManager.id, 'manager', inactiveManager.email);
 
                 const res = await listShopBarbers(token);
@@ -414,7 +423,7 @@ describe('Pruebas de endpoints de Barberos (Barbers)', () => {
                     gender: 'M',
                     shopId: shopId,
                     shiftId: shiftId,
-                    isAcceptingBookings: true
+                    isAcceptingBookings: true,
                 });
             editBarberId = res.body.data.id;
             createdBarberIds.push(editBarberId);
@@ -428,7 +437,7 @@ describe('Pruebas de endpoints de Barberos (Barbers)', () => {
                 phone: '8765348765',
                 gender: 'female',
                 bio: 'Biografía actualizada',
-                isAcceptingBookings: false
+                isAcceptingBookings: false,
             };
 
             const res = await request(app)
@@ -449,7 +458,7 @@ describe('Pruebas de endpoints de Barberos (Barbers)', () => {
                 .set('Authorization', `Bearer ${clientToken}`)
                 .send({
                     id: editBarberId,
-                    bio: 'Hackeo de biografía'
+                    bio: 'Hackeo de biografía',
                 });
 
             expect(res.status).toBe(403);
@@ -481,7 +490,7 @@ describe('Pruebas de endpoints de Barberos (Barbers)', () => {
                     birthDate: '1995-07-14',
                     gender: 'M',
                     shopId: shopId,
-                    shiftId: shiftId
+                    shiftId: shiftId,
                 });
             deleteBarberId = res.body.data.id;
             createdBarberIds.push(deleteBarberId);

@@ -146,7 +146,6 @@ export function ClientAppointmentsContainer() {
     void load();
   }, [user?.id, token]);
 
-
   /* ---------- Agrupar, filtrar y ordenar ---------- */
   const { counts, rows } = useMemo(() => {
     const now = Date.now();

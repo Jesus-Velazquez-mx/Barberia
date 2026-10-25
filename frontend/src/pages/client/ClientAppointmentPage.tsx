@@ -1,4 +1,4 @@
-import {ClientAppointmentsContainer} from '../../containers/ClientAppointmentsContainer';
+import { ClientAppointmentsContainer } from '../../containers/ClientAppointmentsContainer';
 import { useAuth } from '../../context/AuthContext';
 
 function ClientAppointmentsPage() {

@@ -72,7 +72,8 @@ export const getAppointments = async (filters: AppointmentListFilters): Promise<
     if (filters.clientId !== undefined) addClause((p) => `client_id = ${p}`, filters.clientId);
     if (filters.shopIds !== undefined) addClause((p) => `shop_id = ANY(${p}::uuid[])`, filters.shopIds);
     if (filters.statuses !== undefined) addClause((p) => `status = ANY(${p}::appointment_status[])`, filters.statuses);
-    if (filters.isRegisteredClient !== undefined) addClause((p) => `is_registered_client = ${p}`, filters.isRegisteredClient);
+    if (filters.isRegisteredClient !== undefined)
+        addClause((p) => `is_registered_client = ${p}`, filters.isRegisteredClient);
     if (filters.barberId !== undefined) addClause((p) => `barber_id = ${p}`, filters.barberId);
 
     const result = await db.getPool().query(

@@ -49,10 +49,7 @@ export const getAllServices = async (filters?: ServiceFilterOptions): Promise<Se
  * Busca un servicio por su identificador único.
  */
 export const getServiceById = async (id: string): Promise<Service | null> => {
-    const result = await db.getPool().query(
-        `SELECT ${SERVICE_COLUMNS} FROM services WHERE id = $1`,
-        [id]
-    );
+    const result = await db.getPool().query(`SELECT ${SERVICE_COLUMNS} FROM services WHERE id = $1`, [id]);
     return result.rows.length ? result.rows[0] : null;
 };
 
@@ -61,10 +58,9 @@ export const getServiceById = async (id: string): Promise<Service | null> => {
  * No filtra por is_active; los IDs inexistentes se omiten.
  */
 export const getServicesByIds = async (ids: string[]): Promise<Service[]> => {
-    const result = await db.getPool().query(
-        `SELECT ${SERVICE_COLUMNS} FROM services WHERE id = ANY($1::uuid[])`,
-        [ids]
-    );
+    const result = await db
+        .getPool()
+        .query(`SELECT ${SERVICE_COLUMNS} FROM services WHERE id = ANY($1::uuid[])`, [ids]);
     return result.rows;
 };
 
@@ -85,10 +81,9 @@ export const getActiveServices = async (): Promise<Service[]> => {
  * Busca un servicio por su nombre exacto.
  */
 export const getServiceByName = async (name: string): Promise<Service | null> => {
-    const result = await db.getPool().query(
-        `SELECT ${SERVICE_COLUMNS} FROM services WHERE LOWER(name) = LOWER($1)`,
-        [name]
-    );
+    const result = await db
+        .getPool()
+        .query(`SELECT ${SERVICE_COLUMNS} FROM services WHERE LOWER(name) = LOWER($1)`, [name]);
     return result.rows.length ? result.rows[0] : null;
 };
 

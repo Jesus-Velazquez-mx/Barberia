@@ -20,7 +20,6 @@ interface AppointmentTableProps {
   pagination: TablePaginationProps;
   /* false en la vista del cliente: todas las citas son suyas. */
   showClientColumn?: boolean;
-
 }
 
 //const COLUMN_COUNT = 7;
@@ -88,7 +87,7 @@ export function AppointmentTable({
             {isLoading &&
               Array.from({ length: SKELETON_ROWS }, (_, rowIndex) => (
                 <tr key={rowIndex} className="border-t border-white/5" aria-hidden="true">
-                  {Array.from({ length: columnCount  }, (_, cellIndex) => (
+                  {Array.from({ length: columnCount }, (_, cellIndex) => (
                     <td key={cellIndex} className="px-5 py-4">
                       <div className="h-3.5 w-3/4 animate-pulse rounded bg-white/10" />
                     </td>
@@ -98,7 +97,7 @@ export function AppointmentTable({
 
             {!isLoading && error && (
               <tr className="border-t border-white/5">
-                <td colSpan={columnCount } className="px-5 py-12 text-center">
+                <td colSpan={columnCount} className="px-5 py-12 text-center">
                   <p className="text-sm font-semibold text-[#ff4d4d]" role="alert">
                     {error}
                   </p>
@@ -116,7 +115,7 @@ export function AppointmentTable({
 
             {!isLoading && !error && rows.length === 0 && (
               <tr className="border-t border-white/5">
-                <td colSpan={columnCount } className="px-5 py-12 text-center text-sm text-[var(--text)]">
+                <td colSpan={columnCount} className="px-5 py-12 text-center text-sm text-[var(--text)]">
                   {emptyMessage}
                 </td>
               </tr>
@@ -192,5 +191,4 @@ export function AppointmentTable({
       {!isLoading && !error && <TablePagination {...pagination} />}
     </div>
   );
-  
 }

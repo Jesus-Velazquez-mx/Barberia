@@ -159,7 +159,7 @@ export function RecommendationContainer() {
             onClear={handleClearPhoto}
           />
         )}
-        
+
         {canReusePhoto && (
           <label className="flex cursor-pointer items-center gap-3 text-sm text-(--text-h)">
             <input
@@ -169,7 +169,7 @@ export function RecommendationContainer() {
               disabled={isSubmitting}
               className="h-4 w-4 cursor-pointer accent-(--accent)"
             />
-            Usar la última foto subida 
+            Usar la última foto subida
           </label>
         )}
 

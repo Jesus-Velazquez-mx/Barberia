@@ -2,13 +2,7 @@ import { z, ZodError } from 'zod';
 import type { ApiHandler } from '../utils/apiResponse.js';
 import { sendFail, sendInternalServerError, sendSuccess, sendValidationError } from '../utils/apiResponse.js';
 import { ApiError } from '../errors/ApiError.js';
-import {
-    listSupplies,
-    getSupply,
-    registerSupply,
-    editSupply,
-    removeSupply,
-} from '../services/supplyService.js';
+import { listSupplies, getSupply, registerSupply, editSupply, removeSupply } from '../services/supplyService.js';
 import { extractBearerFromHeader } from '../utils/headerHandling.js';
 import type { Supply } from '../types/entities/supply.interface.js';
 
@@ -24,16 +18,18 @@ const createSupplySchema = z.object({
     sku: z.string().trim().max(50, 'SKU must be at most 50 characters').nullable().optional(),
 });
 
-const updateSupplySchema = z.object({
-    shopId: z.uuid('Invalid shop ID').optional(),
-    categoryId: z.uuid('Invalid category ID').optional(),
-    name: z.string().trim().min(1, 'Name must not be empty').max(150).optional(),
-    description: z.string().trim().nullable().optional(),
-    unit: z.string().trim().max(30).optional(),
-    sku: z.string().trim().max(50).nullable().optional(),
-}).refine((data) => Object.keys(data).length > 0, {
-    message: 'At least one field must be provided for update',
-});
+const updateSupplySchema = z
+    .object({
+        shopId: z.uuid('Invalid shop ID').optional(),
+        categoryId: z.uuid('Invalid category ID').optional(),
+        name: z.string().trim().min(1, 'Name must not be empty').max(150).optional(),
+        description: z.string().trim().nullable().optional(),
+        unit: z.string().trim().max(30).optional(),
+        sku: z.string().trim().max(50).nullable().optional(),
+    })
+    .refine((data) => Object.keys(data).length > 0, {
+        message: 'At least one field must be provided for update',
+    });
 
 /**
  * Listar insumos. Opcionalmente acepta ?shopId=UUID

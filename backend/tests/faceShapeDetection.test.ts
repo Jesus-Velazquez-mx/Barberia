@@ -35,7 +35,10 @@ jest.unstable_mockModule('../src/config/globalConfig.js', () => ({
     },
 }));
 jest.unstable_mockModule('../src/repositories/userRepository.js', () => ({ getUserById }));
-jest.unstable_mockModule('../src/repositories/clientRepository.js', () => ({ getClientByUserId, updateClientFacialStructure }));
+jest.unstable_mockModule('../src/repositories/clientRepository.js', () => ({
+    getClientByUserId,
+    updateClientFacialStructure,
+}));
 jest.unstable_mockModule('../src/repositories/haircutRepository.js', () => ({
     getActiveHaircutStyles,
     getActiveHaircutStylesByFacialStructure,
@@ -43,12 +46,8 @@ jest.unstable_mockModule('../src/repositories/haircutRepository.js', () => ({
 jest.unstable_mockModule('../src/utils/userSession.js', () => ({ isUserSessionValid }));
 jest.unstable_mockModule('../src/services/userService.js', () => ({ calculateAge }));
 
-const {
-    detectFacialStructure,
-    generateRecommendation,
-    NO_SUITABLE_HAIRCUT_MESSAGE,
-    RECOMMENDATION_GENERATED_MESSAGE,
-} = await import('../src/services/aiService.js');
+const { detectFacialStructure, generateRecommendation, NO_SUITABLE_HAIRCUT_MESSAGE, RECOMMENDATION_GENERATED_MESSAGE } =
+    await import('../src/services/aiService.js');
 const { ApiError, ApiErrorCode } = await import('../src/errors/ApiError.js');
 
 const PHOTO_KEY = `${KEY_PREFIX}7a3be44f-9740-437b-86d2-c0a0463a0ea2`;
@@ -275,7 +274,10 @@ describe('generateRecommendation - detección de estructura facial', () => {
     test('lanza ApiError 400 si la IA reporta que la foto no se puede procesar al detectar', async () => {
         getClientByUserId.mockResolvedValue({ user_id: 'user-1', facial_structure_type: null });
         fetchMock.mockResolvedValueOnce(
-            jsonResponse({ message: 'unprocessable', errors: [{ field: 'photoKey', detail: 'Photo was not found' }] }, 422)
+            jsonResponse(
+                { message: 'unprocessable', errors: [{ field: 'photoKey', detail: 'Photo was not found' }] },
+                422
+            )
         );
 
         const error = await generateRecommendation(params, TOKEN).catch((e: unknown) => e);
@@ -289,8 +291,22 @@ describe('generateRecommendation - detección de estructura facial', () => {
     test('envía la estructura facial del cliente en userData y solo los campos de cada corte que usa la IA', async () => {
         getClientByUserId.mockResolvedValue({ user_id: 'user-1', facial_structure_type: 'square' });
         getActiveHaircutStylesByFacialStructure.mockResolvedValue([
-            { id: 'h1', name: 'Fade', description: 'desc', is_active: true, created_at: new Date(), updated_at: new Date() },
-            { id: 'h2', name: 'Buzz', description: null, is_active: true, created_at: new Date(), updated_at: new Date() },
+            {
+                id: 'h1',
+                name: 'Fade',
+                description: 'desc',
+                is_active: true,
+                created_at: new Date(),
+                updated_at: new Date(),
+            },
+            {
+                id: 'h2',
+                name: 'Buzz',
+                description: null,
+                is_active: true,
+                created_at: new Date(),
+                updated_at: new Date(),
+            },
         ]);
         fetchMock.mockResolvedValue(jsonResponse(recommendedBody));
 
@@ -373,7 +389,11 @@ describe('generateRecommendation - detección de estructura facial', () => {
         getClientByUserId.mockResolvedValue({ user_id: 'user-1', facial_structure_type: 'square' });
         fetchMock.mockResolvedValue(
             jsonResponse({
-                data: { status: 'no_suitable_haircut', haircuts: [], reasoning: 'Buscas cabello largo y solo hay cortes cortos.' },
+                data: {
+                    status: 'no_suitable_haircut',
+                    haircuts: [],
+                    reasoning: 'Buscas cabello largo y solo hay cortes cortos.',
+                },
                 message: 'ok',
             })
         );

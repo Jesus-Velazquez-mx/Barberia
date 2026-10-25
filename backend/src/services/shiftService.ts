@@ -49,10 +49,7 @@ const assertValidTimeRange = (startTime: string, endTime: string): void => {
     }
 
     if (!ALLOWED_SHIFT_HOURS.some((hours) => hours * 60 === minutes)) {
-        throw new ApiError(
-            ApiErrorCode.INVALID_INPUT,
-            `Shift length must be ${ALLOWED_SHIFT_HOURS.join(', ')} hours`
-        );
+        throw new ApiError(ApiErrorCode.INVALID_INPUT, `Shift length must be ${ALLOWED_SHIFT_HOURS.join(', ')} hours`);
     }
 };
 

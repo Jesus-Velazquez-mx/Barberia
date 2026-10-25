@@ -49,8 +49,9 @@ export function DashboardSidebar({ firstName, items, onLogout }: DashboardSideba
           no empuja el contenido). En desktop (lg:): vuelve a ser un sidebar sticky,
           siempre visible y fijo al hacer scroll, parte del layout en flex. */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-[230px] shrink-0 flex-col border-r border-white/10 bg-[#1A1A1A] transition-transform duration-300 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'
-          }`}
+        className={`fixed inset-y-0 left-0 z-50 flex w-[230px] shrink-0 flex-col border-r border-white/10 bg-[#1A1A1A] transition-transform duration-300 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
+          isOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
       >
         <div className="flex flex-col items-center gap-5 border-b border-white/10 px-4 py-8">
           <img src={mrBarberLogo} alt="Mr. Barber" className="h-24 w-24" />

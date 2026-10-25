@@ -55,7 +55,7 @@ const listAppointmentsQuerySchema = z.object({
 });
 
 // Agendar cita.
-export const create: ApiHandler<AppointmentResponse | ClientAppointmentResponse> =async (req, res) => {
+export const create: ApiHandler<AppointmentResponse | ClientAppointmentResponse> = async (req, res) => {
     try {
         const token = extractBearerFromHeader(req);
         const validData = createAppointmentSchema.parse(req.body);

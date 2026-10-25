@@ -1,4 +1,4 @@
-import globalConfig from "../config/globalConfig.js";
+import globalConfig from '../config/globalConfig.js';
 
 /** Zona horaria IANA en la que opera el negocio cuando BUSINESS_TIMEZONE no está definida. */
 export const DEFAULT_BUSINESS_TIMEZONE = 'America/Mazatlan';

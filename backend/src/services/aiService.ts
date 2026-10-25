@@ -61,10 +61,15 @@ export const testConnection = async (): Promise<RecommendationHealthResponse> =>
 /**
  * Función auxiliar para llamar al microservicio de Python y detectar la estructura facial usando la IA.
  */
-export const detectFacialStructure = async (photoKey: string): Promise<InternalAIResponse<InternalAIFaceDetectionResponse>> => {
+export const detectFacialStructure = async (
+    photoKey: string
+): Promise<InternalAIResponse<InternalAIFaceDetectionResponse>> => {
     let res: Response;
 
-    const payload = buildAIServicePayload<InternalAIFaceDetectionRequest>({ obj: { photoKey }, includeProvider: false });
+    const payload = buildAIServicePayload<InternalAIFaceDetectionRequest>({
+        obj: { photoKey },
+        includeProvider: false,
+    });
 
     try {
         res = await fetch(`${globalConfig.AI_SERVICE_URL}/face/detect-structure`, {
@@ -148,7 +153,7 @@ const requestRecommendation = async (
 
         if (facialStructureResponse.data) {
             client.facial_structure_type = facialStructureResponse.data.facialStructure;
-            
+
             // Se guarda para no volver a invocar a la IA en las siguientes recomendaciones.
             await updateClientFacialStructure(client.user_id, client.facial_structure_type);
 
@@ -162,11 +167,7 @@ const requestRecommendation = async (
         }
     }
 
-    console.log(
-        chalk.green(
-            `Estructura facial obtenida desde la base de datos: ${client.facial_structure_type}`
-        )
-    );
+    console.log(chalk.green(`Estructura facial obtenida desde la base de datos: ${client.facial_structure_type}`));
 
     const availableHaircuts =
         (await getActiveHaircutStylesByFacialStructure(client.facial_structure_type)) ??
@@ -263,7 +264,10 @@ const toRecommendationResult = (data: InternalAIRecommendationResponse | undefin
 
     if (data.suggestionText === undefined || data.confidence === undefined) {
         console.error(chalk.red('\nERROR - AI service returned an incomplete recommendation:'), data);
-        throw new ApiError(ApiErrorCode.INTERNAL_SERVER_ERROR, 'Haircut recommendation request returned incomplete data');
+        throw new ApiError(
+            ApiErrorCode.INTERNAL_SERVER_ERROR,
+            'Haircut recommendation request returned incomplete data'
+        );
     }
 
     return {
@@ -320,10 +324,10 @@ const buildAIServicePayload = <T>({
 }: BuildAIServicePayloadProps<T>): InternalAIRequest<T> => {
     return includeProvider
         ? {
-            data: obj,
-            provider: globalConfig.AI_PROVIDER,
-        }
+              data: obj,
+              provider: globalConfig.AI_PROVIDER,
+          }
         : {
-            data: obj,
-        };
+              data: obj,
+          };
 };

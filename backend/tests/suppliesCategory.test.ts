@@ -19,16 +19,15 @@ app.use(express.json());
 app.use('/api', router);
 
 // Función para generar un JWT válido para las pruebas
-const mintToken = (id: string, role: UserRole, email: string): string =>
-    signToken({ id, role, email } as User);
+const mintToken = (id: string, role: UserRole, email: string): string => signToken({ id, role, email } as User);
 
 // Helper local para insertar categorías de prueba en la BD
 const insertCategory = async (name: string, description: string | null = null): Promise<string> => {
     const pool = getPool();
-    const res = await pool.query(
-        `INSERT INTO supplies_categories (name, description) VALUES ($1, $2) RETURNING id`,
-        [name, description]
-    );
+    const res = await pool.query(`INSERT INTO supplies_categories (name, description) VALUES ($1, $2) RETURNING id`, [
+        name,
+        description,
+    ]);
     return res.rows[0].id;
 };
 
@@ -89,9 +88,7 @@ describe('Pruebas de endpoints de Categorías de Insumos (Supplies Categories)',
         });
 
         test('Debe responder 403 si un CLIENTE intenta listar las categorías', async () => {
-            const res = await request(app)
-                .get('/api/suppliesCategories')
-                .set('Authorization', `Bearer ${clientToken}`);
+            const res = await request(app).get('/api/suppliesCategories').set('Authorization', `Bearer ${clientToken}`);
 
             expect(res.status).toBe(403);
         });
@@ -164,15 +161,13 @@ describe('Pruebas de endpoints de Categorías de Insumos (Supplies Categories)',
             expect(res.body.data.id).toBeDefined();
             expect(res.body.data.name).toBe(newCategoryData.name);
             expect(res.body.data.description).toBe(newCategoryData.description);
-            
+
             // Guardamos el ID para borrarlo en el afterAll
-            createdCategoryIds.push(res.body.data.id); 
+            createdCategoryIds.push(res.body.data.id);
         });
 
         test('Debe responder 401 si no se envía token de autorización', async () => {
-            const res = await request(app)
-                .post('/api/suppliesCategories')
-                .send({ name: 'Sin Token' });
+            const res = await request(app).post('/api/suppliesCategories').send({ name: 'Sin Token' });
 
             expect(res.status).toBe(401);
         });
@@ -204,7 +199,7 @@ describe('Pruebas de endpoints de Categorías de Insumos (Supplies Categories)',
                 .send({ description: 'Solo envié descripción' });
 
             expect(res.status).toBe(400);
-            expect(res.body.error).toBeDefined(); 
+            expect(res.body.error).toBeDefined();
         });
     });
 

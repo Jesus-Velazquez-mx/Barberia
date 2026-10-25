@@ -269,7 +269,9 @@ describe('getAvailableSlots', () => {
             const result = await getAvailableSlots({ shopId: SHOP, date: '2026-10-14', serviceIds: [SERVICE] });
             // Turno 09:00-13:00 hora de Tijuana, servicio de 60 min: el último inicio es 12:00; el primero, 10:00.
             const atTijuana = (hhmm: string) =>
-                new Date(businessWallClockToUtcMs(Date.parse(`2026-10-14T${hhmm}:00.000Z`), 'America/Tijuana')).toISOString();
+                new Date(
+                    businessWallClockToUtcMs(Date.parse(`2026-10-14T${hhmm}:00.000Z`), 'America/Tijuana')
+                ).toISOString();
             expect(result[0].startTimes[0]).toBe(atTijuana('10:00'));
             expect(result[0].startTimes.at(-1)).toBe(atTijuana('12:00'));
         });

@@ -34,10 +34,7 @@ const BARBER_COLUMNS = `id, first_name, last_name, email, phone, shop_id, shift_
  */
 export const getBarberById = async (id: string): Promise<Barber | null> => {
     const pool = db.getPool();
-    const result = await pool.query(
-        `SELECT ${BARBER_COLUMNS} FROM barbers WHERE id = $1`,
-        [id]
-    );
+    const result = await pool.query(`SELECT ${BARBER_COLUMNS} FROM barbers WHERE id = $1`, [id]);
     return result.rows.length ? result.rows[0] : null;
 };
 
@@ -47,10 +44,7 @@ export const getBarberById = async (id: string): Promise<Barber | null> => {
  */
 export const getBarberByEmail = async (email: string): Promise<Barber | null> => {
     const pool = db.getPool();
-    const result = await pool.query(
-        `SELECT ${BARBER_COLUMNS} FROM barbers WHERE email = $1`,
-        [email]
-    );
+    const result = await pool.query(`SELECT ${BARBER_COLUMNS} FROM barbers WHERE email = $1`, [email]);
     return result.rows.length ? result.rows[0] : null;
 };
 
@@ -59,10 +53,7 @@ export const getBarberByEmail = async (email: string): Promise<Barber | null> =>
  */
 export const getBarberByPhone = async (phone: string): Promise<Barber | null> => {
     const pool = db.getPool();
-    const result = await pool.query(
-        `SELECT ${BARBER_COLUMNS} FROM barbers WHERE phone = $1`,
-        [phone]
-    );
+    const result = await pool.query(`SELECT ${BARBER_COLUMNS} FROM barbers WHERE phone = $1`, [phone]);
     return result.rows.length ? result.rows[0] : null;
 };
 
@@ -71,13 +62,13 @@ export const getBarberByPhone = async (phone: string): Promise<Barber | null> =>
  */
 export const createBarber = async (data: CreateBarberInput): Promise<Barber> => {
     const pool = db.getPool();
-    
+
     const query = `
         INSERT INTO barbers (first_name, last_name, email, phone, birth_date, gender, shop_id, shift_id, bio, is_accepting_bookings)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         RETURNING ${BARBER_COLUMNS}
     `;
-    
+
     const values = [
         data.firstName,
         data.lastName,
@@ -88,7 +79,7 @@ export const createBarber = async (data: CreateBarberInput): Promise<Barber> => 
         data.shopId,
         data.shiftId,
         data.bio ?? null,
-        data.isAcceptingBookings !== undefined ? data.isAcceptingBookings : true
+        data.isAcceptingBookings !== undefined ? data.isAcceptingBookings : true,
     ];
 
     const result = await pool.query(query, values);
@@ -101,7 +92,7 @@ export const createBarber = async (data: CreateBarberInput): Promise<Barber> => 
  */
 export const reactivateBarber = async (id: string, data: CreateBarberInput): Promise<Barber> => {
     const pool = db.getPool();
-    
+
     const query = `
         UPDATE barbers
         SET first_name = $1,
@@ -119,7 +110,7 @@ export const reactivateBarber = async (id: string, data: CreateBarberInput): Pro
         WHERE id = $11
         RETURNING ${BARBER_COLUMNS}
     `;
-    
+
     const values = [
         data.firstName,
         data.lastName,
@@ -131,7 +122,7 @@ export const reactivateBarber = async (id: string, data: CreateBarberInput): Pro
         data.shiftId,
         data.bio ?? null,
         data.isAcceptingBookings !== undefined ? data.isAcceptingBookings : true,
-        id
+        id,
     ];
 
     const result = await pool.query(query, values);
@@ -140,7 +131,7 @@ export const reactivateBarber = async (id: string, data: CreateBarberInput): Pro
 
 /**
  * Actualiza los datos de un barbero.
- * Solo modifica las columnas presentes en `fields`. 
+ * Solo modifica las columnas presentes en `fields`.
  * AND deleted_at IS NULL evita editar un barbero que ya fue dado de baja.
  */
 export const updateBarberProfileById = async (fields: UpdateBarberInput): Promise<Barber> => {

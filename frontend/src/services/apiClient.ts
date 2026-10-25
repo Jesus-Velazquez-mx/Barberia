@@ -6,7 +6,11 @@ const API_BASE_IP = import.meta.env.VITE_API_IP;
 /* Cuerpo completo de la respuesta, con `data` ya tipado como T */
 export type ApiClientResponse<T> = Omit<ApiResponse<T>, 'data'> & { data: T };
 
-async function request<T>(path: string, options: RequestInit = {}, useRawIP: boolean = false): Promise<ApiClientResponse<T>> {
+async function request<T>(
+    path: string,
+    options: RequestInit = {},
+    useRawIP: boolean = false
+): Promise<ApiClientResponse<T>> {
     let response: Response;
 
     const baseURL = useRawIP ? `${API_BASE_IP}/api` : API_BASE_URL;
@@ -25,7 +29,7 @@ async function request<T>(path: string, options: RequestInit = {}, useRawIP: boo
 
     const body: ApiResponse<T> | undefined = await response.json().catch(() => undefined);
 
-    if (!response.ok || body?.error || !body ) {
+    if (!response.ok || body?.error || !body) {
         const errors = body?.error ?? [];
         const message = body?.message || errors[0] || `Request failed with status ${response.status}`;
         throw new ApiError(message, response.status, errors);
@@ -40,5 +44,6 @@ export const apiClient = {
         request<T>(path, { ...init, method: 'POST', body: JSON.stringify(body) }, useRawIP),
     put: <T>(path: string, body?: unknown, init?: RequestInit, useRawIP?: boolean) =>
         request<T>(path, { ...init, method: 'PUT', body: JSON.stringify(body) }, useRawIP),
-    delete: <T>(path: string, init?: RequestInit, useRawIP?: boolean) => request<T>(path, { ...init, method: 'DELETE' }, useRawIP)
+    delete: <T>(path: string, init?: RequestInit, useRawIP?: boolean) =>
+        request<T>(path, { ...init, method: 'DELETE' }, useRawIP)
 };

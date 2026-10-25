@@ -35,9 +35,7 @@ const formatApiError = (error: unknown, fallbackMessage: string): string => {
   if (error instanceof ApiError) {
     if (error.status === 400 && error.errors.length > 0) {
       return error.errors
-        .map((e: unknown) =>
-          typeof e === 'string' ? e : ((e as { message?: string }).message ?? JSON.stringify(e))
-        )
+        .map((e: unknown) => (typeof e === 'string' ? e : ((e as { message?: string }).message ?? JSON.stringify(e))))
         .join(' ');
     }
     if (error.status === 404) {
@@ -92,10 +90,7 @@ export function BookAppointmentContainer() {
   const { fields, append, remove } = useFieldArray({ control, name: 'services' });
   const { shopId, services } = watch();
 
-  const SHOP_OPTIONS = useMemo(
-    () => [{ value: '', label: 'Selecciona una sucursal' }, ...shopOptions],
-    [shopOptions]
-  );
+  const SHOP_OPTIONS = useMemo(() => [{ value: '', label: 'Selecciona una sucursal' }, ...shopOptions], [shopOptions]);
 
   // Servicios ya elegidos (sin filas vacías)
   const selectedServiceIds = services.map((s) => s.serviceId).filter(Boolean);
@@ -212,9 +207,7 @@ export function BookAppointmentContainer() {
       .then((availabilityData) => {
         if (!active) return;
 
-        const barberMap = new Map(
-          barbers.map((b) => [b.id, `${b.firstName} ${b.lastName}`.trim()])
-        );
+        const barberMap = new Map(barbers.map((b) => [b.id, `${b.firstName} ${b.lastName}`.trim()]));
 
         const mappedSlots: AvailableSlot[] = availabilityData.flatMap((item) => {
           const barberName = barberMap.get(item.barberId) ?? 'Barbero';
@@ -300,11 +293,11 @@ export function BookAppointmentContainer() {
     .join(', ');
   const dateLabel = selectedDate
     ? new Date(`${selectedDate}T00:00:00`).toLocaleDateString('es-MX', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    })
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      })
     : '';
 
   return (

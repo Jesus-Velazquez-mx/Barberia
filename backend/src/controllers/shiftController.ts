@@ -24,7 +24,12 @@ const createShiftSchema = z.object({
 // Esquema para validar la actualización, exigiendo al menos un campo a modificar
 const updateShiftSchema = z
     .object({
-        name: z.string().trim().min(1, 'Name must not be empty').max(50, 'Name must be at most 50 characters').optional(),
+        name: z
+            .string()
+            .trim()
+            .min(1, 'Name must not be empty')
+            .max(50, 'Name must be at most 50 characters')
+            .optional(),
         start_time: timeSchema.optional(),
         end_time: timeSchema.optional(),
     })

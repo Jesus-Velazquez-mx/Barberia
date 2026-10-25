@@ -34,7 +34,16 @@ export const createRecommendationHistory = async ({
             (client_id, suggestion_text, confidence, reasoning, recommended_haircut_style_id, error_message, requested_at, completed_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          RETURNING *`,
-        [clientId, suggestionText, confidence, reasoning, recommendedHaircutStyleId, errorMessage, requestedAt, completedAt]
+        [
+            clientId,
+            suggestionText,
+            confidence,
+            reasoning,
+            recommendedHaircutStyleId,
+            errorMessage,
+            requestedAt,
+            completedAt,
+        ]
     );
 
     return result.rows[0] as RecommendationHistory;

@@ -2,13 +2,7 @@ import { z, ZodError } from 'zod';
 import type { ApiHandler } from '../utils/apiResponse.js';
 import { sendFail, sendInternalServerError, sendSuccess, sendValidationError } from '../utils/apiResponse.js';
 import { ApiError } from '../errors/ApiError.js';
-import {
-    listShops,
-    getActiveShopById,
-    registerShop,
-    editShop,
-    removeShop,
-} from '../services/shopService.js';
+import { listShops, getActiveShopById, registerShop, editShop, removeShop } from '../services/shopService.js';
 import type { ShopResponse } from '../types/dto/shopResponse.interface.js';
 import { extractBearerFromHeader } from '../utils/headerHandling.js';
 
@@ -49,7 +43,12 @@ const createShopSchema = z.preprocess((val: unknown) => {
 
 const updateShopFieldsSchema = z
     .object({
-        name: z.string().trim().min(1, 'Name must not be empty').max(50, 'Name must be at most 50 characters').optional(),
+        name: z
+            .string()
+            .trim()
+            .min(1, 'Name must not be empty')
+            .max(50, 'Name must be at most 50 characters')
+            .optional(),
         street: z.string().trim().max(50, 'Street must be at most 50 characters').nullable().optional(),
         postalCode: z
             .string()

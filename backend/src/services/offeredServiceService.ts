@@ -8,7 +8,7 @@ import {
     softDeleteService as repoSoftDeleteService,
     type ServiceFilterOptions,
 } from '../repositories/offeredServiceRepository.js';
-import { getCategoryById } from '../repositories/serviceCategoryRepository.js'; 
+import { getCategoryById } from '../repositories/serviceCategoryRepository.js';
 import { isUserActive } from '../repositories/userRepository.js';
 import { decodeToken } from './jwtTokenService.js';
 import { canManageServices } from './userPermissions.js';
@@ -60,10 +60,7 @@ export const getOfferedServiceById = async (id: string, token: string): Promise<
 /**
  * Registra un nuevo servicio.
  */
-export const registerService = async (
-    data: CreateServiceRequest,
-    token: string
-): Promise<OfferedServicesResponse> => {
+export const registerService = async (data: CreateServiceRequest, token: string): Promise<OfferedServicesResponse> => {
     const performer = decodeToken(token);
 
     if (!canManageServices(performer)) {

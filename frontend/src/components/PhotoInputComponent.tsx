@@ -70,9 +70,7 @@ export function PhotoInput({ photoUrl, error, onFileSelected, onClear }: PhotoIn
         }`}
       >
         <ImagePlus size={36} className="text-(--accent)" aria-hidden="true" />
-        <p className="text-sm text-(--text)">
-          Usa una foto de frente, con buena luz y sin gorra ni lentes.
-        </p>
+        <p className="text-sm text-(--text)">Usa una foto de frente, con buena luz y sin gorra ni lentes.</p>
         <div className="flex flex-wrap justify-center gap-3">
           <button
             type="button"

@@ -19,8 +19,7 @@ const app = express();
 app.use(express.json());
 app.use('/api', router);
 
-const mintToken = (id: string, role: UserRole, email: string): string =>
-    signToken({ id, role, email } as User);
+const mintToken = (id: string, role: UserRole, email: string): string => signToken({ id, role, email } as User);
 
 describe('Pruebas de endpoints de Shops (Sucursales)', () => {
     let dummyManager: { id: string; email: string };
@@ -167,9 +166,7 @@ describe('Pruebas de endpoints de Shops (Sucursales)', () => {
         });
 
         test('Debe responder 401 si no se envía token de autorización', async () => {
-            const res = await request(app)
-                .post('/api/shops')
-                .send({ name: 'Sin Token Shop' });
+            const res = await request(app).post('/api/shops').send({ name: 'Sin Token Shop' });
 
             expect(res.status).toBe(401);
             expect(res.body.message).toMatch(/Missing or invalid authorization token/i);
@@ -239,9 +236,7 @@ describe('Pruebas de endpoints de Shops (Sucursales)', () => {
         });
 
         test('Debe responder 401 si no se envía token de autorización', async () => {
-            const res = await request(app)
-                .put(`/api/shops/${shopToEditId}`)
-                .send({ name: 'Sin Token' });
+            const res = await request(app).put(`/api/shops/${shopToEditId}`).send({ name: 'Sin Token' });
 
             expect(res.status).toBe(401);
         });

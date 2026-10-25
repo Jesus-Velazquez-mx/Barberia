@@ -16,7 +16,6 @@ import { canManageServiceCategories } from './userPermissions.js';
  * Accesible para todos los roles, aplicando discriminación de visibilidad.
  */
 export const listCategories = async (token: string) => {
-
     const performer = decodeToken(token);
 
     // Valida que la cuenta del usuario se encuentre activa en el sistema
@@ -28,7 +27,7 @@ export const listCategories = async (token: string) => {
 
     // Si el usuario es cliente, solo visualiza categorías activas
     if (performer.role === 'client') {
-        categories = categories.filter(c => c.is_active === true);
+        categories = categories.filter((c) => c.is_active === true);
     }
 
     return categories;
@@ -61,7 +60,10 @@ export const getCategory = async (id: string, token: string) => {
 /**
  * Registra una nueva categoría de servicios.
  */
-export const registerCategory = async (data: { name: string; description?: string | null; isActive?: boolean }, token: string) => {
+export const registerCategory = async (
+    data: { name: string; description?: string | null; isActive?: boolean },
+    token: string
+) => {
     const performer = decodeToken(token);
 
     // Valida permisos administrativos
@@ -83,12 +85,12 @@ export const registerCategory = async (data: { name: string; description?: strin
 };
 
 /**
- * Actualiza los datos de una categoría existente y ejecuta la desactivación 
+ * Actualiza los datos de una categoría existente y ejecuta la desactivación
  * en cascada de sus servicios si la categoría es inhabilitada.
  */
 export const editCategory = async (
-    id: string, 
-    data: { name?: string; description?: string | null; isActive?: boolean }, 
+    id: string,
+    data: { name?: string; description?: string | null; isActive?: boolean },
     token: string
 ) => {
     const performer = decodeToken(token);

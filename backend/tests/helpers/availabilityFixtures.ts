@@ -67,11 +67,7 @@ export const insertShop = async (
 /**
  * Inserta un turno en la tabla 'shifts' o reutiliza uno existente si ya existe uno con ese nombre.
  */
-export const insertShift = async (
-    name: string,
-    startTime = '08:00',
-    endTime = '16:00'
-): Promise<string> => {
+export const insertShift = async (name: string, startTime = '08:00', endTime = '16:00'): Promise<string> => {
     const existing = await getPool().query(`SELECT id FROM shifts WHERE name = $1`, [name]);
     if (existing.rows.length > 0) {
         return existing.rows[0].id;
@@ -192,7 +188,17 @@ export const insertAppointment = async (
     const result = await getPool().query(
         `INSERT INTO appointments (shop_id, barber_id, client_id, is_registered_client, guest_client_name, is_walk_in, status, scheduled_start, scheduled_end)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
-        [shopId, barberId, clientId, isRegisteredClient, guestClientName, isWalkIn, status, scheduledStart, scheduledEnd]
+        [
+            shopId,
+            barberId,
+            clientId,
+            isRegisteredClient,
+            guestClientName,
+            isWalkIn,
+            status,
+            scheduledStart,
+            scheduledEnd,
+        ]
     );
     const id = result.rows[0].id;
     createdAppointmentIds.push(id);
