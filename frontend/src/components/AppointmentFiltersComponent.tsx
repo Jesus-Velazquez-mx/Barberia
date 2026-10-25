@@ -40,15 +40,20 @@ export function FilterToggleButton({ isOpen, activeCount, onClick }: FilterToggl
   );
 }
 
+type DateFilterKey = 'serviceFrom' | 'serviceTo' | 'createdFrom' | 'createdTo';
+
 interface AppointmentFiltersProps {
   isOpen: boolean;
   /* Un registro de react-hook-form por filtro (las reglas de validación viven en el contenedor). */
-  fields: Record<keyof AppointmentFilterValues, UseFormRegisterReturn>;
+  fields: Pick<Record<keyof AppointmentFilterValues, UseFormRegisterReturn>, DateFilterKey> &
+    Partial<Record<Exclude<keyof AppointmentFilterValues, DateFilterKey>, UseFormRegisterReturn>>;
   errors: FieldErrors<AppointmentFilterValues>;
   /* Solo el manager lo recibe; sin opciones (recepción) o con una sola sucursal el filtro no se muestra. */
   shopOptions?: SelectOption[];
-  serviceOptions: SelectOption[];
-  statusOptions: SelectOption[];
+  /* Sin opciones (cliente) el filtro de servicio no se muestra. */
+  serviceOptions?: SelectOption[];
+  /* Sin opciones (cliente) el filtro de estado no se muestra. */
+  statusOptions?: SelectOption[];
   /* Hay búsqueda o algún filtro distinto del valor por defecto. */
   canReset: boolean;
   onReset: () => void;
@@ -118,16 +123,20 @@ export function AppointmentFilters({
           registerProps={fields.createdTo}
         />
 
-        {shopOptions && shopOptions.length > 2 && (
+        {shopOptions && shopOptions.length > 2 && fields.shopId && (
           <SelectField id="appointments-shop" label="Sucursal" options={shopOptions} registerProps={fields.shopId} />
         )}
-        <SelectField
-          id="appointments-service"
-          label="Servicio"
-          options={serviceOptions}
-          registerProps={fields.serviceId}
-        />
-        <SelectField id="appointments-status" label="Estado" options={statusOptions} registerProps={fields.status} />
+        {serviceOptions && fields.serviceId && (
+          <SelectField
+            id="appointments-service"
+            label="Servicio"
+            options={serviceOptions}
+            registerProps={fields.serviceId}
+          />
+        )}
+        {statusOptions && fields.status && (
+          <SelectField id="appointments-status" label="Estado" options={statusOptions} registerProps={fields.status} />
+        )}
       </div>
     </section>
   );

@@ -46,7 +46,10 @@ interface TimelineEvent {
 const DOT_COLORS: Partial<Record<AppointmentStatus, string>> = {
   scheduled: 'bg-[#2DB5A3]',
   rescheduled: 'bg-[var(--accent)]',
-  cancelled: 'bg-[#C4608F]'
+  checkedIn: 'bg-[#5A9BCF]',
+  completed: 'bg-[#6DBB8A]',
+  cancelled: 'bg-[#C4608F]',
+  noShow: 'bg-[#B86B5E]'
 };
 
 function buildTimeline(appointment: AppointmentRecord): TimelineEvent[] {

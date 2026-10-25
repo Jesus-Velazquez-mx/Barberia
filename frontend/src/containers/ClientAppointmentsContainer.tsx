@@ -31,16 +31,6 @@ const DEFAULT_FILTERS: AppointmentFilterValues = {
   status: 'all'
 };
 
-const STATUS_OPTIONS = [
-  { value: 'all', label: 'Todos los estados' },
-  { value: 'scheduled', label: 'Agendada' },
-  { value: 'rescheduled', label: 'Reagendada' },
-  { value: 'checkedIn', label: 'En sitio' },
-  { value: 'completed', label: 'Completada' },
-  { value: 'cancelled', label: 'Cancelada' },
-  { value: 'noShow', label: 'No asistió' }
-];
-
 /* dd/mm/aaaa -> timestamp local (null si está vacía o incompleta). */
 function parseDate(text: string, endOfDay = false): number | null {
   const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(text.trim());
@@ -113,8 +103,7 @@ export function ClientAppointmentsContainer() {
     createdFrom: register('createdFrom', dateRule),
     createdTo: register('createdTo', rangeRule('createdFrom')),
     shopId: register('shopId'),
-    serviceId: register('serviceId'),
-    status: register('status')
+    serviceId: register('serviceId')
   };
 
   const activeCount = (Object.keys(DEFAULT_FILTERS) as (keyof AppointmentFilterValues)[]).filter(
@@ -217,7 +206,6 @@ export function ClientAppointmentsContainer() {
         fields={fields}
         errors={errors}
         serviceOptions={serviceOptions}
-        statusOptions={STATUS_OPTIONS}
         canReset={activeCount > 0}
         onReset={() => reset(DEFAULT_FILTERS)}
       />
