@@ -251,7 +251,10 @@ router.delete('/shops/:id', remove);
  *   get:
  *     summary: Obtiene los barberos disponibles en una sucursal específica
  *     tags: [Shops, Barbers]
- *     description: Expone qué barberos de una sucursal aceptan reservas actualmente. Excluye a barberos dados de baja o que no aceptan reservas en este momento. Endpoint público.
+ *     description: Endpoint público (el token JWT es opcional). Los datos devueltos dependen del rol del solicitante. Usuarios no registrados y clientes reciben solo la vista pública (`id`, `firstName`, `lastName`, `shopId`, `shiftId`, `bio`) de los barberos que no están dados de baja y aceptan reservas. El personal (gerentes y recepcionistas) recibe el perfil completo (además `email`, `phone`, `birthDate`, `gender`, `isAcceptingBookings`, `deletedAt`, `createdAt`, `updatedAt`) de todos los barberos no dados de baja, incluidos los que no aceptan reservas; con `includeInactive=true` también los dados de baja. `includeInactive` se ignora para quien no sea personal.
+ *     security:
+ *       - {}
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -260,11 +263,46 @@ router.delete('/shops/:id', remove);
  *           type: string
  *           format: uuid
  *         description: ID único de la sucursal.
+ *       - in: query
+ *         name: includeInactive
+ *         required: false
+ *         schema:
+ *           type: boolean
+ *           default: false
+ *         description: Solo personal. Si es `true`, incluye también a los barberos dados de baja.
  *     responses:
  *       200:
- *         description: Éxito. `data` contiene el arreglo de barberos elegibles (puede estar vacío `[]` si la sucursal existe pero no tiene barberos disponibles).
+ *         description: Éxito. `data` contiene el arreglo de barberos (puede estar vacío `[]` si la sucursal existe pero no tiene barberos). Los campos "solo personal" únicamente se incluyen para gerentes y recepcionistas.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id: { type: string, format: uuid }
+ *                       firstName: { type: string, example: "Juan" }
+ *                       lastName: { type: string, example: "Pérez" }
+ *                       shopId: { type: string, format: uuid }
+ *                       shiftId: { type: string, format: uuid }
+ *                       bio: { type: string, nullable: true }
+ *                       email: { type: string, format: email, nullable: true, description: Solo personal }
+ *                       phone: { type: string, nullable: true, description: Solo personal }
+ *                       birthDate: { type: string, format: date-time, description: Solo personal }
+ *                       gender: { type: string, description: Solo personal }
+ *                       isAcceptingBookings: { type: boolean, description: Solo personal }
+ *                       deletedAt: { type: string, format: date-time, nullable: true, description: Solo personal }
+ *                       createdAt: { type: string, format: date-time, description: Solo personal }
+ *                       updatedAt: { type: string, format: date-time, description: Solo personal }
+ *                 message: { type: string, example: Barbers retrieved successfully }
+ *                 error: { type: array, items: { type: string }, nullable: true, example: null }
  *       400:
  *         description: Error de validación (el ID no es un UUID válido).
+ *       401:
+ *         description: Se envió un token JWT inválido o expirado.
  *       404:
  *         description: La sucursal especificada no existe.
  *       500:

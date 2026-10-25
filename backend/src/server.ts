@@ -41,7 +41,7 @@ const options = {
             { name: 'Test', description: 'Endpoints de prueba usados durante el desarrollo' },
         ],
     },
-    apis: ['./src/routes/*.ts', './dist/routes/*.js'], // Ruta al archivo donde se encuentran las rutas de la API
+    apis: [import.meta.url.endsWith('.ts') ? './src/routes/*.ts' : './dist/routes/*.js'],
 };
 
 const specs = swaggerJsdoc(options);

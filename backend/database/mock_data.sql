@@ -23,9 +23,10 @@ INSERT INTO managers (user_id, title, deleted_at) VALUES
 
 -- ---------- shops ----------
 
-INSERT INTO shops (id, name, street, postal_code, number, phone, manager_id) VALUES
-    ('064e25fa-26c1-4ec8-9d49-78fc5f520519', 'NERV Barbershop - Tokyo-3',    'Central Dogma Ave', '10001', '0100', '5551000001', 'b27c93cf-2282-4b40-81ea-efb5f7bec219'),
-    ('96c3c0e1-b183-446f-9d2d-d3f3fc9f9361', 'NERV Barbershop - Matsushiro', 'Geofront Blvd',      '10002', '0200', '5551000002', 'ca85606b-6af7-4583-82e6-89bcb6a8d4c6');
+INSERT INTO shops (id, name, street, postal_code, number, phone, manager_id, is_active) VALUES
+    ('064e25fa-26c1-4ec8-9d49-78fc5f520519', 'NERV Barbershop - Tokyo-3',    'Central Dogma Ave', '10001', '0100', '5551000001', 'b27c93cf-2282-4b40-81ea-efb5f7bec219', true),
+    ('96c3c0e1-b183-446f-9d2d-d3f3fc9f9361', 'NERV Barbershop - Matsushiro', 'Geofront Blvd',     '10002', '0200', '5551000002', 'ca85606b-6af7-4583-82e6-89bcb6a8d4c6', true),
+    ('97b2b9f2-26c1-4ec8-9d49-d3f3fc9f9472', 'NERV-02 Barbershop - Nevada',  'Area 51',           '10003', '0300', '5551000003', 'b27c93cf-2282-4b40-81ea-efb5f7bec219', false);
 
 -- ---------- barbers (standalone staff, no login) ----------
 

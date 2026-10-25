@@ -18,7 +18,9 @@ import type { UserResponse } from '../types/dto/userResponse.interface.js';
 import type { ProfileResponse } from '../types/dto/authResponse.interface.js';
 import { toUserResponse, toManagerProfile, toReceptionistProfile, toClientProfile } from '../utils/userMapper.js';
 
-const calculateAge = (birthDate: Date, currentDate = new Date()): number => {
+const MANAGER_HAS_SHOPS_ERROR_CODE = 'BM001';
+
+const calculateAge =(birthDate: Date, currentDate = new Date()): number => {
     let age = currentDate.getFullYear() - birthDate.getFullYear();
     const birthdayHasOccurred =
         currentDate.getMonth() > birthDate.getMonth() ||
@@ -128,7 +130,15 @@ const deleteUserById = async (targetId: string, token: string): Promise<void> =>
         await hardDeleteClient(targetId);
     } else {
         // Borrado lógico: marca el campo 'deleted_at' del miembro del staff
-        await softDeleteStaff(targetId, targetUser.role);
+        try {
+            await softDeleteStaff(targetId, targetUser.role);
+        } catch (error: unknown) {
+            // SQLSTATE personalizado lanzado por check_manager_deletable() (init_database.sql)
+            if ((error as { code?: string }).code === MANAGER_HAS_SHOPS_ERROR_CODE) {
+                throw new ApiError(ApiErrorCode.CONFLICT, 'Cannot delete manager because they still have shops assigned');
+            }
+            throw error;
+        }
     }
 };
 

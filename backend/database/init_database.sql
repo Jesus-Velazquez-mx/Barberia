@@ -424,9 +424,12 @@ BEGIN
         IF EXISTS (
             SELECT 1 FROM appointments
             WHERE barber_id = NEW.id
-              AND status IN ('scheduled', 'checked_in')
+              AND status IN ('scheduled', 'rescheduled', 'checked_in')
         ) THEN
-            RAISE EXCEPTION 'barber % has pending appointments; cancel or reassign them first', NEW.id;
+            -- Custom SQLSTATE 'BB001' (instead of the generic P0001) so the backend can tell
+            -- this guard apart from any other PL/pgSQL exception; see deleteBarber in barberService.ts.
+            RAISE EXCEPTION 'barber % has pending appointments; cancel or reassign them first', NEW.id
+                USING ERRCODE = 'BB001';
         END IF;
     END IF;
     RETURN NEW;
@@ -440,7 +443,9 @@ CREATE FUNCTION check_manager_deletable() RETURNS trigger AS $$
 BEGIN
     IF OLD.deleted_at IS NULL AND NEW.deleted_at IS NOT NULL THEN
         IF EXISTS (SELECT 1 FROM shops WHERE manager_id = NEW.user_id) THEN
-            RAISE EXCEPTION 'manager % still has shops assigned; reassign them first', NEW.user_id;
+            -- Custom SQLSTATE 'BM001', same reason as 'BB001' above; see deleteUserById in userService.ts.
+            RAISE EXCEPTION 'manager % still has shops assigned; reassign them first', NEW.user_id
+                USING ERRCODE = 'BM001';
         END IF;
     END IF;
     RETURN NEW;

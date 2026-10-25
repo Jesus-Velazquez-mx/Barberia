@@ -73,7 +73,7 @@ export function AvailableSlots({ slots, isLoading, error, selectedSlot, onSelect
   }
 
   return (
-    <div className="flex max-h-96 flex-col gap-4 overflow-y-auto">
+    <div className="flex max-h-fit flex-col gap-4 overflow-y-auto">
       {groupSlotsByBarber(slots).map((group) => (
         <BarberSlotsSection
           key={group.barberId}
@@ -99,7 +99,13 @@ function BarberSlotsSection({ group, selectedSlot, onSelectSlot }: BarberSlotsSe
   return (
     <section
       aria-label={`Horarios con ${group.barberName}`}
-      className="rounded-xl border border-white/10 bg-[#161616] p-4"
+      className={`rounded-xl border border-white/10 bg-[#161616] p-4 ${isExpanded ? null : 'cursor-pointer'}`}
+      onClickCapture={(e) => {
+        if (!isExpanded) {
+          e.stopPropagation();
+          return isExpanded ? null : setIsExpanded((expanded) => !expanded);
+        }
+      }}
     >
       <div className={`flex items-center gap-2 ${isExpanded ? 'mb-3' : ''}`}>
         <button
@@ -117,7 +123,10 @@ function BarberSlotsSection({ group, selectedSlot, onSelectSlot }: BarberSlotsSe
           />
         </button>
 
-        <h3 className="m-0 flex min-w-0 flex-1 items-center justify-between gap-2 font-sans text-base font-semibold text-(--text-h)">
+        <h3
+          className="m-0 flex min-w-0 flex-1 items-center justify-between gap-2 font-sans text-base font-semibold text-(--text-h) cursor-pointer"
+          onClick={() => (isExpanded ? setIsExpanded((expanded) => !expanded) : null)}
+        >
           <span className="truncate">{group.barberName}</span>
           <span className="shrink-0 text-xs font-normal text-(--text)">
             {group.slots.length} {group.slots.length === 1 ? 'horario' : 'horarios'}

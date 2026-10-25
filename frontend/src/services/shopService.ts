@@ -1,6 +1,6 @@
 import { apiClient } from './apiClient';
 import type { Shop } from '../types/shop.ts'
-import type { Barber } from '../types/barber.ts'
+import type { PublicBarber } from '../types/barber.ts'
 import type { OfferedService } from '../types/offeredService.ts';
 
 export const getShops = async (): Promise<Shop[]> => {
@@ -8,8 +8,9 @@ export const getShops = async (): Promise<Shop[]> => {
     return response.data;
 }
 
-export const getActiveBarbersByShop = async (shopId: string): Promise<Barber[]> => {
-    const response = await apiClient.get<Barber[]>(`/shops/${shopId}/barbers`);
+/* Endpoint público: sin token devuelve solo la vista pública de los barberos disponibles. */
+export const getActiveBarbersByShop = async (shopId: string): Promise<PublicBarber[]> => {
+    const response = await apiClient.get<PublicBarber[]>(`/shops/${shopId}/barbers`);
     return response.data;
 }
 
