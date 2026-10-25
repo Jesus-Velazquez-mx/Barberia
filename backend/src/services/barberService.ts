@@ -19,6 +19,8 @@ import type { BarberResponse, PublicBarberResponse } from '../types/dto/barberRe
 import { toBarberResponse, toPublicBarberResponse } from '../utils/barberMapper.js';
 import { canViewFullBarberData } from './userPermissions.js';
 
+const BARBER_HAS_PENDING_APPOINTMENTS_ERROR_CODE = 'BB001';
+
 /**
  * Obtiene el detalle de un barbero por su ID. El personal recibe el perfil completo de cualquier
  * barbero; los clientes solo la vista pública y únicamente de barberos activos que aceptan reservas.
@@ -181,5 +183,16 @@ export const deleteBarber = async (targetId: string, token: string): Promise<voi
         throw new ApiError(ApiErrorCode.NOT_FOUND, 'Barber not found');
     }
 
-    await softDeleteBarberById(targetId);
+    try {
+        await softDeleteBarberById(targetId);
+    } catch (error: unknown) {
+        // SQLSTATE personalizado lanzado por check_barber_deletable() (init_database.sql)
+        if ((error as { code?: string }).code === BARBER_HAS_PENDING_APPOINTMENTS_ERROR_CODE) {
+            throw new ApiError(
+                ApiErrorCode.CONFLICT,
+                'Cannot delete barber because they have scheduled, rescheduled or checked-in appointments'
+            );
+        }
+        throw error;
+    }
 };
