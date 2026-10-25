@@ -4,6 +4,12 @@ import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 
 export interface UpdateBarberInput {
     id: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    phone?: string;
+    birthDate?: string;
+    gender?: string;
     bio?: string;
     isAcceptingBookings?: boolean;
 }
@@ -133,7 +139,7 @@ export const reactivateBarber = async (id: string, data: CreateBarberInput): Pro
 };
 
 /**
- * Actualiza el perfil (bio / is_accepting_bookings) de un barbero.
+ * Actualiza los datos de un barbero.
  * Solo modifica las columnas presentes en `fields`. 
  * AND deleted_at IS NULL evita editar un barbero que ya fue dado de baja.
  */
@@ -144,6 +150,12 @@ export const updateBarberProfileById = async (fields: UpdateBarberInput): Promis
     const values: unknown[] = [];
 
     const columnByField: [keyof Omit<UpdateBarberInput, 'id'>, string][] = [
+        ['firstName', 'first_name'],
+        ['lastName', 'last_name'],
+        ['email', 'email'],
+        ['phone', 'phone'],
+        ['birthDate', 'birth_date'],
+        ['gender', 'gender'],
         ['bio', 'bio'],
         ['isAcceptingBookings', 'is_accepting_bookings'],
     ];

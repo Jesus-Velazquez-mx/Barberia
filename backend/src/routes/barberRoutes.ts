@@ -100,7 +100,7 @@ router.get('/barbers/:id', getById);
  *                 example: "1992-05-15"
  *               gender:
  *                 type: string
- *                 example: "M"
+ *                 example: "male"
  *               shopId:
  *                 type: string
  *                 format: uuid
@@ -135,26 +135,46 @@ router.post('/barbers', create);
 
 /**
  * @swagger
- * /api/barbers:
+ * /api/barbers/{id}:
  *   put:
- *     summary: Actualiza el perfil público de un barbero
+ *     summary: Actualiza la información de un barbero
  *     tags: [Barbers]
  *     security:
  *       - bearerAuth: []
- *     description: Modifica la biografía o la disponibilidad para recibir reservas de un barbero. Al menos uno de estos dos campos debe ser enviado. Requiere rol de 'manager'. (El cambio de sucursal o turno se maneja en endpoints administrativos independientes).
+ *     description: Modifica cualquier dato de un barbero. Al menos un campo debe ser enviado. Requiere rol de 'manager'. (El cambio de sucursal o turno se maneja en endpoints administrativos independientes).
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID único del barbero a modificar.
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - id
  *             properties:
- *               id:
+ *               firstName:
  *                 type: string
- *                 format: uuid
- *                 example: "550e8400-e29b-41d4-a716-446655440000"
+ *                 example: "Juan"
+ *               lastName:
+ *                 type: string
+ *                 example: "Pérez"
+ *               email:
+ *                 type: string
+ *                 example: "juanperez2@email.com"
+ *               phone:
+ *                 type: string
+ *                 example: "1234567890"
+ *               birthDate:
+ *                 type: string
+ *                 example: "1992-05-15"
+ *               gender:
+ *                 type: string
+ *                 example: "male"
  *               bio:
  *                 type: string
  *                 example: "Especialista en degradados y tintes actualizados."
@@ -175,7 +195,7 @@ router.post('/barbers', create);
  *       500:
  *         description: Error interno del servidor.
  */
-router.put('/barbers', update);
+router.put('/barbers/:id', update);
 
 /**
  * @swagger

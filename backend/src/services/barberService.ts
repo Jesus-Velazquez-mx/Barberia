@@ -10,19 +10,14 @@ import {
     softDeleteBarberById,
     getActiveBarbersByShop,
     getBarbersByShop,
-    type CreateBarberInput
+    type CreateBarberInput,
+    type UpdateBarberInput
 } from '../repositories/barberRepository.js';
 import { isUserActive } from '../repositories/userRepository.js';
 import { getShopById } from '../repositories/shopRepository.js';
 import type { BarberResponse, PublicBarberResponse } from '../types/dto/barberResponse.interface.js';
 import { toBarberResponse, toPublicBarberResponse } from '../utils/barberMapper.js';
 import { canViewFullBarberData } from './userPermissions.js';
-
-export interface UpdateBarberRequest {
-    id: string;
-    bio?: string;
-    isAcceptingBookings?: boolean;
-}
 
 /**
  * Obtiene el detalle de un barbero por su ID. El personal recibe el perfil completo de cualquier
@@ -141,7 +136,7 @@ export const registerBarber = async (data: CreateBarberInput, token: string): Pr
 /**
  * Actualiza el perfil del barbero objetivo.
  */
-export const updateBarber = async (target: UpdateBarberRequest, token: string): Promise<BarberResponse> => {
+export const updateBarber = async (target: UpdateBarberInput, token: string): Promise<BarberResponse> => {
     const performer = decodeToken(token);
 
     if (performer.role !== 'manager') {
@@ -154,6 +149,12 @@ export const updateBarber = async (target: UpdateBarberRequest, token: string): 
 
     const updated = await updateBarberProfileById({
         id: target.id,
+        firstName: target.firstName,
+        lastName: target.lastName,
+        email: target.email,
+        phone: target.phone,
+        birthDate: target.birthDate,
+        gender: target.gender,
         bio: target.bio,
         isAcceptingBookings: target.isAcceptingBookings,
     });

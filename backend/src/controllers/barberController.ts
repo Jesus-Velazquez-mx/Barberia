@@ -3,9 +3,9 @@ import type { BarberResponse, PublicBarberResponse } from '../types/dto/barberRe
 import type { ApiHandler } from '../utils/apiResponse.js';
 import { sendFail, sendInternalServerError, sendSuccess, sendValidationError } from '../utils/apiResponse.js';
 import { ApiError } from '../errors/ApiError.js';
-import { 
-    updateBarber, 
-    deleteBarber, 
+import {
+    updateBarber,
+    deleteBarber,
     listBarbersByShop,
     registerBarber,
     getBarberDetails
@@ -34,14 +34,24 @@ const createBarberSchema = z.object({
 });
 
 const updateBarberSchema = z.object({
-    id: z.uuid('Invalid barber ID'),
+    firstName: z.string().max(100).optional(),
+    lastName: z.string().max(100).optional(),
+    email: z.string().max(255).optional(),
+    phone: z.string().max(10).optional(),
+    birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format must be YYYY-MM-DD').optional(),
+    gender: z.string().max(10).optional(),
     bio: z.string().max(2000).optional(),
     isAcceptingBookings: z.boolean().optional(),
-}).refine((data) => data.bio !== undefined || data.isAcceptingBookings !== undefined, {
-    message: 'At least one of bio or isAcceptingBookings must be provided',
+}).refine((data) => {
+    for (const value of Object.values(data)) {
+        if (value !== undefined) return true;
+    }
+    return false;
+}, {
+    message: 'At least one field must be provided',
 });
 
-export const getById: ApiHandler<BarberResponse | PublicBarberResponse> =async (req, res) => {
+export const getById: ApiHandler<BarberResponse | PublicBarberResponse> = async (req, res) => {
     try {
         const token = extractBearerFromHeader(req);
         const validParams = barberIdParamSchema.parse({ id: req.params.id });
@@ -105,9 +115,10 @@ export const create: ApiHandler<BarberResponse> = async (req, res) => {
 export const update: ApiHandler<BarberResponse> = async (req, res) => {
     try {
         const token = extractBearerFromHeader(req);
+        const validParams = barberIdParamSchema.parse({ id: req.params.id });
         const validData = updateBarberSchema.parse(req.body);
 
-        const result = await updateBarber(validData, token);
+        const result = await updateBarber({ id: validParams.id, ...validData }, token);
         sendSuccess({ res, data: result, message: 'Barber updated successfully' });
     } catch (error: unknown) {
         if (error instanceof ZodError) {
