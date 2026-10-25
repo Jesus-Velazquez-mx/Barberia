@@ -127,7 +127,8 @@ describe('POST /api/appointments', () => {
         const res = await book(clientTokens[0], { scheduledStart: at('12:00') });
 
         expect(res.status).toBe(201);
-        expect(res.body.data.isRegisteredClient).toBe(true);
+        expect(res.body.data).not.toHaveProperty('isRegisteredClient');
+        expect(res.body.data).not.toHaveProperty('client');
         expect(new Date(res.body.data.scheduledEnd).toISOString()).toBe(at('12:30'));
 
         const services = await getPool().query(

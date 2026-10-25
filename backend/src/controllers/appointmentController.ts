@@ -3,7 +3,7 @@ import type { ApiHandler } from '../utils/apiResponse.js';
 import { sendFail, sendInternalServerError, sendSuccess, sendValidationError } from '../utils/apiResponse.js';
 import { ApiError } from '../errors/ApiError.js';
 import { listAppointments, registerAppointment } from '../services/appointmentService.js';
-import type { AppointmentResponse } from '../types/dto/appointmentResponse.interface.js';
+import type { AppointmentResponse, ClientAppointmentResponse } from '../types/dto/appointmentResponse.interface.js';
 import { extractBearerFromHeader } from '../utils/headerHandling.js';
 
 const createAppointmentSchema = z
@@ -55,7 +55,7 @@ const listAppointmentsQuerySchema = z.object({
 });
 
 // Agendar cita.
-export const create: ApiHandler<AppointmentResponse> = async (req, res) => {
+export const create: ApiHandler<AppointmentResponse | ClientAppointmentResponse> =async (req, res) => {
     try {
         const token = extractBearerFromHeader(req);
         const validData = createAppointmentSchema.parse(req.body);
@@ -77,7 +77,7 @@ export const create: ApiHandler<AppointmentResponse> = async (req, res) => {
 };
 
 // Consultar citas según el rol del solicitante.
-export const list: ApiHandler<AppointmentResponse[]> = async (req, res) => {
+export const list: ApiHandler<AppointmentResponse[] | ClientAppointmentResponse[]> = async (req, res) => {
     try {
         const token = extractBearerFromHeader(req);
         const validQuery = listAppointmentsQuerySchema.parse(req.query);

@@ -18,9 +18,12 @@ interface AppointmentTableProps {
   sortDirection: SortDirection;
   onToggleSort: () => void;
   pagination: TablePaginationProps;
+  /* false en la vista del cliente: todas las citas son suyas. */
+  showClientColumn?: boolean;
+
 }
 
-const COLUMN_COUNT = 7;
+//const COLUMN_COUNT = 7;
 const SKELETON_ROWS = 6;
 const HEADER_CELL = 'px-5 py-4 text-xs font-bold uppercase tracking-wide text-[var(--text-h)]';
 
@@ -34,8 +37,10 @@ export function AppointmentTable({
   onSelect,
   sortDirection,
   onToggleSort,
-  pagination
+  pagination,
+  showClientColumn = true
 }: AppointmentTableProps) {
+  const columnCount = showClientColumn ? 7 : 6;
   const hasRows = !isLoading && !error && rows.length > 0;
   const SortIcon = sortDirection === 'desc' ? ArrowDown : ArrowUp;
 
@@ -59,9 +64,11 @@ export function AppointmentTable({
                   <SortIcon size={14} aria-hidden="true" />
                 </button>
               </th>
-              <th scope="col" className={HEADER_CELL}>
-                Cliente
-              </th>
+              {showClientColumn && (
+                <th scope="col" className={HEADER_CELL}>
+                  Cliente
+                </th>
+              )}
               <th scope="col" className={HEADER_CELL}>
                 Servicios
               </th>
@@ -81,7 +88,7 @@ export function AppointmentTable({
             {isLoading &&
               Array.from({ length: SKELETON_ROWS }, (_, rowIndex) => (
                 <tr key={rowIndex} className="border-t border-white/5" aria-hidden="true">
-                  {Array.from({ length: COLUMN_COUNT }, (_, cellIndex) => (
+                  {Array.from({ length: columnCount  }, (_, cellIndex) => (
                     <td key={cellIndex} className="px-5 py-4">
                       <div className="h-3.5 w-3/4 animate-pulse rounded bg-white/10" />
                     </td>
@@ -91,7 +98,7 @@ export function AppointmentTable({
 
             {!isLoading && error && (
               <tr className="border-t border-white/5">
-                <td colSpan={COLUMN_COUNT} className="px-5 py-12 text-center">
+                <td colSpan={columnCount } className="px-5 py-12 text-center">
                   <p className="text-sm font-semibold text-[#ff4d4d]" role="alert">
                     {error}
                   </p>
@@ -109,7 +116,7 @@ export function AppointmentTable({
 
             {!isLoading && !error && rows.length === 0 && (
               <tr className="border-t border-white/5">
-                <td colSpan={COLUMN_COUNT} className="px-5 py-12 text-center text-sm text-[var(--text)]">
+                <td colSpan={columnCount } className="px-5 py-12 text-center text-sm text-[var(--text)]">
                   {emptyMessage}
                 </td>
               </tr>
@@ -127,7 +134,12 @@ export function AppointmentTable({
                     }
                   }}
                   tabIndex={0}
-                  aria-label={`Ver detalle de la cita de ${appointment.clientName}, ${formatAppointmentDate(appointment.scheduledStart)}`}
+                  //aria-label={`Ver detalle de la cita de ${appointment.clientName}, ${formatAppointmentDate(appointment.scheduledStart)}`}
+                  aria-label={
+                    showClientColumn
+                      ? `Ver detalle de la cita de ${appointment.clientName}, ${formatAppointmentDate(appointment.scheduledStart)}`
+                      : `Ver detalle de la cita del ${formatAppointmentDate(appointment.scheduledStart)}`
+                  }
                   className="cursor-pointer border-t border-white/5 transition-colors hover:bg-white/[0.06] focus-visible:bg-white/[0.06] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--accent)]"
                 >
                   <td className="px-5 py-3 text-xs text-[var(--text)]">#{startIndex + rowIndex + 1}</td>
@@ -142,18 +154,19 @@ export function AppointmentTable({
                     </span>
                   </td>
 
-                  <td className="px-5 py-3">
-                    <span className="flex items-center gap-2 font-semibold text-[var(--text-h)]">
-                      {appointment.clientName}
-                      {!appointment.isRegisteredClient && (
-                        <span className="rounded-full bg-[#2C2C2C] px-2 py-0.5 text-[0.65rem] font-semibold uppercase text-[var(--text)]">
-                          Invitado
-                        </span>
-                      )}
-                    </span>
-                    <span className="text-xs text-[var(--text)]">{appointment.clientEmail ?? 'Sin correo'}</span>
-                  </td>
-
+                  {showClientColumn && (
+                    <td className="px-5 py-3">
+                      <span className="flex items-center gap-2 font-semibold text-[var(--text-h)]">
+                        {appointment.clientName}
+                        {!appointment.isRegisteredClient && (
+                          <span className="rounded-full bg-[#2C2C2C] px-2 py-0.5 text-[0.65rem] font-semibold uppercase text-[var(--text)]">
+                            Invitado
+                          </span>
+                        )}
+                      </span>
+                      <span className="text-xs text-[var(--text)]">{appointment.clientEmail ?? 'Sin correo'}</span>
+                    </td>
+                  )}
                   <td className="max-w-[220px] px-5 py-3 text-[var(--text-h)]">
                     {appointment.services.map((service) => service.name).join(', ')}
                   </td>
@@ -179,4 +192,5 @@ export function AppointmentTable({
       {!isLoading && !error && <TablePagination {...pagination} />}
     </div>
   );
+  
 }

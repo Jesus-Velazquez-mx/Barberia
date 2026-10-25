@@ -5,14 +5,10 @@ export interface AppointmentServiceResponse {
     priceAtBooking: number;
     durationMinutesAtBooking: number;
 }
-
-export interface AppointmentResponse {
+export interface ClientAppointmentResponse {
     id: string;
     shopId: string;
     barberId: string;
-    clientId: string | null;
-    isRegisteredClient: boolean;
-    guestClientName: string | null;
     status: AppointmentStatus;
     scheduledStart: Date;
     scheduledEnd: Date;
@@ -20,4 +16,19 @@ export interface AppointmentResponse {
     services: AppointmentServiceResponse[];
     createdAt: Date;
     updatedAt: Date;
+}
+
+export interface AppointmentResponse extends ClientAppointmentResponse {
+    client: AppointmentClient | null;
+    isRegisteredClient: boolean;
+    guestClientName: string | null;
+}
+
+export interface AppointmentClient {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string | null;
+    completedServicesCount: number;
 }

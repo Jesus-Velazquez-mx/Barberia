@@ -309,12 +309,32 @@ describe('GET /api/appointments', () => {
 
         expect(today.services).toEqual([{ serviceId, priceAtBooking: 200, durationMinutesAtBooking: 30 }]);
         expect(lastDay.services).toEqual([]);
-        expect(today).toMatchObject({
-            shopId: shop1,
-            barberId: barber1,
-            clientId: client1Id,
-            isRegisteredClient: true,
-            status: 'scheduled',
+        expect(today).toMatchObject({ shopId: shop1, barberId: barber1, status: 'scheduled' });
+    });
+
+    test('el cliente recibe la respuesta sin datos del cliente', async () => {
+        const res = await get(client1Token);
+        const today = res.body.data.find((a: { id: string }) => a.id === ids.today);
+
+        expect(today).not.toHaveProperty('client');
+        expect(today).not.toHaveProperty('isRegisteredClient');
+        expect(today).not.toHaveProperty('guestClientName');
+    });
+
+    test('el personal recibe el cliente de cada cita (null para invitados)', async () => {
+        const res = await get(managerToken);
+        const today = res.body.data.find((a: { id: string }) => a.id === ids.today);
+        const guest = res.body.data.find((a: { id: string }) => a.id === ids.day2Guest);
+
+        expect(today).toMatchObject({ isRegisteredClient: true, guestClientName: null });
+        expect(today.client).toEqual({
+            id: client1Id,
+            firstName: expect.any(String),
+            lastName: expect.any(String),
+            email: expect.any(String),
+            phone: expect.any(String),
+            completedServicesCount: expect.any(Number),
         });
+        expect(guest).toMatchObject({ isRegisteredClient: false, guestClientName: 'Invitado', client: null });
     });
 });
