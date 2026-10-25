@@ -6,17 +6,17 @@ import {
 } from '../repositories/appointmentRepository.js';
 import { getShopById, getShopIdsByManagerId } from '../repositories/shopRepository.js';
 import { getBarberById } from '../repositories/barberRepository.js';
-import { getClientByUserId } from '../repositories/clientRepository.js';
+import { getAppointmentClientsById, getClientByUserId } from '../repositories/clientRepository.js';
 import { getReceptionistByUserId } from '../repositories/receptionistRepository.js';
 import { getAvailableSlots, getBookableServices } from './availabilityService.js';
 import { canCreateAppointment, canViewShopAppointments } from './userPermissions.js';
 import { isUserSessionValid } from '../utils/userSession.js';
-import { toAppointmentResponse } from '../utils/appointmentMapper.js';
+import { toAppointmentResponse, toClientAppointmentResponse } from '../utils/appointmentMapper.js';
 import { getBusinessDayStart, getBusinessToday } from '../utils/businessTime.js';
 import type { AppointmentListFilters } from '../repositories/appointmentRepository.js';
 import type { AppointmentService } from '../types/entities/appointmentService.interface.js';
 import type { CreateAppointmentRequest, ListAppointmentsQuery } from '../types/dto/appointmentRequest.interface.js';
-import type { AppointmentResponse } from '../types/dto/appointmentResponse.interface.js';
+import type { AppointmentResponse, ClientAppointmentResponse } from '../types/dto/appointmentResponse.interface.js';
 
 const MS_PER_MINUTE = 60_000;
 const MS_PER_DAY = 24 * 60 * MS_PER_MINUTE;
@@ -31,7 +31,7 @@ const MAX_WINDOW_DAYS = 366;
 export const registerAppointment = async (
     data: CreateAppointmentRequest,
     token: string
-): Promise<AppointmentResponse> => {
+): Promise<AppointmentResponse | ClientAppointmentResponse> => {
     const performer = await isUserSessionValid(token);
 
     // Un cliente que no indica a quién agenda, agenda para sí mismo.
@@ -110,7 +110,12 @@ export const registerAppointment = async (
         })),
     });
 
-    return toAppointmentResponse(appointment, bookedServices);
+    if (performer.role === 'client') {
+        return toClientAppointmentResponse(appointment, bookedServices);
+    }
+
+    const [client] = await getAppointmentClientsById(clientId !== null ? [clientId] : []);
+    return toAppointmentResponse(appointment, bookedServices, client ?? null);
 };
 
 /**
@@ -144,7 +149,7 @@ const resolveWindow = (query: ListAppointmentsQuery): { from: Date; to: Date } =
 export const listAppointments = async (
     query: ListAppointmentsQuery,
     token: string
-): Promise<AppointmentResponse[]> => {
+): Promise<AppointmentResponse[] | ClientAppointmentResponse[]> => {
     const performer = await isUserSessionValid(token);
     const { from, to } = resolveWindow(query);
 
@@ -189,5 +194,19 @@ export const listAppointments = async (
         servicesByAppointment.set(service.appointment_id, list);
     }
 
-    return appointments.map((a) => toAppointmentResponse(a, servicesByAppointment.get(a.id) ?? []));
+    if (performer.role === 'client') {
+        return appointments.map((a) => toClientAppointmentResponse(a, servicesByAppointment.get(a.id) ?? []));
+    }
+
+    const clientIds = [...new Set(appointments.flatMap((a) => (a.client_id !== null ? [a.client_id] : [])))];
+    const clients = await getAppointmentClientsById(clientIds);
+    const clientsById = new Map(clients.map((c) => [c.id, c]));
+
+    return appointments.map((a) =>
+        toAppointmentResponse(
+            a,
+            servicesByAppointment.get(a.id) ?? [],
+            a.client_id !== null ? (clientsById.get(a.client_id) ?? null) : null
+        )
+    );
 };

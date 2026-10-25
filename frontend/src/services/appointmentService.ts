@@ -7,14 +7,24 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 /* ---------- Tipos de la API ---------- */
 
-/* Coincide con toAppointmentResponse del backend (utils/appointmentMapper.ts). */
+interface AppointmentClientApi {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string | null;
+  completedServicesCount: number;
+}
+
+/* Coincide con ClientAppointmentResponse / AppointmentResponse del backend (types/dto/appointmentResponse.interface.ts).
+   Los campos de cliente solo los recibe el personal; el cliente recibe únicamente sus propias citas, sin ellos. */
 interface AppointmentApi {
   id: string;
   shopId: string;
   barberId: string;
-  clientId: string | null;
-  isRegisteredClient: boolean;
-  guestClientName: string | null;
+  client?: AppointmentClientApi | null;
+  isRegisteredClient?: boolean;
+  guestClientName?: string | null;
   status: string;
   scheduledStart: string;
   scheduledEnd: string;
@@ -94,20 +104,38 @@ async function loadCatalogs(token: string, shopIds: string[]): Promise<Catalogs>
 
 /* ---------- Mapper ---------- */
 
-function toRecord(a: AppointmentApi, catalogs: Catalogs, client?: AppointmentClientInfo): AppointmentRecord {
-  const isOwn = client !== undefined && a.clientId !== null && a.clientId === client.id;
+/* Quién es el cliente de la cita: el personal lo recibe del backend; en la vista del cliente es el usuario en sesión. */
+function resolveClient(
+  a: AppointmentApi,
+  own?: AppointmentClientInfo
+): Pick<AppointmentRecord, 'clientId' | 'isRegisteredClient' | 'clientName' | 'clientEmail'> {
+  if (own) {
+    return { clientId: own.id, isRegisteredClient: true, clientName: own.name, clientEmail: own.email };
+  }
+  if (a.client) {
+    return {
+      clientId: a.client.id,
+      isRegisteredClient: true,
+      clientName: `${a.client.firstName} ${a.client.lastName}`.trim(),
+      clientEmail: a.client.email
+    };
+  }
+  return {
+    clientId: null,
+    isRegisteredClient: false,
+    clientName: a.guestClientName ?? 'Cliente',
+    clientEmail: null
+  };
+}
 
+function toRecord(a: AppointmentApi, catalogs: Catalogs, client?: AppointmentClientInfo): AppointmentRecord {
   return {
     id: a.id,
     shopId: a.shopId,
     shopName: catalogs.shops.get(a.shopId) ?? 'Sucursal',
     barberId: a.barberId,
     barberName: catalogs.barbers.get(a.barberId) ?? 'Barbero',
-    clientId: a.clientId,
-    isRegisteredClient: a.isRegisteredClient,
-    // El backend no devuelve nombre ni correo de clientes registrados; solo el de invitados.
-    clientName: isOwn ? client.name : (a.guestClientName ?? a.clientId ?? 'Cliente'),
-    clientEmail: isOwn ? client.email : null,
+    ...resolveClient(a, client),
     status: STATUS_MAP[a.status] ?? 'scheduled',
     scheduledStart: a.scheduledStart,
     scheduledEnd: a.scheduledEnd,

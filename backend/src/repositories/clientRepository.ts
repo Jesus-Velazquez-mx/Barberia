@@ -1,4 +1,5 @@
 import db from '../connection/connection.js';
+import type { AppointmentClient } from '../types/dto/appointmentResponse.interface.js';
 import type { Client } from '../types/entities/client.interface.js';
 
 /**
@@ -29,3 +30,18 @@ export const clearClientFacialStructure = async (userId: string): Promise<void> 
 
     await pool.query(`UPDATE clients SET facial_structure_type = NULL WHERE user_id = $1`, [userId]);
 };
+
+export const getAppointmentClientsById = async(clientIds: string[]): Promise<AppointmentClient[]> => {
+    if (clientIds.length === 0) return [];
+
+    const result = await db.getPool().query(
+        `SELECT u.id, u.first_name AS "firstName", u.last_name AS "lastName", u.email, u.phone,
+            c.completed_services_count AS "completedServicesCount"
+        FROM users u
+        JOIN clients c ON c.user_id = u.id
+        WHERE u.role = 'client' AND u.id = ANY($1::uuid[])`,
+        [clientIds]
+    );
+
+    return result.rows;
+}
