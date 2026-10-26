@@ -42,6 +42,19 @@ interface AppointmentApi {
     updatedAt: string;
 }
 
+/* 
+   El cliente omite clientId y guestClientName: el backend usa el usuario del token. 
+*/
+export interface CreateAppointmentPayload {
+    barberId: string;
+    serviceIds: string[];
+    /* Uno de los startTimes de GET /shops/:id/availability para ese barbero y esos servicios. */
+    scheduledStart: string;
+    clientId?: string;
+    guestClientName?: string;
+    notes?: string;
+}
+
 export interface AppointmentClientInfo {
     id: string;
     name: string;
@@ -204,4 +217,11 @@ export const getAppointmentById = async (
 ): Promise<AppointmentRecord | null> => {
     const records = await fetchRecords(token, range, client);
     return records.find((a) => a.id === appointmentId) ?? null;
+};
+
+/* ---------- Escritura ---------- */
+
+/* Si otra persona tomó el horario primero, el backend responde 409. */
+export const createAppointment = async (token: string, payload: CreateAppointmentPayload): Promise<void> => {
+    await apiClient.post<AppointmentApi>('/appointments', payload, authHeaders(token));
 };
