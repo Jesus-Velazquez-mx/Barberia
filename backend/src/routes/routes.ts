@@ -13,12 +13,14 @@ import suppliesRoutes from './supplyRoutes.js';
 import appointmentRoutes from './appointmentRoutes.js';
 import serviceCategoryRoutes from './serviceCategoryRoutes.js';
 import shiftRoutes from './shiftRoutes.js';
+import clientRoutes from './clientRoutes.js';
 
 const router = Router();
 
 router.use(testRoutes);
 router.use(authRoutes);
 router.use(userRoutes);
+router.use(clientRoutes);
 router.use(managerRoutes);
 router.use(barberRoutes);
 router.use(recommendationRoutes);
