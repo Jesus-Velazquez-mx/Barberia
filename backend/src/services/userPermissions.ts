@@ -51,6 +51,18 @@ export const canViewFullBarberData = (performer: UserIdentity): boolean =>
     performer.role === 'manager' || performer.role === 'receptionist';
 
 /**
+ * /receptionists y GET /shops/:id/receptionists: solo los gerentes pueden gestionar recepcionistas (y únicamente
+ * los de las sucursales que administran; esa restricción por sucursal la aplica el servicio).
+ */
+export const canManageReceptionists = (performer: UserIdentity): boolean => performer.role === 'manager';
+
+/**
+ * Un gerente solo gestiona a los recepcionistas de las sucursales que administra.
+ */
+export const canManageShopReceptionists = (shopId: string, managedShopIds: string[]): boolean =>
+    managedShopIds.includes(shopId);
+
+/**
  * /shops: Solo los usuarios con el rol 'manager' pueden registrar, editar o eliminar sucursales.
  */
 export const canManageShops = (performer: UserIdentity): boolean => performer.role === 'manager';

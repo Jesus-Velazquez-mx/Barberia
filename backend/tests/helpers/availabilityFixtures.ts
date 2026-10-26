@@ -9,6 +9,7 @@ export const createdAppointmentIds: string[] = [];
 export const createdServiceIds: string[] = [];
 export const createdServiceCategoryIds: string[] = [];
 export const createdBarberIds: string[] = [];
+export const createdReceptionistIds: string[] = [];
 export const createdShopIds: string[] = [];
 export const createdShiftIds: string[] = [];
 export const createdManagerIds: string[] = [];
@@ -123,6 +124,23 @@ export const insertBarber = async (
 };
 
 /**
+ * Inserta un recepcionista: su usuario base en 'users' (rol receptionist) y su fila en 'receptionists'.
+ */
+export const insertReceptionist = async (
+    shopId: string,
+    shiftId: string,
+    options?: { isDeleted?: boolean }
+): Promise<{ id: string; email: string }> => {
+    const user = await insertUser('receptionist');
+    await getPool().query(
+        `INSERT INTO receptionists (user_id, shop_id, shift_id, deleted_at) VALUES ($1, $2, $3, $4)`,
+        [user.id, shopId, shiftId, options?.isDeleted ? new Date() : null]
+    );
+    createdReceptionistIds.push(user.id);
+    return user;
+};
+
+/**
  * Inserta una categoría de servicios si no existe ya una categoría por defecto.
  */
 export const insertServiceCategory = async (name?: string): Promise<string> => {
@@ -211,10 +229,11 @@ export const insertAppointment = async (
  * 2. services (depende de services_categories)
  * 3. services_categories
  * 4. barbers (depende de shops, shifts)
- * 5. shops (depende de managers)
- * 6. managers (depende de users)
- * 7. users
- * 8. shifts (si se crearon turnos adicionales de prueba)
+ * 5. receptionists (depende de shops, shifts y users; las FK a shops/shifts son RESTRICT)
+ * 6. shops (depende de managers)
+ * 7. managers (depende de users)
+ * 8. users
+ * 9. shifts (si se crearon turnos adicionales de prueba)
  */
 export const cleanupFixtures = async () => {
     const pool = getPool();
@@ -237,6 +256,11 @@ export const cleanupFixtures = async () => {
     if (createdBarberIds.length > 0) {
         await pool.query(`DELETE FROM barbers WHERE id = ANY($1::uuid[])`, [createdBarberIds]);
         createdBarberIds.length = 0;
+    }
+
+    if (createdReceptionistIds.length > 0) {
+        await pool.query(`DELETE FROM receptionists WHERE user_id = ANY($1::uuid[])`, [createdReceptionistIds]);
+        createdReceptionistIds.length = 0;
     }
 
     if (createdShopIds.length > 0) {
