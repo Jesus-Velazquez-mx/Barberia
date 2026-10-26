@@ -11,6 +11,7 @@ import ManagerClientsPage from './pages/staff/StaffClientsPage';
 import StaffAppointmentsPage from './pages/staff/StaffAppointmentsPage';
 import ManagerSectionPlaceholderPage from './pages/staff/ManagerSectionPlaceholderPage';
 import ManagerManagementPage from './pages/staff/ManagerManagementPage';
+import StaffInventoryPage from './pages/staff/StaffInventoryPage';
 import DashboardLayout from './pages/DashboardLayout';
 import RecommendationPage from './pages/client/RecommendationPage';
 import ClientAppointmentsPage from './pages/client/ClientAppointmentPage';
@@ -88,13 +89,28 @@ const router = createBrowserRouter([
             element: <BookAppointmentPage />
           },
           {
-            // Temporal: se reemplaza por la vista real de insumos
             path: '/manager/inventory',
+            element: <StaffInventoryPage role="manager" />
+          },
+          {
+            // Temporal: se reemplaza por el CRUD de suministros
+            path: '/manager/inventory/supplies',
             element: (
               <ManagerSectionPlaceholderPage
-                title="Inventario"
-                subtitle="Control de insumos y existencias."
-                plannedItems={['insumos', 'categorías', 'existencias', 'movimientos de entrada y salida']}
+                title="Suministros"
+                subtitle="Administración de los insumos y sus existencias."
+                backTo={{ to: '/manager/inventory', label: 'Volver a Inventario' }}
+              />
+            )
+          },
+          {
+            // Temporal: se reemplaza por el CRUD de categorías de suministros
+            path: '/manager/inventory/supply-categories',
+            element: (
+              <ManagerSectionPlaceholderPage
+                title="Categorías de suministros"
+                subtitle="Organización de los insumos por categoría."
+                backTo={{ to: '/manager/inventory', label: 'Volver a Inventario' }}
               />
             )
           },
@@ -176,13 +192,28 @@ const router = createBrowserRouter([
             element: <ManagerClientsPage />
           },
           {
-            // Temporal: se reemplaza por la vista real de insumos
             path: '/receptionist/inventory',
+            element: <StaffInventoryPage role="receptionist" />
+          },
+          {
+            // Temporal: se reemplaza por el CRUD de suministros
+            path: '/receptionist/inventory/supplies',
             element: (
               <ManagerSectionPlaceholderPage
-                title="Inventario"
-                subtitle="Control de insumos y existencias."
-                plannedItems={['insumos', 'categorías', 'existencias', 'movimientos de entrada y salida']}
+                title="Suministros"
+                subtitle="Administración de los insumos y sus existencias."
+                backTo={{ to: '/receptionist/inventory', label: 'Volver a Inventario' }}
+              />
+            )
+          },
+          {
+            // Temporal: se reemplaza por el CRUD de categorías de suministros
+            path: '/receptionist/inventory/supply-categories',
+            element: (
+              <ManagerSectionPlaceholderPage
+                title="Categorías de suministros"
+                subtitle="Organización de los insumos por categoría."
+                backTo={{ to: '/receptionist/inventory', label: 'Volver a Inventario' }}
               />
             )
           }

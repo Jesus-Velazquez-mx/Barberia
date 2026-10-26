@@ -12,12 +12,14 @@ export interface ManagementMenuItem {
 
 interface ManagementMenuProps {
   items: ManagementMenuItem[];
+  /* Nombre accesible de la navegación (cambia según la sección que lo use). */
+  ariaLabel?: string;
 }
 
-/* Botones de acceso a los CRUD de la sección Gestión. */
-export function ManagementMenu({ items }: ManagementMenuProps) {
+/* Botones de acceso a los CRUD de una sección (Gestión, Inventario). */
+export function ManagementMenu({ items, ariaLabel = 'Secciones de gestión' }: ManagementMenuProps) {
   return (
-    <nav aria-label="Secciones de gestión" className="mt-6 grid gap-4 sm:grid-cols-2">
+    <nav aria-label={ariaLabel} className="mt-6 grid gap-4 sm:grid-cols-2">
       {items.map((item) => (
         <Link
           key={item.to}
