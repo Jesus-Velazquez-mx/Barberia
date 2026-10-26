@@ -91,6 +91,7 @@ export function BookAppointmentContainer() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [isBooking, setIsBooking] = useState(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
+  const [availabilityVersion, setAvailabilityVersion] = useState(0);
 
   const { register, watch, control, reset } = useForm<BookAppointmentFormValues>({
     defaultValues: { shopId: '', services: [{ serviceId: '' }] }
@@ -193,7 +194,7 @@ export function BookAppointmentContainer() {
     return () => {
       active = false;
     };
-  }, [shopId, serviceKey, view.year, view.month, today, maxDate]);
+  }, [shopId, serviceKey, view.year, view.month, today, maxDate, availabilityVersion]);
 
   /* 4. Consultar los slots detallados cada vez que cambie sucursal, fecha o servicio */
   useEffect(() => {
@@ -240,7 +241,7 @@ export function BookAppointmentContainer() {
     return () => {
       active = false;
     };
-  }, [shopId, selectedDate, serviceKey, barbers]);
+  }, [shopId, selectedDate, serviceKey, barbers, availabilityVersion]);
 
   /* Cada fila ofrece solo los servicios que no se eligieron en otra fila */
   const getServiceOptions = (index: number) => {
@@ -282,6 +283,13 @@ export function BookAppointmentContainer() {
       });
     } catch (error) {
       setBookingError(formatApiError(error, DEFAULT_BOOKING_ERROR));
+      // El horario lo tomó alguien más: se descarta, se recarga la disponibilidad y se reabre el modal para elegir otro.
+      if (error instanceof ApiError && error.status === 409) {
+        setConfirmedSlot(null);
+        setSelectedSlot(null);
+        setAvailabilityVersion((version) => version + 1);
+        setIsModalOpen(true);
+      }
     } finally {
       setIsBooking(false);
     }
