@@ -10,10 +10,14 @@ import ManagerStaffPage from './pages/staff/ManagerStaffPage';
 import ManagerClientsPage from './pages/staff/StaffClientsPage';
 import StaffAppointmentsPage from './pages/staff/StaffAppointmentsPage';
 import ManagerSectionPlaceholderPage from './pages/staff/ManagerSectionPlaceholderPage';
+import ManagerManagementPage from './pages/staff/ManagerManagementPage';
 import DashboardLayout from './pages/DashboardLayout';
 import RecommendationPage from './pages/client/RecommendationPage';
 import ClientAppointmentsPage from './pages/client/ClientAppointmentPage';
 import ClientAppointmentDetailPage from './pages/client/ClientAppointmentDetailPage';
+
+/* Enlace "Volver" de los CRUD de Gestión que aún son placeholders. */
+const MANAGEMENT_BACK_LINK = { to: '/manager/management', label: 'Volver a Gestión' };
 
 const router = createBrowserRouter([
   /* Client */
@@ -95,13 +99,50 @@ const router = createBrowserRouter([
             )
           },
           {
-            // Temporal: se reemplaza por la vista real de gestión
             path: '/manager/management',
+            element: <ManagerManagementPage />
+          },
+          {
+            // Temporal: se reemplaza por el CRUD de sucursales
+            path: '/manager/management/shops',
             element: (
               <ManagerSectionPlaceholderPage
-                title="Gestión"
-                subtitle="Configuración general del negocio."
-                plannedItems={['sucursales', 'servicios ofrecidos', 'horarios de atención']}
+                title="Sucursales"
+                subtitle="Administración de las sucursales de la barbería."
+                backTo={MANAGEMENT_BACK_LINK}
+              />
+            )
+          },
+          {
+            // Temporal: se reemplaza por el CRUD de turnos
+            path: '/manager/management/shifts',
+            element: (
+              <ManagerSectionPlaceholderPage
+                title="Turnos"
+                subtitle="Horarios de los turnos de trabajo."
+                backTo={MANAGEMENT_BACK_LINK}
+              />
+            )
+          },
+          {
+            // Temporal: se reemplaza por el CRUD de servicios ofrecidos
+            path: '/manager/management/services',
+            element: (
+              <ManagerSectionPlaceholderPage
+                title="Servicios ofrecidos"
+                subtitle="Administración de los servicios, su duración y su precio."
+                backTo={MANAGEMENT_BACK_LINK}
+              />
+            )
+          },
+          {
+            // Temporal: se reemplaza por el CRUD de categorías de servicios
+            path: '/manager/management/service-categories',
+            element: (
+              <ManagerSectionPlaceholderPage
+                title="Categorías de servicios"
+                subtitle="Organización de los servicios por categoría."
+                backTo={MANAGEMENT_BACK_LINK}
               />
             )
           }

@@ -160,6 +160,9 @@ function buildAppointments(): AppointmentRecord[] {
             status,
             scheduledStart,
             scheduledEnd,
+            /* Este mock solo genera citas agendadas, reagendadas y canceladas: ninguna llegó ni se completó. */
+            checkedInAt: null,
+            completedAt: null,
             originalScheduledStart,
             cancelledAt: status === 'cancelled' ? new Date(updatedMs).toISOString() : null,
             cancellationReason: status === 'cancelled' ? pick(CANCELLATION_REASONS) : null,
