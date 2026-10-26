@@ -6,8 +6,10 @@ import { Button } from '../components/ButtonComponent';
 import { SelectField } from '../components/SelectFieldComponent';
 import { AvailabilityCalendar } from '../components/AvailabilityCalendarComponent';
 import { SlotPickerModal } from '../components/SlotPickerModalComponent';
+import { Toast } from '../components/ToastComponent';
 import { getShops, getActiveBarbersByShop, getOfferedServices } from '../services/shopService';
 import { getShopAvailability } from '../services/availabilityService';
+import { createAppointment } from '../services/appointmentService';
 import { useAuth } from '../context/AuthContext';
 import { ApiError } from '../types/api';
 import type { AvailableSlot, DayAvailability } from '../types/availabilityType';
@@ -41,6 +43,9 @@ const formatApiError = (error: unknown, fallbackMessage: string): string => {
     if (error.status === 404) {
       return error.message || 'La sucursal o el servicio seleccionado no existe.';
     }
+    if (error.status === 409) {
+      return 'El horario seleccionado ya no está disponible. Elige otro.';
+    }
     return error.message;
   }
 
@@ -57,6 +62,7 @@ const APPOINTMENTS_ROUTE_BY_ROLE: Record<string, string> = {
 };
 
 const BOOKING_SUCCESS_MESSAGE = 'Cita agendada correctamente.';
+const DEFAULT_BOOKING_ERROR = 'No se pudo agendar la cita. Intenta de nuevo.';
 
 export function BookAppointmentContainer() {
   const { user, token } = useAuth();
@@ -83,6 +89,8 @@ export function BookAppointmentContainer() {
   const [fetchedSlots, setFetchedSlots] = useState<AvailableSlot[]>([]);
   const [isFetchingSlots, setIsFetchingSlots] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [isBooking, setIsBooking] = useState(false);
+  const [bookingError, setBookingError] = useState<string | null>(null);
 
   const { register, watch, control, reset } = useForm<BookAppointmentFormValues>({
     defaultValues: { shopId: '', services: [{ serviceId: '' }] }
@@ -257,13 +265,26 @@ export function BookAppointmentContainer() {
     setView({ year: todayYear, month: todayMonth - 1 });
   };
 
-  /* Agendar: por ahora no se llama al backend (falta el servicio de crear cita). Muestra la confirmación
-     y manda al usuario a la página de citas agendadas; el aviso viaja en el state y lo pinta DashboardLayout. */
-  const handleBook = () => {
-    if (!canBook) return;
-    navigate(APPOINTMENTS_ROUTE_BY_ROLE[user?.role ?? 'client'] ?? '/client/appointments', {
-      state: { toast: BOOKING_SUCCESS_MESSAGE }
-    });
+  /* Agendar: crea la cita en el backend y manda al usuario a la página de citas agendadas;
+     el aviso viaja en el state y lo pinta DashboardLayout. */
+  const handleBook = async () => {
+    if (!canBook || !confirmedSlot || !token) return;
+
+    setIsBooking(true);
+    try {
+      await createAppointment(token, {
+        barberId: confirmedSlot.barberId,
+        serviceIds: selectedServiceIds,
+        scheduledStart: confirmedSlot.startTime
+      });
+      navigate(APPOINTMENTS_ROUTE_BY_ROLE[user?.role ?? 'client'] ?? '/client/appointments', {
+        state: { toast: BOOKING_SUCCESS_MESSAGE }
+      });
+    } catch (error) {
+      setBookingError(formatApiError(error, DEFAULT_BOOKING_ERROR));
+    } finally {
+      setIsBooking(false);
+    }
   };
 
   const viewIndex = view.year * 12 + view.month;
@@ -385,8 +406,8 @@ export function BookAppointmentContainer() {
               </Button>
               <Button
                 type="button"
-                onClick={handleBook}
-                disabled={!canBook}
+                onClick={() => void handleBook()}
+                disabled={!canBook || isBooking}
                 className="h-12! px-8! normal-case! disabled:cursor-not-allowed! disabled:opacity-50!"
               >
                 Agendar Cita
@@ -428,6 +449,8 @@ export function BookAppointmentContainer() {
         onSelectSlot={setSelectedSlot}
         onConfirm={handleConfirm}
       />
+
+      <Toast message={bookingError} type="error" onDismiss={() => setBookingError(null)} />
     </div>
   );
 }
