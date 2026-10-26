@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { list, getById, create, update, remove } from '../controllers/shopController.js';
 import { listByShop } from '../controllers/barberController.js';
+import { listByShop as listReceptionistsByShop } from '../controllers/receptionistController.js';
 import { getAvailability } from '../controllers/availabilitySlotController.js';
 
 const router = Router();
@@ -309,6 +310,70 @@ router.delete('/shops/:id', remove);
  *         description: Error interno del servidor.
  */
 router.get('/shops/:id/barbers', listByShop);
+
+/**
+ * @swagger
+ * /api/shops/{id}/receptionists:
+ *   get:
+ *     summary: Obtiene los recepcionistas de una sucursal
+ *     tags: [Shops, Receptionists]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Retorna los recepcionistas no dados de baja de la sucursal, ordenados por nombre; con `includeInactive=true` también los dados de baja. Requiere rol de 'manager' y que la sucursal sea una que el gerente administra. Una sucursal sin recepcionistas devuelve un arreglo vacío.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID único de la sucursal.
+ *       - in: query
+ *         name: includeInactive
+ *         required: false
+ *         schema:
+ *           type: boolean
+ *           default: false
+ *         description: Si es `true`, incluye también a los recepcionistas dados de baja.
+ *     responses:
+ *       200:
+ *         description: Éxito. `data` contiene el arreglo de recepcionistas (puede estar vacío `[]`).
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       userId: { type: string, format: uuid }
+ *                       shopId: { type: string, format: uuid }
+ *                       shiftId: { type: string, format: uuid }
+ *                       firstName: { type: string, example: "Misato" }
+ *                       lastName: { type: string, example: "Katsuragi" }
+ *                       email: { type: string, format: email }
+ *                       phone: { type: string, nullable: true }
+ *                       birthDate: { type: string, format: date-time }
+ *                       gender: { type: string }
+ *                       deletedAt: { type: string, format: date-time, nullable: true }
+ *                       createdAt: { type: string, format: date-time }
+ *                       updatedAt: { type: string, format: date-time }
+ *                 message: { type: string, example: Receptionists retrieved successfully }
+ *                 error: { type: array, items: { type: string }, nullable: true, example: null }
+ *       400:
+ *         description: Error de validación (el ID no es un UUID válido).
+ *       401:
+ *         description: No autorizado.
+ *       403:
+ *         description: Prohibido. Solo un manager puede consultar recepcionistas y únicamente los de sus sucursales.
+ *       404:
+ *         description: La sucursal especificada no existe.
+ *       500:
+ *         description: Error interno del servidor.
+ */
+router.get('/shops/:id/receptionists', listReceptionistsByShop);
 
 /**
  * @swagger
