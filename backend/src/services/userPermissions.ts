@@ -6,13 +6,13 @@ export interface UserIdentity {
 }
 
 /**
- * Authorization matrix for PUT /user (shared-data update):
- * - client: only themselves.
- * - receptionist: clients only, never themselves or other staff.
- * - manager: anyone except another manager; a manager may only update themselves.
+ * Matriz de autorización para PUT /user (actualización de datos compartidos):
+ * - client: solo a sí mismos.
+ * - receptionist: únicamente a clientes, nunca a sí mismos ni a otro personal.
+ * - manager: a cualquiera excepto a otro gerente; un gerente solo puede actualizarse a sí mismo.
  *
- * Barbers are never a UserIdentity here: they have no user account and never
- * authenticate, so they can't be a performer or a target of this endpoint.
+ * Los barberos nunca son UserIdentity aquí: no tienen cuenta de usuario y nunca
+ * se autentican, por lo que no pueden ser actores ni objetivos de este endpoint.
  */
 export const canUpdateUser = (performer: UserIdentity, target: UserIdentity): boolean => {
     switch (performer.role) {
@@ -25,20 +25,114 @@ export const canUpdateUser = (performer: UserIdentity, target: UserIdentity): bo
     }
 };
 
+export const canCreateClient = (performer: UserIdentity): boolean => {
+    return performer.role === 'manager' || performer.role === 'receptionist';
+};
+
 /**
- * PUT /manager: a manager may only update their own title.
+ * PUT /manager: un gerente solo puede actualizar su propio título.
  */
 export const canUpdateManagerTitle = (performer: UserIdentity, targetId: string): boolean =>
     performer.role === 'manager' && performer.id === targetId;
 
 /**
- * PUT /barber: only managers may update a barber's profile (bio/is_accepting_bookings).
- * Barbers have no user account and can never be the performer, so no target check is needed.
+ * PUT /barber: solo los gerentes pueden actualizar el perfil de un barbero (biografía/estado de reservas).
+ * Los barberos no tienen cuenta de usuario y nunca pueden ser quienes ejecutan la acción, por lo que no se requiere validación de objetivo.
  */
 export const canUpdateBarberProfile = (performer: UserIdentity): boolean => performer.role === 'manager';
 
 /**
- * DELETE /barbers/:id: only managers may soft-delete a barber. Same rule as
- * canUpdateBarberProfile, kept as its own named permission for clarity.
+ * DELETE /barbers/:id: solo los gerentes pueden realizar un borrado lógico de un barbero. Misma regla que
+ * canUpdateBarberProfile, se mantiene como su propia función de permiso nombrada por claridad.
  */
 export const canDeleteBarber = (performer: UserIdentity): boolean => performer.role === 'manager';
+
+/**
+ * GET /shops/:id/barbers y GET /barbers/:id: el personal (recepcionistas y gerentes) ve el perfil completo del
+ * barbero, incluidos los dados de baja; los clientes solo ven la vista pública de barberos activos.
+ */
+export const canViewFullBarberData = (performer: UserIdentity): boolean =>
+    performer.role === 'manager' || performer.role === 'receptionist';
+
+/**
+ * /receptionists y GET /shops/:id/receptionists: solo los gerentes pueden gestionar recepcionistas (y únicamente
+ * los de las sucursales que administran; esa restricción por sucursal la aplica el servicio).
+ */
+export const canManageReceptionists = (performer: UserIdentity): boolean => performer.role === 'manager';
+
+/**
+ * Un gerente solo gestiona a los recepcionistas de las sucursales que administra.
+ */
+export const canManageShopReceptionists = (shopId: string, managedShopIds: string[]): boolean =>
+    managedShopIds.includes(shopId);
+
+/**
+ * /shops: Solo los usuarios con el rol 'manager' pueden registrar, editar o eliminar sucursales.
+ */
+export const canManageShops = (performer: UserIdentity): boolean => performer.role === 'manager';
+
+/**
+ * GET /recommendations: un cliente solo puede consultar su propio historial de recomendaciones; la recepción y los
+ * gerentes pueden consultar el de cualquier cliente.
+ */
+export const canViewRecommendationHistory = (performer: UserIdentity, targetClientId: string): boolean =>
+    performer.role === 'client' ? performer.id === targetClientId : true;
+
+/**
+ * /supplies-categories: Solo los usuarios con rol 'manager' pueden crear, editar o eliminar categorías de insumos.
+ */
+export const canManageSuppliesCategories = (performer: UserIdentity): boolean => performer.role === 'manager';
+
+/**
+ * /supplies: Los usuarios con rol 'manager' puede registrar, editar o eliminar insumos.
+ */
+export const canManageSupplies = (performer: UserIdentity): boolean => performer.role === 'manager';
+
+/**
+ * GET /shifts: el personal (recepcionistas y gerentes) puede consultar los turnos; los clientes no.
+ */
+export const canViewShifts = (performer: UserIdentity): boolean =>
+    performer.role === 'manager' || performer.role === 'receptionist';
+
+/**
+ * POST/PUT/DELETE /shifts: solo los gerentes pueden crear, editar o eliminar turnos.
+ */
+export const canManageShifts = (performer: UserIdentity): boolean => performer.role === 'manager';
+
+/**
+ * POST /appointments:
+ * - client: solo puede agendar para sí mismo (nunca para otro cliente ni para un invitado), en cualquier sucursal.
+ * - receptionist: para cualquier cliente o invitado, únicamente en la sucursal donde trabaja.
+ * - manager: para cualquier cliente o invitado, únicamente en las sucursales que administra.
+ */
+export const canCreateAppointment = (
+    performer: UserIdentity,
+    booking: { clientId: string | null; shopId: string; shopManagerId: string },
+    receptionistShopId: string | null = null
+): boolean => {
+    switch (performer.role) {
+        case 'client':
+            return booking.clientId === performer.id;
+        case 'receptionist':
+            return receptionistShopId === booking.shopId;
+        case 'manager':
+            return booking.shopManagerId === performer.id;
+    }
+};
+
+/**
+ * GET /appointments: la recepción y los gerentes solo pueden consultar las citas de las sucursales a las que
+ * pertenecen (la sucursal donde trabaja la recepción; las que administra el gerente).
+ */
+export const canViewShopAppointments = (shopId: string, accessibleShopIds: string[]): boolean =>
+    accessibleShopIds.includes(shopId);
+
+/**
+ * /servicesCategories: Solo los usuarios con rol 'manager' pueden crear, editar o eliminar categorías de servicios.
+ */
+export const canManageServiceCategories = (performer: UserIdentity): boolean => performer.role === 'manager';
+
+/**
+ * /services: Solo los usuarios con rol 'manager' pueden registrar, editar o eliminar servicios del catálogo.
+ */
+export const canManageServices = (performer: UserIdentity): boolean => performer.role === 'manager';

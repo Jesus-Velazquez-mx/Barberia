@@ -12,3 +12,19 @@ venv/
 model_85_nn_.pth
 ai_service/ai_service.egg-info/
 ai_service/build/
+
+# Android
+android/.gradle/
+android/.kotlin/
+android/build/
+android/app/build/
+android/captures/
+android/.externalNativeBuild/
+android/.cxx/
+android/local.properties
+android/.idea/
+*.iml
+*.apk
+*.aab
+*.keystore
+*.jksgit

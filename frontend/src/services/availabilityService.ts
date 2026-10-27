@@ -4,11 +4,9 @@ import type { AvailableSlotsByBarber, GetAvailabilityParams } from '../types/ava
 export const getShopAvailability = async ({
     shopId,
     date,
-    serviceId,
+    serviceIds
 }: GetAvailabilityParams): Promise<AvailableSlotsByBarber[]> => {
-    const query = new URLSearchParams({ date, serviceId }).toString();
-    const response = await apiClient.get<AvailableSlotsByBarber[]>(
-        `/shops/${shopId}/availability?${query}`
-    );
-    return response;
+    const query = new URLSearchParams({ date, serviceIds: serviceIds.join(',') }).toString();
+    const response = await apiClient.get<AvailableSlotsByBarber[]>(`/shops/${shopId}/availability?${query}`);
+    return response.data;
 };

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { login, register } from '../controllers/authController.js';
+import { login, register, verifyToken } from '../controllers/authController.js';
 
 const router = Router();
 
@@ -116,6 +116,8 @@ router.post('/auth/login', login);
  *               phone: { type: string, example: "3312345678" }
  *               email: { type: string, format: email, example: cliente@mrbarber.com }
  *               password: { type: string, example: password123 }
+ *               birthDate: { type: string, example: 2000-12-01 }
+ *               gender: { type: string, example: male }
  *     responses:
  *       201:
  *         description: Éxito. `data` contiene el usuario creado y el token JWT.
@@ -136,6 +138,8 @@ router.post('/auth/login', login);
  *                         phone: { type: string, nullable: true }
  *                         firstName: { type: string }
  *                         lastName: { type: string }
+ *                         birthDate: { type: string }
+ *                         gender: { type: string }
  *                         createdAt: { type: string, format: date-time }
  *                         updatedAt: { type: string, format: date-time }
  *                         profile:
@@ -179,5 +183,74 @@ router.post('/auth/login', login);
  *                 error: { type: array, items: { type: string }, example: ["detalle del error"] }
  */
 router.post('/auth/register', register);
+
+/**
+ * @swagger
+ * /api/auth/verify-token:
+ *   post:
+ *     summary: Verifica un token JWT
+ *     tags: [Auth]
+ *     description: Comprueba que el token JWT tenga una firma válida y no haya expirado.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [token]
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 description: Token JWT que se desea verificar.
+ *                 example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *     responses:
+ *       200:
+ *         description: El token es válido.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data: { nullable: true, example: null }
+ *                 message: { type: string, example: Token is valid }
+ *                 error: { nullable: true, example: null }
+ *       400:
+ *         description: El cuerpo de la petición no contiene un token JWT válido.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data: { nullable: true, example: null }
+ *                 message: { type: string, example: Validation error }
+ *                 error:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       field: { type: string, example: token }
+ *                       detail: { type: string, example: Invalid input. Expected JWT }
+ *       401:
+ *         description: El token es inválido o ha expirado.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data: { nullable: true, example: null }
+ *                 message: { type: string, example: Invalid or expired token }
+ *                 error: { nullable: true, example: null }
+ *       500:
+ *         description: Error interno del servidor.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data: { nullable: true, example: null }
+ *                 message: { type: string, example: An unexpected error occurred }
+ *                 error: { type: array, items: { type: string } }
+ */
+router.post('/auth/verify-token', verifyToken);
 
 export default router;

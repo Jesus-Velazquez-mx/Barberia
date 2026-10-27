@@ -1,10 +1,9 @@
 import { jest } from '@jest/globals';
 
 // ESM: los mocks deben registrarse antes de importar dinámicamente el servicio.
-const getServiceById = jest.fn<(...args: any[]) => Promise<any>>();
+const getServicesByIds = jest.fn<(...args: any[]) => Promise<any>>();
 const getShopById = jest.fn<(...args: any[]) => Promise<any>>();
 const getActiveBarbersByShop = jest.fn<(...args: any[]) => Promise<any>>();
-const getActiveSlotsByBarberIdsAndDay = jest.fn<(...args: any[]) => Promise<any>>();
 const getBlockingAppointmentsByBarberIdsAndRange = jest.fn<(...args: any[]) => Promise<any>>();
 const getAllShifts = jest.fn<(...args: any[]) => Promise<any>>();
 
@@ -12,12 +11,9 @@ const getAllShifts = jest.fn<(...args: any[]) => Promise<any>>();
 const mockConfig: { BUSINESS_TIMEZONE?: string } = {};
 
 jest.unstable_mockModule('../src/config/globalConfig.js', () => ({ default: mockConfig }));
-jest.unstable_mockModule('../src/repositories/offeredServiceRepository.js', () => ({ getServiceById }));
+jest.unstable_mockModule('../src/repositories/offeredServiceRepository.js', () => ({ getServicesByIds }));
 jest.unstable_mockModule('../src/repositories/shopRepository.js', () => ({ getShopById }));
 jest.unstable_mockModule('../src/repositories/barberRepository.js', () => ({ getActiveBarbersByShop }));
-jest.unstable_mockModule('../src/repositories/availabilitySlotRepository.js', () => ({
-    getActiveSlotsByBarberIdsAndDay,
-}));
 jest.unstable_mockModule('../src/repositories/appointmentRepository.js', () => ({
     getBlockingAppointmentsByBarberIdsAndRange,
 }));
@@ -26,7 +22,7 @@ jest.unstable_mockModule('../src/repositories/shiftRepository.js', () => ({ getA
 const { getAvailableSlots, computeStartMinutes, MAX_BOOKING_DAYS_AHEAD } =
     await import('../src/services/availabilityService.js');
 const { ApiError, ApiErrorCode } = await import('../src/errors/ApiError.js');
-const { getBusinessToday } = await import('../src/utils/businessTime.js');
+const { getBusinessToday, businessWallClockToUtcMs } = await import('../src/utils/businessTime.js');
 
 const SHOP = 'shop-1';
 const SERVICE = 'service-1';
@@ -37,9 +33,20 @@ const DAY_MS = 86_400_000;
 /** Suma `days` a una fecha 'YYYY-MM-DD' (calendario, sin zona horaria). */
 const addDays = (date: string, days: number) =>
     new Date(Date.parse(`${date}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
+/** Primer día a partir de `date` (inclusive) cuyo día de la semana UTC sea `dayOfWeek`. */
+const nextDayOfWeek = (date: string, dayOfWeek: number) => {
+    let d = date;
+    while (new Date(`${d}T00:00:00Z`).getUTCDay() !== dayOfWeek) d = addDays(d, 1);
+    return d;
+};
 // "Hoy" es el de la zona horaria del negocio, igual que en el servicio.
-const TOMORROW = addDays(getBusinessToday(), 1);
-const at = (hhmm: string, date = TOMORROW) => new Date(`${date}T${hhmm}:00.000Z`);
+// Se evita que caiga en domingo (cierre semanal) para que las pruebas con mocks de turno/citas no colapsen a [].
+const tomorrowCandidate = addDays(getBusinessToday(), 1);
+const TOMORROW =
+    new Date(`${tomorrowCandidate}T00:00:00Z`).getUTCDay() === 0 ? addDays(tomorrowCandidate, 1) : tomorrowCandidate;
+// `at` recibe la hora de pared del negocio (dígitos literales) y devuelve el instante UTC real
+// correspondiente, igual que hace el servicio (businessWallClockToUtcMs), no el string "Z" literal.
+const at = (hhmm: string, date = TOMORROW) => new Date(businessWallClockToUtcMs(Date.parse(`${date}T${hhmm}:00.000Z`)));
 const iso = (hhmm: string) => at(hhmm).toISOString();
 /** Inicios cada 15 min desde `first` hasta `last` (inclusive), en ISO. */
 const every15 = (first: string, last: string) => {
@@ -48,27 +55,20 @@ const every15 = (first: string, last: string) => {
     return out;
 };
 
-const slot = (start: string, end: string, barberId = BARBER) => ({
-    barber_id: barberId,
-    shop_id: SHOP,
-    start_time: `${start}:00`,
-    end_time: `${end}:00`,
-});
 const appt = (start: string, end: string, barberId = BARBER) => ({
     barber_id: barberId,
     scheduled_start: at(start),
     scheduled_end: at(end),
 });
 
-const run = () => getAvailableSlots({ shopId: SHOP, date: TOMORROW, serviceId: SERVICE });
+const run = () => getAvailableSlots({ shopId: SHOP, date: TOMORROW, serviceIds: [SERVICE] });
 
 beforeEach(() => {
     jest.resetAllMocks();
-    getServiceById.mockResolvedValue({ id: SERVICE, duration_minutes: 60, is_active: true });
+    getServicesByIds.mockResolvedValue([{ id: SERVICE, duration_minutes: 60, is_active: true }]);
     getShopById.mockResolvedValue({ id: SHOP, is_active: true });
     getActiveBarbersByShop.mockResolvedValue([{ id: BARBER, shift_id: SHIFT }]);
-    getAllShifts.mockResolvedValue([{ id: SHIFT, start_time: '08:00:00', end_time: '20:00:00' }]);
-    getActiveSlotsByBarberIdsAndDay.mockResolvedValue([slot('09:00', '13:00')]);
+    getAllShifts.mockResolvedValue([{ id: SHIFT, start_time: '09:00:00', end_time: '13:00:00' }]);
     getBlockingAppointmentsByBarberIdsAndRange.mockResolvedValue([]);
 });
 
@@ -125,7 +125,6 @@ describe('computeStartMinutes (lógica pura)', () => {
 describe('getAvailableSlots', () => {
     test('día libre devuelve inicios cada 15 min en UTC', async () => {
         expect(await run()).toEqual([{ barberId: BARBER, startTimes: every15('09:00', '12:00') }]);
-        expect(getActiveSlotsByBarberIdsAndDay).toHaveBeenCalledWith([BARBER], at('00:00').getUTCDay());
     });
 
     test('una cita a mitad de la ventana: quita los traslapados y reanuda al terminar', async () => {
@@ -140,42 +139,64 @@ describe('getAvailableSlots', () => {
         expect(result.startTimes).toEqual([iso('09:00'), ...every15('11:00', '12:00')]);
     });
 
-    test('sin plantilla para ese día devuelve lista vacía sin lanzar', async () => {
-        getActiveSlotsByBarberIdsAndDay.mockResolvedValue([]);
-        expect(await run()).toEqual([{ barberId: BARBER, startTimes: [] }]);
-    });
-
     test('una cita que abarca toda la ventana deja cero slots', async () => {
         getBlockingAppointmentsByBarberIdsAndRange.mockResolvedValue([appt('08:00', '14:00')]);
         expect(await run()).toEqual([{ barberId: BARBER, startTimes: [] }]);
     });
 
-    test('la ventana de la plantilla se acota al turno del barbero', async () => {
+    test('la ventana disponible es la del turno del barbero', async () => {
         getAllShifts.mockResolvedValue([{ id: SHIFT, start_time: '10:00:00', end_time: '12:00:00' }]);
         const [result] = await run();
         expect(result.startTimes).toEqual(every15('10:00', '11:00'));
     });
 
-    test('slots y citas se atribuyen a su barbero sin contaminación cruzada', async () => {
+    test('domingo: ninguna sucursal abre, no hay horarios disponibles', async () => {
+        const sunday = nextDayOfWeek(TOMORROW, 0);
+        const result = await getAvailableSlots({ shopId: SHOP, date: sunday, serviceIds: [SERVICE] });
+        expect(result).toEqual([{ barberId: BARBER, startTimes: [] }]);
+        // Corte temprano: ni turnos ni citas se consultan si la sucursal no abre ese día.
+        expect(getAllShifts).not.toHaveBeenCalled();
+        expect(getBlockingAppointmentsByBarberIdsAndRange).not.toHaveBeenCalled();
+    });
+
+    test('turnos y citas se atribuyen a su barbero sin contaminación cruzada', async () => {
+        const SHIFT2 = 'shift-2';
+        getServicesByIds.mockResolvedValue([{ id: SERVICE, duration_minutes: 30, is_active: true }]);
         getActiveBarbersByShop.mockResolvedValue([
             { id: BARBER, shift_id: SHIFT },
-            { id: 'barber-2', shift_id: SHIFT },
+            { id: 'barber-2', shift_id: SHIFT2 },
         ]);
-        getActiveSlotsByBarberIdsAndDay.mockResolvedValue([slot('09:00', '10:30'), slot('15:00', '16:00', 'barber-2')]);
-        getBlockingAppointmentsByBarberIdsAndRange.mockResolvedValue([appt('15:00', '16:00')]);
+        getAllShifts.mockResolvedValue([
+            { id: SHIFT, start_time: '09:00:00', end_time: '13:00:00' },
+            { id: SHIFT2, start_time: '15:00:00', end_time: '16:00:00' },
+        ]);
+        getBlockingAppointmentsByBarberIdsAndRange.mockResolvedValue([
+            appt('09:00', '12:30'),
+            appt('15:00', '15:30', 'barber-2'),
+        ]);
         expect(await run()).toEqual([
-            { barberId: BARBER, startTimes: every15('09:00', '09:30') },
-            { barberId: 'barber-2', startTimes: [iso('15:00')] },
+            { barberId: BARBER, startTimes: [iso('12:30')] },
+            { barberId: 'barber-2', startTimes: [iso('15:30')] },
         ]);
     });
 
+    test('varios servicios: los inicios se calculan con la suma de sus duraciones', async () => {
+        getServicesByIds.mockResolvedValue([
+            { id: SERVICE, duration_minutes: 60, is_active: true },
+            { id: 'service-2', duration_minutes: 30, is_active: true },
+        ]);
+        const result = await getAvailableSlots({ shopId: SHOP, date: TOMORROW, serviceIds: [SERVICE, 'service-2'] });
+        // ventana 09:00-13:00 con 90 min: el último inicio es 11:30
+        expect(result).toEqual([{ barberId: BARBER, startTimes: every15('09:00', '11:30') }]);
+    });
+
     test('servicio desconocido lanza NOT_FOUND', async () => {
-        getServiceById.mockResolvedValue(null);
+        getServicesByIds.mockResolvedValue([]);
         await expect(run()).rejects.toMatchObject({ code: ApiErrorCode.NOT_FOUND });
     });
 
     test('servicio inactivo lanza NOT_FOUND', async () => {
-        getServiceById.mockResolvedValue({ id: SERVICE, duration_minutes: 60, is_active: false });
+        getServicesByIds.mockResolvedValue([{ id: SERVICE, duration_minutes: 60, is_active: false }]);
         await expect(run()).rejects.toMatchObject({ code: ApiErrorCode.NOT_FOUND });
     });
 
@@ -192,14 +213,16 @@ describe('getAvailableSlots', () => {
 
     test('rechaza fechas pasadas', async () => {
         const yesterday = addDays(getBusinessToday(), -1);
-        await expect(getAvailableSlots({ shopId: SHOP, date: yesterday, serviceId: SERVICE })).rejects.toMatchObject({
-            code: ApiErrorCode.INVALID_INPUT,
-        });
+        await expect(getAvailableSlots({ shopId: SHOP, date: yesterday, serviceIds: [SERVICE] })).rejects.toMatchObject(
+            {
+                code: ApiErrorCode.INVALID_INPUT,
+            }
+        );
     });
 
     test('rechaza fechas más allá del horizonte de reserva', async () => {
         const tooFar = addDays(getBusinessToday(), MAX_BOOKING_DAYS_AHEAD + 1);
-        await expect(getAvailableSlots({ shopId: SHOP, date: tooFar, serviceId: SERVICE })).rejects.toMatchObject({
+        await expect(getAvailableSlots({ shopId: SHOP, date: tooFar, serviceIds: [SERVICE] })).rejects.toMatchObject({
             code: ApiErrorCode.INVALID_INPUT,
         });
     });
@@ -217,7 +240,7 @@ describe('getAvailableSlots', () => {
             mockConfig.BUSINESS_TIMEZONE = 'America/Tijuana';
             freeze('2026-10-15T05:00:00Z');
             await expect(
-                getAvailableSlots({ shopId: SHOP, date: '2026-10-14', serviceId: SERVICE })
+                getAvailableSlots({ shopId: SHOP, date: '2026-10-14', serviceIds: [SERVICE] })
             ).resolves.toBeDefined();
         });
 
@@ -225,7 +248,7 @@ describe('getAvailableSlots', () => {
             mockConfig.BUSINESS_TIMEZONE = 'America/Tijuana';
             freeze('2026-10-15T05:00:00Z');
             await expect(
-                getAvailableSlots({ shopId: SHOP, date: '2026-10-13', serviceId: SERVICE })
+                getAvailableSlots({ shopId: SHOP, date: '2026-10-13', serviceIds: [SERVICE] })
             ).rejects.toMatchObject({ code: ApiErrorCode.INVALID_INPUT });
         });
 
@@ -233,27 +256,30 @@ describe('getAvailableSlots', () => {
             mockConfig.BUSINESS_TIMEZONE = 'Asia/Tokyo';
             freeze('2026-10-14T20:00:00Z'); // 05:00 del 15 en Tokio
             await expect(
-                getAvailableSlots({ shopId: SHOP, date: '2026-10-14', serviceId: SERVICE })
+                getAvailableSlots({ shopId: SHOP, date: '2026-10-14', serviceIds: [SERVICE] })
             ).rejects.toMatchObject({ code: ApiErrorCode.INVALID_INPUT });
             await expect(
-                getAvailableSlots({ shopId: SHOP, date: '2026-10-15', serviceId: SERVICE })
+                getAvailableSlots({ shopId: SHOP, date: '2026-10-15', serviceIds: [SERVICE] })
             ).resolves.toBeDefined();
         });
 
         test('hoy no ofrece horarios anteriores a la hora de pared del negocio', async () => {
             mockConfig.BUSINESS_TIMEZONE = 'America/Tijuana';
             freeze('2026-10-14T17:00:00Z'); // 10:00 en Tijuana
-            getActiveSlotsByBarberIdsAndDay.mockResolvedValue([slot('09:00', '13:00')]);
-            const result = await getAvailableSlots({ shopId: SHOP, date: '2026-10-14', serviceId: SERVICE });
-            // Servicio de 60 min en la ventana 09:00-13:00: el último inicio es 12:00; el primero, 10:00.
-            expect(result[0].startTimes[0]).toBe('2026-10-14T10:00:00.000Z');
-            expect(result[0].startTimes.at(-1)).toBe('2026-10-14T12:00:00.000Z');
+            const result = await getAvailableSlots({ shopId: SHOP, date: '2026-10-14', serviceIds: [SERVICE] });
+            // Turno 09:00-13:00 hora de Tijuana, servicio de 60 min: el último inicio es 12:00; el primero, 10:00.
+            const atTijuana = (hhmm: string) =>
+                new Date(
+                    businessWallClockToUtcMs(Date.parse(`2026-10-14T${hhmm}:00.000Z`), 'America/Tijuana')
+                ).toISOString();
+            expect(result[0].startTimes[0]).toBe(atTijuana('10:00'));
+            expect(result[0].startTimes.at(-1)).toBe(atTijuana('12:00'));
         });
     });
 
     test('rechaza fechas con formato inválido', async () => {
-        await expect(getAvailableSlots({ shopId: SHOP, date: '2026-02-30', serviceId: SERVICE })).rejects.toMatchObject(
-            { code: ApiErrorCode.INVALID_INPUT }
-        );
+        await expect(
+            getAvailableSlots({ shopId: SHOP, date: '2026-02-30', serviceIds: [SERVICE] })
+        ).rejects.toMatchObject({ code: ApiErrorCode.INVALID_INPUT });
     });
 });

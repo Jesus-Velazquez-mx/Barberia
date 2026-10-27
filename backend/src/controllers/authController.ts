@@ -4,6 +4,7 @@ import type { ApiHandler } from '../utils/apiResponse.js';
 import { sendSuccess, sendFail, sendValidationError, sendInternalServerError } from '../utils/apiResponse.js';
 import type { AuthResponse } from '../types/dto/authResponse.interface.js';
 import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
+import { decodeToken, type ValidateTokenInput } from '../services/jwtTokenService.js';
 
 const loginSchema: z.ZodType<LoginInput> = z.object({
     email: z.email(),
@@ -18,6 +19,10 @@ const registerSchema: z.ZodType<RegisterInput> = z.object({
     password: z.string().min(6),
     birthDate: z.coerce.date(),
     gender: z.string(),
+});
+
+const tokenSchema: z.ZodType<ValidateTokenInput> = z.object({
+    token: z.jwt(),
 });
 
 /**
@@ -80,6 +85,28 @@ export const register: ApiHandler<AuthResponse> = async (req, res) => {
         }
 
         // Manejo general para errores inesperados del servidor
+        sendInternalServerError({ res, error: [String(error)] });
+    }
+};
+
+export const verifyToken: ApiHandler<void> = async (req, res) => {
+    try {
+        const validData = tokenSchema.parse(req.body);
+
+        decodeToken(validData.token);
+
+        sendSuccess({ res, message: 'Token is valid' });
+    } catch (error: unknown) {
+        if (error instanceof ZodError) {
+            sendValidationError({ res, error });
+            return;
+        }
+
+        if (error instanceof ApiError) {
+            sendFail({ res, message: 'Invalid or expired token', status: error.code });
+            return;
+        }
+
         sendInternalServerError({ res, error: [String(error)] });
     }
 };

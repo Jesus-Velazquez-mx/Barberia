@@ -12,7 +12,7 @@ interface InternalAIFaceDetectionRequest {
 }
 
 interface InternalAIFaceDetectionResponse {
-    facialStructure: FacialStructureType
+    facialStructure: FacialStructureType;
 }
 
 interface InternalAIRecommendationRequest {

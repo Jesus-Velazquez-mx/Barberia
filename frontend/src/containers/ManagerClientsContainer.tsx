@@ -213,7 +213,7 @@ export function ManagerClientsContainer() {
         <Button
           type="button"
           onClick={openCreate}
-          className="inline-flex items-center gap-2 px-4 !text-sm !font-semibold !normal-case"
+          className="inline-flex items-center gap-2 px-4 text-sm! font-semibold! normal-case!"
         >
           <Plus size={18} aria-hidden="true" />
           Nuevo Cliente

@@ -1,4 +1,4 @@
-export type AppointmentStatus = 'scheduled' | 'checked_in' | 'completed' | 'cancelled' | 'no_show';
+export type AppointmentStatus = 'scheduled' | 'rescheduled' | 'checked_in' | 'completed' | 'cancelled' | 'no_show';
 
 export interface Appointment {
     id: string;
@@ -6,9 +6,11 @@ export interface Appointment {
     client_id: string | null;
     is_registered_client: boolean;
     guest_client_name: string | null;
-    barber_id: string | null;
+    client_email: string;
+    barber_id: string;
     is_walk_in: boolean;
     status: AppointmentStatus;
+    original_scheduled_start: Date;
     scheduled_start: Date;
     scheduled_end: Date;
     checked_in_at: Date | null;

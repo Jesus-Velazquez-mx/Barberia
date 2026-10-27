@@ -37,11 +37,12 @@ const options = {
             { name: 'Users', description: 'Datos generales de los usuarios, comunes a todos los roles' },
             { name: 'Managers', description: 'Atributos específicos de los managers' },
             { name: 'Barbers', description: 'Atributos específicos de los barberos' },
+            { name: 'Receptionists', description: 'Gestión de los recepcionistas por el gerente de su sucursal' },
             { name: 'Recommendation', description: 'Conexión con el microservicio de recomendación de IA' },
             { name: 'Test', description: 'Endpoints de prueba usados durante el desarrollo' },
         ],
     },
-    apis: ['./src/routes/*.ts', './dist/routes/*.js'], // Ruta al archivo donde se encuentran las rutas de la API
+    apis: [import.meta.url.endsWith('.ts') ? './src/routes/*.ts' : './dist/routes/*.js'],
 };
 
 const specs = swaggerJsdoc(options);

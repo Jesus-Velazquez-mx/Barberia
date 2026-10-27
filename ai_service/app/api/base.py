@@ -1,12 +1,11 @@
 from fastapi import APIRouter, Depends
 from app.core.auth import verify_internal_api_key
 from app.api.health import health_router
-from app.api.jd_analyze import jd_router
 from app.api.haircut import haircut_router
 from app.api.face import face_router
 
 # All routers that need to be protected behind API key authorization
-protected_routers = [jd_router, haircut_router, face_router]
+protected_routers = [haircut_router, face_router]
 
 
 def get_internal_router() -> APIRouter:

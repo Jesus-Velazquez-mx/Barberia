@@ -16,6 +16,7 @@ CREATE TYPE facial_structure_type AS ENUM ('oval', 'triangle', 'heart', 'round',
 
 CREATE TYPE appointment_status AS ENUM (
     'scheduled',    -- booked ahead of time, not yet arrived
+    'rescheduled',
     'checked_in',   -- client has arrived (walk-in lands here immediately on creation)
     'completed',
     'cancelled',
@@ -23,7 +24,6 @@ CREATE TYPE appointment_status AS ENUM (
 );
 
 CREATE TYPE notification_status AS ENUM ('sent', 'failed', 'pending');
-CREATE TYPE shift_name AS ENUM ('morning', 'afternoon');
 
 -- ---------- updated_at trigger helper ----------
 
@@ -122,16 +122,19 @@ CREATE INDEX idx_shops_manager ON shops (manager_id);
 CREATE TRIGGER trg_shops_updated_at BEFORE UPDATE ON shops
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
--- ---------- shifts (fixed catalog) ----------
--- Only two shifts exist today. Every barber works one shift, Monday–Saturday.
+-- ---------- shifts (manager-managed catalog) ----------
+-- Every barber and receptionist works one shift, Monday–Saturday. Managers create, edit and delete
+-- shifts; overlapping shifts are allowed, but two shifts cannot share the exact same time range.
+-- The 4/6/8-hour length rule is enforced by the API, not here.
 
 CREATE TABLE shifts (
     id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    name        shift_name NOT NULL UNIQUE,
+    name        varchar(50) NOT NULL UNIQUE,
     start_time  time NOT NULL,
     end_time    time NOT NULL CHECK (end_time > start_time),
     created_at  timestamptz NOT NULL DEFAULT now(),
-    updated_at  timestamptz NOT NULL DEFAULT now()
+    updated_at  timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT shifts_time_range_unique UNIQUE (start_time, end_time)
 );
 
 CREATE TRIGGER trg_shifts_updated_at BEFORE UPDATE ON shifts
@@ -207,6 +210,7 @@ CREATE TABLE services_categories (
     id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     name        varchar(100) NOT NULL UNIQUE,
     description text,
+    is_active   boolean NOT NULL DEFAULT true,
     created_at  timestamptz NOT NULL DEFAULT now(),
     updated_at  timestamptz NOT NULL DEFAULT now()
 );
@@ -318,52 +322,40 @@ CREATE TABLE supply_movements (
 CREATE INDEX idx_supply_movements_supply_created ON supply_movements (supply_id, created_at DESC);
 CREATE INDEX idx_supply_movements_performed_by   ON supply_movements (performed_by);
 
--- ---------- barber availability ----------
-
-CREATE TABLE availability_slots (
-    id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    barber_id   uuid NOT NULL REFERENCES barbers(id) ON DELETE CASCADE,
-    shop_id     uuid NOT NULL REFERENCES shops(id) ON DELETE RESTRICT,
-    day_of_week smallint NOT NULL CHECK (day_of_week BETWEEN 0 AND 6), -- 0 = Sunday
-    start_time  time NOT NULL,
-    end_time    time NOT NULL CHECK (end_time > start_time),
-    is_active   boolean NOT NULL DEFAULT true,
-    created_at  timestamptz NOT NULL DEFAULT now(),
-    updated_at  timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE INDEX idx_availability_slots_barber_day ON availability_slots (barber_id, day_of_week);
-CREATE TRIGGER trg_availability_slots_updated_at BEFORE UPDATE ON availability_slots
-    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-
 -- ---------- appointments ----------
+-- Barber availability is computed on the backend from shifts (barbers.shift_id) and
+-- is_accepting_bookings, bounded to Monday-Saturday — see availabilityService.ts.
+-- There is no availability_slots table: a weekly-template table mirroring shifts
+-- (and never diverging from them, since nothing writes to it independently) would
+-- just be a second source of truth for data shifts/is_accepting_bookings already hold.
 
 CREATE TABLE appointments (
-    id                   uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    shop_id              uuid NOT NULL REFERENCES shops(id) ON DELETE RESTRICT,
+    id                          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    shop_id                     uuid NOT NULL REFERENCES shops(id) ON DELETE RESTRICT,
     -- client_id is NULL either for a guest booking, or for a registered client whose
     -- account was later deleted (SET NULL keeps the appointment as history).
     -- is_registered_client tells the two cases apart and never changes after creation.
-    client_id            uuid REFERENCES clients(user_id) ON DELETE SET NULL,
-    is_registered_client boolean NOT NULL,
+    client_id                   uuid REFERENCES clients(user_id) ON DELETE SET NULL,
+    is_registered_client        boolean NOT NULL,
     -- Snapshot of the registered client's email, filled automatically on insert by
     -- trg_appointments_set_client_email. Survives client deletion (client_id goes NULL)
     -- so the appointment keeps partial traceability. NULL for guest bookings.
-    client_email         varchar(255),
-    guest_client_name    varchar(100), -- only name is captured for unregistered clients
-    barber_id            uuid REFERENCES barbers(id) ON DELETE RESTRICT, -- Should this remain nullable?
-    is_walk_in           boolean NOT NULL DEFAULT false,
-    status               appointment_status NOT NULL DEFAULT 'scheduled',
-    scheduled_start      timestamptz NOT NULL,
-    scheduled_end        timestamptz NOT NULL,
-    checked_in_at        timestamptz,
-    completed_at         timestamptz,
-    cancelled_at         timestamptz,
-    cancellation_reason  varchar(255),
-    notes                text,
-    is_reward_redemption boolean NOT NULL DEFAULT false,
-    created_at           timestamptz NOT NULL DEFAULT now(),
-    updated_at           timestamptz NOT NULL DEFAULT now(),
+    client_email                varchar(255),
+    guest_client_name           varchar(100), -- only name is captured for unregistered clients
+    barber_id                   uuid REFERENCES barbers(id) ON DELETE RESTRICT NOT NULL,
+    is_walk_in                  boolean NOT NULL DEFAULT false,
+    status                      appointment_status NOT NULL DEFAULT 'scheduled',
+    original_scheduled_start    timestamptz NOT NULL,
+    scheduled_start             timestamptz NOT NULL,
+    scheduled_end               timestamptz NOT NULL,
+    checked_in_at               timestamptz,
+    completed_at                timestamptz,
+    cancelled_at                timestamptz,
+    cancellation_reason         varchar(255),
+    notes                       text,
+    is_reward_redemption        boolean NOT NULL DEFAULT false,
+    created_at                  timestamptz NOT NULL DEFAULT now(),
+    updated_at                  timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT chk_appointments_barber_required CHECK (is_walk_in = true OR barber_id IS NOT NULL),
     CONSTRAINT chk_appointments_time_order CHECK (scheduled_end > scheduled_start),
     -- registered: no guest name (client_id may be NULL after account deletion);
@@ -373,6 +365,21 @@ CREATE TABLE appointments (
         OR (NOT is_registered_client AND client_id IS NULL AND guest_client_name IS NOT NULL)
     )
 );
+
+-- The original start is captured from the first scheduled start when callers
+-- do not provide a historical value, such as when creating a new appointment.
+CREATE FUNCTION set_original_appointment_start() RETURNS trigger AS $$
+BEGIN
+    IF NEW.original_scheduled_start IS NULL THEN
+        NEW.original_scheduled_start := NEW.scheduled_start;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_appointments_set_original_start
+    BEFORE INSERT ON appointments
+    FOR EACH ROW EXECUTE FUNCTION set_original_appointment_start();
 
 CREATE INDEX idx_appointments_barber_start ON appointments (barber_id, scheduled_start);
 CREATE INDEX idx_appointments_client_start ON appointments (client_id, scheduled_start DESC);
@@ -433,9 +440,12 @@ BEGIN
         IF EXISTS (
             SELECT 1 FROM appointments
             WHERE barber_id = NEW.id
-              AND status IN ('scheduled', 'checked_in')
+              AND status IN ('scheduled', 'rescheduled', 'checked_in')
         ) THEN
-            RAISE EXCEPTION 'barber % has pending appointments; cancel or reassign them first', NEW.id;
+            -- Custom SQLSTATE 'BB001' (instead of the generic P0001) so the backend can tell
+            -- this guard apart from any other PL/pgSQL exception; see deleteBarber in barberService.ts.
+            RAISE EXCEPTION 'barber % has pending appointments; cancel or reassign them first', NEW.id
+                USING ERRCODE = 'BB001';
         END IF;
     END IF;
     RETURN NEW;
@@ -449,7 +459,9 @@ CREATE FUNCTION check_manager_deletable() RETURNS trigger AS $$
 BEGIN
     IF OLD.deleted_at IS NULL AND NEW.deleted_at IS NOT NULL THEN
         IF EXISTS (SELECT 1 FROM shops WHERE manager_id = NEW.user_id) THEN
-            RAISE EXCEPTION 'manager % still has shops assigned; reassign them first', NEW.user_id;
+            -- Custom SQLSTATE 'BM001', same reason as 'BB001' above; see deleteUserById in userService.ts.
+            RAISE EXCEPTION 'manager % still has shops assigned; reassign them first', NEW.user_id
+                USING ERRCODE = 'BM001';
         END IF;
     END IF;
     RETURN NEW;
@@ -505,9 +517,10 @@ CREATE INDEX idx_haircut_style_facial_structures_type ON haircut_style_facial_st
 CREATE TABLE recommendation_history (
     id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     client_id       uuid NOT NULL REFERENCES clients(user_id) ON DELETE CASCADE,
-    photo_s3_key    varchar(512) NOT NULL, -- S3 object key/URL only, never the blob
     suggestion_text text,
     confidence      numeric(5,2),
+    reasoning       text, -- LLM explanation: why the haircut was chosen, or why no haircut fits
+    recommended_haircut_style_id uuid REFERENCES haircut_styles(id) ON DELETE SET NULL, -- first haircut of the recommendation
     error_message   text,
     requested_at    timestamptz NOT NULL DEFAULT now(),
     completed_at    timestamptz,

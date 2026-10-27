@@ -1,17 +1,26 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
-import PlaceholderPage from './pages/PlaceholderPage';
-import ClientHomePage from './pages/ClientHomePage';
+import LoginPage from './pages/auth/LoginPage';
+import RegisterPage from './pages/auth/RegisterPage';
 import { RoleProtectedRoute } from './components/RoleProtectedRoute';
 import { PublicRoute } from './components/PublicRoute';
-import EditUserPage from './pages/EditUserPage';
-import BookingScratchPage from './pages/BookingScratchPage';
-import ManagerLayoutPage from './pages/ManagerLayoutPage';
-import ManagerStaffPage from './pages/ManagerStaffPage';
-import ManagerClientsPage from './pages/ManagerClientsPage';
-import ManagerSectionPlaceholderPage from './pages/ManagerSectionPlaceholderPage';
+import EditUserPage from './pages/client/EditUserPage';
+import BookAppointmentPage from './pages/BookAppointmentPage';
+import ManagerStaffPage from './pages/staff/ManagerStaffPage';
+import ManagerClientsPage from './pages/staff/StaffClientsPage';
+import StaffAppointmentsPage from './pages/staff/StaffAppointmentsPage';
+import ManagerSectionPlaceholderPage from './pages/staff/ManagerSectionPlaceholderPage';
+import ManagerManagementPage from './pages/staff/ManagerManagementPage';
+import StaffInventoryPage from './pages/staff/StaffInventoryPage';
+import StaffSuppliesPage from './pages/staff/StaffSuppliesPage';
+import StaffSupplyCategoriesPage from './pages/staff/StaffSupplyCategoriesPage';
+import DashboardLayout from './pages/DashboardLayout';
+import RecommendationPage from './pages/client/RecommendationPage';
+import ClientAppointmentsPage from './pages/client/ClientAppointmentPage';
+import ClientAppointmentDetailPage from './pages/client/ClientAppointmentDetailPage';
+
+/* Enlace "Volver" de los CRUD de Gestión que aún son placeholders. */
+const MANAGEMENT_BACK_LINK = { to: '/manager/management', label: 'Volver a Gestión' };
 
 const router = createBrowserRouter([
   /* Client */
@@ -19,32 +28,41 @@ const router = createBrowserRouter([
     element: <RoleProtectedRoute allowedRole="client" />,
     children: [
       {
+        // Destino del login para el cliente: abre la primera sección del dashboard
         path: '/client/home',
-        element: <ClientHomePage />
+        element: <Navigate to="/client/booking" replace />
       },
       {
-        path: '/profile',
-        element: <EditUserPage />
-      },
-      {
-        // Temporal: UI de reserva con datos mock
-        path: '/client/booking-scratch',
-        element: <BookingScratchPage />
+        // Layout compartido (sidebar + contenido) de las secciones del cliente
+        element: <DashboardLayout role="client" />,
+        children: [
+          {
+            path: '/client/booking',
+            element: <BookAppointmentPage />
+          },
+          {
+            // Temporal: se reemplaza por la vista real de citas agendadas
+            path: '/client/appointments',
+            element: <ClientAppointmentsPage />
+          },
+          {
+            path: '/client/appointments/:appointmentId',
+            element: <ClientAppointmentDetailPage />
+          },
+          {
+            path: '/client/recommend-haircut',
+            element: <RecommendationPage />
+          },
+          {
+            path: '/client/profile',
+            element: <EditUserPage />
+          }
+        ]
       }
     ]
   },
+  /* Manager */
   {
-    /* Barber */
-    element: <RoleProtectedRoute allowedRole="barber" />,
-    children: [
-      {
-        path: '/barber/home',
-        element: <PlaceholderPage title="barber" />
-      }
-    ]
-  },
-  {
-    /* Manager */
     element: <RoleProtectedRoute allowedRole="manager" />,
     children: [
       {
@@ -54,7 +72,7 @@ const router = createBrowserRouter([
       },
       {
         // Layout compartido (sidebar + contenido) de las secciones del dashboard
-        element: <ManagerLayoutPage />,
+        element: <DashboardLayout role="manager" />,
         children: [
           {
             path: '/manager/staff',
@@ -65,24 +83,70 @@ const router = createBrowserRouter([
             element: <ManagerClientsPage />
           },
           {
-            // Temporal: se reemplaza por la vista real de insumos
+            path: '/manager/appointments',
+            element: <StaffAppointmentsPage />
+          },
+          {
+            path: '/manager/booking',
+            element: <BookAppointmentPage />
+          },
+          {
             path: '/manager/inventory',
+            element: <StaffInventoryPage role="manager" />
+          },
+          {
+            path: '/manager/inventory/supplies',
+            element: <StaffSuppliesPage role="manager" />
+          },
+          {
+            path: '/manager/inventory/supply-categories',
+            element: <StaffSupplyCategoriesPage role="manager" />
+          },
+          {
+            path: '/manager/management',
+            element: <ManagerManagementPage />
+          },
+          {
+            // Temporal: se reemplaza por el CRUD de sucursales
+            path: '/manager/management/shops',
             element: (
               <ManagerSectionPlaceholderPage
-                title="Inventario"
-                subtitle="Control de insumos y existencias."
-                plannedItems={['insumos', 'categorías', 'existencias', 'movimientos de entrada y salida']}
+                title="Sucursales"
+                subtitle="Administración de las sucursales de la barbería."
+                backTo={MANAGEMENT_BACK_LINK}
               />
             )
           },
           {
-            // Temporal: se reemplaza por la vista real de gestión
-            path: '/manager/management',
+            // Temporal: se reemplaza por el CRUD de turnos
+            path: '/manager/management/shifts',
             element: (
               <ManagerSectionPlaceholderPage
-                title="Gestión"
-                subtitle="Configuración general del negocio."
-                plannedItems={['sucursales', 'servicios ofrecidos', 'horarios de atención']}
+                title="Turnos"
+                subtitle="Horarios de los turnos de trabajo."
+                backTo={MANAGEMENT_BACK_LINK}
+              />
+            )
+          },
+          {
+            // Temporal: se reemplaza por el CRUD de servicios ofrecidos
+            path: '/manager/management/services',
+            element: (
+              <ManagerSectionPlaceholderPage
+                title="Servicios ofrecidos"
+                subtitle="Administración de los servicios, su duración y su precio."
+                backTo={MANAGEMENT_BACK_LINK}
+              />
+            )
+          },
+          {
+            // Temporal: se reemplaza por el CRUD de categorías de servicios
+            path: '/manager/management/service-categories',
+            element: (
+              <ManagerSectionPlaceholderPage
+                title="Categorías de servicios"
+                subtitle="Organización de los servicios por categoría."
+                backTo={MANAGEMENT_BACK_LINK}
               />
             )
           }
@@ -90,18 +154,49 @@ const router = createBrowserRouter([
       }
     ]
   },
+  /* Receptionist */
   {
-    /* Receptionist */
     element: <RoleProtectedRoute allowedRole="receptionist" />,
     children: [
       {
+        // Destino del login para el recepcionista: abre la primera sección del dashboard
         path: '/receptionist/home',
-        element: <PlaceholderPage title="receptionist" />
+        element: <Navigate to="/receptionist/booking" replace />
+      },
+      {
+        // Layout compartido (sidebar + contenido) de las secciones del recepcionista
+        element: <DashboardLayout role="receptionist" />,
+        children: [
+          {
+            path: '/receptionist/appointments',
+            element: <StaffAppointmentsPage />
+          },
+          {
+            path: '/receptionist/booking',
+            element: <BookAppointmentPage />
+          },
+          {
+            path: '/receptionist/clients',
+            element: <ManagerClientsPage />
+          },
+          {
+            path: '/receptionist/inventory',
+            element: <StaffInventoryPage role="receptionist" />
+          },
+          {
+            path: '/receptionist/inventory/supplies',
+            element: <StaffSuppliesPage role="receptionist" />
+          },
+          {
+            path: '/receptionist/inventory/supply-categories',
+            element: <StaffSupplyCategoriesPage role="receptionist" />
+          }
+        ]
       }
     ]
   },
+  /* Public */
   {
-    /* Public */
     element: <PublicRoute />,
     children: [
       {

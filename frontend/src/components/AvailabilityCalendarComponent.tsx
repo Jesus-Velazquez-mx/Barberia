@@ -46,7 +46,7 @@ const SELECTED_COLORS = {
 const LEGEND: { label: string; swatch: string }[] = [
   { label: 'Disponible', swatch: STATUS_COLORS.available.swatch },
   { label: 'No disponible', swatch: STATUS_COLORS.full.swatch },
-  { label: 'Día inhábil', swatch: STATUS_COLORS.closed.swatch },
+  { label: 'Día inhábil / pasado', swatch: STATUS_COLORS.closed.swatch },
   { label: 'Seleccionado', swatch: SELECTED_COLORS.swatch }
 ];
 

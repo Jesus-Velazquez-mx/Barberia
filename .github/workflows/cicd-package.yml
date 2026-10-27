@@ -1,4 +1,4 @@
-name: Node.js CI with Docker
+name: Test and deploy
 
 on:
   push:
@@ -7,7 +7,34 @@ on:
     branches: [ "main", "dev" ]
 
 jobs:
-  test:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      ai_service: ${{ steps.filter.outputs.ai_service }}
+    steps:
+    - uses: actions/checkout@v7
+    - uses: dorny/paths-filter@v4
+      id: filter
+      with:
+        filters: |
+          backend:
+            - 'backend/**'
+            - '.github/workflows/cicd-package.yml'
+          frontend:
+            - 'frontend/**'
+            - '.github/workflows/cicd-package.yml'
+          ai_service:
+            - 'ai_service/**'
+            - '.github/workflows/cicd-package.yml'
+
+  backend-tests:
+    needs: [changes]
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -30,17 +57,12 @@ jobs:
       with:
         node-version: '24'
         cache: 'npm'
-        cache-dependency-path: '**/package-lock.json'
+        cache-dependency-path: backend/package-lock.json
 
     - name: Install Backend dependencies
       run: |
         cd backend
         npm install
-
-    - name: Install Frontend dependencies
-      run: |
-        cd frontend
-        npm install --legacy-peer-deps
 
     - name: Load schema into test database
       env:
@@ -66,12 +88,35 @@ jobs:
         AWS_BUCKET_KEY_PREFIX: ci-test/images/
       run: |
         cd backend
+        npx tsc -b --noEmit
         npm run lint
         npm test
-    
+
     - name: Prettier check (backend)
       working-directory: backend
       run: npm run prettier || echo "::warning title=Prettier::Backend files are not formatted correctly"
+
+  frontend-tests:
+    needs: [changes]
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+    - name: Set up Node.js 24
+      uses: actions/setup-node@v7
+      with:
+        node-version: '24'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install Frontend dependencies
+      run: |
+        cd frontend
+        npm install --legacy-peer-deps
+
+    - name: Check build on frontend
+      working-directory: frontend
+      run: npx tsc -b --noEmit
 
     - name: Check linter on frontend
       working-directory: frontend
@@ -80,6 +125,40 @@ jobs:
     - name: Prettier check (frontend)
       working-directory: frontend
       run: npm run prettier || echo "::warning title=Prettier::Frontend files are not formatted correctly"
+
+  ai-service-tests:
+    needs: [changes]
+    if: needs.changes.outputs.ai_service == 'true'
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v10.3.0
+      with:
+        enable-cache: true
+
+    - name: Install AI service dependencies
+      run: |
+        cd ai_service
+        uv sync --frozen
+
+    - name: Test AI service with pytest
+      env:
+        AI_SERVICE_API_KEY: ci-test-ai-key
+      run: |
+        cd ai_service
+        uv run pytest
+
+  # Aggregate gate: keeps the "test" name for branch protection and the deploy
+  # jobs. Skipped test jobs count as passing; failed or cancelled ones do not.
+  test:
+    needs: [changes, backend-tests, frontend-tests, ai-service-tests]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check test results
+      if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+      run: exit 1
 
   frontend-deploy:
     runs-on: ubuntu-latest

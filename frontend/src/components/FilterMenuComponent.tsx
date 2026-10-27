@@ -14,9 +14,11 @@ interface FilterMenuProps {
   /* Valor que representa "sin filtro"; mientras sea distinto, el botón muestra el indicador de filtro activo. */
   defaultValue: string;
   onChange: (value: string) => void;
+  /* Texto del botón. Por defecto "Filtros"; se cambia cuando una página usa varios menús (p. ej. "Sucursal"). */
+  label?: string;
 }
 
-export function FilterMenu({ title, options, value, defaultValue, onChange }: FilterMenuProps) {
+export function FilterMenu({ title, options, value, defaultValue, onChange, label = 'Filtros' }: FilterMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const isActive = value !== defaultValue;
@@ -50,7 +52,7 @@ export function FilterMenu({ title, options, value, defaultValue, onChange }: Fi
         className="relative inline-flex h-10 cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-[#262626] px-4 text-sm font-semibold text-[var(--text-h)] transition-colors hover:border-[var(--accent)]/60"
       >
         <Funnel size={16} aria-hidden="true" />
-        Filtros
+        {label}
         {isActive && (
           <span
             className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-[var(--accent)]"

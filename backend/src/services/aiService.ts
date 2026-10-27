@@ -21,6 +21,12 @@ import { isUserSessionValid } from '../utils/userSession.js';
 import { getUserPhotoKey } from '../utils/photoKey.js';
 import { getClientByUserId, updateClientFacialStructure } from '../repositories/clientRepository.js';
 import { getActiveHaircutStyles, getActiveHaircutStylesByFacialStructure } from '../repositories/haircutRepository.js';
+import {
+    createRecommendationHistory,
+    type CreateRecommendationHistoryParams,
+} from '../repositories/recommendationHistoryRepository.js';
+import type { Client } from '../types/entities/client.interface.js';
+import type { User } from '../types/entities/user.interface.js';
 import { calculateAge } from './userService.js';
 
 /** Plantilla fija que se envía al cliente cuando el LLM descarta todos los cortes; el motivo va aparte en `data.reason`. */
@@ -55,10 +61,15 @@ export const testConnection = async (): Promise<RecommendationHealthResponse> =>
 /**
  * Función auxiliar para llamar al microservicio de Python y detectar la estructura facial usando la IA.
  */
-export const detectFacialStructure = async (photoKey: string): Promise<InternalAIResponse<InternalAIFaceDetectionResponse>> => {
+export const detectFacialStructure = async (
+    photoKey: string
+): Promise<InternalAIResponse<InternalAIFaceDetectionResponse>> => {
     let res: Response;
 
-    const payload = buildAIServicePayload<InternalAIFaceDetectionRequest>({ obj: { photoKey }, includeProvider: false });
+    const payload = buildAIServicePayload<InternalAIFaceDetectionRequest>({
+        obj: { photoKey },
+        includeProvider: false,
+    });
 
     try {
         res = await fetch(`${globalConfig.AI_SERVICE_URL}/face/detect-structure`, {
@@ -88,12 +99,10 @@ export const generateRecommendation = async (
     recommendationParams: HaircutRecommendationRequest,
     token: string
 ): Promise<HaircutRecommendationResult> => {
-    let res: Response;
-
     const performer = await isUserSessionValid(token);
 
     if (performer.role !== 'client') {
-        throw new ApiError(ApiErrorCode.UNAUTHORIZED, 'This feature is only available for clients');
+        throw new ApiError(ApiErrorCode.FORBIDDEN, 'This feature is only available for clients');
     }
 
     const user = await getUserById(performer.id);
@@ -103,7 +112,40 @@ export const generateRecommendation = async (
         throw new ApiError(ApiErrorCode.NOT_FOUND, 'Client could not be found');
     }
 
-    const photoKey = getUserPhotoKey(performer.id);
+    const requestedAt = new Date();
+    let recommendationResult: HaircutRecommendationResult;
+
+    try {
+        recommendationResult = await requestRecommendation(user, client, recommendationParams);
+    } catch (error) {
+        await saveRecommendationHistory({
+            clientId: client.user_id,
+            errorMessage: error instanceof Error ? error.message : String(error),
+            requestedAt,
+        });
+        throw error;
+    }
+
+    await saveRecommendationHistory({
+        clientId: client.user_id,
+        requestedAt,
+        ...toHistoryFields(recommendationResult),
+    });
+
+    return recommendationResult;
+};
+
+/**
+ * Obtiene la recomendación llamando a la IA (y detectando antes la estructura facial si el cliente aún no la tiene).
+ */
+const requestRecommendation = async (
+    user: User,
+    client: Client,
+    recommendationParams: HaircutRecommendationRequest
+): Promise<HaircutRecommendationResult> => {
+    let res: Response;
+
+    const photoKey = getUserPhotoKey(client.user_id);
 
     if (!client.facial_structure_type) {
         // Si el cliente no tiene una estructura facial registrada, llamamos a la IA para detectarla con la foto.
@@ -111,9 +153,9 @@ export const generateRecommendation = async (
 
         if (facialStructureResponse.data) {
             client.facial_structure_type = facialStructureResponse.data.facialStructure;
-            
+
             // Se guarda para no volver a invocar a la IA en las siguientes recomendaciones.
-            await updateClientFacialStructure(performer.id, client.facial_structure_type);
+            await updateClientFacialStructure(client.user_id, client.facial_structure_type);
 
             console.log(
                 chalk.green(
@@ -125,11 +167,7 @@ export const generateRecommendation = async (
         }
     }
 
-    console.log(
-        chalk.green(
-            `Estructura facial obtenida desde la base de datos: ${client.facial_structure_type}`
-        )
-    );
+    console.log(chalk.green(`Estructura facial obtenida desde la base de datos: ${client.facial_structure_type}`));
 
     const availableHaircuts =
         (await getActiveHaircutStylesByFacialStructure(client.facial_structure_type)) ??
@@ -169,8 +207,42 @@ export const generateRecommendation = async (
     }
 
     const aiResponse = (await res.json()) as InternalAIResponse<InternalAIRecommendationResponse>;
-
     return toRecommendationResult(aiResponse.data);
+};
+
+type HistoryResultFields = Pick<
+    CreateRecommendationHistoryParams,
+    'suggestionText' | 'confidence' | 'reasoning' | 'recommendedHaircutStyleId'
+>;
+
+/** Campos del historial que corresponden a un resultado de la IA (recomendación o "ningún corte aplica"). */
+const toHistoryFields = ({ data }: HaircutRecommendationResult): HistoryResultFields => {
+    if (data.status === 'no_suitable_haircut') {
+        return { reasoning: data.reason };
+    }
+
+    return {
+        suggestionText: data.suggestionText,
+        // La IA reporta la confianza entre 0 y 1, pero la tabla la guarda como porcentaje.
+        confidence: Math.round(data.confidence * 10000) / 100,
+        reasoning: data.reasoning,
+        // Si la IA sugiere varios cortes, el historial solo conserva el primero.
+        recommendedHaircutStyleId: data.haircuts[0]?.id ?? null,
+    };
+};
+
+/**
+ * Guarda el resultado en el historial. Un fallo al guardar solo se registra en el log: no debe tumbar la solicitud
+ * (ni ocultar el error original de la IA cuando se está guardando un fallo).
+ */
+const saveRecommendationHistory = async (
+    params: Omit<CreateRecommendationHistoryParams, 'completedAt'>
+): Promise<void> => {
+    try {
+        await createRecommendationHistory({ ...params, completedAt: new Date() });
+    } catch (error) {
+        console.error(chalk.red('\nERROR - Could not save the recommendation to the history:'), error);
+    }
 };
 
 /**
@@ -192,7 +264,10 @@ const toRecommendationResult = (data: InternalAIRecommendationResponse | undefin
 
     if (data.suggestionText === undefined || data.confidence === undefined) {
         console.error(chalk.red('\nERROR - AI service returned an incomplete recommendation:'), data);
-        throw new ApiError(ApiErrorCode.INTERNAL_SERVER_ERROR, 'Haircut recommendation request returned incomplete data');
+        throw new ApiError(
+            ApiErrorCode.INTERNAL_SERVER_ERROR,
+            'Haircut recommendation request returned incomplete data'
+        );
     }
 
     return {
@@ -249,10 +324,10 @@ const buildAIServicePayload = <T>({
 }: BuildAIServicePayloadProps<T>): InternalAIRequest<T> => {
     return includeProvider
         ? {
-            data: obj,
-            provider: globalConfig.AI_PROVIDER,
-        }
+              data: obj,
+              provider: globalConfig.AI_PROVIDER,
+          }
         : {
-            data: obj,
-        };
+              data: obj,
+          };
 };

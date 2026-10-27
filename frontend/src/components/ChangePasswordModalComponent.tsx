@@ -28,7 +28,7 @@ export function ChangePasswordModal({
   isSubmitting
 }: ChangePasswordModalProps) {
   return (
-    <Modal isOpen={isOpen} onClose={onClose}>
+    <Modal isOpen={isOpen} onClose={onClose} className="pb-8">
       <div className="mb-5 flex items-start justify-between">
         <div>
           <h2 className="m-0 text-xl font-semibold text-[var(--text-h)]">Cambiar contraseña</h2>

@@ -27,7 +27,6 @@ $$;
 
 -- Remove application enum types and any remaining dependencies.
 DROP TYPE IF EXISTS supply_movement_type CASCADE;
-DROP TYPE IF EXISTS shift_name CASCADE;
 DROP TYPE IF EXISTS notification_status CASCADE;
 DROP TYPE IF EXISTS appointment_status CASCADE;
 DROP TYPE IF EXISTS facial_structure_type CASCADE;
@@ -41,5 +40,6 @@ DROP FUNCTION IF EXISTS update_client_loyalty_count() CASCADE;
 DROP FUNCTION IF EXISTS check_barber_deletable() CASCADE;
 DROP FUNCTION IF EXISTS check_manager_deletable() CASCADE;
 DROP FUNCTION IF EXISTS set_appointment_client_email() CASCADE;
+DROP FUNCTION IF EXISTS set_original_appointment_start() CASCADE;
 
 COMMIT;

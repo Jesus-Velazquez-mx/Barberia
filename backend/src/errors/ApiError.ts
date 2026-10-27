@@ -6,9 +6,10 @@ export enum ApiErrorCode {
     NOT_FOUND = 404,
     INVALID_CREDENTIALS = 404,
     USER_ALREADY_EXISTS = 409,
+    CONFLICT = 409,
     INVALID_INPUT = 422,
     INTERNAL_SERVER_ERROR = 500,
-    BAD_GATEWAY = 502
+    BAD_GATEWAY = 502,
 }
 
 export class ApiError extends Error {

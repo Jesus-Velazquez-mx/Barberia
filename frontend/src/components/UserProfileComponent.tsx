@@ -47,7 +47,7 @@ export function UserProfile({ user, onEdit, onChangePassword, onDeleteAccount, o
   const initials = `${user.firstName[0] ?? ''}${user.lastName[0] ?? ''}`.toUpperCase();
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-8 w-full">
       <header>
         <h1 className="m-0 font-sans text-3xl font-semibold tracking-normal text-(--text-h)">Mi perfil</h1>
         <p className="mt-1 text-sm font-semibold text-(--text)">

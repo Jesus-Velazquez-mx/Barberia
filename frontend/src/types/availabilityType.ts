@@ -17,8 +17,8 @@ export interface AvailableSlotsByBarber {
 /** Parámetros necesarios para consultar la disponibilidad */
 export interface GetAvailabilityParams {
     shopId: string;
-    date: string;      // YYYY-MM-DD
-    serviceId: string; // UUID
+    date: string; // YYYY-MM-DD
+    serviceIds: string[]; // UUIDs, la duración es la suma de los servicios
 }
 
 /* Estado de un día en el calendario:

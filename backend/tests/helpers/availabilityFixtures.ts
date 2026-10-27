@@ -6,10 +6,10 @@ const { getPool } = connection;
 
 // Estado centralizado de fixtures para rastreo y limpieza segura en cascada
 export const createdAppointmentIds: string[] = [];
-export const createdAvailabilitySlotIds: string[] = [];
 export const createdServiceIds: string[] = [];
 export const createdServiceCategoryIds: string[] = [];
 export const createdBarberIds: string[] = [];
+export const createdReceptionistIds: string[] = [];
 export const createdShopIds: string[] = [];
 export const createdShiftIds: string[] = [];
 export const createdManagerIds: string[] = [];
@@ -68,11 +68,7 @@ export const insertShop = async (
 /**
  * Inserta un turno en la tabla 'shifts' o reutiliza uno existente si ya existe uno con ese nombre.
  */
-export const insertShift = async (
-    name: 'morning' | 'afternoon',
-    startTime = '08:00',
-    endTime = '16:00'
-): Promise<string> => {
+export const insertShift = async (name: string, startTime = '08:00', endTime = '16:00'): Promise<string> => {
     const existing = await getPool().query(`SELECT id FROM shifts WHERE name = $1`, [name]);
     if (existing.rows.length > 0) {
         return existing.rows[0].id;
@@ -128,6 +124,23 @@ export const insertBarber = async (
 };
 
 /**
+ * Inserta un recepcionista: su usuario base en 'users' (rol receptionist) y su fila en 'receptionists'.
+ */
+export const insertReceptionist = async (
+    shopId: string,
+    shiftId: string,
+    options?: { isDeleted?: boolean }
+): Promise<{ id: string; email: string }> => {
+    const user = await insertUser('receptionist');
+    await getPool().query(
+        `INSERT INTO receptionists (user_id, shop_id, shift_id, deleted_at) VALUES ($1, $2, $3, $4)`,
+        [user.id, shopId, shiftId, options?.isDeleted ? new Date() : null]
+    );
+    createdReceptionistIds.push(user.id);
+    return user;
+};
+
+/**
  * Inserta una categoría de servicios si no existe ya una categoría por defecto.
  */
 export const insertServiceCategory = async (name?: string): Promise<string> => {
@@ -151,15 +164,8 @@ export const insertService = async (options?: {
     price?: number;
     isActive?: boolean;
 }): Promise<string> => {
-    let categoryId = options?.categoryId;
-    if (!categoryId) {
-        const catRes = await getPool().query(`SELECT id FROM services_categories LIMIT 1`);
-        if (catRes.rows.length > 0) {
-            categoryId = catRes.rows[0].id;
-        } else {
-            categoryId = await insertServiceCategory();
-        }
-    }
+    // Categoría propia: reutilizar una existente choca con otros archivos de test que corren en paralelo
+    const categoryId = options?.categoryId ?? (await insertServiceCategory());
 
     const name = options?.name ?? generateUniqueFixtureName('Service');
     const durationMinutes = options?.durationMinutes ?? 30;
@@ -173,27 +179,6 @@ export const insertService = async (options?: {
     );
     const id = result.rows[0].id;
     createdServiceIds.push(id);
-    return id;
-};
-
-/**
- * Inserta una plantilla de disponibilidad en 'availability_slots'.
- */
-export const insertAvailabilitySlot = async (
-    barberId: string,
-    shopId: string,
-    dayOfWeek: number,
-    startTime: string,
-    endTime: string,
-    isActive = true
-): Promise<string> => {
-    const result = await getPool().query(
-        `INSERT INTO availability_slots (barber_id, shop_id, day_of_week, start_time, end_time, is_active)
-         VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-        [barberId, shopId, dayOfWeek, startTime, endTime, isActive]
-    );
-    const id = result.rows[0].id;
-    createdAvailabilitySlotIds.push(id);
     return id;
 };
 
@@ -221,7 +206,17 @@ export const insertAppointment = async (
     const result = await getPool().query(
         `INSERT INTO appointments (shop_id, barber_id, client_id, is_registered_client, guest_client_name, is_walk_in, status, scheduled_start, scheduled_end)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
-        [shopId, barberId, clientId, isRegisteredClient, guestClientName, isWalkIn, status, scheduledStart, scheduledEnd]
+        [
+            shopId,
+            barberId,
+            clientId,
+            isRegisteredClient,
+            guestClientName,
+            isWalkIn,
+            status,
+            scheduledStart,
+            scheduledEnd,
+        ]
     );
     const id = result.rows[0].id;
     createdAppointmentIds.push(id);
@@ -231,10 +226,10 @@ export const insertAppointment = async (
 /**
  * Limpieza respetando estrictamente el orden de llaves foráneas:
  * 1. appointments (depende de barbers, shops, clients/users)
- * 2. availability_slots (depende de barbers, shops)
- * 3. services (depende de services_categories)
- * 4. services_categories
- * 5. barbers (depende de shops, shifts)
+ * 2. services (depende de services_categories)
+ * 3. services_categories
+ * 4. barbers (depende de shops, shifts)
+ * 5. receptionists (depende de shops, shifts y users; las FK a shops/shifts son RESTRICT)
  * 6. shops (depende de managers)
  * 7. managers (depende de users)
  * 8. users
@@ -246,11 +241,6 @@ export const cleanupFixtures = async () => {
     if (createdAppointmentIds.length > 0) {
         await pool.query(`DELETE FROM appointments WHERE id = ANY($1::uuid[])`, [createdAppointmentIds]);
         createdAppointmentIds.length = 0;
-    }
-
-    if (createdAvailabilitySlotIds.length > 0) {
-        await pool.query(`DELETE FROM availability_slots WHERE id = ANY($1::uuid[])`, [createdAvailabilitySlotIds]);
-        createdAvailabilitySlotIds.length = 0;
     }
 
     if (createdServiceIds.length > 0) {
@@ -266,6 +256,11 @@ export const cleanupFixtures = async () => {
     if (createdBarberIds.length > 0) {
         await pool.query(`DELETE FROM barbers WHERE id = ANY($1::uuid[])`, [createdBarberIds]);
         createdBarberIds.length = 0;
+    }
+
+    if (createdReceptionistIds.length > 0) {
+        await pool.query(`DELETE FROM receptionists WHERE user_id = ANY($1::uuid[])`, [createdReceptionistIds]);
+        createdReceptionistIds.length = 0;
     }
 
     if (createdShopIds.length > 0) {
