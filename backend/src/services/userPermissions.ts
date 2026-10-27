@@ -121,6 +121,42 @@ export const canCreateAppointment = (
 };
 
 /**
+ * PUT /appointments/:id: mismo alcance que canCreateAppointment, pero sobre la cita existente:
+ * - client: solo sus propias citas (las de invitados tienen clientId null, así que nunca coinciden).
+ * - receptionist: citas de la sucursal donde trabaja.
+ * - manager: citas de las sucursales que administra.
+ */
+export const canEditAppointment = (
+    performer: UserIdentity,
+    appointment: { clientId: string | null; shopId: string; shopManagerId: string },
+    receptionistShopId: string | null = null
+): boolean => {
+    switch (performer.role) {
+        case 'client':
+            return appointment.clientId !== null && appointment.clientId === performer.id;
+        case 'receptionist':
+            return receptionistShopId === appointment.shopId;
+        case 'manager':
+            return appointment.shopManagerId === performer.id;
+    }
+};
+
+/** Horas mínimas de anticipación con las que un cliente puede editar o cancelar su cita. */
+export const CLIENT_EDIT_CUTOFF_HOURS = 8;
+
+/**
+ * Solo los clientes están sujetos al límite de 8 horas; recepción y gerentes pueden editar hasta que la
+ * cita pase a checked_in. Es una comparación entre instantes absolutos (sin zona horaria del negocio).
+ */
+export const isWithinClientEditCutoff = (
+    performer: UserIdentity,
+    scheduledStart: Date,
+    now: Date = new Date()
+): boolean =>
+    performer.role !== 'client' ||
+    scheduledStart.getTime() - now.getTime() >= CLIENT_EDIT_CUTOFF_HOURS * 60 * 60 * 1000;
+
+/**
  * GET /appointments: la recepción y los gerentes solo pueden consultar las citas de las sucursales a las que
  * pertenecen (la sucursal donde trabaja la recepción; las que administra el gerente).
  */

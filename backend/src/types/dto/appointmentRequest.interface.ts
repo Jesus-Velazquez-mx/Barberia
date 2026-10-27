@@ -9,6 +9,14 @@ export interface CreateAppointmentRequest {
     notes?: string;
 }
 
+// Todos los campos son opcionales (al menos uno); el cliente, el invitado y la sucursal no se pueden editar.
+export interface UpdateAppointmentRequest {
+    barberId?: string;
+    serviceIds?: string[];
+    scheduledStart?: string;
+    notes?: string | null;
+}
+
 export type AppointmentClientType = 'registered' | 'visitor';
 
 export interface ListAppointmentsQuery {

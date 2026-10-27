@@ -380,7 +380,7 @@ router.get('/shops/:id/receptionists', listReceptionistsByShop);
  * /api/shops/{id}/availability:
  *   get:
  *     summary: Consulta los horarios disponibles por barbero para una sucursal, fecha y servicios
- *     tags: [Shops, Availability]
+ *     tags: [Shops, Availability, Appointments]
  *     description: Calcula los horarios de inicio agendables por cada barbero elegible de la sucursal para uno o más servicios en una fecha determinada; la duración considerada es la suma de las duraciones de los servicios. Endpoint público.
  *     parameters:
  *       - in: path

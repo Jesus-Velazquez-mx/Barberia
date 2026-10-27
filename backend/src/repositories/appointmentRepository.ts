@@ -29,25 +29,47 @@ export interface CreateAppointmentInput {
     services: { serviceId: string; priceAtBooking: number; durationMinutesAtBooking: number }[];
 }
 
+export interface UpdateAppointmentInput {
+    appointmentId: string;
+    barberId: string;
+    scheduledStart: Date;
+    scheduledEnd: Date;
+    notes: string | null;
+    status: AppointmentStatus;
+    // Servicios finales de la cita; los que ya estaban agendados conservan su snapshot de precio y duración.
+    services: { serviceId: string; priceAtBooking: number; durationMinutesAtBooking: number }[];
+}
+
 /**
- * Citas que ocupan agenda (status scheduled / checked_in) de varios barberos que se
+ * Citas que ocupan agenda (status scheduled / rescheduled / checked_in) de varios barberos que se
  * traslapan con el rango [from, to). Las cancelled / no_show / completed nunca bloquean.
+ * `excludeAppointmentId` omite una cita (la que se está editando) para que no choque consigo misma.
  */
 export const getBlockingAppointmentsByBarberIdsAndRange = async (
     barberIds: string[],
     from: Date,
-    to: Date
+    to: Date,
+    excludeAppointmentId?: string
 ): Promise<Pick<Appointment, 'barber_id' | 'scheduled_start' | 'scheduled_end'>[]> => {
     if (barberIds.length === 0) return [];
 
     const result = await db.getPool().query(
         `SELECT barber_id, scheduled_start, scheduled_end FROM appointments
          WHERE barber_id = ANY($1::uuid[])
-           AND status IN ('scheduled', 'checked_in')
-           AND scheduled_start < $3 AND scheduled_end > $2`,
-        [barberIds, from, to]
+           AND status IN ('scheduled', 'rescheduled', 'checked_in')
+           AND scheduled_start < $3 AND scheduled_end > $2
+           AND ($4::uuid IS NULL OR id <> $4)`,
+        [barberIds, from, to, excludeAppointmentId ?? null]
     );
     return result.rows;
+};
+
+/**
+ * Busca una cita por su id.
+ */
+export const getAppointmentById = async (id: string): Promise<Appointment | null> => {
+    const result = await db.getPool().query(`SELECT ${APPOINTMENT_COLUMNS} FROM appointments WHERE id = $1`, [id]);
+    return result.rows.length ? result.rows[0] : null;
 };
 
 /**
@@ -132,7 +154,7 @@ export const createAppointmentWithServices = async (
         const overlap = await client.query(
             `SELECT 1 FROM appointments
              WHERE barber_id = $1
-               AND status IN ('scheduled', 'checked_in')
+               AND status IN ('scheduled', 'rescheduled', 'checked_in')
                AND scheduled_start < $3 AND scheduled_end > $2
              LIMIT 1`,
             [data.barberId, data.scheduledStart, data.scheduledEnd]
@@ -174,6 +196,101 @@ export const createAppointmentWithServices = async (
 
         await client.query('COMMIT');
         return { appointment, services };
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
+};
+
+/**
+ * Edita la cita y sincroniza sus servicios en una sola transacción.
+ * Toma primero el candado de la cita (evita carreras contra cancelar / check-in u otra edición) y después
+ * el de la fila del barbero destino, el mismo que usa createAppointmentWithServices, así que una edición
+ * y una reserva simultáneas para ese barbero se serializan y solo una gana (la otra recibe 409).
+ * Los servicios que se conservan no se tocan para no perder su snapshot de precio y duración.
+ */
+export const updateAppointmentWithServices = async (
+    data: UpdateAppointmentInput
+): Promise<{ appointment: Appointment; services: AppointmentService[] }> => {
+    const pool = db.getPool();
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        const current = await client.query(
+            `SELECT shop_id, status FROM appointments WHERE id = $1 FOR UPDATE`,
+            [data.appointmentId]
+        );
+        if (current.rows.length === 0) {
+            throw new ApiError(ApiErrorCode.NOT_FOUND, 'Appointment not found');
+        }
+        if (!['scheduled', 'rescheduled'].includes(current.rows[0].status)) {
+            throw new ApiError(ApiErrorCode.CONFLICT, 'Only scheduled or rescheduled appointments can be edited');
+        }
+
+        const barber = await client.query(
+            `SELECT id FROM barbers
+             WHERE id = $1 AND shop_id = $2 AND deleted_at IS NULL AND is_accepting_bookings = true
+             FOR UPDATE`,
+            [data.barberId, current.rows[0].shop_id]
+        );
+        if (barber.rows.length === 0) {
+            throw new ApiError(ApiErrorCode.NOT_FOUND, 'Barber not found or is not accepting bookings');
+        }
+
+        const overlap = await client.query(
+            `SELECT 1 FROM appointments
+             WHERE barber_id = $1
+               AND id <> $4
+               AND status IN ('scheduled', 'rescheduled', 'checked_in')
+               AND scheduled_start < $3 AND scheduled_end > $2
+             LIMIT 1`,
+            [data.barberId, data.scheduledStart, data.scheduledEnd, data.appointmentId]
+        );
+        if (overlap.rows.length > 0) {
+            throw new ApiError(ApiErrorCode.CONFLICT, 'Selected time slot is no longer available');
+        }
+
+        const result = await client.query(
+            `UPDATE appointments
+             SET barber_id = $2, scheduled_start = $3, scheduled_end = $4, notes = $5, status = $6
+             WHERE id = $1
+             RETURNING ${APPOINTMENT_COLUMNS}`,
+            [data.appointmentId, data.barberId, data.scheduledStart, data.scheduledEnd, data.notes, data.status]
+        );
+        const appointment: Appointment = result.rows[0];
+
+        const serviceIds = data.services.map((s) => s.serviceId);
+        await client.query(
+            `DELETE FROM appointment_services WHERE appointment_id = $1 AND NOT (service_id = ANY($2::uuid[]))`,
+            [data.appointmentId, serviceIds]
+        );
+        await client.query(
+            `INSERT INTO appointment_services (appointment_id, service_id, price_at_booking, duration_minutes_at_booking)
+             SELECT $1, s.service_id, s.price, s.duration
+             FROM unnest($2::uuid[], $3::numeric[], $4::int[]) AS s(service_id, price, duration)
+             ON CONFLICT (appointment_id, service_id) DO NOTHING`,
+            [
+                data.appointmentId,
+                serviceIds,
+                data.services.map((s) => s.priceAtBooking),
+                data.services.map((s) => s.durationMinutesAtBooking),
+            ]
+        );
+
+        const services = await client.query(
+            `SELECT id, appointment_id, service_id, price_at_booking, duration_minutes_at_booking, created_at
+             FROM appointment_services
+             WHERE appointment_id = $1
+             ORDER BY created_at ASC, id ASC`,
+            [data.appointmentId]
+        );
+
+        await client.query('COMMIT');
+        return { appointment, services: services.rows };
     } catch (error) {
         await client.query('ROLLBACK');
         throw error;
