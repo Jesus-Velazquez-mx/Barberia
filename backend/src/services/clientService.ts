@@ -14,6 +14,8 @@ import {
 import type { FacialStructureType } from '../types/entities/client.interface.js';
 import type { ClientDetailResponse } from '../types/dto/clientResponse.interface.js';
 import { toClientDetailResponse } from '../utils/userMapper.js';
+import { isUserSessionValid } from '../utils/userSession.js';
+import { canCreateClient, UserIdentity } from './userPermissions.js';
 
 export interface CreateClientDTO {
     firstName: string;
@@ -45,16 +47,13 @@ export interface UpdateClientDTO {
  * Si se envía un token, se verifica que sea personal autorizado (manager o receptionist).
  * Si no se envía token, se permite el auto-registro.
  */
-export const registerClient = async ( data: CreateClientDTO, token?: string): Promise<ClientDetailResponse> => {
-    if (token) {
-        const actor = decodeToken(token);
-        if (!(await isUserActive(actor.id))) {
-            throw new ApiError(ApiErrorCode.ACCOUNT_DEACTIVATED, 'Account is deactivated');
-        }
-        if (actor.role === 'client') {
-            throw new ApiError(ApiErrorCode.FORBIDDEN, 'Forbidden: Clients cannot create other client accounts');
-        }
+export const registerClient = async (data: CreateClientDTO, token: string): Promise<ClientDetailResponse> => {
+    const performer = await isUserSessionValid(token);
+
+    if (!canCreateClient({ id: performer.id, role: performer.role })) {
+        throw new ApiError(ApiErrorCode.FORBIDDEN, "Only staff members can directly create client accounts. Create an account using the /register endpoint instead.")
     }
+
 
     const password_hash = await bcrypt.hash(data.password, 10);
 
@@ -84,7 +83,7 @@ export const listClients = async (token: string): Promise<ClientDetailResponse[]
     }
 
     if (actor.role !== 'manager' && actor.role !== 'receptionist') {
-        throw new ApiError(ApiErrorCode.FORBIDDEN, 'Forbidden: Only staff can list clients');
+        throw new ApiError(ApiErrorCode.FORBIDDEN, 'Only staff can list clients');
     }
 
     const clients = await getAllClients();
@@ -105,7 +104,7 @@ export const getClientDetails = async (id: string, token: string): Promise<Clien
     const isStaff = actor.role === 'manager' || actor.role === 'receptionist';
 
     if (!isSelf && !isStaff) {
-        throw new ApiError(ApiErrorCode.FORBIDDEN, 'Forbidden: You do not have permission to view this client');
+        throw new ApiError(ApiErrorCode.FORBIDDEN, 'You do not have permission to view this client');
     }
 
     const client = await getClientById(id);
@@ -135,7 +134,7 @@ export const getClientDetailsByEmail = async (email: string, token: string): Pro
     const isStaff = actor.role === 'manager' || actor.role === 'receptionist';
 
     if (!isSelf && !isStaff) {
-        throw new ApiError(ApiErrorCode.FORBIDDEN, 'Forbidden: You do not have permission to view this client');
+        throw new ApiError(ApiErrorCode.FORBIDDEN, 'You do not have permission to view this client');
     }
 
     return toClientDetailResponse(client);
@@ -152,7 +151,7 @@ export const searchClientsByName = async (name: string, token: string): Promise<
     }
 
     if (actor.role !== 'manager' && actor.role !== 'receptionist') {
-        throw new ApiError(ApiErrorCode.FORBIDDEN, 'Forbidden: Only staff can search clients by name');
+        throw new ApiError(ApiErrorCode.FORBIDDEN, 'Only staff can search clients by name');
     }
 
     const clients = await getClientsByName(name);
@@ -165,8 +164,8 @@ export const searchClientsByName = async (name: string, token: string): Promise<
  * Un cliente puede actualizar su propio perfil; el personal (manager y receptionist) puede actualizar cualquier cliente.
  * Solo el personal puede modificar 'completedServicesCount'.
  */
-export const updateClient = async ( fields: UpdateClientDTO, token: string): Promise<ClientDetailResponse> => {
-    
+export const updateClient = async (fields: UpdateClientDTO, token: string): Promise<ClientDetailResponse> => {
+
     const actor = decodeToken(token);
     if (!(await isUserActive(actor.id))) {
         throw new ApiError(ApiErrorCode.ACCOUNT_DEACTIVATED, 'Account is deactivated');
@@ -181,11 +180,15 @@ export const updateClient = async ( fields: UpdateClientDTO, token: string): Pro
     const isStaff = actor.role === 'manager' || actor.role === 'receptionist';
 
     if (!isSelf && !isStaff) {
-        throw new ApiError(ApiErrorCode.FORBIDDEN, 'Forbidden: You do not have permission to update this client');
+        throw new ApiError(ApiErrorCode.FORBIDDEN, 'You do not have permission to update this client');
     }
 
-    if (!isStaff && fields.completedServicesCount !== undefined) {
-        throw new ApiError(ApiErrorCode.FORBIDDEN, 'Forbidden: Clients cannot modify completed services count');
+    if (!isStaff) {
+        if (fields.completedServicesCount !== undefined) {
+            throw new ApiError(ApiErrorCode.FORBIDDEN, 'Clients cannot modify completed services count');
+        } else if (fields.facialStructureType !== undefined) {
+            throw new ApiError(ApiErrorCode.FORBIDDEN, 'Clients cannot modify facial structure type');
+        }
     }
 
     const updateData: UpdateClientDTO = { ...fields };
@@ -216,7 +219,7 @@ export const deleteClient = async (id: string, token: string): Promise<void> => 
     const isManager = actor.role === 'manager';
 
     if (!isSelf && !isManager) {
-        throw new ApiError(ApiErrorCode.FORBIDDEN, 'Forbidden: You do not have permission to delete this account');
+        throw new ApiError(ApiErrorCode.FORBIDDEN, 'You do not have permission to delete this account');
     }
 
     await deleteClientById(id);

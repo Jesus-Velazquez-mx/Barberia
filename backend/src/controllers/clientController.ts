@@ -69,7 +69,7 @@ const updateClientFieldsSchema = z
  */
 export const create: ApiHandler<ClientDetailResponse> = async (req, res) => {
     try {
-        const token = extractOptionalBearerFromHeader(req);
+        const token = extractBearerFromHeader(req);
         const validData = createClientSchema.parse(req.body);
 
         const result = await registerClient(validData, token);

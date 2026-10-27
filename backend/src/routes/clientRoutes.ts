@@ -140,6 +140,8 @@ router.get('/clients/:id', getById)
  *     summary: Registra un nuevo cliente
  *     tags: [Clients]
  *     description: Crea un nuevo cliente manipulando las tablas `users` y `clients` en una transacción. Si se proporciona token, solo personal (manager/receptionist) puede registrar clientes. Sin token, se permite auto-registro.
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
