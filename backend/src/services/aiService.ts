@@ -102,7 +102,7 @@ export const generateRecommendation = async (
     const performer = await isUserSessionValid(token);
 
     if (performer.role !== 'client') {
-        throw new ApiError(ApiErrorCode.UNAUTHORIZED, 'This feature is only available for clients');
+        throw new ApiError(ApiErrorCode.FORBIDDEN, 'This feature is only available for clients');
     }
 
     const user = await getUserById(performer.id);

@@ -6,6 +6,13 @@ const API_BASE_IP = import.meta.env.VITE_API_IP;
 /* Cuerpo completo de la respuesta, con `data` ya tipado como T */
 export type ApiClientResponse<T> = Omit<ApiResponse<T>, 'data'> & { data: T };
 
+/* Callback que registra el AuthProvider para enterarse cuando una petición autenticada devuelve 401 */
+let unauthorizedHandler: (() => void) | null = null;
+
+export function setUnauthorizedHandler(handler: (() => void) | null) {
+    unauthorizedHandler = handler;
+}
+
 async function request<T>(
     path: string,
     options: RequestInit = {},
@@ -29,13 +36,18 @@ async function request<T>(
 
     const body: ApiResponse<T> | undefined = await response.json().catch(() => undefined);
 
-    if (!response.ok || body?.error || !body) {
+    /* Solo cuenta como sesión inválida si la petición llevaba token (un 401 en el login no lo es) */
+    if (response.status === 401 && new Headers(options.headers).has('Authorization')) {
+        unauthorizedHandler?.();
+    }
+
+    if (!response.ok || body?.error) {
         const errors = body?.error ?? [];
         const message = body?.message || errors[0] || `Request failed with status ${response.status}`;
         throw new ApiError(message, response.status, errors);
     }
 
-    return { data: body?.data as T, message: body.message };
+    return { data: body?.data as T, message: body?.message ?? '' };
 }
 
 export const apiClient = {

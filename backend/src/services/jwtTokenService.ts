@@ -9,8 +9,12 @@ export type TokenPayload = jwt.JwtPayload & {
     email: string;
 };
 
+export interface ValidateTokenInput {
+    token: string;
+}
+
 const signToken = (user: User) => {
-    return jwt.sign({ id: user.id, role: user.role, email: user.email }, globalConfig.JWT_SECRET, { expiresIn: '8h' });
+    return jwt.sign({ id: user.id, role: user.role, email: user.email }, globalConfig.JWT_SECRET, { expiresIn: '24h' });
 };
 
 const decodeToken = (token: string): TokenPayload => {

@@ -6,11 +6,13 @@ interface ModalProps {
   onClose: () => void;
   children: ReactNode;
   className?: string;
+  /* Si es false, hacer clic fuera del modal (en el fondo) no lo cierra */
+  closeOnOutsideClick?: boolean;
 }
 
 const RESIZE_DURATION_MS = 250;
 
-export function Modal({ isOpen, onClose, children, className = '' }: ModalProps) {
+export function Modal({ isOpen, onClose, children, className = '', closeOnOutsideClick = true }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const lastHeightRef = useRef<number | null>(null);
   const animationRef = useRef<Animation | null>(null);
@@ -91,7 +93,7 @@ export function Modal({ isOpen, onClose, children, className = '' }: ModalProps)
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
-      onClick={onClose}
+      onClick={closeOnOutsideClick ? onClose : undefined}
       role="presentation"
     >
       {/* Los selectores [&_...] agrandan los InputField solo dentro de los modales, sin afectar login/registro */}
