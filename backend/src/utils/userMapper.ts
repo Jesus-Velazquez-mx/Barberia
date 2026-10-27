@@ -5,7 +5,9 @@ import type { Client } from '../types/entities/client.interface.js';
 import type { UserResponse } from '../types/dto/userResponse.interface.js';
 import type { ManagerResponse } from '../types/dto/managerResponse.interface.js';
 import type { ReceptionistResponse } from '../types/dto/receptionistResponse.interface.js';
-import type { ClientResponse } from '../types/dto/clientResponse.interface.js';
+import type { ClientResponse, ClientDetailResponse } from '../types/dto/clientResponse.interface.js';
+import type { ClientWithUser } from '../repositories/clientRepository.js';
+
 
 /**
  * Elimina el hash de la contraseña y traduce los campos snake_case de la base de
@@ -40,6 +42,22 @@ export const toClientResponse = (client: Client): ClientResponse => ({
     facialStructureType: client.facial_structure_type,
     completedServicesCount: client.completed_services_count,
 });
+
+export const toClientDetailResponse = (client: ClientWithUser): ClientDetailResponse => ({
+    id: client.id,
+    role: client.role,
+    email: client.email,
+    phone: client.phone,
+    firstName: client.first_name,
+    lastName: client.last_name,
+    birthDate: client.birth_date,
+    gender: client.gender,
+    facialStructureType: client.facial_structure_type,
+    completedServicesCount: client.completed_services_count,
+    createdAt: client.created_at,
+    updatedAt: client.updated_at,
+});
+
 
 // The *Profile mappers below are used to nest role data inside `user` in
 // AuthResponse, where userId is redundant with the already-present user.id.

@@ -25,6 +25,10 @@ export const canUpdateUser = (performer: UserIdentity, target: UserIdentity): bo
     }
 };
 
+export const canCreateClient = (performer: UserIdentity): boolean => {
+    return performer.role === 'manager' || performer.role === 'receptionist';
+}
+
 /**
  * PUT /manager: un gerente solo puede actualizar su propio título.
  */
