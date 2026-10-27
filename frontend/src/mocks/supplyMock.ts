@@ -1,7 +1,7 @@
 // Datos mock SOLO para la vista de suministros (sin backend).
 // Se elimina cuando el servicio de suministros use /supplies (ver services/supplyService.ts).
 import { ApiError } from '../types/api';
-import type { SupplyCategory } from '../types/supplyCategoryType';
+import type { SupplyCategory, SupplyCategoryPayload } from '../types/supplyCategoryType';
 import type { Supply, SupplyPayload, SupplyShop } from '../types/supplyType';
 import { normalizeText } from '../utils/listUtils';
 import { MOCK_SHOP_OPTIONS } from './adminMock';
@@ -13,7 +13,8 @@ const SHOPS: SupplyShop[] = MOCK_SHOP_OPTIONS.map((option) => ({ id: option.valu
 
 const SEED_DATE = '2026-10-01T16:00:00.000Z';
 
-const CATEGORIES: SupplyCategory[] = [
+/* Estado en memoria: los cambios persisten mientras no se recargue la página. */
+let categoryStore: SupplyCategory[] = [
     {
         id: 'cat-tools',
         name: 'Herramientas',
@@ -106,7 +107,7 @@ const wait = (ms = 350) => new Promise<void>((resolve) => setTimeout(resolve, ms
 /* Mismas reglas que el backend: nombre y SKU únicos dentro de la misma sucursal; sucursal y categoría existentes. */
 function assertValid(payload: SupplyPayload, ignoreId?: string) {
     if (!SHOPS.some((shop) => shop.id === payload.shopId)) throw new ApiError('Sucursal no encontrada.', 404);
-    if (!CATEGORIES.some((category) => category.id === payload.categoryId)) {
+    if (!categoryStore.some((category) => category.id === payload.categoryId)) {
         throw new ApiError('Categoría no encontrada.', 404);
     }
 
@@ -127,7 +128,7 @@ export async function mockListSupplyShops(): Promise<SupplyShop[]> {
 
 export async function mockListSupplyCategories(): Promise<SupplyCategory[]> {
     await wait();
-    return CATEGORIES;
+    return [...categoryStore].sort((a, b) => a.name.localeCompare(b.name, 'es'));
 }
 
 export async function mockListSupplies(): Promise<Supply[]> {
@@ -162,4 +163,51 @@ export async function mockDeleteSupply(id: string): Promise<void> {
     await wait();
     if (!supplyStore.some((supply) => supply.id === id)) throw new ApiError('Suministro no encontrado.', 404);
     supplyStore = supplyStore.filter((supply) => supply.id !== id);
+}
+
+/* ---------- Categorías (mock) ---------- */
+
+let nextCategoryId = 1;
+
+/* Mismas reglas que el backend: el nombre es único (sin distinguir mayúsculas ni acentos). */
+function assertCategoryNameFree(name: string, ignoreId?: string) {
+    if (
+        categoryStore.some(
+            (category) => category.id !== ignoreId && normalizeText(category.name) === normalizeText(name)
+        )
+    ) {
+        throw new ApiError('Ya existe una categoría con ese nombre.', 409);
+    }
+}
+
+export async function mockCreateSupplyCategory(payload: SupplyCategoryPayload): Promise<SupplyCategory> {
+    await wait();
+    assertCategoryNameFree(payload.name);
+
+    const now = new Date().toISOString();
+    const category: SupplyCategory = { id: `cat-new-${nextCategoryId++}`, ...payload, createdAt: now, updatedAt: now };
+    categoryStore = [category, ...categoryStore];
+    return category;
+}
+
+export async function mockUpdateSupplyCategory(id: string, payload: SupplyCategoryPayload): Promise<SupplyCategory> {
+    await wait();
+
+    const current = categoryStore.find((category) => category.id === id);
+    if (!current) throw new ApiError('Categoría no encontrada.', 404);
+    assertCategoryNameFree(payload.name, id);
+
+    const updated: SupplyCategory = { ...current, ...payload, updatedAt: new Date().toISOString() };
+    categoryStore = categoryStore.map((category) => (category.id === id ? updated : category));
+    return updated;
+}
+
+/* El backend rechaza (400) borrar una categoría que todavía tiene suministros asignados. */
+export async function mockDeleteSupplyCategory(id: string): Promise<void> {
+    await wait();
+    if (!categoryStore.some((category) => category.id === id)) throw new ApiError('Categoría no encontrada.', 404);
+    if (supplyStore.some((supply) => supply.categoryId === id)) {
+        throw new ApiError('No se puede eliminar la categoría porque tiene suministros asignados.', 400);
+    }
+    categoryStore = categoryStore.filter((category) => category.id !== id);
 }
