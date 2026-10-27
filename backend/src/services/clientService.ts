@@ -5,8 +5,7 @@ import { isUserActive } from '../repositories/userRepository.js';
 import {
     createClient,
     getClientById,
-    getClientByEmail,
-    getClientsByName,
+    searchClients as searchClientsRepo,
     getAllClients,
     updateClientById,
     deleteClientById,
@@ -15,7 +14,7 @@ import type { FacialStructureType } from '../types/entities/client.interface.js'
 import type { ClientDetailResponse } from '../types/dto/clientResponse.interface.js';
 import { toClientDetailResponse } from '../utils/userMapper.js';
 import { isUserSessionValid } from '../utils/userSession.js';
-import { canCreateClient, UserIdentity } from './userPermissions.js';
+import { canCreateClient } from './userPermissions.js';
 
 export interface CreateClientDTO {
     firstName: string;
@@ -116,45 +115,20 @@ export const getClientDetails = async (id: string, token: string): Promise<Clien
 };
 
 /**
- * Obtiene los detalles de un cliente por su correo electrónico.
- * Un cliente solo puede consultar su propio perfil; el personal puede consultar el de cualquier cliente.
- */
-export const getClientDetailsByEmail = async (email: string, token: string): Promise<ClientDetailResponse> => {
-    const actor = decodeToken(token);
-    if (!(await isUserActive(actor.id))) {
-        throw new ApiError(ApiErrorCode.ACCOUNT_DEACTIVATED, 'Account is deactivated');
-    }
-
-    const client = await getClientByEmail(email);
-    if (!client) {
-        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Client not found');
-    }
-
-    const isSelf = actor.id === client.id;
-    const isStaff = actor.role === 'manager' || actor.role === 'receptionist';
-
-    if (!isSelf && !isStaff) {
-        throw new ApiError(ApiErrorCode.FORBIDDEN, 'You do not have permission to view this client');
-    }
-
-    return toClientDetailResponse(client);
-};
-
-/**
- * Busca clientes por nombre o apellido.
+ * Busca clientes por coincidencia parcial en nombre, apellido o correo.
  * Solo accesible para el personal (manager y receptionist).
  */
-export const searchClientsByName = async (name: string, token: string): Promise<ClientDetailResponse[]> => {
+export const searchClients = async (term: string, token: string): Promise<ClientDetailResponse[]> => {
     const actor = decodeToken(token);
     if (!(await isUserActive(actor.id))) {
         throw new ApiError(ApiErrorCode.ACCOUNT_DEACTIVATED, 'Account is deactivated');
     }
 
     if (actor.role !== 'manager' && actor.role !== 'receptionist') {
-        throw new ApiError(ApiErrorCode.FORBIDDEN, 'Only staff can search clients by name');
+        throw new ApiError(ApiErrorCode.FORBIDDEN, 'Only staff can search clients');
     }
 
-    const clients = await getClientsByName(name);
+    const clients = await searchClientsRepo(term);
     return clients.map(toClientDetailResponse);
 };
 

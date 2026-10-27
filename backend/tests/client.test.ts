@@ -109,6 +109,7 @@ describe('CRUD de Clientes (/api/clients)', () => {
 
             const response = await request(app)
                 .post('/api/clients')
+                .set('Authorization', `Bearer ${managerToken}`)
                 .send({
                     firstName: 'Carlos',
                     lastName: 'Ramírez',
@@ -205,7 +206,20 @@ describe('CRUD de Clientes (/api/clients)', () => {
                 });
 
             expect(response.status).toBe(403);
-            expect(response.body.message).toContain('Clients cannot create other client accounts');
+            expect(response.body.message).toContain('Only staff members can directly create client accounts');
+        });
+
+        test('Debe responder 401 Unauthorized si no se envía token', async () => {
+            const response = await request(app).post('/api/clients').send({
+                firstName: 'Sin',
+                lastName: 'Token',
+                email: generateEmail('no_token'),
+                password: 'password123',
+                birthDate: '1998-01-01',
+                gender: 'other',
+            });
+
+            expect(response.status).toBe(401);
         });
 
         test('Debe responder 409 Conflict si el correo ya está registrado', async () => {
@@ -214,7 +228,7 @@ describe('CRUD de Clientes (/api/clients)', () => {
             const phone2 = generateUniquePhone();
 
             // Primer registro
-            const res1 = await request(app).post('/api/clients').send({
+            const res1 = await request(app).post('/api/clients').set('Authorization', `Bearer ${managerToken}`).send({
                 firstName: 'Primero',
                 lastName: 'Uno',
                 email,
@@ -227,7 +241,7 @@ describe('CRUD de Clientes (/api/clients)', () => {
             createdUserIds.push(res1.body.data.id);
 
             // Intento con el mismo correo
-            const res2 = await request(app).post('/api/clients').send({
+            const res2 = await request(app).post('/api/clients').set('Authorization', `Bearer ${managerToken}`).send({
                 firstName: 'Segundo',
                 lastName: 'Dos',
                 email,
@@ -246,7 +260,7 @@ describe('CRUD de Clientes (/api/clients)', () => {
             const sharedPhone = generateUniquePhone();
 
             // Primer registro
-            const res1 = await request(app).post('/api/clients').send({
+            const res1 = await request(app).post('/api/clients').set('Authorization', `Bearer ${managerToken}`).send({
                 firstName: 'Uno',
                 lastName: 'Pérez',
                 email: email1,
@@ -259,7 +273,7 @@ describe('CRUD de Clientes (/api/clients)', () => {
             createdUserIds.push(res1.body.data.id);
 
             // Segundo registro con el mismo teléfono
-            const res2 = await request(app).post('/api/clients').send({
+            const res2 = await request(app).post('/api/clients').set('Authorization', `Bearer ${managerToken}`).send({
                 firstName: 'Dos',
                 lastName: 'Gómez',
                 email: email2,
@@ -273,7 +287,7 @@ describe('CRUD de Clientes (/api/clients)', () => {
         });
 
         test('Debe responder 400 Bad Request ante datos inválidos (Zod validation)', async () => {
-            const response = await request(app).post('/api/clients').send({
+            const response = await request(app).post('/api/clients').set('Authorization', `Bearer ${managerToken}`).send({
                 firstName: '',
                 email: 'not-an-email',
                 password: '123', // menos de 6 caracteres
@@ -394,47 +408,9 @@ describe('CRUD de Clientes (/api/clients)', () => {
             expect(response.status).toBe(400);
         });
 
-        test('GET /api/clients/email/:email - MANAGER y CLIENT pueden buscar por email', async () => {
+        test('GET /api/clients?q=... - MANAGER y RECEPTIONIST pueden buscar por nombre parcial', async () => {
             const responseMgr = await request(app)
-                .get(`/api/clients/email/${testClient.email}`)
-                .set('Authorization', `Bearer ${managerToken}`);
-
-            expect(responseMgr.status).toBe(200);
-            expect(responseMgr.body.data.id).toBe(testClient.id);
-            expect(responseMgr.body.data.email).toBe(testClient.email);
-
-            const responseSelf = await request(app)
-                .get(`/api/clients/email/${testClient.email}`)
-                .set('Authorization', `Bearer ${clientToken}`);
-
-            expect(responseSelf.status).toBe(200);
-            expect(responseSelf.body.data.id).toBe(testClient.id);
-        });
-
-        test('GET /api/clients/email/:email - CLIENT recibe 403 Forbidden al consultar email ajeno', async () => {
-            const otherClient = await insertUser('client');
-            await getPool().query('INSERT INTO clients (user_id) VALUES ($1)', [otherClient.id]);
-
-            const response = await request(app)
-                .get(`/api/clients/email/${otherClient.email}`)
-                .set('Authorization', `Bearer ${clientToken}`);
-
-            expect(response.status).toBe(403);
-            expect(response.body.message).toContain('You do not have permission to view this client');
-        });
-
-        test('GET /api/clients/email/:email - 404 Not Found para email inexistente', async () => {
-            const response = await request(app)
-                .get('/api/clients/email/nonexistent_client@mrbarber.com')
-                .set('Authorization', `Bearer ${managerToken}`);
-
-            expect(response.status).toBe(404);
-            expect(response.body.message).toContain('Client not found');
-        });
-
-        test('GET /api/clients/name/:name - MANAGER y RECEPTIONIST pueden buscar clientes por nombre', async () => {
-            const responseMgr = await request(app)
-                .get('/api/clients/name/Fixture')
+                .get('/api/clients?q=Fixtu')
                 .set('Authorization', `Bearer ${managerToken}`);
 
             expect(responseMgr.status).toBe(200);
@@ -442,37 +418,51 @@ describe('CRUD de Clientes (/api/clients)', () => {
             expect(responseMgr.body.data.length).toBeGreaterThan(0);
 
             const responseRec = await request(app)
-                .get('/api/clients/name/Fixture')
+                .get('/api/clients?q=Fixtu')
                 .set('Authorization', `Bearer ${receptionistToken}`);
 
             expect(responseRec.status).toBe(200);
             expect(Array.isArray(responseRec.body.data)).toBe(true);
         });
 
-        test('GET /api/clients/name/:name - CLIENT recibe 403 Forbidden', async () => {
+        test('GET /api/clients?q=... - Coincide por correo parcial', async () => {
+            const partialEmail = testClient.email.slice(0, testClient.email.indexOf('@'));
             const response = await request(app)
-                .get('/api/clients/name/Fixture')
+                .get(`/api/clients?q=${encodeURIComponent(partialEmail)}`)
+                .set('Authorization', `Bearer ${managerToken}`);
+
+            expect(response.status).toBe(200);
+            expect(response.body.data.map((c: { id: string }) => c.id)).toContain(testClient.id);
+        });
+
+        test('GET /api/clients?q=... - Sin coincidencias retorna arreglo vacío (200)', async () => {
+            const response = await request(app)
+                .get('/api/clients?q=zzz_no_match_zzz')
+                .set('Authorization', `Bearer ${managerToken}`);
+
+            expect(response.status).toBe(200);
+            expect(response.body.data).toEqual([]);
+        });
+
+        test('GET /api/clients?q=... - CLIENT recibe 403 Forbidden', async () => {
+            const response = await request(app)
+                .get('/api/clients?q=Fixture')
                 .set('Authorization', `Bearer ${clientToken}`);
 
             expect(response.status).toBe(403);
-            expect(response.body.message).toContain('Only staff can search clients by name');
+            expect(response.body.message).toContain('Only staff can search clients');
         });
 
-        test('GET /api/clients?name=... y ?email=... - Soporte de búsqueda mediante query params', async () => {
-            const responseByName = await request(app)
-                .get('/api/clients?name=Fixture')
+        test('GET /api/clients/email/:email y /api/clients/name/:name ya no existen', async () => {
+            const byEmail = await request(app)
+                .get(`/api/clients/email/${testClient.email}`)
+                .set('Authorization', `Bearer ${managerToken}`);
+            const byName = await request(app)
+                .get('/api/clients/name/Fixture')
                 .set('Authorization', `Bearer ${managerToken}`);
 
-            expect(responseByName.status).toBe(200);
-            expect(Array.isArray(responseByName.body.data)).toBe(true);
-
-            const responseByEmail = await request(app)
-                .get(`/api/clients?email=${testClient.email}`)
-                .set('Authorization', `Bearer ${managerToken}`);
-
-            expect(responseByEmail.status).toBe(200);
-            expect(Array.isArray(responseByEmail.body.data)).toBe(true);
-            expect(responseByEmail.body.data[0].id).toBe(testClient.id);
+            expect(byEmail.status).not.toBe(200);
+            expect(byName.status).not.toBe(200);
         });
     });
 
@@ -480,7 +470,7 @@ describe('CRUD de Clientes (/api/clients)', () => {
     // 3. UPDATE (PUT /api/clients/:id)
     // =========================================================================
     describe('PUT /api/clients/:id (Actualización de Clientes)', () => {
-        test('Un cliente puede actualizar su propio perfil (nombre, teléfono, estructura facial)', async () => {
+        test('Un cliente puede actualizar su propio perfil (nombre y teléfono)', async () => {
             const clientUser = await insertUser('client');
             await getPool().query('INSERT INTO clients (user_id) VALUES ($1)', [clientUser.id]);
             const token = mintToken(clientUser.id, 'client', clientUser.email);
@@ -492,21 +482,49 @@ describe('CRUD de Clientes (/api/clients)', () => {
                 .send({
                     firstName: 'Alejandro',
                     phone: newPhone,
-                    facialStructureType: 'square',
                 });
 
             expect(response.status).toBe(200);
             expect(response.body.data.firstName).toBe('Alejandro');
             expect(response.body.data.phone).toBe(newPhone);
-            expect(response.body.data.facialStructureType).toBe('square');
 
             // Comprobación en base de datos
-            const pool = getPool();
-            const uCheck = await pool.query('SELECT first_name, phone FROM users WHERE id = $1', [clientUser.id]);
+            const uCheck = await getPool().query('SELECT first_name, phone FROM users WHERE id = $1', [clientUser.id]);
             expect(uCheck.rows[0].first_name).toBe('Alejandro');
             expect(uCheck.rows[0].phone).toBe(newPhone);
+        });
 
-            const cCheck = await pool.query('SELECT facial_structure_type FROM clients WHERE user_id = $1', [
+        test('Un CLIENTE recibe 403 Forbidden si intenta modificar facialStructureType', async () => {
+            const clientUser = await insertUser('client');
+            await getPool().query('INSERT INTO clients (user_id) VALUES ($1)', [clientUser.id]);
+            const token = mintToken(clientUser.id, 'client', clientUser.email);
+
+            const response = await request(app)
+                .put(`/api/clients/${clientUser.id}`)
+                .set('Authorization', `Bearer ${token}`)
+                .send({
+                    facialStructureType: 'square',
+                });
+
+            expect(response.status).toBe(403);
+            expect(response.body.message).toContain('Clients cannot modify facial structure type');
+        });
+
+        test('Un MANAGER puede actualizar la estructura facial (facialStructureType) de un cliente', async () => {
+            const clientUser = await insertUser('client');
+            await getPool().query('INSERT INTO clients (user_id) VALUES ($1)', [clientUser.id]);
+
+            const response = await request(app)
+                .put(`/api/clients/${clientUser.id}`)
+                .set('Authorization', `Bearer ${managerToken}`)
+                .send({
+                    facialStructureType: 'square',
+                });
+
+            expect(response.status).toBe(200);
+            expect(response.body.data.facialStructureType).toBe('square');
+
+            const cCheck = await getPool().query('SELECT facial_structure_type FROM clients WHERE user_id = $1', [
                 clientUser.id,
             ]);
             expect(cCheck.rows[0].facial_structure_type).toBe('square');

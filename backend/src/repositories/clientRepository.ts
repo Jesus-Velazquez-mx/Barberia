@@ -111,25 +111,11 @@ export const getClientById = async (id: string): Promise<ClientWithUser | null> 
 };
 
 /**
- * Obtiene un cliente por su correo electrónico combinando los datos de users y clients.
+ * Busca clientes por coincidencia parcial en nombre, apellido, nombre completo o correo.
  */
-export const getClientByEmail = async (email: string): Promise<ClientWithUser | null> => {
+export const searchClients = async (term: string): Promise<ClientWithUser[]> => {
     const pool = db.getPool();
-    const query = `
-        SELECT ${CLIENT_COLUMNS}
-        FROM users u
-        JOIN clients c ON c.user_id = u.id
-        WHERE u.email = $1 AND u.role = 'client'
-    `;
-    const result = await pool.query(query, [email]);
-    return result.rows.length ? result.rows[0] : null;
-};
-
-/**
- * Busca clientes por coincidencia en nombre o apellido.
- */
-export const getClientsByName = async (name: string): Promise<ClientWithUser[]> => {
-    const pool = db.getPool();
+    const escaped = term.replace(/[\\%_]/g, '\\$&');
     const query = `
         SELECT ${CLIENT_COLUMNS}
         FROM users u
@@ -138,11 +124,13 @@ export const getClientsByName = async (name: string): Promise<ClientWithUser[]> 
           AND (
               u.first_name ILIKE $1
               OR u.last_name ILIKE $1
+              OR u.email ILIKE $1
               OR CONCAT(u.first_name, ' ', u.last_name) ILIKE $1
           )
         ORDER BY u.first_name, u.last_name
+        LIMIT 20
     `;
-    const result = await pool.query(query, [`%${name}%`]);
+    const result = await pool.query(query, [`%${escaped}%`]);
     return result.rows;
 };
 
