@@ -15,3 +15,7 @@ export const register = async (values: RegisterFormValues): Promise<LoginRespons
 
     return response.data;
 };
+
+export const verifyToken = async (token: string): Promise<void> => {
+    await apiClient.post<void>('/auth/verify-token', { token });
+}

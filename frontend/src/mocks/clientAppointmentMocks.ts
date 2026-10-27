@@ -34,7 +34,9 @@ export function buildMockAppointments(client: { id: string; name: string; email:
         cancellationReason: null,
         notes: null,
         updatedAt: seed.createdAt,
-        ...seed
+        ...seed,
+        checkedInAt: seed.checkedInAt ?? null,
+        completedAt: seed.completedAt ?? null
     });
 
     const mine: AppointmentRecord[] = [

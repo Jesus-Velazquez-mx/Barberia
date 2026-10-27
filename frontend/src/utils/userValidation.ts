@@ -1,3 +1,4 @@
+import { verifyToken } from '../services/authService';
 import type { User } from '../types/auth';
 
 // Valida si el objeto user presente en localStorage es un objeto
@@ -55,4 +56,13 @@ export function isStoredUserValid(value: unknown): value is User {
     }
 
     return false;
+}
+
+export async function isStoredTokenValid(storedToken: string): Promise<boolean> {
+    try {
+        await verifyToken(storedToken);
+        return true;
+    } catch (_) {
+        return false;
+    }
 }

@@ -54,12 +54,12 @@ describe('GET /api/presigned-url', () => {
 
     test('returns the service ApiError status and message', async () => {
         generatePresignedURL.mockRejectedValue(
-            new ApiError(ApiErrorCode.UNAUTHORIZED, 'This feature is only available for clients')
+            new ApiError(ApiErrorCode.FORBIDDEN, 'This feature is only available for clients')
         );
 
         const response = await request(app).get('/api/presigned-url').set('Authorization', 'Bearer staff-token');
 
-        expect(response.status).toBe(ApiErrorCode.UNAUTHORIZED);
+        expect(response.status).toBe(ApiErrorCode.FORBIDDEN);
         expect(response.body).toMatchObject({
             message: 'This feature is only available for clients',
         });

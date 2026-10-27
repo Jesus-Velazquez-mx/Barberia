@@ -115,6 +115,7 @@ jobs:
         npm install --legacy-peer-deps
 
     - name: Check build on frontend
+      working-directory: frontend
       run: npx tsc -b --noEmit
 
     - name: Check linter on frontend
