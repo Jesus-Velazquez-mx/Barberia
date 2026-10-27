@@ -8,7 +8,6 @@ import type { ReceptionistResponse } from '../types/dto/receptionistResponse.int
 import type { ClientResponse, ClientDetailResponse } from '../types/dto/clientResponse.interface.js';
 import type { ClientWithUser } from '../repositories/clientRepository.js';
 
-
 /**
  * Elimina el hash de la contraseña y traduce los campos snake_case de la base de
  * datos a camelCase antes de exponer el usuario en una respuesta.
@@ -57,7 +56,6 @@ export const toClientDetailResponse = (client: ClientWithUser): ClientDetailResp
     createdAt: client.created_at,
     updatedAt: client.updated_at,
 });
-
 
 // The *Profile mappers below are used to nest role data inside `user` in
 // AuthResponse, where userId is redundant with the already-present user.id.

@@ -1,11 +1,6 @@
 import { z, ZodError } from 'zod';
 import type { ApiHandler } from '../utils/apiResponse.js';
-import {
-    sendSuccess,
-    sendFail,
-    sendValidationError,
-    sendInternalServerError,
-} from '../utils/apiResponse.js';
+import { sendSuccess, sendFail, sendValidationError, sendInternalServerError } from '../utils/apiResponse.js';
 import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 import {
     registerClient,
@@ -22,7 +17,6 @@ const clientIdParamSchema = z.object({
     id: z.uuid('Invalid client ID format'),
 });
 
-
 const createClientSchema = z.object({
     firstName: z.string().trim().min(2, 'First name must have at least 2 characters').max(100),
     lastName: z.string().trim().min(2, 'Last name must have at least 2 characters').max(100),
@@ -38,22 +32,21 @@ const createClientSchema = z.object({
     completedServicesCount: z.number().int().min(0).optional(),
 });
 
-const updateClientFieldsSchema = z
-    .object({
-        id: z.uuid().optional(),
-        email: z.email('Invalid email format').max(255).optional(),
-        phone: z.string().trim().length(10, 'Phone must have 10 digits').optional().nullable(),
-        password: z.string().min(6, 'Password must have at least 6 characters').optional(),
-        firstName: z.string().trim().min(2).max(100).optional(),
-        lastName: z.string().trim().min(2).max(100).optional(),
-        birthDate: z.coerce.date().optional(),
-        gender: z.string().trim().min(1).max(10).optional(),
-        facialStructureType: z
-            .enum(['oval', 'triangle', 'heart', 'round', 'diamond', 'square', 'rectangle'])
-            .optional()
-            .nullable(),
-        completedServicesCount: z.number().int().min(0).optional(),
-    });
+const updateClientFieldsSchema = z.object({
+    id: z.uuid().optional(),
+    email: z.email('Invalid email format').max(255).optional(),
+    phone: z.string().trim().length(10, 'Phone must have 10 digits').optional().nullable(),
+    password: z.string().min(6, 'Password must have at least 6 characters').optional(),
+    firstName: z.string().trim().min(2).max(100).optional(),
+    lastName: z.string().trim().min(2).max(100).optional(),
+    birthDate: z.coerce.date().optional(),
+    gender: z.string().trim().min(1).max(10).optional(),
+    facialStructureType: z
+        .enum(['oval', 'triangle', 'heart', 'round', 'diamond', 'square', 'rectangle'])
+        .optional()
+        .nullable(),
+    completedServicesCount: z.number().int().min(0).optional(),
+});
 
 /**
  * Registra un nuevo cliente.

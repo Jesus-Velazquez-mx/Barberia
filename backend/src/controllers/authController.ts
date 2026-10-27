@@ -22,7 +22,7 @@ const registerSchema: z.ZodType<RegisterInput> = z.object({
 });
 
 const tokenSchema: z.ZodType<ValidateTokenInput> = z.object({
-    token: z.jwt()
+    token: z.jwt(),
 });
 
 /**
@@ -89,7 +89,6 @@ export const register: ApiHandler<AuthResponse> = async (req, res) => {
     }
 };
 
-
 export const verifyToken: ApiHandler<void> = async (req, res) => {
     try {
         const validData = tokenSchema.parse(req.body);
@@ -110,4 +109,4 @@ export const verifyToken: ApiHandler<void> = async (req, res) => {
 
         sendInternalServerError({ res, error: [String(error)] });
     }
-}
+};

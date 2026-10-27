@@ -134,7 +134,6 @@ export const searchClients = async (term: string): Promise<ClientWithUser[]> => 
     return result.rows;
 };
 
-
 /**
  * Obtiene la lista completa de todos los clientes registrados.
  */
@@ -243,30 +242,27 @@ export const updateClientById = async (fields: UpdateClientRepositoryInput): Pro
         await client.query('BEGIN');
 
         // 1. Bloquea y verifica que el registro exista y sea cliente
-        const currentResult = await client.query(
-            'SELECT id, role FROM users WHERE id = $1 FOR UPDATE',
-            [fields.id]
-        );
+        const currentResult = await client.query('SELECT id, role FROM users WHERE id = $1 FOR UPDATE', [fields.id]);
         if (currentResult.rows.length === 0 || currentResult.rows[0].role !== 'client') {
             throw new ApiError(ApiErrorCode.NOT_FOUND, 'Client not found');
         }
 
         // 2. Verifica unicidad de correo y teléfono si se están modificando
         if (fields.email !== undefined) {
-            const emailCheck = await client.query(
-                'SELECT id FROM users WHERE email = $1 AND id <> $2',
-                [fields.email, fields.id]
-            );
+            const emailCheck = await client.query('SELECT id FROM users WHERE email = $1 AND id <> $2', [
+                fields.email,
+                fields.id,
+            ]);
             if (emailCheck.rows.length > 0) {
                 throw new ApiError(ApiErrorCode.USER_ALREADY_EXISTS, 'Email is already registered');
             }
         }
 
         if (fields.phone !== undefined && fields.phone !== null) {
-            const phoneCheck = await client.query(
-                'SELECT id FROM users WHERE phone = $1 AND id <> $2',
-                [fields.phone, fields.id]
-            );
+            const phoneCheck = await client.query('SELECT id FROM users WHERE phone = $1 AND id <> $2', [
+                fields.phone,
+                fields.id,
+            ]);
             if (phoneCheck.rows.length > 0) {
                 throw new ApiError(ApiErrorCode.USER_ALREADY_EXISTS, 'Phone is already registered');
             }
@@ -382,4 +378,4 @@ export const deleteClientById = async (id: string): Promise<void> => {
     } finally {
         client.release();
     }
-};
+};

@@ -168,7 +168,7 @@ function buildAppointments(): AppointmentRecord[] {
             createdAt: new Date(createdMs).toISOString(),
             updatedAt: new Date(updatedMs).toISOString(),
             checkedInAt: null,
-            completedAt: null,
+            completedAt: null
         };
     });
 }

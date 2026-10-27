@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { create, list, getById, update, remove } from '../controllers/clientController.js';
 
-
 const router = Router();
 
 /**
@@ -62,7 +61,7 @@ router.get('/clients', list);
  *       500:
  *         description: Error interno del servidor.
  */
-router.get('/clients/:id', getById)
+router.get('/clients/:id', getById);
 
 /**
  * @swagger

@@ -251,6 +251,6 @@ router.post('/auth/register', register);
  *                 message: { type: string, example: An unexpected error occurred }
  *                 error: { type: array, items: { type: string } }
  */
-router.post('/auth/verify-token', verifyToken)
+router.post('/auth/verify-token', verifyToken);
 
 export default router;

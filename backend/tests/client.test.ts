@@ -45,10 +45,10 @@ const insertManager = async () => {
 };
 
 const insertShop = async (managerId: string): Promise<string> => {
-    const result = await getPool().query(
-        `INSERT INTO shops (name, manager_id) VALUES ($1, $2) RETURNING id`,
-        [uniqueName('Shop'), managerId]
-    );
+    const result = await getPool().query(`INSERT INTO shops (name, manager_id) VALUES ($1, $2) RETURNING id`, [
+        uniqueName('Shop'),
+        managerId,
+    ]);
     const id = result.rows[0].id;
     createdShopIds.push(id);
     return id;
@@ -57,10 +57,11 @@ const insertShop = async (managerId: string): Promise<string> => {
 const insertReceptionist = async (shopId: string) => {
     const user = await insertUser('receptionist');
     const shift = await getPool().query(`SELECT id FROM shifts LIMIT 1`);
-    await getPool().query(
-        `INSERT INTO receptionists (user_id, shop_id, shift_id) VALUES ($1, $2, $3)`,
-        [user.id, shopId, shift.rows[0].id]
-    );
+    await getPool().query(`INSERT INTO receptionists (user_id, shop_id, shift_id) VALUES ($1, $2, $3)`, [
+        user.id,
+        shopId,
+        shift.rows[0].id,
+    ]);
     return user;
 };
 
@@ -210,14 +211,16 @@ describe('CRUD de Clientes (/api/clients)', () => {
         });
 
         test('Debe responder 401 Unauthorized si no se envía token', async () => {
-            const response = await request(app).post('/api/clients').send({
-                firstName: 'Sin',
-                lastName: 'Token',
-                email: generateEmail('no_token'),
-                password: 'password123',
-                birthDate: '1998-01-01',
-                gender: 'other',
-            });
+            const response = await request(app)
+                .post('/api/clients')
+                .send({
+                    firstName: 'Sin',
+                    lastName: 'Token',
+                    email: generateEmail('no_token'),
+                    password: 'password123',
+                    birthDate: '1998-01-01',
+                    gender: 'other',
+                });
 
             expect(response.status).toBe(401);
         });
@@ -287,11 +290,14 @@ describe('CRUD de Clientes (/api/clients)', () => {
         });
 
         test('Debe responder 400 Bad Request ante datos inválidos (Zod validation)', async () => {
-            const response = await request(app).post('/api/clients').set('Authorization', `Bearer ${managerToken}`).send({
-                firstName: '',
-                email: 'not-an-email',
-                password: '123', // menos de 6 caracteres
-            });
+            const response = await request(app)
+                .post('/api/clients')
+                .set('Authorization', `Bearer ${managerToken}`)
+                .send({
+                    firstName: '',
+                    email: 'not-an-email',
+                    password: '123', // menos de 6 caracteres
+                });
 
             expect(response.status).toBe(400);
             expect(response.body.error).toBeDefined();
@@ -315,9 +321,7 @@ describe('CRUD de Clientes (/api/clients)', () => {
         });
 
         test('GET /api/clients - MANAGER puede listar todos los clientes (200)', async () => {
-            const response = await request(app)
-                .get('/api/clients')
-                .set('Authorization', `Bearer ${managerToken}`);
+            const response = await request(app).get('/api/clients').set('Authorization', `Bearer ${managerToken}`);
 
             expect(response.status).toBe(200);
             const found = response.body.data.find((c: { id: string }) => c.id === testClient.id);
@@ -327,18 +331,14 @@ describe('CRUD de Clientes (/api/clients)', () => {
         });
 
         test('GET /api/clients - RECEPTIONIST puede listar todos los clientes (200)', async () => {
-            const response = await request(app)
-                .get('/api/clients')
-                .set('Authorization', `Bearer ${receptionistToken}`);
+            const response = await request(app).get('/api/clients').set('Authorization', `Bearer ${receptionistToken}`);
 
             expect(response.status).toBe(200);
             expect(Array.isArray(response.body.data)).toBe(true);
         });
 
         test('GET /api/clients - CLIENT recibe 403 Forbidden al intentar listar', async () => {
-            const response = await request(app)
-                .get('/api/clients')
-                .set('Authorization', `Bearer ${clientToken}`);
+            const response = await request(app).get('/api/clients').set('Authorization', `Bearer ${clientToken}`);
 
             expect(response.status).toBe(403);
             expect(response.body.message).toContain('Only staff can list clients');

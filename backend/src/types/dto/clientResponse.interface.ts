@@ -21,4 +21,3 @@ export interface ClientDetailResponse {
     createdAt: Date;
     updatedAt: Date;
 }
-

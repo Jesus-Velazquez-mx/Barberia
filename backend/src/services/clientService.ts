@@ -50,9 +50,11 @@ export const registerClient = async (data: CreateClientDTO, token: string): Prom
     const performer = await isUserSessionValid(token);
 
     if (!canCreateClient({ id: performer.id, role: performer.role })) {
-        throw new ApiError(ApiErrorCode.FORBIDDEN, "Only staff members can directly create client accounts. Create an account using the /register endpoint instead.")
+        throw new ApiError(
+            ApiErrorCode.FORBIDDEN,
+            'Only staff members can directly create client accounts. Create an account using the /register endpoint instead.'
+        );
     }
-
 
     const password_hash = await bcrypt.hash(data.password, 10);
 
@@ -132,14 +134,12 @@ export const searchClients = async (term: string, token: string): Promise<Client
     return clients.map(toClientDetailResponse);
 };
 
-
 /**
  * Actualiza los datos de un cliente.
  * Un cliente puede actualizar su propio perfil; el personal (manager y receptionist) puede actualizar cualquier cliente.
  * Solo el personal puede modificar 'completedServicesCount'.
  */
 export const updateClient = async (fields: UpdateClientDTO, token: string): Promise<ClientDetailResponse> => {
-
     const actor = decodeToken(token);
     if (!(await isUserActive(actor.id))) {
         throw new ApiError(ApiErrorCode.ACCOUNT_DEACTIVATED, 'Account is deactivated');
