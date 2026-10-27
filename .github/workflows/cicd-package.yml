@@ -88,6 +88,7 @@ jobs:
         AWS_BUCKET_KEY_PREFIX: ci-test/images/
       run: |
         cd backend
+        npx tsc -b --noEmit
         npm run lint
         npm test
 
@@ -112,6 +113,9 @@ jobs:
       run: |
         cd frontend
         npm install --legacy-peer-deps
+
+    - name: Check build on frontend
+      run: npx tsc -b --noEmit
 
     - name: Check linter on frontend
       working-directory: frontend
