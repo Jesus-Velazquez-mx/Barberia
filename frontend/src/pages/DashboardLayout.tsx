@@ -12,6 +12,7 @@ const NAV_ITEMS = {
     { to: '/manager/staff', label: 'Personal', icon: <Users size={20} aria-hidden="true" /> },
     { to: '/manager/clients', label: 'Clientes', icon: <UserRound size={20} aria-hidden="true" /> },
     { to: '/manager/appointments', label: 'Citas', icon: <Calendar size={20} aria-hidden="true" /> },
+    { to: '/manager/booking', label: 'Agendar Cita', icon: <CalendarPlus size={20} aria-hidden="true" /> },
     { to: '/manager/inventory', label: 'Inventario', icon: <Package size={20} aria-hidden="true" /> },
     { to: '/manager/management', label: 'Gestión', icon: <Settings size={20} aria-hidden="true" /> }
   ],

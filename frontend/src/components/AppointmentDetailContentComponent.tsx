@@ -129,7 +129,7 @@ export function AppointmentDetailContent({ appointment, showClient = true }: App
               <span className="font-normal text-[var(--text)]">{appointment.clientEmail ?? 'Sin correo'}</span>
               {!appointment.isRegisteredClient && (
                 <span className="rounded-full bg-[#2C2C2C] px-2 py-0.5 text-[0.65rem] font-semibold uppercase text-[var(--text)]">
-                  Invitado
+                  Visitante
                 </span>
               )}
             </span>

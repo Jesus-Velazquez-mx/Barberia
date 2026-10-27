@@ -80,6 +80,10 @@ const router = createBrowserRouter([
             element: <StaffAppointmentsPage />
           },
           {
+            path: '/manager/booking',
+            element: <BookAppointmentPage />
+          },
+          {
             // Temporal: se reemplaza por la vista real de insumos
             path: '/manager/inventory',
             element: (

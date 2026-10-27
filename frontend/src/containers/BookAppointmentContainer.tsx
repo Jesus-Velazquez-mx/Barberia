@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { Plus, X } from 'lucide-react';
 import { Button } from '../components/ButtonComponent';
+import { InputField } from '../components/InputFieldComponent';
 import { SelectField } from '../components/SelectFieldComponent';
 import { AvailabilityCalendar } from '../components/AvailabilityCalendarComponent';
 import { SlotPickerModal } from '../components/SlotPickerModalComponent';
@@ -10,18 +11,32 @@ import { Toast } from '../components/ToastComponent';
 import { getShops, getActiveBarbersByShop, getOfferedServices } from '../services/shopService';
 import { getShopAvailability } from '../services/availabilityService';
 import { createAppointment } from '../services/appointmentService';
+import { searchClients } from '../services/clientService';
 import { useAuth } from '../context/AuthContext';
 import { ApiError } from '../types/api';
 import type { AvailableSlot, DayAvailability } from '../types/availabilityType';
 import type { PublicBarber } from '../types/barber';
+import type { ClientRecord } from '../types/clientType';
 import { formatSlotTime } from '../utils/availabilityUtils';
+import { joinFullName } from '../utils/personUtils';
+
+/* Para quién agenda el personal: un cliente con cuenta o un visitante sin cuenta. */
+type ClientMode = 'registered' | 'guest';
+
+const CLIENT_MODE_OPTIONS: { value: ClientMode; label: string }[] = [
+  { value: 'registered', label: 'Cliente registrado' },
+  { value: 'guest', label: 'Visitante' }
+];
 
 interface BookAppointmentFormValues {
+  clientSearch: string;
+  guestClientName: string;
   shopId: string;
   services: { serviceId: string }[];
 }
 
 const DEFAULT_FETCH_ERROR = 'No se pudieron cargar los horarios disponibles. Intenta de nuevo.';
+const DEFAULT_CLIENT_SEARCH_ERROR = 'No se pudo buscar clientes. Intenta de nuevo.';
 
 const pad = (value: number) => String(value).padStart(2, '0');
 
@@ -58,6 +73,7 @@ const BOOKING_WINDOW_DAYS = 30;
 /* Página (dentro del dashboard) donde cada rol ve las citas agendadas. Hoy es un placeholder. */
 const APPOINTMENTS_ROUTE_BY_ROLE: Record<string, string> = {
   client: '/client/appointments',
+  manager: '/manager/appointments',
   receptionist: '/receptionist/appointments'
 };
 
@@ -92,12 +108,22 @@ export function BookAppointmentContainer() {
   const [isBooking, setIsBooking] = useState(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [availabilityVersion, setAvailabilityVersion] = useState(0);
+  const [clientResults, setClientResults] = useState<ClientRecord[]>([]);
+  const [isSearchingClients, setIsSearchingClients] = useState(false);
+  const [clientSearchError, setClientSearchError] = useState<string | null>(null);
+  const [clientMode, setClientMode] = useState<ClientMode | null>(null);
+  const [selectedClient, setSelectedClient] = useState<ClientRecord | null>(null);
 
-  const { register, watch, control, reset } = useForm<BookAppointmentFormValues>({
-    defaultValues: { shopId: '', services: [{ serviceId: '' }] }
+  const { register, watch, control, reset, setValue } = useForm<BookAppointmentFormValues>({
+    defaultValues: { clientSearch: '', guestClientName: '', shopId: '', services: [{ serviceId: '' }] }
   });
   const { fields, append, remove } = useFieldArray({ control, name: 'services' });
-  const { shopId, services } = watch();
+  const { clientSearch, guestClientName, shopId, services } = watch();
+
+  /* Solo el personal puede buscar clientes (el backend responde 403 a los clientes). */
+  const isStaff = user?.role === 'manager' || user?.role === 'receptionist';
+  /* Solo se busca mientras el modo "Cliente registrado" está activo. */
+  const clientSearchTerm = clientMode === 'registered' ? clientSearch.trim() : '';
 
   const SHOP_OPTIONS = useMemo(() => [{ value: '', label: 'Selecciona una sucursal' }, ...shopOptions], [shopOptions]);
 
@@ -105,6 +131,37 @@ export function BookAppointmentContainer() {
   const selectedServiceIds = services.map((s) => s.serviceId).filter(Boolean);
   const serviceKey = selectedServiceIds.join(',');
   const canAddService = services.length < serviceOptions.length && services.every((s) => s.serviceId);
+
+  /* 0. Buscar clientes en cada pulsación; si llega otra, la respuesta anterior se descarta */
+  useEffect(() => {
+    if (!isStaff || !token || !clientSearchTerm) {
+      setClientResults([]);
+      setClientSearchError(null);
+      setIsSearchingClients(false);
+      return;
+    }
+
+    let active = true;
+    setIsSearchingClients(true);
+    setClientSearchError(null);
+
+    searchClients(clientSearchTerm, token)
+      .then((data) => {
+        if (active) setClientResults(data);
+      })
+      .catch((error) => {
+        if (!active) return;
+        setClientSearchError(formatApiError(error, DEFAULT_CLIENT_SEARCH_ERROR));
+        setClientResults([]);
+      })
+      .finally(() => {
+        if (active) setIsSearchingClients(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [clientSearchTerm, isStaff, token]);
 
   /* 1. Cargar sucursales y servicios al montar */
   useEffect(() => {
@@ -259,9 +316,20 @@ export function BookAppointmentContainer() {
     setIsModalOpen(false);
   };
 
+  /* Al cambiar de modo se limpia lo escrito en el otro, para no arrastrar datos de un tipo de cliente al otro. */
+  const handleSelectClientMode = (mode: ClientMode) => {
+    if (mode === clientMode) return;
+    setClientMode(mode);
+    setSelectedClient(null);
+    setValue('clientSearch', '');
+    setValue('guestClientName', '');
+  };
+
   /* Cancelar: deja el formulario, el calendario y el resumen como al entrar a la página. */
   const handleCancel = () => {
-    reset({ shopId: '', services: [{ serviceId: '' }] });
+    reset({ clientSearch: '', guestClientName: '', shopId: '', services: [{ serviceId: '' }] });
+    setClientMode(null);
+    setSelectedClient(null);
     resetSelection();
     setView({ year: todayYear, month: todayMonth - 1 });
   };
@@ -276,7 +344,8 @@ export function BookAppointmentContainer() {
       await createAppointment(token, {
         barberId: confirmedSlot.barberId,
         serviceIds: selectedServiceIds,
-        scheduledStart: confirmedSlot.startTime
+        scheduledStart: confirmedSlot.startTime,
+        ...clientTarget
       });
       navigate(APPOINTMENTS_ROUTE_BY_ROLE[user?.role ?? 'client'] ?? '/client/appointments', {
         state: { toast: BOOKING_SUCCESS_MESSAGE }
@@ -313,7 +382,26 @@ export function BookAppointmentContainer() {
     setIsModalOpen(false);
   };
 
-  const canBook = Boolean(shopId && selectedServiceIds.length > 0 && confirmedSlot);
+  /* A quién se agenda (solo personal). El backend exige clientId o guestClientName, nunca ambos;
+     un cliente no envía ninguno y la cita queda a su nombre. */
+  const guestName = clientMode === 'guest' ? guestClientName.trim() : '';
+  const clientTarget =
+    clientMode === 'registered' && selectedClient
+      ? { clientId: selectedClient.id }
+      : guestName
+        ? { guestClientName: guestName }
+        : null;
+
+  const canBook = Boolean(
+    shopId && selectedServiceIds.length > 0 && confirmedSlot && (!isStaff || clientTarget !== null)
+  );
+
+  const clientLabel =
+    clientMode === 'registered' && selectedClient
+      ? joinFullName(selectedClient)
+      : guestName
+        ? `${guestName} (visitante)`
+        : undefined;
 
   const shopLabel = shopOptions.find((s) => s.value === shopId)?.label;
   const serviceLabels = selectedServiceIds
@@ -381,12 +469,107 @@ export function BookAppointmentContainer() {
                 </button>
               )}
             </div>
+
+            {isStaff && (
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-2">
+                  <span className="text-left text-[0.9rem] font-semibold text-(--labels)">Cliente</span>
+                  <div role="group" aria-label="Tipo de cliente" className="flex gap-3">
+                    {CLIENT_MODE_OPTIONS.map((option) => {
+                      const isActive = clientMode === option.value;
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          aria-pressed={isActive}
+                          onClick={() => handleSelectClientMode(option.value)}
+                          className={`flex-1 cursor-pointer rounded-lg border px-4 py-2 text-sm font-semibold transition-colors ${
+                            isActive
+                              ? 'border-(--accent) bg-(--accent)/10 text-(--accent)'
+                              : 'border-white/10 bg-transparent text-(--text) hover:border-(--accent) hover:text-(--accent)'
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {clientMode === 'registered' && (
+                  <>
+                    <InputField
+                      id="booking-client-search"
+                      label="Buscar cliente"
+                      type="text"
+                      placeholder="Nombre, apellido o correo"
+                      autoComplete="off"
+                      registerProps={register('clientSearch')}
+                    />
+
+                    {clientSearchTerm && (
+                      <>
+                        {clientSearchError ? (
+                          <p className="m-0 text-sm text-[#ff4d4d]">{clientSearchError}</p>
+                        ) : clientResults.length > 0 ? (
+                          <ul className="m-0 flex max-h-60 list-none flex-col gap-2 overflow-y-auto p-0">
+                            {clientResults.map((client) => {
+                              const isSelected = selectedClient?.id === client.id;
+                              return (
+                                <li key={client.id}>
+                                  <button
+                                    type="button"
+                                    aria-pressed={isSelected}
+                                    onClick={() => setSelectedClient(client)}
+                                    className={`flex w-full cursor-pointer flex-col items-start rounded-lg border px-3 py-2 text-left transition-colors ${
+                                      isSelected
+                                        ? 'border-(--accent) bg-(--accent)/10'
+                                        : 'border-[#333333] bg-[#121212] hover:border-(--accent)'
+                                    }`}
+                                  >
+                                    <span className="text-sm font-semibold text-(--text-h)">
+                                      {joinFullName(client)}
+                                    </span>
+                                    <span className="text-xs text-(--text)">{client.email}</span>
+                                  </button>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        ) : (
+                          !isSearchingClients && (
+                            <p className="m-0 text-sm text-(--text)">No se encontraron clientes.</p>
+                          )
+                        )}
+                      </>
+                    )}
+                  </>
+                )}
+
+                {clientMode === 'guest' && (
+                  <InputField
+                    id="booking-guest-name"
+                    label="Nombre del visitante"
+                    type="text"
+                    placeholder="Nombre completo"
+                    autoComplete="off"
+                    maxLength={100}
+                    registerProps={register('guestClientName')}
+                  />
+                )}
+              </div>
+            )}
           </div>
           {/* Resumen de la selección */}
           <div className="rounded-xl border border-[#2c2c2c] bg-[#1a1a1a] p-6 text-sm text-(--text)">
             <h2 className="mb-3 mt-0 font-sans text-lg font-bold tracking-normal text-(--text-h)">
               Información de la cita
             </h2>
+            {isStaff && (
+              <p className="m-0">
+                Cliente: <span className="text-(--text-h)">{clientLabel ?? '—'}</span>
+              </p>
+            )}
             <p className="m-0">
               Sucursal: <span className="text-(--text-h)">{shopLabel ?? '—'}</span>
             </p>
