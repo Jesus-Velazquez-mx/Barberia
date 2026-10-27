@@ -12,6 +12,7 @@ import StaffAppointmentsPage from './pages/staff/StaffAppointmentsPage';
 import ManagerSectionPlaceholderPage from './pages/staff/ManagerSectionPlaceholderPage';
 import ManagerManagementPage from './pages/staff/ManagerManagementPage';
 import StaffInventoryPage from './pages/staff/StaffInventoryPage';
+import StaffSuppliesPage from './pages/staff/StaffSuppliesPage';
 import DashboardLayout from './pages/DashboardLayout';
 import RecommendationPage from './pages/client/RecommendationPage';
 import ClientAppointmentsPage from './pages/client/ClientAppointmentPage';
@@ -93,15 +94,8 @@ const router = createBrowserRouter([
             element: <StaffInventoryPage role="manager" />
           },
           {
-            // Temporal: se reemplaza por el CRUD de suministros
             path: '/manager/inventory/supplies',
-            element: (
-              <ManagerSectionPlaceholderPage
-                title="Suministros"
-                subtitle="Administración de los insumos y sus existencias."
-                backTo={{ to: '/manager/inventory', label: 'Volver a Inventario' }}
-              />
-            )
+            element: <StaffSuppliesPage />
           },
           {
             // Temporal: se reemplaza por el CRUD de categorías de suministros
@@ -196,15 +190,8 @@ const router = createBrowserRouter([
             element: <StaffInventoryPage role="receptionist" />
           },
           {
-            // Temporal: se reemplaza por el CRUD de suministros
             path: '/receptionist/inventory/supplies',
-            element: (
-              <ManagerSectionPlaceholderPage
-                title="Suministros"
-                subtitle="Administración de los insumos y sus existencias."
-                backTo={{ to: '/receptionist/inventory', label: 'Volver a Inventario' }}
-              />
-            )
+            element: <StaffSuppliesPage />
           },
           {
             // Temporal: se reemplaza por el CRUD de categorías de suministros
