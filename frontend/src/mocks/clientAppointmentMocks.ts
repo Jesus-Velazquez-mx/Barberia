@@ -29,14 +29,15 @@ export function buildMockAppointments(client: { id: string; name: string; email:
         isRegisteredClient: true,
         clientName: client.name,
         clientEmail: client.email,
+        /* Las citas completadas llegaron a su hora y terminaron a la hora prevista. */
+        checkedInAt: seed.status === 'completed' ? seed.scheduledStart : null,
+        completedAt: seed.status === 'completed' ? seed.scheduledEnd : null,
         originalScheduledStart: null,
         cancelledAt: null,
         cancellationReason: null,
         notes: null,
         updatedAt: seed.createdAt,
-        ...seed,
-        checkedInAt: seed.checkedInAt ?? null,
-        completedAt: seed.completedAt ?? null
+        ...seed
     });
 
     const mine: AppointmentRecord[] = [

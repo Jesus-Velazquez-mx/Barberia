@@ -10,10 +10,17 @@ import ManagerStaffPage from './pages/staff/ManagerStaffPage';
 import ManagerClientsPage from './pages/staff/StaffClientsPage';
 import StaffAppointmentsPage from './pages/staff/StaffAppointmentsPage';
 import ManagerSectionPlaceholderPage from './pages/staff/ManagerSectionPlaceholderPage';
+import ManagerManagementPage from './pages/staff/ManagerManagementPage';
+import StaffInventoryPage from './pages/staff/StaffInventoryPage';
+import StaffSuppliesPage from './pages/staff/StaffSuppliesPage';
+import StaffSupplyCategoriesPage from './pages/staff/StaffSupplyCategoriesPage';
 import DashboardLayout from './pages/DashboardLayout';
 import RecommendationPage from './pages/client/RecommendationPage';
 import ClientAppointmentsPage from './pages/client/ClientAppointmentPage';
 import ClientAppointmentDetailPage from './pages/client/ClientAppointmentDetailPage';
+
+/* Enlace "Volver" de los CRUD de Gestión que aún son placeholders. */
+const MANAGEMENT_BACK_LINK = { to: '/manager/management', label: 'Volver a Gestión' };
 
 const router = createBrowserRouter([
   /* Client */
@@ -84,24 +91,62 @@ const router = createBrowserRouter([
             element: <BookAppointmentPage />
           },
           {
-            // Temporal: se reemplaza por la vista real de insumos
             path: '/manager/inventory',
+            element: <StaffInventoryPage role="manager" />
+          },
+          {
+            path: '/manager/inventory/supplies',
+            element: <StaffSuppliesPage role="manager" />
+          },
+          {
+            path: '/manager/inventory/supply-categories',
+            element: <StaffSupplyCategoriesPage role="manager" />
+          },
+          {
+            path: '/manager/management',
+            element: <ManagerManagementPage />
+          },
+          {
+            // Temporal: se reemplaza por el CRUD de sucursales
+            path: '/manager/management/shops',
             element: (
               <ManagerSectionPlaceholderPage
-                title="Inventario"
-                subtitle="Control de insumos y existencias."
-                plannedItems={['insumos', 'categorías', 'existencias', 'movimientos de entrada y salida']}
+                title="Sucursales"
+                subtitle="Administración de las sucursales de la barbería."
+                backTo={MANAGEMENT_BACK_LINK}
               />
             )
           },
           {
-            // Temporal: se reemplaza por la vista real de gestión
-            path: '/manager/management',
+            // Temporal: se reemplaza por el CRUD de turnos
+            path: '/manager/management/shifts',
             element: (
               <ManagerSectionPlaceholderPage
-                title="Gestión"
-                subtitle="Configuración general del negocio."
-                plannedItems={['sucursales', 'servicios ofrecidos', 'horarios de atención']}
+                title="Turnos"
+                subtitle="Horarios de los turnos de trabajo."
+                backTo={MANAGEMENT_BACK_LINK}
+              />
+            )
+          },
+          {
+            // Temporal: se reemplaza por el CRUD de servicios ofrecidos
+            path: '/manager/management/services',
+            element: (
+              <ManagerSectionPlaceholderPage
+                title="Servicios ofrecidos"
+                subtitle="Administración de los servicios, su duración y su precio."
+                backTo={MANAGEMENT_BACK_LINK}
+              />
+            )
+          },
+          {
+            // Temporal: se reemplaza por el CRUD de categorías de servicios
+            path: '/manager/management/service-categories',
+            element: (
+              <ManagerSectionPlaceholderPage
+                title="Categorías de servicios"
+                subtitle="Organización de los servicios por categoría."
+                backTo={MANAGEMENT_BACK_LINK}
               />
             )
           }
@@ -135,15 +180,16 @@ const router = createBrowserRouter([
             element: <ManagerClientsPage />
           },
           {
-            // Temporal: se reemplaza por la vista real de insumos
             path: '/receptionist/inventory',
-            element: (
-              <ManagerSectionPlaceholderPage
-                title="Inventario"
-                subtitle="Control de insumos y existencias."
-                plannedItems={['insumos', 'categorías', 'existencias', 'movimientos de entrada y salida']}
-              />
-            )
+            element: <StaffInventoryPage role="receptionist" />
+          },
+          {
+            path: '/receptionist/inventory/supplies',
+            element: <StaffSuppliesPage role="receptionist" />
+          },
+          {
+            path: '/receptionist/inventory/supply-categories',
+            element: <StaffSupplyCategoriesPage role="receptionist" />
           }
         ]
       }
