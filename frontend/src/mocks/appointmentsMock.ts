@@ -169,9 +169,7 @@ function buildAppointments(): AppointmentRecord[] {
             notes: random() < 0.25 ? pick(NOTES) : null,
             services,
             createdAt: new Date(createdMs).toISOString(),
-            updatedAt: new Date(updatedMs).toISOString(),
-            checkedInAt: null,
-            completedAt: null
+            updatedAt: new Date(updatedMs).toISOString()
         };
     });
 }
