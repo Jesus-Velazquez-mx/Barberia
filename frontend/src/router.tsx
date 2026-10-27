@@ -96,11 +96,11 @@ const router = createBrowserRouter([
           },
           {
             path: '/manager/inventory/supplies',
-            element: <StaffSuppliesPage />
+            element: <StaffSuppliesPage role="manager" />
           },
           {
             path: '/manager/inventory/supply-categories',
-            element: <StaffSupplyCategoriesPage />
+            element: <StaffSupplyCategoriesPage role="manager" />
           },
           {
             path: '/manager/management',
@@ -185,11 +185,11 @@ const router = createBrowserRouter([
           },
           {
             path: '/receptionist/inventory/supplies',
-            element: <StaffSuppliesPage />
+            element: <StaffSuppliesPage role="receptionist" />
           },
           {
             path: '/receptionist/inventory/supply-categories',
-            element: <StaffSupplyCategoriesPage />
+            element: <StaffSupplyCategoriesPage role="receptionist" />
           }
         ]
       }

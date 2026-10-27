@@ -1,5 +1,4 @@
-import { Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { BackLink } from '../../components/BackLinkComponent';
 import { ManagerPageHeader } from '../../components/ManagerPageHeaderComponent';
 
 interface ManagerSectionPlaceholderPageProps {
@@ -15,15 +14,7 @@ interface ManagerSectionPlaceholderPageProps {
 function ManagerSectionPlaceholderPage({ title, subtitle, plannedItems, backTo }: ManagerSectionPlaceholderPageProps) {
   return (
     <>
-      {backTo ? (
-        <Link
-          to={backTo.to}
-          className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-(--text) transition-colors hover:text-(--text-h)"
-        >
-          <ArrowLeft size={16} aria-hidden="true" />
-          {backTo.label}
-        </Link>
-      ) : null}
+      {backTo ? <BackLink to={backTo.to} label={backTo.label} /> : null}
 
       <ManagerPageHeader title={title} subtitle={subtitle} />
 
