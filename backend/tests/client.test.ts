@@ -393,6 +393,87 @@ describe('CRUD de Clientes (/api/clients)', () => {
 
             expect(response.status).toBe(400);
         });
+
+        test('GET /api/clients/email/:email - MANAGER y CLIENT pueden buscar por email', async () => {
+            const responseMgr = await request(app)
+                .get(`/api/clients/email/${testClient.email}`)
+                .set('Authorization', `Bearer ${managerToken}`);
+
+            expect(responseMgr.status).toBe(200);
+            expect(responseMgr.body.data.id).toBe(testClient.id);
+            expect(responseMgr.body.data.email).toBe(testClient.email);
+
+            const responseSelf = await request(app)
+                .get(`/api/clients/email/${testClient.email}`)
+                .set('Authorization', `Bearer ${clientToken}`);
+
+            expect(responseSelf.status).toBe(200);
+            expect(responseSelf.body.data.id).toBe(testClient.id);
+        });
+
+        test('GET /api/clients/email/:email - CLIENT recibe 403 Forbidden al consultar email ajeno', async () => {
+            const otherClient = await insertUser('client');
+            await getPool().query('INSERT INTO clients (user_id) VALUES ($1)', [otherClient.id]);
+
+            const response = await request(app)
+                .get(`/api/clients/email/${otherClient.email}`)
+                .set('Authorization', `Bearer ${clientToken}`);
+
+            expect(response.status).toBe(403);
+            expect(response.body.message).toContain('You do not have permission to view this client');
+        });
+
+        test('GET /api/clients/email/:email - 404 Not Found para email inexistente', async () => {
+            const response = await request(app)
+                .get('/api/clients/email/nonexistent_client@mrbarber.com')
+                .set('Authorization', `Bearer ${managerToken}`);
+
+            expect(response.status).toBe(404);
+            expect(response.body.message).toContain('Client not found');
+        });
+
+        test('GET /api/clients/name/:name - MANAGER y RECEPTIONIST pueden buscar clientes por nombre', async () => {
+            const responseMgr = await request(app)
+                .get('/api/clients/name/Fixture')
+                .set('Authorization', `Bearer ${managerToken}`);
+
+            expect(responseMgr.status).toBe(200);
+            expect(Array.isArray(responseMgr.body.data)).toBe(true);
+            expect(responseMgr.body.data.length).toBeGreaterThan(0);
+
+            const responseRec = await request(app)
+                .get('/api/clients/name/Fixture')
+                .set('Authorization', `Bearer ${receptionistToken}`);
+
+            expect(responseRec.status).toBe(200);
+            expect(Array.isArray(responseRec.body.data)).toBe(true);
+        });
+
+        test('GET /api/clients/name/:name - CLIENT recibe 403 Forbidden', async () => {
+            const response = await request(app)
+                .get('/api/clients/name/Fixture')
+                .set('Authorization', `Bearer ${clientToken}`);
+
+            expect(response.status).toBe(403);
+            expect(response.body.message).toContain('Only staff can search clients by name');
+        });
+
+        test('GET /api/clients?name=... y ?email=... - Soporte de búsqueda mediante query params', async () => {
+            const responseByName = await request(app)
+                .get('/api/clients?name=Fixture')
+                .set('Authorization', `Bearer ${managerToken}`);
+
+            expect(responseByName.status).toBe(200);
+            expect(Array.isArray(responseByName.body.data)).toBe(true);
+
+            const responseByEmail = await request(app)
+                .get(`/api/clients?email=${testClient.email}`)
+                .set('Authorization', `Bearer ${managerToken}`);
+
+            expect(responseByEmail.status).toBe(200);
+            expect(Array.isArray(responseByEmail.body.data)).toBe(true);
+            expect(responseByEmail.body.data[0].id).toBe(testClient.id);
+        });
     });
 
     // =========================================================================

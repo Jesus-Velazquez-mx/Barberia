@@ -5,6 +5,8 @@ import { isUserActive } from '../repositories/userRepository.js';
 import {
     createClient,
     getClientById,
+    getClientByEmail,
+    getClientsByName,
     getAllClients,
     updateClientById,
     deleteClientById,
@@ -113,6 +115,50 @@ export const getClientDetails = async (id: string, token: string): Promise<Clien
 
     return toClientDetailResponse(client);
 };
+
+/**
+ * Obtiene los detalles de un cliente por su correo electrónico.
+ * Un cliente solo puede consultar su propio perfil; el personal puede consultar el de cualquier cliente.
+ */
+export const getClientDetailsByEmail = async (email: string, token: string): Promise<ClientDetailResponse> => {
+    const actor = decodeToken(token);
+    if (!(await isUserActive(actor.id))) {
+        throw new ApiError(ApiErrorCode.ACCOUNT_DEACTIVATED, 'Account is deactivated');
+    }
+
+    const client = await getClientByEmail(email);
+    if (!client) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Client not found');
+    }
+
+    const isSelf = actor.id === client.id;
+    const isStaff = actor.role === 'manager' || actor.role === 'receptionist';
+
+    if (!isSelf && !isStaff) {
+        throw new ApiError(ApiErrorCode.FORBIDDEN, 'Forbidden: You do not have permission to view this client');
+    }
+
+    return toClientDetailResponse(client);
+};
+
+/**
+ * Busca clientes por nombre o apellido.
+ * Solo accesible para el personal (manager y receptionist).
+ */
+export const searchClientsByName = async (name: string, token: string): Promise<ClientDetailResponse[]> => {
+    const actor = decodeToken(token);
+    if (!(await isUserActive(actor.id))) {
+        throw new ApiError(ApiErrorCode.ACCOUNT_DEACTIVATED, 'Account is deactivated');
+    }
+
+    if (actor.role !== 'manager' && actor.role !== 'receptionist') {
+        throw new ApiError(ApiErrorCode.FORBIDDEN, 'Forbidden: Only staff can search clients by name');
+    }
+
+    const clients = await getClientsByName(name);
+    return clients.map(toClientDetailResponse);
+};
+
 
 /**
  * Actualiza los datos de un cliente.

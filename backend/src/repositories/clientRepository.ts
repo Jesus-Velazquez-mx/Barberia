@@ -126,6 +126,28 @@ export const getClientByEmail = async (email: string): Promise<ClientWithUser | 
 };
 
 /**
+ * Busca clientes por coincidencia en nombre o apellido.
+ */
+export const getClientsByName = async (name: string): Promise<ClientWithUser[]> => {
+    const pool = db.getPool();
+    const query = `
+        SELECT ${CLIENT_COLUMNS}
+        FROM users u
+        JOIN clients c ON c.user_id = u.id
+        WHERE u.role = 'client'
+          AND (
+              u.first_name ILIKE $1
+              OR u.last_name ILIKE $1
+              OR CONCAT(u.first_name, ' ', u.last_name) ILIKE $1
+          )
+        ORDER BY u.first_name, u.last_name
+    `;
+    const result = await pool.query(query, [`%${name}%`]);
+    return result.rows;
+};
+
+
+/**
  * Obtiene la lista completa de todos los clientes registrados.
  */
 export const getAllClients = async (): Promise<ClientWithUser[]> => {

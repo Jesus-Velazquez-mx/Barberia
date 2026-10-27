@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { create, list, getById, update, remove } from '../controllers/clientController.js';
+import { create, list, getById, getByEmail, getByName, update, remove } from '../controllers/clientController.js';
+
 
 const router = Router();
 
@@ -7,45 +8,97 @@ const router = Router();
  * @swagger
  * /api/clients:
  *   get:
- *     summary: Obtiene la lista completa de clientes
+ *     summary: Obtiene la lista completa de clientes o busca por query (?name= o ?email=)
  *     tags: [Clients]
- *     description: Retorna todos los clientes registrados en el sistema. Requiere token de personal (manager o receptionist).
+ *     description: Retorna todos los clientes registrados en el sistema, o filtra por nombre (?name=) o correo (?email=). Requiere token de personal (manager o receptionist).
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: name
+ *         schema:
+ *           type: string
+ *         description: Filtrar clientes por coincidencia en nombre o apellido.
+ *       - in: query
+ *         name: email
+ *         schema:
+ *           type: string
+ *           format: email
+ *         description: Buscar cliente por su correo exacto.
  *     responses:
  *       200:
  *         description: Éxito. Retorna el arreglo de clientes.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 data:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       id: { type: string, format: uuid }
- *                       role: { type: string, example: client }
- *                       email: { type: string, format: email }
- *                       phone: { type: string, nullable: true }
- *                       firstName: { type: string }
- *                       lastName: { type: string }
- *                       birthDate: { type: string, format: date-time }
- *                       gender: { type: string }
- *                       facialStructureType: { type: string, nullable: true }
- *                       completedServicesCount: { type: integer }
- *                       createdAt: { type: string, format: date-time }
- *                       updatedAt: { type: string, format: date-time }
- *                 message: { type: string, example: Clients retrieved successfully }
  *       401:
  *         description: Token ausente o inválido.
  *       403:
- *         description: No autorizado. Solo el personal puede listar clientes.
+ *         description: No autorizado. Solo el personal puede listar o buscar clientes.
  *       500:
  *         description: Error interno del servidor.
  */
 router.get('/clients', list);
+
+/**
+ * @swagger
+ * /api/clients/email/{email}:
+ *   get:
+ *     summary: Busca un cliente por su correo electrónico
+ *     tags: [Clients]
+ *     description: Retorna el cliente asociado al correo electrónico. Los clientes solo pueden consultar su propio correo; el personal puede consultar cualquier cliente.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: email
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: email
+ *         description: Correo electrónico del cliente.
+ *     responses:
+ *       200:
+ *         description: Éxito. Datos del cliente.
+ *       400:
+ *         description: Formato de correo electrónico inválido.
+ *       401:
+ *         description: Token ausente o inválido.
+ *       403:
+ *         description: No autorizado para consultar este cliente.
+ *       404:
+ *         description: Cliente no encontrado.
+ *       500:
+ *         description: Error interno del servidor.
+ */
+router.get('/clients/email/:email', getByEmail);
+
+/**
+ * @swagger
+ * /api/clients/name/{name}:
+ *   get:
+ *     summary: Busca clientes por nombre o apellido
+ *     tags: [Clients]
+ *     description: Retorna la lista de clientes cuyo nombre o apellido coincide con el término de búsqueda. Solo para personal (manager o receptionist).
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: name
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Nombre o apellido a buscar.
+ *     responses:
+ *       200:
+ *         description: Éxito. Lista de clientes encontrados.
+ *       400:
+ *         description: Parámetro de nombre inválido.
+ *       401:
+ *         description: Token ausente o inválido.
+ *       403:
+ *         description: No autorizado. Solo el personal puede buscar clientes por nombre.
+ *       500:
+ *         description: Error interno del servidor.
+ */
+router.get('/clients/name/:name', getByName);
 
 /**
  * @swagger
@@ -78,7 +131,7 @@ router.get('/clients', list);
  *       500:
  *         description: Error interno del servidor.
  */
-router.get('/clients/:id', getById);
+router.get('/clients/:id', getById)
 
 /**
  * @swagger

@@ -11,6 +11,8 @@ import {
     registerClient,
     listClients,
     getClientDetails,
+    getClientDetailsByEmail,
+    searchClientsByName,
     updateClient,
     deleteClient,
 } from '../services/clientService.js';
@@ -20,6 +22,15 @@ import { extractBearerFromHeader, extractOptionalBearerFromHeader } from '../uti
 const clientIdParamSchema = z.object({
     id: z.uuid('Invalid client ID format'),
 });
+
+const clientEmailParamSchema = z.object({
+    email: z.email('Invalid email format'),
+});
+
+const clientNameParamSchema = z.object({
+    name: z.string().trim().min(1, 'Name is required'),
+});
+
 
 const createClientSchema = z.object({
     firstName: z.string().trim().min(2, 'First name must have at least 2 characters').max(100),
@@ -39,7 +50,7 @@ const createClientSchema = z.object({
 const updateClientFieldsSchema = z
     .object({
         id: z.uuid().optional(),
-        email: z.email('Invalid email format').trim().max(255).optional(),
+        email: z.email('Invalid email format').max(255).optional(),
         phone: z.string().trim().length(10, 'Phone must have 10 digits').optional().nullable(),
         password: z.string().min(6, 'Password must have at least 6 characters').optional(),
         firstName: z.string().trim().min(2).max(100).optional(),
@@ -79,14 +90,33 @@ export const create: ApiHandler<ClientDetailResponse> = async (req, res) => {
 };
 
 /**
- * Obtiene la lista completa de clientes.
+ * Obtiene la lista completa de clientes (con soporte para filtrar por ?name= o ?email=).
  */
 export const list: ApiHandler<ClientDetailResponse[]> = async (req, res) => {
     try {
         const token = extractBearerFromHeader(req);
+
+        if (typeof req.query.name === 'string' && req.query.name.trim().length > 0) {
+            const result = await searchClientsByName(req.query.name.trim(), token);
+            sendSuccess({ res, data: result, message: 'Clients retrieved successfully' });
+            return;
+        }
+
+        if (typeof req.query.email === 'string' && req.query.email.trim().length > 0) {
+            const valid = clientEmailParamSchema.parse({ email: req.query.email.trim() });
+            const client = await getClientDetailsByEmail(valid.email, token);
+            sendSuccess({ res, data: [client], message: 'Clients retrieved successfully' });
+            return;
+        }
+
         const result = await listClients(token);
         sendSuccess({ res, data: result, message: 'Clients retrieved successfully' });
     } catch (error: unknown) {
+        if (error instanceof ZodError) {
+            sendValidationError({ res, error });
+            return;
+        }
+
         if (error instanceof ApiError) {
             sendFail({ res, message: error.message, status: error.code });
             return;
@@ -120,6 +150,59 @@ export const getById: ApiHandler<ClientDetailResponse> = async (req, res) => {
         sendInternalServerError({ res, error: [String(error)] });
     }
 };
+
+/**
+ * Obtiene el detalle de un cliente por su correo electrónico.
+ */
+export const getByEmail: ApiHandler<ClientDetailResponse> = async (req, res) => {
+    try {
+        const token = extractBearerFromHeader(req);
+        const emailToFind = req.params.email || req.query.email;
+        const validParams = clientEmailParamSchema.parse({ email: emailToFind });
+
+        const result = await getClientDetailsByEmail(validParams.email, token);
+        sendSuccess({ res, data: result, message: 'Client retrieved successfully' });
+    } catch (error: unknown) {
+        if (error instanceof ZodError) {
+            sendValidationError({ res, error });
+            return;
+        }
+
+        if (error instanceof ApiError) {
+            sendFail({ res, message: error.message, status: error.code });
+            return;
+        }
+
+        sendInternalServerError({ res, error: [String(error)] });
+    }
+};
+
+/**
+ * Busca clientes por nombre o apellido.
+ */
+export const getByName: ApiHandler<ClientDetailResponse[]> = async (req, res) => {
+    try {
+        const token = extractBearerFromHeader(req);
+        const nameToFind = req.params.name || req.query.name;
+        const validParams = clientNameParamSchema.parse({ name: nameToFind });
+
+        const result = await searchClientsByName(validParams.name, token);
+        sendSuccess({ res, data: result, message: 'Clients retrieved successfully' });
+    } catch (error: unknown) {
+        if (error instanceof ZodError) {
+            sendValidationError({ res, error });
+            return;
+        }
+
+        if (error instanceof ApiError) {
+            sendFail({ res, message: error.message, status: error.code });
+            return;
+        }
+
+        sendInternalServerError({ res, error: [String(error)] });
+    }
+};
+
 
 /**
  * Actualiza la información de un cliente.
