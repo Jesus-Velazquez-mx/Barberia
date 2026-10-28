@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { create, list, update } from '../controllers/appointmentController.js';
+import { cancel, create, list, update } from '../controllers/appointmentController.js';
 
 const router = Router();
 
@@ -269,5 +269,62 @@ router.get('/appointments', list);
  *         description: Error interno del servidor.
  */
 router.put('/appointments/:id', update);
+
+
+/**
+ * @swagger
+ * /api/appointments/{id}/cancel:
+ *   put:
+ *     summary: Cancela una cita
+ *     tags: [Appointments]
+ *     description: |
+ *       Cancela una cita (status `cancelled`, se registra `cancelledAt` y el motivo opcional). Requiere token JWT. El cuerpo es opcional.
+ *       Permisos por rol:
+ *       - client: solo sus propias citas y solo si faltan 8 horas o más para la hora agendada.
+ *       - receptionist: citas de la sucursal donde trabaja. No está sujeta al límite de 8 horas.
+ *       - manager: citas de las sucursales que administra. No está sujeto al límite de 8 horas.
+ *       Reglas:
+ *       - Solo se cancelan citas futuras con estado `scheduled` o `rescheduled`; cualquier otro estado (incluida una cita ya cancelada) responde 409.
+ *       - El horario del barbero queda libre para nuevas reservas.
+ *       - Si la cita canjeaba una recompensa, el cliente la conserva; solo se pierde con no-show.
+ *       - No hay reembolsos ni límite de cancelaciones.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *         description: Id de la cita.
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             additionalProperties: false
+ *             properties:
+ *               reason:
+ *                 type: string
+ *                 maxLength: 255
+ *                 nullable: true
+ *                 description: Motivo de la cancelación.
+ *     responses:
+ *       200:
+ *         description: Cita cancelada. `data` tiene la misma forma que la respuesta de `PUT /api/appointments/{id}`.
+ *       400:
+ *         description: Error de validación (UUID, motivo demasiado largo o campos no permitidos).
+ *       401:
+ *         description: Token ausente o inválido.
+ *       403:
+ *         description: Cuenta desactivada, la cita no está dentro del alcance del rol, o un cliente intenta cancelar con menos de 8 horas de anticipación.
+ *       404:
+ *         description: Cita no encontrada.
+ *       409:
+ *         description: La cita ya no se puede cancelar (estado distinto de scheduled / rescheduled o ya inició).
+ *       500:
+ *         description: Error interno del servidor.
+ */
+router.put('/appointments/:id/cancel', cancel);
 
 export default router;

@@ -1,5 +1,6 @@
 import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 import {
+    cancelAppointmentById,
     createAppointmentWithServices,
     getAppointmentById,
     getAppointments,
@@ -22,8 +23,10 @@ import { isUserSessionValid } from '../utils/userSession.js';
 import { toAppointmentResponse, toClientAppointmentResponse } from '../utils/appointmentMapper.js';
 import { getBusinessDayStart, getBusinessToday, timeToMinutes, toBusinessWallClockMs } from '../utils/businessTime.js';
 import type { AppointmentListFilters } from '../repositories/appointmentRepository.js';
+import type { Appointment } from '../types/entities/appointment.interface.js';
 import type { AppointmentService } from '../types/entities/appointmentService.interface.js';
 import type {
+    CancelAppointmentRequest,
     CreateAppointmentRequest,
     ListAppointmentsQuery,
     UpdateAppointmentRequest,
@@ -134,16 +137,14 @@ export const registerAppointment = async (
 const RESCHEDULE_WINDOW_DAYS = 30;
 
 /**
- * Edita una cita (horario, barbero, servicios y notas). El cliente, el invitado y la sucursal no cambian.
- * Valida rol y alcance, estado (scheduled / rescheduled), que la cita no haya empezado, el límite de 8 horas
- * (solo clientes), la ventana de 30 días desde que se agendó y la disponibilidad del barbero excluyendo la
- * propia cita. Cambiar horario o barbero la deja en `rescheduled`; editar solo servicios o notas conserva el estado.
+ * Prólogo compartido por editar y cancelar: valida la sesión, que la cita exista, el alcance del rol, el estado
+ * (scheduled / rescheduled), que no haya empezado y el límite de 8 horas (solo clientes).
  */
-export const updateAppointment = async (
+const loadModifiableAppointment = async (
     appointmentId: string,
-    data: UpdateAppointmentRequest,
-    token: string
-): Promise<AppointmentResponse | ClientAppointmentResponse> => {
+    token: string,
+    action: 'edit' | 'cancel'
+): Promise<{ performer: Awaited<ReturnType<typeof isUserSessionValid>>; appointment: Appointment }> => {
     const performer = await isUserSessionValid(token);
 
     const appointment = await getAppointmentById(appointmentId);
@@ -159,6 +160,7 @@ export const updateAppointment = async (
     const receptionistShopId =
         performer.role === 'receptionist' ? ((await getReceptionistByUserId(performer.id))?.shop_id ?? null) : null;
 
+    // Editar y cancelar comparten el mismo alcance por rol.
     if (
         !canEditAppointment(
             performer,
@@ -166,23 +168,45 @@ export const updateAppointment = async (
             receptionistShopId
         )
     ) {
-        throw new ApiError(ApiErrorCode.FORBIDDEN, 'Not authorized to edit this appointment');
+        throw new ApiError(ApiErrorCode.FORBIDDEN, `Not authorized to ${action} this appointment`);
     }
 
     if (appointment.status !== 'scheduled' && appointment.status !== 'rescheduled') {
-        throw new ApiError(ApiErrorCode.CONFLICT, 'Only scheduled or rescheduled appointments can be edited');
+        throw new ApiError(
+            ApiErrorCode.CONFLICT,
+            `Only scheduled or rescheduled appointments can be ${action === 'edit' ? 'edited' : 'cancelled'}`
+        );
     }
 
     const now = new Date();
     if (appointment.scheduled_start.getTime() <= now.getTime()) {
-        throw new ApiError(ApiErrorCode.CONFLICT, 'Only future appointments can be edited');
+        throw new ApiError(
+            ApiErrorCode.CONFLICT,
+            `Only future appointments can be ${action === 'edit' ? 'edited' : 'cancelled'}`
+        );
     }
     if (!isWithinClientEditCutoff(performer, appointment.scheduled_start, now)) {
         throw new ApiError(
             ApiErrorCode.FORBIDDEN,
-            'Clients cannot edit an appointment less than 8 hours before it starts'
+            `Clients cannot ${action} an appointment less than 8 hours before it starts`
         );
     }
+
+    return { performer, appointment };
+};
+
+/**
+ * Edita una cita (horario, barbero, servicios y notas). El cliente, el invitado y la sucursal no cambian.
+ * Valida rol y alcance, estado (scheduled / rescheduled), que la cita no haya empezado, el límite de 8 horas
+ * (solo clientes), la ventana de 30 días desde que se agendó y la disponibilidad del barbero excluyendo la
+ * propia cita. Cambiar horario o barbero la deja en `rescheduled`; editar solo servicios o notas conserva el estado.
+ */
+export const updateAppointment = async (
+    appointmentId: string,
+    data: UpdateAppointmentRequest,
+    token: string
+): Promise<AppointmentResponse | ClientAppointmentResponse> => {
+    const { performer, appointment } = await loadModifiableAppointment(appointmentId, token, 'edit');
 
     // Valores finales: lo que no se manda se conserva.
     const barberId = data.barberId ?? appointment.barber_id;
@@ -289,6 +313,29 @@ export const updateAppointment = async (
 
     const [client] = await getAppointmentClientsById(updated.client_id !== null ? [updated.client_id] : []);
     return toAppointmentResponse(updated, services, client ?? null);
+};
+
+/**
+ * Cancela una cita. Mismas reglas de rol, estado, cita futura y límite de 8 horas (solo clientes) que la edición.
+ * No hay reembolsos ni límite de cancelaciones, y la recompensa del programa de lealtad se conserva al cancelar
+ * (solo se pierde con no_show), por lo que aquí no hay lógica de recompensas. La cita cancelada deja de ocupar
+ * agenda porque la disponibilidad solo considera scheduled / rescheduled / checked_in.
+ */
+export const cancelAppointment = async (
+    appointmentId: string,
+    data: CancelAppointmentRequest,
+    token: string
+): Promise<AppointmentResponse | ClientAppointmentResponse> => {
+    const { performer, appointment } = await loadModifiableAppointment(appointmentId, token, 'cancel');
+
+    const { appointment: cancelled, services } = await cancelAppointmentById(appointment.id, data.reason ?? null);
+
+    if (performer.role === 'client') {
+        return toClientAppointmentResponse(cancelled, services);
+    }
+
+    const [client] = await getAppointmentClientsById(cancelled.client_id !== null ? [cancelled.client_id] : []);
+    return toAppointmentResponse(cancelled, services, client ?? null);
 };
 
 /**

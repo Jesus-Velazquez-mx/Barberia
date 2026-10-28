@@ -298,3 +298,51 @@ export const updateAppointmentWithServices = async (
         client.release();
     }
 };
+
+/**
+ * Cancela la cita (status = cancelled, cancelled_at = now()) en una transacción.
+ * Toma el candado de la cita, igual que la edición, para serializar contra edición, check-in u otra cancelación;
+ * quien llegue segundo ve un estado ya no cancelable y recibe 409. Los servicios y is_reward_redemption no se tocan.
+ */
+export const cancelAppointmentById = async (
+    appointmentId: string,
+    reason: string | null
+): Promise<{ appointment: Appointment; services: AppointmentService[] }> => {
+    const pool = db.getPool();
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        const current = await client.query(`SELECT status FROM appointments WHERE id = $1 FOR UPDATE`, [appointmentId]);
+        if (current.rows.length === 0) {
+            throw new ApiError(ApiErrorCode.NOT_FOUND, 'Appointment not found');
+        }
+        if (!['scheduled', 'rescheduled'].includes(current.rows[0].status)) {
+            throw new ApiError(ApiErrorCode.CONFLICT, 'Only scheduled or rescheduled appointments can be cancelled');
+        }
+
+        const result = await client.query(
+            `UPDATE appointments
+             SET status = 'cancelled', cancelled_at = now(), cancellation_reason = $2
+             WHERE id = $1
+             RETURNING ${APPOINTMENT_COLUMNS}`,
+            [appointmentId, reason]
+        );
+        const services = await client.query(
+            `SELECT id, appointment_id, service_id, price_at_booking, duration_minutes_at_booking, created_at
+             FROM appointment_services
+             WHERE appointment_id = $1
+             ORDER BY created_at ASC, id ASC`,
+            [appointmentId]
+        );
+
+        await client.query('COMMIT');
+        return { appointment: result.rows[0], services: services.rows };
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
+};

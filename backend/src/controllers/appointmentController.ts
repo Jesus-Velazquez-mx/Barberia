@@ -2,7 +2,7 @@ import { z, ZodError } from 'zod';
 import type { ApiHandler } from '../utils/apiResponse.js';
 import { sendFail, sendInternalServerError, sendSuccess, sendValidationError } from '../utils/apiResponse.js';
 import { ApiError } from '../errors/ApiError.js';
-import { listAppointments, registerAppointment, updateAppointment } from '../services/appointmentService.js';
+import { cancelAppointment, listAppointments, registerAppointment, updateAppointment } from '../services/appointmentService.js';
 import type { AppointmentResponse, ClientAppointmentResponse } from '../types/dto/appointmentResponse.interface.js';
 import { extractBearerFromHeader } from '../utils/headerHandling.js';
 
@@ -44,6 +44,11 @@ const updateAppointmentSchema = z
     .refine((data) => Object.values(data).some((value) => value !== undefined), {
         message: 'At least one field to update is required',
     });
+
+// El cuerpo es opcional; solo se acepta el motivo de la cancelación.
+const cancelAppointmentSchema = z.strictObject({
+    reason: z.string().trim().max(255, 'Reason must be at most 255 characters').nullable().optional(),
+});
 
 const appointmentIdParamSchema = z.object({ id: z.uuid('Invalid appointment ID format') });
 
@@ -106,6 +111,29 @@ export const update: ApiHandler<AppointmentResponse | ClientAppointmentResponse>
         const result = await updateAppointment(id, validData, token);
 
         sendSuccess({ res, data: result, message: 'Appointment updated successfully' });
+    } catch (error: unknown) {
+        if (error instanceof ZodError) {
+            sendValidationError({ res, error });
+            return;
+        }
+        if (error instanceof ApiError) {
+            sendFail({ res, message: error.message, status: error.code });
+            return;
+        }
+        sendInternalServerError({ res, error: [String(error)] });
+    }
+};
+
+// Cancelar cita.
+export const cancel: ApiHandler<AppointmentResponse | ClientAppointmentResponse> = async (req, res) => {
+    try {
+        const token = extractBearerFromHeader(req);
+        const { id } = appointmentIdParamSchema.parse(req.params);
+        const validData = cancelAppointmentSchema.parse(req.body ?? {});
+
+        const result = await cancelAppointment(id, validData, token);
+
+        sendSuccess({ res, data: result, message: 'Appointment cancelled successfully' });
     } catch (error: unknown) {
         if (error instanceof ZodError) {
             sendValidationError({ res, error });

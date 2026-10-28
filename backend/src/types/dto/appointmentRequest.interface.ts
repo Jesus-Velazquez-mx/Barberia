@@ -17,6 +17,11 @@ export interface UpdateAppointmentRequest {
     notes?: string | null;
 }
 
+// El motivo es opcional y se guarda en appointments.cancellation_reason (máx. 255 caracteres).
+export interface CancelAppointmentRequest {
+    reason?: string | null;
+}
+
 export type AppointmentClientType = 'registered' | 'visitor';
 
 export interface ListAppointmentsQuery {
