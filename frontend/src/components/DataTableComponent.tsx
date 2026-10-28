@@ -21,8 +21,11 @@ export interface DataTableProps<T> {
   error: string;
   emptyMessage: string;
   onRetry: () => void;
-  onEdit: (row: T) => void;
-  onDelete: (row: T) => void;
+  /* Si no se pasan onEdit ni onDelete (vista de solo lectura), la columna ACCIONES no se muestra. */
+  onEdit?: (row: T) => void;
+  onDelete?: (row: T) => void;
+  /* Permite ocultar el botón de eliminar en filas concretas (p. ej. registros ya inactivos). */
+  canDelete?: (row: T) => boolean;
   pagination: TablePaginationProps;
 }
 
@@ -41,9 +44,11 @@ export function DataTable<T>({
   onRetry,
   onEdit,
   onDelete,
+  canDelete,
   pagination
 }: DataTableProps<T>) {
-  const columnCount = columns.length + 2;
+  const hasActions = Boolean(onEdit || onDelete);
+  const columnCount = columns.length + (hasActions ? 2 : 1);
   const hasRows = !isLoading && !error && rows.length > 0;
 
   return (
@@ -60,9 +65,11 @@ export function DataTable<T>({
                   {column.header}
                 </th>
               ))}
-              <th scope="col" className={HEADER_CELL}>
-                Acciones
-              </th>
+              {hasActions && (
+                <th scope="col" className={HEADER_CELL}>
+                  Acciones
+                </th>
+              )}
             </tr>
           </thead>
 
@@ -116,26 +123,32 @@ export function DataTable<T>({
                         {column.render(row)}
                       </td>
                     ))}
-                    <td className="px-5 py-3">
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => onEdit(row)}
-                          aria-label={`Editar a ${label}`}
-                          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-[var(--accent)] transition-colors hover:bg-[var(--accent)]/10"
-                        >
-                          <Pencil size={16} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onDelete(row)}
-                          aria-label={`Eliminar a ${label}`}
-                          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-[#E53935] transition-colors hover:bg-[#E53935]/10"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
+                    {hasActions && (
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-1">
+                          {onEdit && (
+                            <button
+                              type="button"
+                              onClick={() => onEdit(row)}
+                              aria-label={`Editar a ${label}`}
+                              className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-[var(--accent)] transition-colors hover:bg-[var(--accent)]/10"
+                            >
+                              <Pencil size={16} />
+                            </button>
+                          )}
+                          {onDelete && (canDelete ? canDelete(row) : true) && (
+                            <button
+                              type="button"
+                              onClick={() => onDelete(row)}
+                              aria-label={`Eliminar a ${label}`}
+                              className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-[#E53935] transition-colors hover:bg-[#E53935]/10"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 );
               })}

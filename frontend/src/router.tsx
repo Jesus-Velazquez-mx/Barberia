@@ -14,6 +14,9 @@ import ManagerManagementPage from './pages/staff/ManagerManagementPage';
 import StaffInventoryPage from './pages/staff/StaffInventoryPage';
 import StaffSuppliesPage from './pages/staff/StaffSuppliesPage';
 import StaffSupplyCategoriesPage from './pages/staff/StaffSupplyCategoriesPage';
+import StaffOfferedServicesPage from './pages/staff/StaffOfferedServicesPage';
+import StaffServiceCategoriesPage from './pages/staff/StaffServiceCategoriesPage';
+import ReceptionistServicesPage from './pages/staff/ReceptionistServicesPage';
 import DashboardLayout from './pages/DashboardLayout';
 import RecommendationPage from './pages/client/RecommendationPage';
 import ClientAppointmentsPage from './pages/client/ClientAppointmentPage';
@@ -129,26 +132,12 @@ const router = createBrowserRouter([
             )
           },
           {
-            // Temporal: se reemplaza por el CRUD de servicios ofrecidos
             path: '/manager/management/services',
-            element: (
-              <ManagerSectionPlaceholderPage
-                title="Servicios ofrecidos"
-                subtitle="Administración de los servicios, su duración y su precio."
-                backTo={MANAGEMENT_BACK_LINK}
-              />
-            )
+            element: <StaffOfferedServicesPage role="manager" />
           },
           {
-            // Temporal: se reemplaza por el CRUD de categorías de servicios
             path: '/manager/management/service-categories',
-            element: (
-              <ManagerSectionPlaceholderPage
-                title="Categorías de servicios"
-                subtitle="Organización de los servicios por categoría."
-                backTo={MANAGEMENT_BACK_LINK}
-              />
-            )
+            element: <StaffServiceCategoriesPage role="manager" />
           }
         ]
       }
@@ -190,6 +179,19 @@ const router = createBrowserRouter([
           {
             path: '/receptionist/inventory/supply-categories',
             element: <StaffSupplyCategoriesPage role="receptionist" />
+          },
+          {
+            // Catálogo de servicios en modo consulta (la recepcionista no puede editar ni eliminar)
+            path: '/receptionist/services',
+            element: <ReceptionistServicesPage />
+          },
+          {
+            path: '/receptionist/services/offered',
+            element: <StaffOfferedServicesPage role="receptionist" />
+          },
+          {
+            path: '/receptionist/services/categories',
+            element: <StaffServiceCategoriesPage role="receptionist" />
           }
         ]
       }

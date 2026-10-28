@@ -5,7 +5,7 @@ import { LogoutConfirmModal } from '../components/LogoutConfirmModalComponent';
 import { Toast } from '../components/ToastComponent';
 import { useAuth } from '../context/AuthContext';
 import type { UserRole } from '../types/auth';
-import { Users, UserRound, Package, Settings, CalendarPlus, Calendar, Sparkles } from 'lucide-react';
+import { Users, UserRound, Package, Settings, CalendarPlus, Calendar, Sparkles, Scissors } from 'lucide-react';
 
 const NAV_ITEMS = {
   manager: [
@@ -26,7 +26,8 @@ const NAV_ITEMS = {
     { to: '/receptionist/appointments', label: 'Citas', icon: <Calendar size={20} aria-hidden="true" /> },
     { to: '/receptionist/booking', label: 'Agendar Cita', icon: <CalendarPlus size={20} aria-hidden="true" /> },
     { to: '/receptionist/clients', label: 'Clientes', icon: <UserRound size={20} aria-hidden="true" /> },
-    { to: '/receptionist/inventory', label: 'Inventario', icon: <Package size={20} aria-hidden="true" /> }
+    { to: '/receptionist/inventory', label: 'Inventario', icon: <Package size={20} aria-hidden="true" /> },
+    { to: '/receptionist/services', label: 'Servicios', icon: <Scissors size={20} aria-hidden="true" /> }
   ]
 };
 
