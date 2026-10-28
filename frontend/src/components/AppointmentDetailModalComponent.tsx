@@ -11,6 +11,7 @@ import {
 import { AppointmentStatusBadge } from './AppointmentStatusBadgeComponent';
 import { Button } from './ButtonComponent';
 import { Modal } from './ModalComponent';
+import { RewardBadge } from './RewardBadgeComponent';
 
 interface AppointmentDetailModalProps {
   /* null = modal cerrado. */
@@ -162,7 +163,10 @@ export function AppointmentDetailModal({ appointment, onClose }: AppointmentDeta
               <h2 className="m-0 font-sans font-bold tracking-normal text-[var(--text-h)]">Detalle de la cita</h2>
               <span className="mt-0.5 block text-sm text-[var(--text)]">ID: {appointment.id.slice(0, 8)}</span>
             </div>
-            <AppointmentStatusBadge status={appointment.status} />
+            <div className="flex flex-wrap items-center gap-2">
+              {appointment.isRewardRedemption && <RewardBadge />}
+              <AppointmentStatusBadge status={appointment.status} />
+            </div>
           </div>
 
           {/* Datos clave, de izquierda a derecha y de arriba a abajo. */}

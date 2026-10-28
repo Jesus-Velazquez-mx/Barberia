@@ -35,6 +35,8 @@ export interface AppointmentRecord {
     cancelledAt: string | null;
     cancellationReason: string | null;
     notes: string | null;
+    /* true cuando la cita se canjeó con la recompensa de lealtad (is_reward_redemption). */
+    isRewardRedemption: boolean;
     services: AppointmentServiceItem[];
     createdAt: string;
     updatedAt: string;

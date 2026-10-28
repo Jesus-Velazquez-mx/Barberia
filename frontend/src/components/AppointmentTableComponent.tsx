@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, RotateCw } from 'lucide-react';
+import { ArrowDown, ArrowUp, RotateCw, Star } from 'lucide-react';
 import type { AppointmentRecord, SortDirection } from '../types/appointmentType';
 import { formatAppointmentDate, formatAppointmentTime } from '../utils/appointmentUtils';
 import { AppointmentStatusBadge } from './AppointmentStatusBadgeComponent';
@@ -167,7 +167,14 @@ export function AppointmentTable({
                     </td>
                   )}
                   <td className="max-w-[220px] px-5 py-3 text-[var(--text-h)]">
-                    {appointment.services.map((service) => service.name).join(', ')}
+                    <span className="inline-flex items-center gap-1.5">
+                      {appointment.services.map((service) => service.name).join(', ')}
+                      {appointment.isRewardRedemption && (
+                        <span title="Recompensa otorgada" className="inline-flex shrink-0 text-[var(--accent)]">
+                          <Star size={14} fill="currentColor" role="img" aria-label="Recompensa otorgada" />
+                        </span>
+                      )}
+                    </span>
                   </td>
 
                   <td className="px-5 py-3">
