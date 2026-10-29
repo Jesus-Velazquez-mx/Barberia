@@ -2,8 +2,11 @@ package com.mrbarber.cliente.features.login.data.mapper
 
 import com.mrbarber.cliente.core.datastore.SessionUser
 import com.mrbarber.cliente.core.util.DateUtils
+import com.mrbarber.cliente.features.login.data.remote.dto.RegisterRequestDto
 import com.mrbarber.cliente.features.login.data.remote.dto.UserDto
+import com.mrbarber.cliente.features.login.domain.model.NewUser
 import com.mrbarber.cliente.features.login.domain.model.User
+import com.mrbarber.cliente.features.profile.data.mapper.toApi
 import com.mrbarber.cliente.features.login.domain.model.UserRole
 
 fun UserDto.toDomain(): User = User(
@@ -20,6 +23,16 @@ fun UserDto.toDomain(): User = User(
     lastName = lastName,
     facialStructureType = profile?.facialStructureType,
     completedServicesCount = profile?.completedServicesCount ?: 0
+)
+
+fun NewUser.toRequestDto(): RegisterRequestDto = RegisterRequestDto(
+    firstName = firstName,
+    lastName = lastName,
+    phone = phone,
+    email = email,
+    password = password,
+    birthDate = DateUtils.toServerDate(birthDate),
+    gender = gender.toApi()
 )
 
 fun UserDto.toSessionUser(): SessionUser = SessionUser(

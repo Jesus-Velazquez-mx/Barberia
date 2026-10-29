@@ -15,7 +15,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.mrbarber.cliente.features.home.presentation.HomeRoute
 import com.mrbarber.cliente.features.login.presentation.LoginRoute
-import com.mrbarber.cliente.features.perfil.presentation.ProfileRoute
+import com.mrbarber.cliente.features.profile.presentation.ProfileRoute
+import com.mrbarber.cliente.features.register.presentation.RegisterRoute
+import com.mrbarber.cliente.features.appointment.presentation.AppointmentRoute
+
 
 @Composable
 fun AppNavGraph(
@@ -43,11 +46,24 @@ fun AppNavGraph(
                     navController.navigate(HomeDestination) {
                         popUpTo<LoginDestination> { inclusive = true }
                     }
-                }
+                },
+                onRegisterClick = { navController.navigate(RegisterDestination) }
+            )
+        }
+        composable<RegisterDestination> {
+            RegisterRoute(
+                // El registro deja la sesión iniciada: se va directo a Home sin Login ni Registro en la pila.
+                onRegisterSuccess = {
+                    navController.navigate(HomeDestination) {
+                        popUpTo(navController.graph.id) { inclusive = true }
+                    }
+                },
+                onLoginClick = { navController.popBackStack() }
             )
         }
         composable<HomeDestination> {
             HomeRoute(
+                onBookAppointmentClick = { navController.navigate(AppointmentDestination) },
                 onProfileClick = { navController.navigate(ProfileDestination) },
                 onLoggedOut = { navController.navigateToLoginClearingStack() }
             )
@@ -56,6 +72,12 @@ fun AppNavGraph(
             ProfileRoute(
                 onBack = { navController.popBackStack() },
                 onLoggedOut = { navController.navigateToLoginClearingStack() }
+            )
+        }
+        composable<AppointmentDestination> {
+            AppointmentRoute(
+                onBack = { navController.popBackStack() },
+                onAppointmentCreated = { navController.popBackStack() }
             )
         }
     }

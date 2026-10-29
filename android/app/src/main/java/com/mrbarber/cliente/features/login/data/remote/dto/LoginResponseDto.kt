@@ -2,7 +2,7 @@ package com.mrbarber.cliente.features.login.data.remote.dto
 
 import kotlinx.serialization.Serializable
 
-/** Contenido de `data` en la respuesta de POST /api/auth/login. */
+/** Contenido de `data` en la respuesta de POST /api/auth/login y POST /api/auth/register. */
 @Serializable
 data class LoginResponseDto(
     val user: UserDto,

@@ -6,7 +6,14 @@ import kotlinx.serialization.Serializable
 data object LoginDestination
 
 @Serializable
+data object RegisterDestination
+
+@Serializable
 data object HomeDestination
 
 @Serializable
 data object ProfileDestination
+
+
+@Serializable
+data object AppointmentDestination
