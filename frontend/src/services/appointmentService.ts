@@ -167,6 +167,7 @@ function toRecord(a: AppointmentApi, catalogs: Catalogs, client?: AppointmentCli
         cancelledAt: a.cancelledAt,
         cancellationReason: a.cancellationReason,
         notes: a.notes,
+        isRewardRedemption: a.isRewardRedemption,
         services: a.services.map((s) => ({
             serviceId: s.serviceId,
             name: catalogs.services.get(s.serviceId) ?? 'Servicio',

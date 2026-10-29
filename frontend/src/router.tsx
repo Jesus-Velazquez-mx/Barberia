@@ -21,6 +21,8 @@ import DashboardLayout from './pages/DashboardLayout';
 import RecommendationPage from './pages/client/RecommendationPage';
 import ClientAppointmentsPage from './pages/client/ClientAppointmentPage';
 import ClientAppointmentDetailPage from './pages/client/ClientAppointmentDetailPage';
+import ManagerShiftsPage  from './pages/staff/ManagerShiftsPage';
+import ManagerShopsPage from './pages/staff/ManagerShopsPage';
 
 /* Enlace "Volver" de los CRUD de Gestión que aún son placeholders. */
 const MANAGEMENT_BACK_LINK = { to: '/manager/management', label: 'Volver a Gestión' };
@@ -112,24 +114,12 @@ const router = createBrowserRouter([
           {
             // Temporal: se reemplaza por el CRUD de sucursales
             path: '/manager/management/shops',
-            element: (
-              <ManagerSectionPlaceholderPage
-                title="Sucursales"
-                subtitle="Administración de las sucursales de la barbería."
-                backTo={MANAGEMENT_BACK_LINK}
-              />
-            )
+            element: <ManagerShopsPage />
           },
           {
             // Temporal: se reemplaza por el CRUD de turnos
             path: '/manager/management/shifts',
-            element: (
-              <ManagerSectionPlaceholderPage
-                title="Turnos"
-                subtitle="Horarios de los turnos de trabajo."
-                backTo={MANAGEMENT_BACK_LINK}
-              />
-            )
+            element: <ManagerShiftsPage />
           },
           {
             path: '/manager/management/services',
