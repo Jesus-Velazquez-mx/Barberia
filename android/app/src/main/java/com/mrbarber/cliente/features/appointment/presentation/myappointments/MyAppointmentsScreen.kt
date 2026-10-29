@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -46,6 +47,7 @@ import com.mrbarber.cliente.ui.theme.GrisClaro
 import com.mrbarber.cliente.ui.theme.GrisOscuro
 import com.mrbarber.cliente.ui.theme.MrBarberTheme
 import com.mrbarber.cliente.ui.theme.Negro
+import com.mrbarber.cliente.ui.theme.Rojo
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -213,22 +215,20 @@ private fun AppointmentCard(
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Dorado),
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("MODIFICAR", fontWeight = FontWeight.Bold)
+                        Text("REAGENDAR", fontWeight = FontWeight.Bold)
                     }
-                    OutlinedButton(
+                    Button(
                         onClick = onCancelClick,
                         enabled = !isCancelling,
                         shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error
-                        ),
+                        colors = ButtonDefaults.buttonColors(containerColor = Rojo, contentColor = Color.White),
                         modifier = Modifier.weight(1f)
                     ) {
                         if (isCancelling) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(18.dp),
                                 strokeWidth = 2.dp,
-                                color = MaterialTheme.colorScheme.error
+                                color = Color.White
                             )
                         } else {
                             Text("CANCELAR", fontWeight = FontWeight.Bold)
@@ -237,7 +237,7 @@ private fun AppointmentCard(
                 }
             } else {
                 Text(
-                    "Faltan menos de ${Appointment.MIN_HOURS_BEFORE} horas: ya no se puede modificar " +
+                    "Faltan menos de ${Appointment.MIN_HOURS_BEFORE} horas: ya no se puede reagendar " +
                         "ni cancelar desde la app. Comunícate con la sucursal.",
                     fontSize = 12.sp,
                     color = GrisClaro

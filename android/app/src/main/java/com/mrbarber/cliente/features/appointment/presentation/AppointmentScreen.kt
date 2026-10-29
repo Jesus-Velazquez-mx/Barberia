@@ -100,7 +100,7 @@ fun AppointmentRoute(
 
     state.updatedAppointment?.let { appointment ->
         AppointmentSavedDialog(
-            title = "¡Cita modificada!",
+            title = "¡Cita reagendada!",
             appointment = appointment,
             shopName = state.selectedShop?.name,
             barberName = (state.selectedBarber ?: state.currentBarber)?.name,
@@ -151,7 +151,7 @@ fun Appointment(
             Spacer(Modifier.height(8.dp))
 
             Text(
-                if (state.isEditing) "MODIFICAR CITA" else "AGENDAR CITA",
+                if (state.isEditing) "REAGENDAR CITA" else "AGENDAR CITA",
                 fontSize = 26.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,

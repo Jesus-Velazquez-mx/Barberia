@@ -250,7 +250,7 @@ class AppointmentViewModel @Inject constructor(
 
     private fun Throwable.toAppointmentMessage(): String = when {
         this is AppException.Http && code == 403 && _uiState.value.isEditing ->
-            "Solo puedes modificar una cita con ${Appointment.MIN_HOURS_BEFORE} horas o más de anticipación"
+            "Solo puedes reagendar una cita con ${Appointment.MIN_HOURS_BEFORE} horas o más de anticipación"
         this is AppException.Http && code == 404 ->
             "La sucursal, el barbero o algún servicio ya no está disponible"
         this is AppException.Http && code == 409 -> "Ese horario acaba de ocuparse, elige otro"
