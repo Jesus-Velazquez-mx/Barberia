@@ -1,5 +1,5 @@
-import { BackLink } from '../../components/BackLinkComponent';
-import { ManagerPageHeader } from '../../components/ManagerPageHeaderComponent';
+import { BackLink } from '../../components/common/BackLinkComponent';
+import { ManagerPageHeader } from '../../components/dashboard/ManagerPageHeaderComponent';
 
 interface ManagerSectionPlaceholderPageProps {
   title: string;

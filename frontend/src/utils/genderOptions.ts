@@ -1,4 +1,4 @@
-import type { SelectOption } from '../components/SelectFieldComponent';
+import type { SelectOption } from '../components/common/SelectFieldComponent';
 
 export const GENDER_OPTIONS: SelectOption[] = [
     { value: 'female', label: 'Femenino' },

@@ -1,7 +1,7 @@
 import { Scissors, Tags } from 'lucide-react';
-import { ManagerPageHeader } from '../../components/ManagerPageHeaderComponent';
-import { ManagementMenu } from '../../components/ManagementMenuComponent';
-import type { ManagementMenuItem } from '../../components/ManagementMenuComponent';
+import { ManagerPageHeader } from '../../components/dashboard/ManagerPageHeaderComponent';
+import { ManagementMenu } from '../../components/dashboard/ManagementMenuComponent';
+import type { ManagementMenuItem } from '../../components/dashboard/ManagementMenuComponent';
 
 const SERVICES_ITEMS: ManagementMenuItem[] = [
   {

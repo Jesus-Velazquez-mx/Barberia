@@ -1,7 +1,7 @@
 import { Boxes, Tags } from 'lucide-react';
-import { ManagerPageHeader } from '../../components/ManagerPageHeaderComponent';
-import { ManagementMenu } from '../../components/ManagementMenuComponent';
-import type { ManagementMenuItem } from '../../components/ManagementMenuComponent';
+import { ManagerPageHeader } from '../../components/dashboard/ManagerPageHeaderComponent';
+import { ManagementMenu } from '../../components/dashboard/ManagementMenuComponent';
+import type { ManagementMenuItem } from '../../components/dashboard/ManagementMenuComponent';
 
 interface StaffInventoryPageProps {
   /* Las rutas de cada CRUD cuelgan del rol: /manager/inventory/... o /receptionist/inventory/... */
