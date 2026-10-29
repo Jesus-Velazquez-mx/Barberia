@@ -1,21 +1,36 @@
 import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 import {
+    cancelAppointmentById,
     createAppointmentWithServices,
+    getAppointmentById,
     getAppointments,
     getServicesByAppointmentIds,
+    updateAppointmentWithServices,
 } from '../repositories/appointmentRepository.js';
 import { getShopById, getShopIdsByManagerId } from '../repositories/shopRepository.js';
 import { getBarberById } from '../repositories/barberRepository.js';
 import { getAppointmentClientsById, getClientByUserId } from '../repositories/clientRepository.js';
 import { getReceptionistByUserId } from '../repositories/receptionistRepository.js';
+import { getAllShifts } from '../repositories/shiftRepository.js';
 import { getAvailableSlots, getBookableServices } from './availabilityService.js';
-import { canCreateAppointment, canViewShopAppointments } from './userPermissions.js';
+import {
+    canCreateAppointment,
+    canEditAppointment,
+    canViewShopAppointments,
+    isWithinClientEditCutoff,
+} from './userPermissions.js';
 import { isUserSessionValid } from '../utils/userSession.js';
 import { toAppointmentResponse, toClientAppointmentResponse } from '../utils/appointmentMapper.js';
-import { getBusinessDayStart, getBusinessToday } from '../utils/businessTime.js';
+import { getBusinessDayStart, getBusinessToday, timeToMinutes, toBusinessWallClockMs } from '../utils/businessTime.js';
 import type { AppointmentListFilters } from '../repositories/appointmentRepository.js';
+import type { Appointment } from '../types/entities/appointment.interface.js';
 import type { AppointmentService } from '../types/entities/appointmentService.interface.js';
-import type { CreateAppointmentRequest, ListAppointmentsQuery } from '../types/dto/appointmentRequest.interface.js';
+import type {
+    CancelAppointmentRequest,
+    CreateAppointmentRequest,
+    ListAppointmentsQuery,
+    UpdateAppointmentRequest,
+} from '../types/dto/appointmentRequest.interface.js';
 import type { AppointmentResponse, ClientAppointmentResponse } from '../types/dto/appointmentResponse.interface.js';
 
 const MS_PER_MINUTE = 60_000;
@@ -116,6 +131,211 @@ export const registerAppointment = async (
 
     const [client] = await getAppointmentClientsById(clientId !== null ? [clientId] : []);
     return toAppointmentResponse(appointment, bookedServices, client ?? null);
+};
+
+/** Días después de la fecha en que se agendó dentro de los cuales se puede reprogramar una cita. */
+const RESCHEDULE_WINDOW_DAYS = 30;
+
+/**
+ * Prólogo compartido por editar y cancelar: valida la sesión, que la cita exista, el alcance del rol, el estado
+ * (scheduled / rescheduled), que no haya empezado y el límite de 8 horas (solo clientes).
+ */
+const loadModifiableAppointment = async (
+    appointmentId: string,
+    token: string,
+    action: 'edit' | 'cancel'
+): Promise<{ performer: Awaited<ReturnType<typeof isUserSessionValid>>; appointment: Appointment }> => {
+    const performer = await isUserSessionValid(token);
+
+    const appointment = await getAppointmentById(appointmentId);
+    if (!appointment) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Appointment not found');
+    }
+
+    const shop = await getShopById(appointment.shop_id);
+    if (!shop) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Shop not found');
+    }
+
+    const receptionistShopId =
+        performer.role === 'receptionist' ? ((await getReceptionistByUserId(performer.id))?.shop_id ?? null) : null;
+
+    // Editar y cancelar comparten el mismo alcance por rol.
+    if (
+        !canEditAppointment(
+            performer,
+            { clientId: appointment.client_id, shopId: appointment.shop_id, shopManagerId: shop.manager_id },
+            receptionistShopId
+        )
+    ) {
+        throw new ApiError(ApiErrorCode.FORBIDDEN, `Not authorized to ${action} this appointment`);
+    }
+
+    if (appointment.status !== 'scheduled' && appointment.status !== 'rescheduled') {
+        throw new ApiError(
+            ApiErrorCode.CONFLICT,
+            `Only scheduled or rescheduled appointments can be ${action === 'edit' ? 'edited' : 'cancelled'}`
+        );
+    }
+
+    const now = new Date();
+    if (appointment.scheduled_start.getTime() <= now.getTime()) {
+        throw new ApiError(
+            ApiErrorCode.CONFLICT,
+            `Only future appointments can be ${action === 'edit' ? 'edited' : 'cancelled'}`
+        );
+    }
+    if (!isWithinClientEditCutoff(performer, appointment.scheduled_start, now)) {
+        throw new ApiError(
+            ApiErrorCode.FORBIDDEN,
+            `Clients cannot ${action} an appointment less than 8 hours before it starts`
+        );
+    }
+
+    return { performer, appointment };
+};
+
+/**
+ * Edita una cita (horario, barbero, servicios y notas). El cliente, el invitado y la sucursal no cambian.
+ * Valida rol y alcance, estado (scheduled / rescheduled), que la cita no haya empezado, el límite de 8 horas
+ * (solo clientes), la ventana de 30 días desde que se agendó y la disponibilidad del barbero excluyendo la
+ * propia cita. Cambiar horario o barbero la deja en `rescheduled`; editar solo servicios o notas conserva el estado.
+ */
+export const updateAppointment = async (
+    appointmentId: string,
+    data: UpdateAppointmentRequest,
+    token: string
+): Promise<AppointmentResponse | ClientAppointmentResponse> => {
+    const { performer, appointment } = await loadModifiableAppointment(appointmentId, token, 'edit');
+
+    // Valores finales: lo que no se manda se conserva.
+    const barberId = data.barberId ?? appointment.barber_id;
+    const scheduledStart = data.scheduledStart ? new Date(data.scheduledStart) : appointment.scheduled_start;
+    const barberChanged = barberId !== appointment.barber_id;
+    const startChanged = scheduledStart.getTime() !== appointment.scheduled_start.getTime();
+    const notes = data.notes !== undefined ? data.notes : appointment.notes;
+
+    const barber = await getBarberById(barberId);
+    if (!barber || barber.deleted_at !== null) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Barber not found');
+    }
+    if (barberChanged) {
+        if (barber.shop_id !== appointment.shop_id) {
+            throw new ApiError(ApiErrorCode.INVALID_INPUT, 'Barber must belong to the same shop as the appointment');
+        }
+        if (!barber.is_accepting_bookings) {
+            throw new ApiError(ApiErrorCode.INVALID_INPUT, 'Barber is not accepting bookings');
+        }
+    }
+
+    // Los servicios que ya estaban agendados conservan su snapshot; los nuevos usan el catálogo actual.
+    const currentServices = await getServicesByAppointmentIds([appointment.id]);
+    let finalServices = currentServices.map((s) => ({
+        serviceId: s.service_id,
+        priceAtBooking: s.price_at_booking,
+        durationMinutesAtBooking: s.duration_minutes_at_booking,
+    }));
+    if (data.serviceIds) {
+        const catalog = await getBookableServices(data.serviceIds);
+        const currentById = new Map(finalServices.map((s) => [s.serviceId, s]));
+        finalServices = catalog.map(
+            (s) =>
+                currentById.get(s.id) ?? {
+                    serviceId: s.id,
+                    priceAtBooking: s.price,
+                    durationMinutesAtBooking: s.duration_minutes,
+                }
+        );
+    }
+    const servicesChanged =
+        data.serviceIds !== undefined &&
+        (finalServices.length !== currentServices.length ||
+            finalServices.some((s) => !currentServices.some((c) => c.service_id === s.serviceId)));
+    // Si no se tocan los servicios, la duración es la que ya tenía la cita; si se reemplazan, la suma de los nuevos.
+    const durationMs = data.serviceIds
+        ? finalServices.reduce((sum, s) => sum + s.durationMinutesAtBooking, 0) * MS_PER_MINUTE
+        : appointment.scheduled_end.getTime() - appointment.scheduled_start.getTime();
+    const scheduledEnd = new Date(scheduledStart.getTime() + durationMs);
+
+    if (startChanged) {
+        // Ventana de reprogramación: desde que se agendó hasta 30 días después (días de calendario del negocio).
+        // El piso lo cubre la disponibilidad (no acepta fechas pasadas); el techo se ancla en created_at, no en hoy.
+        const bookedDayMs = Date.parse(`${getBusinessToday(appointment.created_at.getTime())}T00:00:00.000Z`);
+        const newDayMs = Date.parse(`${getBusinessToday(scheduledStart.getTime())}T00:00:00.000Z`);
+        if (newDayMs > bookedDayMs + RESCHEDULE_WINDOW_DAYS * MS_PER_DAY) {
+            throw new ApiError(
+                ApiErrorCode.INVALID_INPUT,
+                `Appointments can only be rescheduled up to ${RESCHEDULE_WINDOW_DAYS} days after the booking date`
+            );
+        }
+    }
+
+    if (startChanged || barberChanged) {
+        // Misma validación que al agendar, pero sin contar la cita que se edita como ocupada.
+        const availability = await getAvailableSlots({
+            shopId: appointment.shop_id,
+            date: getBusinessToday(scheduledStart.getTime()),
+            serviceIds: finalServices.map((s) => s.serviceId),
+            excludeAppointmentId: appointment.id,
+        });
+        const barberSlots = availability.find((b) => b.barberId === barberId);
+        if (!barberSlots) {
+            throw new ApiError(ApiErrorCode.NOT_FOUND, 'Barber not found or is not accepting bookings at this shop');
+        }
+        if (!barberSlots.startTimes.includes(scheduledStart.toISOString())) {
+            throw new ApiError(ApiErrorCode.CONFLICT, 'Selected time slot is not available');
+        }
+    } else if (servicesChanged) {
+        // Mismo horario y barbero: el inicio original puede no caer en la rejilla de 15 min si las citas vecinas
+        // cambiaron, así que no se exige; solo que la nueva duración no se salga del turno. Los traslapes los
+        // valida la transacción con el candado del barbero.
+        const shift = (await getAllShifts()).find((s) => s.id === barber.shift_id);
+        const dayStartMs = Date.parse(`${getBusinessToday(scheduledStart.getTime())}T00:00:00.000Z`);
+        const endMinutes = (toBusinessWallClockMs(scheduledEnd.getTime()) - dayStartMs) / MS_PER_MINUTE;
+        if (!shift || endMinutes > timeToMinutes(shift.end_time)) {
+            throw new ApiError(ApiErrorCode.CONFLICT, 'Selected services do not fit in the barber shift');
+        }
+    }
+
+    const { appointment: updated, services } = await updateAppointmentWithServices({
+        appointmentId: appointment.id,
+        barberId,
+        scheduledStart,
+        scheduledEnd,
+        notes,
+        status: startChanged || barberChanged ? 'rescheduled' : appointment.status,
+        services: finalServices,
+    });
+
+    if (performer.role === 'client') {
+        return toClientAppointmentResponse(updated, services);
+    }
+
+    const [client] = await getAppointmentClientsById(updated.client_id !== null ? [updated.client_id] : []);
+    return toAppointmentResponse(updated, services, client ?? null);
+};
+
+/**
+ * Cancela una cita. Mismas reglas de rol, estado, cita futura y límite de 8 horas (solo clientes) que la edición.
+ * No hay reembolsos ni límite de cancelaciones, y la recompensa del programa de lealtad se conserva al cancelar
+ * (solo se pierde con no_show), por lo que aquí no hay lógica de recompensas. La cita cancelada deja de ocupar
+ * agenda porque la disponibilidad solo considera scheduled / rescheduled / checked_in.
+ */
+export const cancelAppointment = async (
+    appointmentId: string,
+    data: CancelAppointmentRequest,
+    token: string
+): Promise<AppointmentResponse | ClientAppointmentResponse> => {
+    const { performer, appointment } = await loadModifiableAppointment(appointmentId, token, 'cancel');
+
+    const { appointment: cancelled, services } = await cancelAppointmentById(appointment.id, data.reason ?? null);
+
+    if (performer.role === 'client') {
+        return toClientAppointmentResponse(cancelled, services);
+    }
+
+    const [client] = await getAppointmentClientsById(cancelled.client_id !== null ? [cancelled.client_id] : []);
+    return toAppointmentResponse(cancelled, services, client ?? null);
 };
 
 /**
