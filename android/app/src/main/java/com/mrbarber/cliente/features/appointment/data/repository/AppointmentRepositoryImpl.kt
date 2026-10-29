@@ -1,10 +1,13 @@
 package com.mrbarber.cliente.features.appointment.data.repository
 
+import com.mrbarber.cliente.core.common.AppException
 import com.mrbarber.cliente.core.network.safeApiCall
 import com.mrbarber.cliente.features.appointment.data.mapper.toDomain
 import com.mrbarber.cliente.features.appointment.data.mapper.toRequestDto
 import com.mrbarber.cliente.features.appointment.data.remote.AppointmentApi
+import com.mrbarber.cliente.features.appointment.data.remote.dto.CancelAppointmentRequestDto
 import com.mrbarber.cliente.features.appointment.domain.model.Appointment
+import com.mrbarber.cliente.features.appointment.domain.model.AppointmentUpdate
 import com.mrbarber.cliente.features.appointment.domain.model.Barber
 import com.mrbarber.cliente.features.appointment.domain.model.BarberAvailability
 import com.mrbarber.cliente.features.appointment.domain.model.NewAppointment
@@ -22,6 +25,26 @@ class AppointmentRepositoryImpl @Inject constructor(
 
     override suspend fun createAppointment(newAppointment: NewAppointment): Result<Appointment> =
         safeApiCall(json) { api.create(newAppointment.toRequestDto()) }
+            .map { it.toDomain() }
+
+    // Solo las citas activas: son las únicas que el cliente puede editar o cancelar.
+    override suspend fun getMyAppointments(): Result<List<Appointment>> =
+        safeApiCall(json) { api.getMyAppointments(ACTIVE_STATUSES) }
+            .map { appointments -> appointments.map { it.toDomain() } }
+
+    // No hay GET /api/appointments/{id}: se busca en la lista del cliente.
+    override suspend fun getAppointment(id: String): Result<Appointment> =
+        getMyAppointments().mapCatching { appointments ->
+            appointments.find { it.id == id }
+                ?: throw AppException.Validation("La cita ya no está disponible")
+        }
+
+    override suspend fun updateAppointment(id: String, update: AppointmentUpdate): Result<Appointment> =
+        safeApiCall(json) { api.update(id, update.toRequestDto()) }
+            .map { it.toDomain() }
+
+    override suspend fun cancelAppointment(id: String, reason: String?): Result<Appointment> =
+        safeApiCall(json) { api.cancel(id, CancelAppointmentRequestDto(reason)) }
             .map { it.toDomain() }
 
     override suspend fun getShops(): Result<List<Shop>> =
@@ -45,4 +68,8 @@ class AppointmentRepositoryImpl @Inject constructor(
     ): Result<List<BarberAvailability>> =
         safeApiCall(json) { api.getAvailability(shopId, date.toString(), serviceIds) }
             .map { availability -> availability.map { it.toDomain() } }
+
+    private companion object {
+        val ACTIVE_STATUSES = listOf("scheduled", "rescheduled")
+    }
 }

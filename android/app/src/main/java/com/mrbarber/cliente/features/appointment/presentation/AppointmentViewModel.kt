@@ -1,15 +1,22 @@
 package com.mrbarber.cliente.features.appointment.presentation
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.navigation.toRoute
 import com.mrbarber.cliente.core.common.AppException
 import com.mrbarber.cliente.core.common.toUserMessage
+import com.mrbarber.cliente.core.navigation.AppointmentDestination
+import com.mrbarber.cliente.features.appointment.domain.model.Appointment
+import com.mrbarber.cliente.features.appointment.domain.model.AppointmentUpdate
 import com.mrbarber.cliente.features.appointment.domain.model.BUSINESS_ZONE
 import com.mrbarber.cliente.features.appointment.domain.model.NewAppointment
 import com.mrbarber.cliente.features.appointment.domain.usecase.CreateAppointmentUseCase
+import com.mrbarber.cliente.features.appointment.domain.usecase.GetAppointmentUseCase
 import com.mrbarber.cliente.features.appointment.domain.usecase.GetAvailableTimesUseCase
 import com.mrbarber.cliente.features.appointment.domain.usecase.GetBarbersUseCase
 import com.mrbarber.cliente.features.appointment.domain.usecase.GetAppointmentCatalogUseCase
+import com.mrbarber.cliente.features.appointment.domain.usecase.UpdateAppointmentUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,11 +31,17 @@ import javax.inject.Inject
 
 @HiltViewModel
 class AppointmentViewModel @Inject constructor(
+    savedStateHandle: SavedStateHandle,
     private val getAppointmentCatalogUseCase: GetAppointmentCatalogUseCase,
+    private val getAppointmentUseCase: GetAppointmentUseCase,
     private val getBarbersUseCase: GetBarbersUseCase,
     private val getAvailableTimesUseCase: GetAvailableTimesUseCase,
-    private val createAppointmentUseCase: CreateAppointmentUseCase
+    private val createAppointmentUseCase: CreateAppointmentUseCase,
+    private val updateAppointmentUseCase: UpdateAppointmentUseCase
 ) : ViewModel() {
+
+    /** Con id la pantalla modifica esa cita; sin id agenda una nueva. */
+    private val appointmentId: String? = savedStateHandle.toRoute<AppointmentDestination>().appointmentId
 
     private val _uiState = MutableStateFlow(
         // El backend permite agendar desde hoy y hasta 30 días después; las sucursales cierran en domingo.
@@ -52,10 +65,12 @@ class AppointmentViewModel @Inject constructor(
         _uiState.update { it.copy(isLoadingCatalog = true, catalogError = null) }
         viewModelScope.launch {
             getAppointmentCatalogUseCase()
-                .onSuccess { catalog ->
+                .mapCatching { catalog -> catalog to appointmentId?.let { getAppointmentUseCase(it).getOrThrow() } }
+                .onSuccess { (catalog, appointment) ->
                     _uiState.update {
                         it.copy(isLoadingCatalog = false, shops = catalog.shops, services = catalog.services)
                     }
+                    appointment?.let(::startEditing)
                 }
                 .onFailure { e ->
                     _uiState.update { it.copy(isLoadingCatalog = false, catalogError = e.toUserMessage()) }
@@ -63,9 +78,24 @@ class AppointmentViewModel @Inject constructor(
         }
     }
 
+    /** Precarga la cita a modificar. La sucursal no se puede cambiar: el backend lo rechaza. */
+    private fun startEditing(appointment: Appointment) {
+        val date = appointment.scheduledStart.atZoneSameInstant(BUSINESS_ZONE).toLocalDate()
+        _uiState.update { state ->
+            state.copy(
+                editingAppointment = appointment,
+                selectedShopId = appointment.shopId,
+                selectedServiceIds = appointment.serviceIds.toSet(),
+                selectedDate = date.takeIf { it in state.availableDates }
+            )
+        }
+        loadBarbers(appointment.shopId)
+        loadSlots()
+    }
+
     /** Cada sucursal tiene sus propios barberos y horarios, así que se reinicia lo elegido después. */
     fun onShopSelected(id: String) {
-        if (id == _uiState.value.selectedShopId) return
+        if (id == _uiState.value.selectedShopId || _uiState.value.isEditing) return
         edit {
             copy(
                 selectedShopId = id,
@@ -143,6 +173,7 @@ class AppointmentViewModel @Inject constructor(
     fun onConfirmClick() {
         val state = _uiState.value
         if (!state.canConfirm) return
+        state.editingAppointment?.let { original -> return submitUpdate(state, original) }
         val barberId = state.selectedBarberId ?: return
         val date = state.selectedDate ?: return
         val time = state.selectedTime ?: return
@@ -175,11 +206,51 @@ class AppointmentViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Solo se envía lo que cambió. Sin horario nuevo se conservan el horario y el barbero actuales;
+     * con horario nuevo se envía también el barbero libre en él.
+     */
+    private fun submitUpdate(state: AppointmentUiState, original: Appointment) {
+        val date = state.selectedDate
+        val time = state.selectedTime
+        val newStart = if (date != null && time != null) {
+            date.atTime(time).atZone(BUSINESS_ZONE).toOffsetDateTime()
+        } else null
+        val serviceIds = state.selectedServiceIds.toList()
+
+        val update = AppointmentUpdate(
+            barberId = state.selectedBarberId.takeIf { newStart != null },
+            serviceIds = serviceIds.takeIf { it.toSet() != original.serviceIds.toSet() },
+            scheduledStart = newStart
+        )
+
+        _uiState.update { it.copy(isSubmitting = true, error = null) }
+        viewModelScope.launch {
+            updateAppointmentUseCase(original.id, update)
+                .onSuccess { appointment ->
+                    _uiState.update { it.copy(isSubmitting = false, updatedAppointment = appointment) }
+                }
+                .onFailure { e ->
+                    _uiState.update {
+                        it.copy(
+                            isSubmitting = false,
+                            selectedTime = null,
+                            selectedBarberId = null,
+                            error = e.toAppointmentMessage()
+                        )
+                    }
+                    if (e is AppException.Http && e.code in listOf(409, 422)) loadSlots()
+                }
+        }
+    }
+
     private fun edit(transform: AppointmentUiState.() -> AppointmentUiState) {
         _uiState.update { it.transform().copy(error = null) }
     }
 
     private fun Throwable.toAppointmentMessage(): String = when {
+        this is AppException.Http && code == 403 && _uiState.value.isEditing ->
+            "Solo puedes modificar una cita con ${Appointment.MIN_HOURS_BEFORE} horas o más de anticipación"
         this is AppException.Http && code == 404 ->
             "La sucursal, el barbero o algún servicio ya no está disponible"
         this is AppException.Http && code == 409 -> "Ese horario acaba de ocuparse, elige otro"

@@ -15,5 +15,9 @@ data object HomeDestination
 data object ProfileDestination
 
 
+/** Sin [appointmentId] se agenda una cita nueva; con él se modifica esa cita. */
 @Serializable
-data object AppointmentDestination
+data class AppointmentDestination(val appointmentId: String? = null)
+
+@Serializable
+data object MyAppointmentsDestination
