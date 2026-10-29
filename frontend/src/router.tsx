@@ -9,7 +9,6 @@ import BookAppointmentPage from './pages/BookAppointmentPage';
 import ManagerStaffPage from './pages/staff/ManagerStaffPage';
 import ManagerClientsPage from './pages/staff/StaffClientsPage';
 import StaffAppointmentsPage from './pages/staff/StaffAppointmentsPage';
-import ManagerSectionPlaceholderPage from './pages/staff/ManagerSectionPlaceholderPage';
 import ManagerManagementPage from './pages/staff/ManagerManagementPage';
 import StaffInventoryPage from './pages/staff/StaffInventoryPage';
 import StaffSuppliesPage from './pages/staff/StaffSuppliesPage';
@@ -23,9 +22,6 @@ import ClientAppointmentsPage from './pages/client/ClientAppointmentPage';
 import ClientAppointmentDetailPage from './pages/client/ClientAppointmentDetailPage';
 import ManagerShiftsPage  from './pages/staff/ManagerShiftsPage';
 import ManagerShopsPage from './pages/staff/ManagerShopsPage';
-
-/* Enlace "Volver" de los CRUD de Gestión que aún son placeholders. */
-const MANAGEMENT_BACK_LINK = { to: '/manager/management', label: 'Volver a Gestión' };
 
 const router = createBrowserRouter([
   /* Client */
