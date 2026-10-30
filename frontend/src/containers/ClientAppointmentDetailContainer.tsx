@@ -3,10 +3,9 @@ import { useParams } from 'react-router-dom';
 import { Pencil, RotateCw, XCircle } from 'lucide-react';
 import type { AppointmentRecord } from '../types/appointmentType';
 import { useAuth } from '../context/AuthContext';
-//import { buildMockAppointments } from '../mocks/clientAppointmentMocks';
-import { AppointmentDetailContent } from '../components/AppointmentDetailContentComponent';
-import { AppointmentStatusBadge } from '../components/AppointmentStatusBadgeComponent';
-import { RewardBadge } from '../components/RewardBadgeComponent';
+import { AppointmentDetailContent } from '../components/appointments/AppointmentDetailContentComponent';
+import { AppointmentStatusBadge } from '../components/appointments/AppointmentStatusBadgeComponent';
+import { RewardBadge } from '../components/appointments/RewardBadgeComponent';
 import { getAppointmentById } from '../services/appointmentService';
 
 export const CLIENT_APPOINTMENTS_PATH = '/client/appointments';

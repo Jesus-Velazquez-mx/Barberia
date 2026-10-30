@@ -2,17 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import type { AppointmentFilterValues, AppointmentRecord, SortDirection } from '../types/appointmentType';
-import { AppointmentTabs, type AppointmentTab } from '../components/AppointmentTabsComponent';
+import { AppointmentTabs, type AppointmentTab } from '../components/appointments/AppointmentTabsComponent';
 import { useAuth } from '../context/AuthContext';
-//import { buildMockAppointments } from '../mocks/clientAppointmentMocks';
-import { AppointmentFilters, FilterToggleButton } from '../components/AppointmentFiltersComponent';
-import { AppointmentTable } from '../components/AppointmentTableComponent';
+import { AppointmentFilters, FilterToggleButton } from '../components/appointments/AppointmentFiltersComponent';
+import { AppointmentTable } from '../components/appointments/AppointmentTableComponent';
 import { CLIENT_APPOINTMENTS_PATH } from './ClientAppointmentDetailContainer';
 import { getMyAppointments } from '../services/appointmentService';
 
 const PAGE_SIZE = 8;
-
-//const MOCK_DELAY_MS = 600; // simula la latencia de red para ver el skeleton
 
 function classify(appointment: AppointmentRecord, now: number): AppointmentTab {
   if (appointment.status === 'cancelled') return 'cancelled';
