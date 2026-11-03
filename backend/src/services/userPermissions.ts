@@ -84,9 +84,10 @@ export const canViewRecommendationHistory = (performer: UserIdentity, targetClie
 export const canManageSuppliesCategories = (performer: UserIdentity): boolean => performer.role === 'manager';
 
 /**
- * /supplies: Los usuarios con rol 'manager' puede registrar, editar o eliminar insumos.
+ * /supplies: Los usuarios con rol 'manager' y 'receptionist' pueden registrar, consultar, editar o eliminar insumos.
  */
-export const canManageSupplies = (performer: UserIdentity): boolean => performer.role === 'manager';
+export const canManageSupplies = (performer: UserIdentity): boolean =>
+    performer.role === 'manager' || performer.role === 'receptionist';
 
 /**
  * GET /shifts: el personal (recepcionistas y gerentes) puede consultar los turnos; los clientes no.
@@ -146,7 +147,7 @@ export const CLIENT_EDIT_CUTOFF_HOURS = 8;
 
 /**
  * Solo los clientes están sujetos al límite de 8 horas; recepción y gerentes pueden editar hasta que la
- * cita pase a checked_in. Es una comparación entre instantes absolutos (sin zona horaria del negocio).
+ * cita pase a checked_in. Es una comparación entre instantes absolutos (sin zona horaria del negocio).\
  */
 export const isWithinClientEditCutoff = (
     performer: UserIdentity,
