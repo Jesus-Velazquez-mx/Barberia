@@ -113,12 +113,13 @@ describe('Pruebas de endpoints de Insumos (Supplies) - Completo', () => {
             createdSupplyIds.push(res.body.data.id);
         });
 
-        test('Debe responder 403 si una RECEPCIONISTA intenta crear un insumo', async () => {
+        test('Debe responder 201 si una RECEPCIONISTA intenta crear un insumo', async () => {
             const data = {
                 shopId: shopId1,
                 categoryId: categoryId,
                 name: 'Gel Capilar',
                 sku: 'GEL-001',
+                unit: 'unit',
             };
 
             const res = await request(app)
@@ -126,8 +127,9 @@ describe('Pruebas de endpoints de Insumos (Supplies) - Completo', () => {
                 .set('Authorization', `Bearer ${receptionistToken}`)
                 .send(data);
 
-            expect(res.status).toBe(403);
-            expect(res.body.message).toMatch(/Not authorized/i);
+            expect(res.status).toBe(201);
+            expect(res.body.data.name).toBe(data.name);
+            createdSupplyIds.push(res.body.data.id);
         });
 
         test('Debe responder 403 si un CLIENTE intenta crear un insumo', async () => {
@@ -186,9 +188,10 @@ describe('Pruebas de endpoints de Insumos (Supplies) - Completo', () => {
             expect(Array.isArray(res.body.data)).toBe(true);
         });
 
-        test('Debe responder 403 si una RECEPCIONISTA intenta listar insumos', async () => {
+        test('Debe responder 200 si una RECEPCIONISTA intenta listar insumos', async () => {
             const res = await request(app).get('/api/supplies').set('Authorization', `Bearer ${receptionistToken}`);
-            expect(res.status).toBe(403);
+            expect(res.status).toBe(200);
+            expect(Array.isArray(res.body.data)).toBe(true);
         });
 
         test('Debe responder 403 si un CLIENTE intenta listar insumos', async () => {
@@ -214,11 +217,12 @@ describe('Pruebas de endpoints de Insumos (Supplies) - Completo', () => {
             expect(res.body.data.id).toBe(initialSupplyId);
         });
 
-        test('Debe responder 403 si una RECEPCIONISTA intenta obtener detalles de un insumo por ID', async () => {
+        test('Debe responder 200 si una RECEPCIONISTA intenta obtener detalles de un insumo por ID', async () => {
             const res = await request(app)
                 .get(`/api/supplies/${initialSupplyId}`)
                 .set('Authorization', `Bearer ${receptionistToken}`);
-            expect(res.status).toBe(403);
+            expect(res.status).toBe(200);
+            expect(res.body.data.id).toBe(initialSupplyId);
         });
 
         test('Debe responder 404 si el insumo no existe (MANAGER)', async () => {
@@ -248,13 +252,14 @@ describe('Pruebas de endpoints de Insumos (Supplies) - Completo', () => {
             expect(res.body.data.name).toBe('Editado Manager');
         });
 
-        test('Debe responder 403 si una RECEPCIONISTA intenta editar', async () => {
+        test('Debe responder 200 si una RECEPCIONISTA intenta editar un insumo', async () => {
             const res = await request(app)
                 .put(`/api/supplies/${supplyToEditId}`)
                 .set('Authorization', `Bearer ${receptionistToken}`)
                 .send({ name: 'Editado Recepcionista' });
 
-            expect(res.status).toBe(403);
+            expect(res.status).toBe(200);
+            expect(res.body.data.name).toBe('Editado Recepcionista');
         });
 
         test('Debe responder 403 si un CLIENTE intenta editar', async () => {
@@ -294,12 +299,12 @@ describe('Pruebas de endpoints de Insumos (Supplies) - Completo', () => {
             expect(res.status).toBe(403);
         });
 
-        test('Debe responder 403 si una RECEPCIONISTA intenta eliminar el insumo', async () => {
+        test('Debe responder 200 si una RECEPCIONISTA intenta eliminar el insumo', async () => {
             const res = await request(app)
                 .delete(`/api/supplies/${supplyForReceptionist}`)
                 .set('Authorization', `Bearer ${receptionistToken}`);
 
-            expect(res.status).toBe(403);
+            expect(res.status).toBe(200);
         });
 
         test('Debe responder 200 y realizar borrado físico con token de MANAGER', async () => {
