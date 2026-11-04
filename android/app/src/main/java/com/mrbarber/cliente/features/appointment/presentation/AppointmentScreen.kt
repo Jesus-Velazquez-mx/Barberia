@@ -151,7 +151,7 @@ fun Appointment(
             Spacer(Modifier.height(8.dp))
 
             Text(
-                if (state.isEditing) "REAGENDAR CITA" else "AGENDAR CITA",
+                if (state.isRescheduling) "REAGENDAR CITA" else "AGENDAR CITA",
                 fontSize = 26.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,

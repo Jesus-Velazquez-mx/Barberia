@@ -34,6 +34,8 @@ data class AppointmentUiState(
     val error: String? = null,
     val createdAppointment: Appointment? = null,
     // Modo edición: la cita original y el resultado de guardarla
+    /** Se abrió para reagendar; a diferencia de [isEditing], se sabe desde antes de cargar la cita. */
+    val isRescheduling: Boolean = false,
     val editingAppointment: Appointment? = null,
     val updatedAppointment: Appointment? = null
 ) {

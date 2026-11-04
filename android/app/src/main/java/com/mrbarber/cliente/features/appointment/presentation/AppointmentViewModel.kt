@@ -46,6 +46,7 @@ class AppointmentViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(
         // El backend permite agendar desde hoy y hasta 30 días después; las sucursales cierran en domingo.
         AppointmentUiState(
+            isRescheduling = appointmentId != null,
             availableDates = (0L..30L)
                 .map { LocalDate.now(BUSINESS_ZONE).plusDays(it) }
                 .filter { it.dayOfWeek != DayOfWeek.SUNDAY }
