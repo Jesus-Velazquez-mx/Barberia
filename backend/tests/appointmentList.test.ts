@@ -13,6 +13,7 @@ import {
     insertService,
     insertAppointment,
     cleanupFixtures,
+    getSeededShiftId,
 } from './helpers/availabilityFixtures.js';
 
 const { connectDB, closeDB, getPool } = connection;
@@ -94,7 +95,7 @@ describe('GET /api/appointments', () => {
         foreignShop = await insertShop(otherManager.id);
 
         const receptionist = await insertUser('receptionist');
-        const shiftId = (await getPool().query(`SELECT id FROM shifts LIMIT 1`)).rows[0].id;
+        const shiftId = await getSeededShiftId();
         await getPool().query(`INSERT INTO receptionists (user_id, shop_id, shift_id) VALUES ($1, $2, $3)`, [
             receptionist.id,
             shop1,
