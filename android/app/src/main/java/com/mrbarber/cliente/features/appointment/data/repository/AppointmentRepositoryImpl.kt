@@ -29,7 +29,7 @@ class AppointmentRepositoryImpl @Inject constructor(
 
     // Solo las citas activas: son las únicas que el cliente puede editar o cancelar.
     override suspend fun getMyAppointments(): Result<List<Appointment>> =
-        safeApiCall(json) { api.getMyAppointments(ACTIVE_STATUSES) }
+        safeApiCall(json) { api.getMyAppointments(Appointment.ACTIVE_STATUSES) }
             .map { appointments -> appointments.map { it.toDomain() } }
 
     // No hay GET /api/appointments/{id}: se busca en la lista del cliente.
@@ -68,8 +68,4 @@ class AppointmentRepositoryImpl @Inject constructor(
     ): Result<List<BarberAvailability>> =
         safeApiCall(json) { api.getAvailability(shopId, date.toString(), serviceIds) }
             .map { availability -> availability.map { it.toDomain() } }
-
-    private companion object {
-        val ACTIVE_STATUSES = listOf("scheduled", "rescheduled")
-    }
 }

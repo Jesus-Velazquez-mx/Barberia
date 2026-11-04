@@ -25,7 +25,8 @@ class UpdateAppointmentUseCase @Inject constructor(
         update.isEmpty -> "No hay cambios que guardar"
         update.serviceIds?.isEmpty() == true -> "Selecciona al menos un servicio"
         update.scheduledStart?.isAfter(OffsetDateTime.now()) == false -> "La fecha de la cita ya pasó"
-        (update.notes?.length ?: 0) > 500 -> "Las notas no pueden superar 500 caracteres"
+        (update.notes?.length ?: 0) > Appointment.MAX_NOTES_LENGTH ->
+            "Las notas no pueden superar ${Appointment.MAX_NOTES_LENGTH} caracteres"
         else -> null
     }
 }

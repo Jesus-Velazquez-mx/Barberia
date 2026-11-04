@@ -92,12 +92,16 @@ class AppointmentViewModel @Inject constructor(
     /** Precarga la cita a modificar. La sucursal no se puede cambiar: el backend lo rechaza. */
     private fun startEditing(appointment: Appointment) {
         val date = appointment.scheduledStart.atZoneSameInstant(BUSINESS_ZONE).toLocalDate()
+        // Al reagendar el backend cuenta los 30 días desde que se agendó la cita, no desde hoy.
+        val lastDate = appointment.lastRescheduleDate
         _uiState.update { state ->
+            val dates = state.availableDates.filter { lastDate == null || !it.isAfter(lastDate) }
             state.copy(
+                availableDates = dates,
                 editingAppointment = appointment,
                 selectedShopId = appointment.shopId,
                 selectedServiceIds = appointment.serviceIds.toSet(),
-                selectedDate = date.takeIf { it in state.availableDates },
+                selectedDate = date.takeIf { it in dates },
                 notes = appointment.notes.orEmpty()
             )
         }
@@ -247,16 +251,38 @@ class AppointmentViewModel @Inject constructor(
                     _uiState.update { it.copy(isSubmitting = false, updatedAppointment = appointment) }
                 }
                 .onFailure { e ->
+                    if (e is AppException.Http && e.code == 404) return@onFailure checkStillExists(original.id, e)
+                    // Solo si el horario se ocupó o ya no es válido se descarta lo elegido; con otros errores
+                    // (sin red, 403, validación) el usuario puede reintentar con la misma selección.
+                    val slotRejected = e is AppException.Http && e.code in listOf(409, 422)
                     _uiState.update {
                         it.copy(
                             isSubmitting = false,
-                            selectedTime = null,
-                            selectedBarberId = null,
+                            selectedTime = it.selectedTime.takeUnless { slotRejected },
+                            selectedBarberId = it.selectedBarberId.takeUnless { slotRejected },
                             error = e.toAppointmentMessage()
                         )
                     }
-                    if (e is AppException.Http && e.code in listOf(409, 422)) loadSlots()
+                    if (slotRejected) loadSlots()
                 }
+        }
+    }
+
+    /**
+     * Un 404 al guardar puede ser la propia cita (se borró o canceló mientras se editaba) o el barbero o
+     * algún servicio. Se vuelve a buscar la cita para distinguirlo: si ya no está, se avisa con
+     * AppointmentUnavailableDialog; si sigue, el problema es lo elegido.
+     */
+    private fun checkStillExists(id: String, saveError: Throwable) {
+        viewModelScope.launch {
+            val lookup = getAppointmentUseCase(id)
+            _uiState.update { state ->
+                if (lookup.exceptionOrNull() is AppException.NotFound) {
+                    state.copy(isSubmitting = false, appointmentUnavailableError = lookup.exceptionOrNull()?.toUserMessage())
+                } else {
+                    state.copy(isSubmitting = false, error = saveError.toAppointmentMessage())
+                }
+            }
         }
     }
 

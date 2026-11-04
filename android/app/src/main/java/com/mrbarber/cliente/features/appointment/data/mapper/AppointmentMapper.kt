@@ -34,5 +34,6 @@ fun AppointmentResponseDto.toDomain(): Appointment = Appointment(
     status = status,
     scheduledStart = OffsetDateTime.parse(scheduledStart),
     scheduledEnd = OffsetDateTime.parse(scheduledEnd),
-    notes = notes
+    notes = notes,
+    createdAt = createdAt?.let(OffsetDateTime::parse)
 )

@@ -254,6 +254,8 @@ private fun AppointmentCard(
                         }
                     }
                 }
+            } else if (appointment.hasStarted) {
+                Text("Tu cita ya comenzó.", fontSize = 12.sp, color = GrisClaro)
             } else {
                 Text(
                     "Faltan menos de ${Appointment.MIN_HOURS_BEFORE} horas: ya no se puede reagendar " +

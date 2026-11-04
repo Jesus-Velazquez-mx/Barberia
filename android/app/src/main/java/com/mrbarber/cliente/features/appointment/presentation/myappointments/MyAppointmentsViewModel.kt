@@ -9,6 +9,7 @@ import com.mrbarber.cliente.features.appointment.domain.usecase.CancelAppointmen
 import com.mrbarber.cliente.features.appointment.domain.usecase.GetAppointmentCatalogUseCase
 import com.mrbarber.cliente.features.appointment.domain.usecase.GetMyAppointmentsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,10 +28,14 @@ class MyAppointmentsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(MyAppointmentsUiState())
     val uiState: StateFlow<MyAppointmentsUiState> = _uiState.asStateFlow()
 
+    // Solo cuenta la carga más reciente: si se vuelve a la pantalla varias veces, la anterior se cancela.
+    private var loadJob: Job? = null
+
     /** La pantalla lo llama cada vez que vuelve a primer plano, p. ej. después de modificar una cita. */
     fun load() {
+        loadJob?.cancel()
         _uiState.update { it.copy(isLoading = true, error = null) }
-        viewModelScope.launch {
+        loadJob = viewModelScope.launch {
             val catalog = async { getAppointmentCatalogUseCase() }
             getMyAppointmentsUseCase()
                 .onSuccess { appointments ->

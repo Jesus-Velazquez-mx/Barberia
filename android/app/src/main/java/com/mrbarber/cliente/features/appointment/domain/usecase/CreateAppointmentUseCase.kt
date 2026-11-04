@@ -31,7 +31,8 @@ class CreateAppointmentUseCase @Inject constructor(
         !appointment.scheduledStart.isAfter(now) -> "La fecha de la cita ya pasó"
         !isWithinBookingWindow(appointment.scheduledStart) ->
             "Solo puedes agendar con hasta $MAX_DAYS_AHEAD días de anticipación"
-        (appointment.notes?.length ?: 0) > 500 -> "Las notas no pueden superar 500 caracteres"
+        (appointment.notes?.length ?: 0) > Appointment.MAX_NOTES_LENGTH ->
+            "Las notas no pueden superar ${Appointment.MAX_NOTES_LENGTH} caracteres"
         else -> null
     }
 }
