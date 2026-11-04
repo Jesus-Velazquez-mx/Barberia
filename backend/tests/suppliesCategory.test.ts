@@ -204,14 +204,18 @@ describe('Pruebas de endpoints de Categorías de Insumos (Supplies Categories)',
             expect(res.body.message).toMatch(/Not authorized/i);
         });
 
-        test('Debe responder 403 si una recepcionista intenta crear una categoría', async () => {
+        test('Debe responder 201 y crear una nueva categoría con token de recepcionista', async () => {
+            const newCategoryData = { name: generateUniqueFixtureName('CatRecep'), description: 'Creada por recepción' };
+
             const res = await request(app)
                 .post('/api/suppliesCategories')
                 .set('Authorization', `Bearer ${receptionistToken}`)
-                .send({ name: generateUniqueFixtureName('CatRecep') });
+                .send(newCategoryData);
 
-            expect(res.status).toBe(403);
-            expect(res.body.message).toMatch(/Not authorized/i);
+            expect(res.status).toBe(201);
+            expect(res.body.data.name).toBe(newCategoryData.name);
+
+            createdCategoryIds.push(res.body.data.id);
         });
 
         test('Debe responder 409 si el nombre de la categoría ya existe', async () => {
@@ -269,13 +273,17 @@ describe('Pruebas de endpoints de Categorías de Insumos (Supplies Categories)',
             expect(res.status).toBe(403);
         });
 
-        test('Debe responder 403 si una recepcionista intenta actualizar', async () => {
+        test('Debe responder 200 y actualizar los campos con token de recepcionista', async () => {
+            const updatedFields = { name: generateUniqueFixtureName('CatRecepEdit'), description: 'Editada por recepción' };
+
             const res = await request(app)
                 .put(`/api/suppliesCategories/${categoryToEditId}`)
                 .set('Authorization', `Bearer ${receptionistToken}`)
-                .send({ name: generateUniqueFixtureName('CatRecepEdit') });
+                .send(updatedFields);
 
-            expect(res.status).toBe(403);
+            expect(res.status).toBe(200);
+            expect(res.body.data.id).toBe(categoryToEditId);
+            expect(res.body.data.name).toBe(updatedFields.name);
         });
 
         test('Debe responder 404 si la categoría a editar no existe', async () => {
@@ -327,11 +335,18 @@ describe('Pruebas de endpoints de Categorías de Insumos (Supplies Categories)',
             expect(res.status).toBe(403);
         });
 
-        test('Debe responder 403 si lo intenta una recepcionista', async () => {
+        test('Debe responder 200 y borrar la categoría si lo hace una recepcionista', async () => {
+            const categoryForReceptionistId = await insertCategory(generateUniqueFixtureName('CatDelRecep'));
+
             const res = await request(app)
-                .delete(`/api/suppliesCategories/${categoryToDeleteId}`)
+                .delete(`/api/suppliesCategories/${categoryForReceptionistId}`)
                 .set('Authorization', `Bearer ${receptionistToken}`);
-            expect(res.status).toBe(403);
+
+            expect(res.status).toBe(200);
+            const dbCheck = await getPool().query('SELECT id FROM supplies_categories WHERE id = $1', [
+                categoryForReceptionistId,
+            ]);
+            expect(dbCheck.rows).toHaveLength(0);
         });
 
         test('Debe responder 404 si no existe', async () => {

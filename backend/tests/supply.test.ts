@@ -149,6 +149,33 @@ describe('Pruebas de endpoints de Insumos (Supplies) - Completo', () => {
             createdSupplyIds.push(res.body.data.id);
         });
 
+        test('Debe responder 403 si una RECEPCIONISTA intenta crear un insumo en una sucursal que no es la suya', async () => {
+            const res = await request(app)
+                .post('/api/supplies')
+                .set('Authorization', `Bearer ${receptionistToken}`)
+                .send({ shopId: shopId2, categoryId, name: 'Recepcionista Otra Sucursal' });
+
+            expect(res.status).toBe(403);
+        });
+
+        test('Debe responder 403 si un MANAGER intenta crear un insumo en una sucursal que no administra', async () => {
+            const res = await request(app)
+                .post('/api/supplies')
+                .set('Authorization', `Bearer ${managerToken}`)
+                .send({ shopId: otherShopId, categoryId, name: 'Manager Otra Sucursal' });
+
+            expect(res.status).toBe(403);
+        });
+
+        test('Debe responder 403 si un MANAGER sin sucursales intenta crear un insumo', async () => {
+            const res = await request(app)
+                .post('/api/supplies')
+                .set('Authorization', `Bearer ${unassignedManagerToken}`)
+                .send({ shopId: shopId1, categoryId, name: 'Manager Sin Sucursales' });
+
+            expect(res.status).toBe(403);
+        });
+
         test('Debe responder 403 si un CLIENTE intenta crear un insumo', async () => {
             const res = await request(app)
                 .post('/api/supplies')
@@ -314,6 +341,20 @@ describe('Pruebas de endpoints de Insumos (Supplies) - Completo', () => {
             expect(res.body.data.id).toBe(initialSupplyId);
         });
 
+        test('Debe responder 403 si una RECEPCIONISTA consulta un insumo de otra sucursal', async () => {
+            const res = await request(app)
+                .get(`/api/supplies/${otherSupplyId}`)
+                .set('Authorization', `Bearer ${receptionistToken}`);
+            expect(res.status).toBe(403);
+        });
+
+        test('Debe responder 403 si un MANAGER consulta un insumo de una sucursal que no administra', async () => {
+            const res = await request(app)
+                .get(`/api/supplies/${otherSupplyId}`)
+                .set('Authorization', `Bearer ${managerToken}`);
+            expect(res.status).toBe(403);
+        });
+
         test('Debe responder 404 si el insumo no existe (MANAGER)', async () => {
             const fakeUuid = '550e8400-e29b-41d4-a716-446655440000';
             const res = await request(app)
@@ -351,6 +392,42 @@ describe('Pruebas de endpoints de Insumos (Supplies) - Completo', () => {
             expect(res.body.data.name).toBe('Editado Recepcionista');
         });
 
+        test('Debe responder 403 si una RECEPCIONISTA intenta editar un insumo de otra sucursal', async () => {
+            const res = await request(app)
+                .put(`/api/supplies/${otherSupplyId}`)
+                .set('Authorization', `Bearer ${receptionistToken}`)
+                .send({ name: 'Hack Recepcionista' });
+
+            expect(res.status).toBe(403);
+        });
+
+        test('Debe responder 403 si un MANAGER intenta editar un insumo de una sucursal que no administra', async () => {
+            const res = await request(app)
+                .put(`/api/supplies/${otherSupplyId}`)
+                .set('Authorization', `Bearer ${managerToken}`)
+                .send({ name: 'Hack Manager' });
+
+            expect(res.status).toBe(403);
+        });
+
+        test('Debe responder 403 si un MANAGER intenta mover un insumo a una sucursal que no administra', async () => {
+            const res = await request(app)
+                .put(`/api/supplies/${supplyToEditId}`)
+                .set('Authorization', `Bearer ${managerToken}`)
+                .send({ shopId: otherShopId });
+
+            expect(res.status).toBe(403);
+        });
+
+        test('Debe responder 403 si una RECEPCIONISTA intenta mover un insumo a otra sucursal', async () => {
+            const res = await request(app)
+                .put(`/api/supplies/${supplyToEditId}`)
+                .set('Authorization', `Bearer ${receptionistToken}`)
+                .send({ shopId: shopId2 });
+
+            expect(res.status).toBe(403);
+        });
+
         test('Debe responder 403 si un CLIENTE intenta editar', async () => {
             const res = await request(app)
                 .put(`/api/supplies/${supplyToEditId}`)
@@ -386,6 +463,26 @@ describe('Pruebas de endpoints de Insumos (Supplies) - Completo', () => {
                 .set('Authorization', `Bearer ${clientToken}`);
 
             expect(res.status).toBe(403);
+        });
+
+        test('Debe responder 403 y conservar el insumo si una RECEPCIONISTA intenta eliminar uno de otra sucursal', async () => {
+            const res = await request(app)
+                .delete(`/api/supplies/${otherSupplyId}`)
+                .set('Authorization', `Bearer ${receptionistToken}`);
+
+            expect(res.status).toBe(403);
+            const dbCheck = await getPool().query('SELECT id FROM supplies WHERE id = $1', [otherSupplyId]);
+            expect(dbCheck.rows).toHaveLength(1);
+        });
+
+        test('Debe responder 403 y conservar el insumo si un MANAGER intenta eliminar uno de una sucursal que no administra', async () => {
+            const res = await request(app)
+                .delete(`/api/supplies/${otherSupplyId}`)
+                .set('Authorization', `Bearer ${managerToken}`);
+
+            expect(res.status).toBe(403);
+            const dbCheck = await getPool().query('SELECT id FROM supplies WHERE id = $1', [otherSupplyId]);
+            expect(dbCheck.rows).toHaveLength(1);
         });
 
         test('Debe responder 200 si una RECEPCIONISTA intenta eliminar el insumo', async () => {

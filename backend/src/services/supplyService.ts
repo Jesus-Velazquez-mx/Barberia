@@ -15,7 +15,30 @@ import { getReceptionistByUserId } from '../repositories/receptionistRepository.
 import { getCategoryById } from '../repositories/suppliesCategoryRepository.js';
 import { isUserActive } from '../repositories/userRepository.js';
 import { decodeToken } from './jwtTokenService.js';
-import { canManageSupplies, canViewShopSupplies } from './userPermissions.js';
+import { canManageSupplies, canViewShopSupplies, type UserIdentity } from './userPermissions.js';
+
+/**
+ * Sucursales a las que tiene acceso el usuario: la del recepcionista o las que administra el gerente.
+ */
+const getAssignedShopIds = async (performer: UserIdentity): Promise<string[]> => {
+    if (performer.role === 'receptionist') {
+        const receptionist = await getReceptionistByUserId(performer.id);
+        if (!receptionist) {
+            throw new ApiError(ApiErrorCode.FORBIDDEN, 'Receptionist is not assigned to a shop');
+        }
+        return [receptionist.shop_id];
+    }
+    return await getShopIdsByManagerId(performer.id);
+};
+
+/**
+ * Lanza 403 si la sucursal no está entre las asignadas al usuario.
+ */
+const assertShopAccess = (shopId: string, assignedShopIds: string[], action: string): void => {
+    if (!canViewShopSupplies(shopId, assignedShopIds)) {
+        throw new ApiError(ApiErrorCode.FORBIDDEN, `Not authorized to ${action} supplies of this shop`);
+    }
+};
 
 /**
  * Recupera la lista de insumos.
@@ -33,16 +56,7 @@ export const listSupplies = async (shopIds?: string[], token?: string) => {
         throw new ApiError(ApiErrorCode.ACCOUNT_DEACTIVATED, 'Account is deactivated');
     }
 
-    let assignedShopIds: string[];
-    if (performer.role === 'receptionist') {
-        const receptionist = await getReceptionistByUserId(performer.id);
-        if (!receptionist) {
-            throw new ApiError(ApiErrorCode.FORBIDDEN, 'Receptionist is not assigned to a shop');
-        }
-        assignedShopIds = [receptionist.shop_id];
-    } else {
-        assignedShopIds = await getShopIdsByManagerId(performer.id);
-    }
+    const assignedShopIds = await getAssignedShopIds(performer);
 
     let targetShopIds = assignedShopIds;
     if (shopIds && shopIds.length > 0) {
@@ -77,6 +91,8 @@ export const getSupply = async (id: string, token?: string) => {
     if (!supply) {
         throw new ApiError(ApiErrorCode.NOT_FOUND, 'Supply not found');
     }
+
+    assertShopAccess(supply.shop_id, await getAssignedShopIds(performer), 'view');
     return supply;
 };
 
@@ -97,6 +113,9 @@ export const registerSupply = async (data: CreateSupplyInput, token: string) => 
     // Validar que la sucursal existe
     const shop = await getShopById(data.shopId);
     if (!shop) throw new ApiError(ApiErrorCode.NOT_FOUND, 'Shop not found');
+
+    // Solo se pueden registrar insumos en las sucursales asignadas al usuario
+    assertShopAccess(data.shopId, await getAssignedShopIds(performer), 'manage');
 
     // Validar que la categoría existe
     const category = await getCategoryById(data.categoryId);
@@ -132,12 +151,17 @@ export const editSupply = async (id: string, data: UpdateSupplyInput, token: str
     const supply = await getSupplyById(id);
     if (!supply) throw new ApiError(ApiErrorCode.NOT_FOUND, 'Supply not found');
 
+    // El insumo debe pertenecer a una sucursal asignada al usuario
+    const assignedShopIds = await getAssignedShopIds(performer);
+    assertShopAccess(supply.shop_id, assignedShopIds, 'manage');
+
     const targetShopId = data.shopId || supply.shop_id;
 
-    // Si cambian la sucursal, validar que la nueva exista
+    // Si cambian la sucursal, validar que la nueva exista y que también esté asignada al usuario
     if (data.shopId && data.shopId !== supply.shop_id) {
         const shop = await getShopById(data.shopId);
         if (!shop) throw new ApiError(ApiErrorCode.NOT_FOUND, 'Shop not found');
+        assertShopAccess(data.shopId, assignedShopIds, 'manage');
     }
 
     // Si cambian la categoría, validar que la nueva exista
@@ -182,6 +206,11 @@ export const removeSupply = async (id: string, token: string): Promise<void> => 
     if (!(await isUserActive(performer.id))) {
         throw new ApiError(ApiErrorCode.ACCOUNT_DEACTIVATED, 'Account is deactivated');
     }
+
+    const supply = await getSupplyById(id);
+    if (!supply) throw new ApiError(ApiErrorCode.NOT_FOUND, 'Supply not found');
+
+    assertShopAccess(supply.shop_id, await getAssignedShopIds(performer), 'manage');
 
     await repoDeleteSupply(id);
 };
