@@ -8,9 +8,11 @@ import java.time.LocalDate
 import java.time.LocalTime
 
 data class AppointmentUiState(
-    // Carga inicial de sucursales y servicios
+    // Carga inicial: sucursales y servicios, y la cita si se está modificando
     val isLoadingCatalog: Boolean = false,
-    val catalogError: String? = null,
+    /** Falló la carga inicial; se puede reintentar. */
+    val loadError: String? = null,
+    /** La cita a modificar ya no existe; reintentar no ayuda. */
     val appointmentUnavailableError: String? = null,
     // Paso 1: sucursal y servicios
     val shops: List<Shop> = emptyList(),

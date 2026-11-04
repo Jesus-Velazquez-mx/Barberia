@@ -62,10 +62,10 @@ class AppointmentViewModel @Inject constructor(
     }
 
     fun loadCatalog() {
-        _uiState.update { it.copy(isLoadingCatalog = true, catalogError = null) }
+        _uiState.update { it.copy(isLoadingCatalog = true, loadError = null) }
         viewModelScope.launch {
             val catalog = getAppointmentCatalogUseCase().getOrElse { e ->
-                _uiState.update { it.copy(isLoadingCatalog = false, catalogError = e.toUserMessage()) }
+                _uiState.update { it.copy(isLoadingCatalog = false, loadError = e.toUserMessage()) }
                 return@launch
             }
             _uiState.update { it.copy(shops = catalog.shops, services = catalog.services) }
@@ -76,7 +76,7 @@ class AppointmentViewModel @Inject constructor(
                         if (e is AppException.NotFound) {
                             state.copy(isLoadingCatalog = false, appointmentUnavailableError = e.toUserMessage())
                         } else {
-                            state.copy(isLoadingCatalog = false, catalogError = e.toUserMessage())
+                            state.copy(isLoadingCatalog = false, loadError = e.toUserMessage())
                         }
                     }
                     return@launch

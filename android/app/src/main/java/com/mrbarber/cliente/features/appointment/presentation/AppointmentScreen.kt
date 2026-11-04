@@ -173,7 +173,7 @@ fun Appointment(
                 return@Column
             }
 
-            state.catalogError?.let { message ->
+            state.loadError?.let { message ->
                 LoadError(message = message, actionLabel = "REINTENTAR", onAction = onRetryCatalog)
                 return@Column
             }
