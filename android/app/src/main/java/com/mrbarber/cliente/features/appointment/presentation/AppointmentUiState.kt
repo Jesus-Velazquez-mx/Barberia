@@ -11,6 +11,7 @@ data class AppointmentUiState(
     // Carga inicial de sucursales y servicios
     val isLoadingCatalog: Boolean = false,
     val catalogError: String? = null,
+    val appointmentUnavailableError: String? = null,
     // Paso 1: sucursal y servicios
     val shops: List<Shop> = emptyList(),
     val selectedShopId: String? = null,

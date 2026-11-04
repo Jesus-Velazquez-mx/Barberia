@@ -12,5 +12,6 @@ fun Throwable.toUserMessage(): String = when (this) {
         in 500..599 -> "El servidor tuvo un problema. Intenta más tarde."
         else -> message ?: "Ocurrió un error inesperado"
     }
+    is AppException.NotFound -> message.orEmpty()
     else -> "Ocurrió un error inesperado"
 }

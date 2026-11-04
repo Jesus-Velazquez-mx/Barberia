@@ -167,8 +167,14 @@ fun Appointment(
                 return@Column
             }
 
+            // Reintentar no recupera una cita que ya no existe: solo se puede volver.
+            state.appointmentUnavailableError?.let { message ->
+                LoadError(message = message, actionLabel = "VOLVER", onAction = onBack)
+                return@Column
+            }
+
             state.catalogError?.let { message ->
-                CatalogError(message = message, onRetry = onRetryCatalog)
+                LoadError(message = message, actionLabel = "REINTENTAR", onAction = onRetryCatalog)
                 return@Column
             }
 
@@ -587,15 +593,15 @@ private fun LockedHint(text: String) {
 }
 
 @Composable
-private fun CatalogError(message: String, onRetry: () -> Unit) {
+private fun LoadError(message: String, actionLabel: String, onAction: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(message, color = MaterialTheme.colorScheme.error, fontSize = 14.sp, textAlign = TextAlign.Center)
         Spacer(Modifier.height(12.dp))
-        TextButton(onClick = onRetry) {
-            Text("REINTENTAR", color = Dorado, fontWeight = FontWeight.Bold)
+        TextButton(onClick = onAction) {
+            Text(actionLabel, color = Dorado, fontWeight = FontWeight.Bold)
         }
     }
 }

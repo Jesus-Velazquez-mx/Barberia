@@ -36,8 +36,7 @@ class AppointmentRepositoryImpl @Inject constructor(
     override suspend fun getAppointment(id: String): Result<Appointment> =
         getMyAppointments().mapCatching { appointments ->
             appointments.find { it.id == id }
-                ?: throw AppException.Validation("La cita ya no está disponible")
-        }
+                ?: throw AppException.NotFound("La cita ya no está disponible")                                                                                                                          }
 
     override suspend fun updateAppointment(id: String, update: AppointmentUpdate): Result<Appointment> =
         safeApiCall(json) { api.update(id, update.toRequestDto()) }

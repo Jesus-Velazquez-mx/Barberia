@@ -64,17 +64,27 @@ class AppointmentViewModel @Inject constructor(
     fun loadCatalog() {
         _uiState.update { it.copy(isLoadingCatalog = true, catalogError = null) }
         viewModelScope.launch {
-            getAppointmentCatalogUseCase()
-                .mapCatching { catalog -> catalog to appointmentId?.let { getAppointmentUseCase(it).getOrThrow() } }
-                .onSuccess { (catalog, appointment) ->
-                    _uiState.update {
-                        it.copy(isLoadingCatalog = false, shops = catalog.shops, services = catalog.services)
+            val catalog = getAppointmentCatalogUseCase().getOrElse { e ->
+                _uiState.update { it.copy(isLoadingCatalog = false, catalogError = e.toUserMessage()) }
+                return@launch
+            }
+            _uiState.update { it.copy(shops = catalog.shops, services = catalog.services) }
+
+            val appointment = appointmentId?.let { id ->
+                getAppointmentUseCase(id).getOrElse { e ->
+                    _uiState.update { state ->
+                        if (e is AppException.NotFound) {
+                            state.copy(isLoadingCatalog = false, appointmentUnavailableError = e.toUserMessage())
+                        } else {
+                            state.copy(isLoadingCatalog = false, catalogError = e.toUserMessage())
+                        }
                     }
-                    appointment?.let(::startEditing)
+                    return@launch
                 }
-                .onFailure { e ->
-                    _uiState.update { it.copy(isLoadingCatalog = false, catalogError = e.toUserMessage()) }
-                }
+            }
+
+            _uiState.update { it.copy(isLoadingCatalog = false) }
+            appointment?.let(::startEditing)
         }
     }
 
