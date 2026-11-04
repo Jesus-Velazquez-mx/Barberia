@@ -70,6 +70,11 @@ export const canManageShopReceptionists = (shopId: string, managedShopIds: strin
  * /shops: Solo los usuarios con el rol 'manager' pueden registrar, editar o eliminar sucursales.
  */
 export const canManageShops = (performer: UserIdentity): boolean => performer.role === 'manager';
+/**
+ * /shops: Solo los usuarios con el rol de 'receptionist' o 'manager0' pueden consultar sucursales inactivas.
+ */
+export const canViewInactiveShops = (performer: UserIdentity): boolean => 
+    performer.role === 'manager' || performer.role === 'receptionist';
 
 /**
  * GET /recommendations: un cliente solo puede consultar su propio historial de recomendaciones; la recepción y los

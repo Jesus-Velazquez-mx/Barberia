@@ -3,8 +3,17 @@ import type { Shop, ShopPayload } from '../types/shop.ts';
 import type { PublicBarber } from '../types/barber.ts';
 import type { OfferedService } from '../types/offeredService.ts';
 
-export const getShops = async (): Promise<Shop[]> => {
-    const response = await apiClient.get<Shop[]>('/shops');
+export const getShops = async (token?: string): Promise<Shop[]> => {
+    let response;
+
+    if (token) {
+        response = await apiClient.get<Shop[]>('/shops', {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+    } else {
+        response = await apiClient.get<Shop[]>('/shops');
+    }
+
     return response.data;
 };
 

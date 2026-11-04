@@ -5,10 +5,12 @@ import connection from '../src/connection/connection.js';
 import { getActiveShops, getAllShops } from '../src/repositories/shopRepository.js';
 import {
     insertManager,
+    insertReceptionist,
     insertShop,
     insertUser,
     cleanupFixtures,
     generateUniqueFixtureName,
+    getSeededShiftId,
 } from './helpers/availabilityFixtures.js';
 import { signToken } from '../src/services/jwtTokenService.js';
 import type { User, UserRole } from '../src/types/entities/user.interface.js';
@@ -23,13 +25,18 @@ const mintToken = (id: string, role: UserRole, email: string): string => signTok
 
 describe('Pruebas de endpoints de Shops (Sucursales)', () => {
     let dummyManager: { id: string; email: string };
+    let dummyReceptionist: { id: string; email: string };
+    let inactiveShopReceptionist: { id: string; email: string };
     let clientUser: { id: string; email: string };
     let managerToken: string;
+    let receptionistToken: string;
+    let inactiveShopReceptionistToken: string;
     let clientToken: string;
 
     let activeShopId1: string;
     let activeShopId2: string;
     let inactiveShopId: string;
+    let activeShopName1: string;
 
     beforeAll(async () => {
         await connectDB();
@@ -42,15 +49,40 @@ describe('Pruebas de endpoints de Shops (Sucursales)', () => {
         clientToken = mintToken(clientUser.id, 'client', clientUser.email);
 
         // 2. Insertar 2 sucursales activas (A y Z para validar orden)
-        activeShopId1 = await insertShop(dummyManager.id, { name: 'A_Active Shop', isActive: true });
-        activeShopId2 = await insertShop(dummyManager.id, { name: 'Z_Active Shop', isActive: true });
+        activeShopName1 = generateUniqueFixtureName('AActive');
+        activeShopId1 = await insertShop(dummyManager.id, {
+            name: activeShopName1,
+            isActive: true,
+        });
+        activeShopId2 = await insertShop(dummyManager.id, {
+            name: generateUniqueFixtureName('ZActive'),
+            isActive: true,
+        });
 
         // 3. Insertar 1 sucursal inactiva
-        inactiveShopId = await insertShop(dummyManager.id, { name: 'Inactive Shop Test', isActive: false });
+        inactiveShopId = await insertShop(dummyManager.id, {
+            name: generateUniqueFixtureName('Inactive'),
+            isActive: false,
+        });
+
+        const shiftId = await getSeededShiftId();
+        dummyReceptionist = await insertReceptionist(activeShopId1, shiftId);
+        inactiveShopReceptionist = await insertReceptionist(inactiveShopId, shiftId);
+
+        receptionistToken = mintToken(dummyReceptionist.id, 'receptionist', dummyReceptionist.email);
+        inactiveShopReceptionistToken = mintToken(
+            inactiveShopReceptionist.id,
+            'receptionist',
+            inactiveShopReceptionist.email
+        );
     });
 
     afterAll(async () => {
         if (dummyManager?.id) {
+            await getPool().query(
+                'DELETE FROM receptionists WHERE shop_id IN (SELECT id FROM shops WHERE manager_id = $1)',
+                [dummyManager.id]
+            );
             await getPool().query('DELETE FROM shops WHERE manager_id = $1', [dummyManager.id]);
         }
         await cleanupFixtures();
@@ -94,8 +126,11 @@ describe('Pruebas de endpoints de Shops (Sucursales)', () => {
             expect(inactiveShop).toBeUndefined();
         });
 
-        test('Debe responder 200 e incluir sucursales inactivas cuando includeInactive=true', async () => {
-            const res = await request(app).get('/api/shops?includeInactive=true');
+        test('Debe responder 200 e incluir sucursales inactivas cuando includeInactive=true para manager', async () => {
+            const res = 
+                await request(app)
+                    .get('/api/shops?includeInactive=true')
+                    .set('Authorization', `Bearer ${managerToken}`);
 
             expect(res.status).toBe(200);
             expect(Array.isArray(res.body.data)).toBe(true);
@@ -103,6 +138,42 @@ describe('Pruebas de endpoints de Shops (Sucursales)', () => {
             const inactiveFound = res.body.data.find((s: any) => s.id === inactiveShopId);
             expect(inactiveFound).toBeDefined();
             expect(inactiveFound.isActive).toBe(false);
+        });
+
+        test('Debe devolver solo sucursales activas asignadas al manager por defecto', async () => {
+            const res = await request(app).get('/api/shops').set('Authorization', `Bearer ${managerToken}`);
+
+            expect(res.status).toBe(200);
+            expect(res.body.data.map((shop: any) => shop.id)).toEqual(
+                expect.arrayContaining([activeShopId1, activeShopId2])
+            );
+            expect(res.body.data.find((shop: any) => shop.id === inactiveShopId)).toBeUndefined();
+        });
+
+        test('Debe devolver la sucursal asignada al receptionist por defecto', async () => {
+            const res = await request(app).get('/api/shops').set('Authorization', `Bearer ${receptionistToken}`);
+
+            expect(res.status).toBe(200);
+            expect(res.body.data.map((shop: any) => shop.id)).toEqual([activeShopId1]);
+        });
+
+        test('Debe incluir la sucursal inactiva asignada al receptionist cuando includeInactive=true', async () => {
+            const res = await request(app)
+                .get('/api/shops?includeInactive=true')
+                .set('Authorization', `Bearer ${inactiveShopReceptionistToken}`);
+
+            expect(res.status).toBe(200);
+            expect(res.body.data.map((shop: any) => shop.id)).toEqual([inactiveShopId]);
+            expect(res.body.data[0].isActive).toBe(false);
+        });
+
+        test('Debe excluir la sucursal inactiva asignada al receptionist por defecto', async () => {
+            const res = await request(app)
+                .get('/api/shops')
+                .set('Authorization', `Bearer ${inactiveShopReceptionistToken}`);
+
+            expect(res.status).toBe(200);
+            expect(res.body.data).toEqual([]);
         });
     });
 
@@ -183,11 +254,10 @@ describe('Pruebas de endpoints de Shops (Sucursales)', () => {
         });
 
         test('Debe responder 409 si el nombre de la sucursal ya existe', async () => {
-            const duplicateName = 'A_Active Shop'; // Ya creada en beforeAll
             const res = await request(app)
                 .post('/api/shops')
                 .set('Authorization', `Bearer ${managerToken}`)
-                .send({ name: duplicateName });
+                .send({ name: activeShopName1 });
 
             expect(res.status).toBe(409);
             expect(res.body.message).toMatch(/already in use/i);
@@ -265,7 +335,7 @@ describe('Pruebas de endpoints de Shops (Sucursales)', () => {
             const res = await request(app)
                 .put(`/api/shops/${shopToEditId}`)
                 .set('Authorization', `Bearer ${managerToken}`)
-                .send({ name: 'A_Active Shop' });
+                .send({ name: activeShopName1.toUpperCase() });
 
             expect(res.status).toBe(409);
             expect(res.body.message).toMatch(/already in use/i);

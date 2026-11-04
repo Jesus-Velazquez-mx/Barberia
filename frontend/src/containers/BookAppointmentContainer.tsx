@@ -168,7 +168,7 @@ export function BookAppointmentContainer() {
     if (!token) return;
     let active = true;
 
-    Promise.all([getShops(), getOfferedServices(token)])
+    Promise.all([getShops(token), getOfferedServices(token)])
       .then(([shopsData, servicesData]) => {
         if (!active) return;
         setShopOptions(shopsData.map((shop) => ({ value: shop.id, label: shop.name })));
