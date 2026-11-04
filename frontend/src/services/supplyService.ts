@@ -31,11 +31,11 @@ const toSupply = (item: SupplyApi): Supply => ({
 });
 
 /**
- * Obtiene la lista de insumos. Opcionalmente filtrados por sucursal.
+ * Obtiene la lista de insumos. Opcionalmente filtrados por varias sucursales.
  * Requiere token con rol manager.
  */
-export const getSupplies = async (token: string, shopId?: string): Promise<Supply[]> => {
-    const query = shopId ? `?shopId=${encodeURIComponent(shopId)}` : '';
+export const getSupplies = async (token: string, shopIds: string[]): Promise<Supply[]> => {
+    const query = shopIds.length > 0 ? `?${shopIds.map((id) => `shopIds=${encodeURIComponent(id)}`).join('&')}` : '';
     const response = await apiClient.get<SupplyApi[]>(`/supplies${query}`, authHeaders(token));
     return response.data.map(toSupply);
 };

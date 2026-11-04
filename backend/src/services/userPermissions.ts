@@ -79,15 +79,23 @@ export const canViewRecommendationHistory = (performer: UserIdentity, targetClie
     performer.role === 'client' ? performer.id === targetClientId : true;
 
 /**
- * /supplies-categories: Solo los usuarios con rol 'manager' pueden crear, editar o eliminar categorías de insumos.
+ * /suppliesCategories: los usuarios con rol 'manager' y 'receptionist' pueden consultar, crear, editar o eliminar categorías de insumos.
  */
-export const canManageSuppliesCategories = (performer: UserIdentity): boolean => performer.role === 'manager';
+export const canManageSuppliesCategories = (performer: UserIdentity): boolean =>
+    performer.role === 'manager' || performer.role === 'receptionist';
 
 /**
  * /supplies: Los usuarios con rol 'manager' y 'receptionist' pueden registrar, consultar, editar o eliminar insumos.
  */
 export const canManageSupplies = (performer: UserIdentity): boolean =>
     performer.role === 'manager' || performer.role === 'receptionist';
+
+/**
+ * /supplies: la recepción y los gerentes solo pueden consultar, registrar, editar o eliminar los insumos de las
+ * sucursales que tienen asignadas (la sucursal donde trabaja la recepción; las que administra el gerente).
+ */
+export const canViewShopSupplies = (shopId: string, assignedShopIds: string[]): boolean =>
+    assignedShopIds.includes(shopId);
 
 /**
  * GET /shifts: el personal (recepcionistas y gerentes) puede consultar los turnos; los clientes no.

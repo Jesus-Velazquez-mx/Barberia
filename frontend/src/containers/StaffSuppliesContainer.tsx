@@ -72,7 +72,7 @@ export function StaffSuppliesContainer() {
 
     try {
       const [loadedSupplies, loadedShops, loadedCategories] = await Promise.all([
-        getSupplies(token),
+        getSupplies(token, []),
         getSupplyShops(),
         getSupplyCategories(token)
       ]);

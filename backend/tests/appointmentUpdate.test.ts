@@ -16,6 +16,7 @@ import {
     insertReceptionist,
     cleanupFixtures,
     createdAppointmentIds,
+    getSeededShiftId,
 } from './helpers/availabilityFixtures.js';
 
 const { connectDB, closeDB, getPool } = connection;
@@ -128,7 +129,7 @@ describe('PUT /api/appointments/:id', () => {
         otherManagerToken = mintToken(otherManager.id, 'manager', otherManager.email);
         otherShopId = await insertShop(otherManager.id);
 
-        const shiftId = (await getPool().query(`SELECT id FROM shifts LIMIT 1`)).rows[0].id;
+        const shiftId = await getSeededShiftId();
         const receptionist = await insertReceptionist(shopId, shiftId);
         receptionistToken = mintToken(receptionist.id, 'receptionist', receptionist.email);
         const foreignReceptionist = await insertReceptionist(otherShopId, shiftId);
