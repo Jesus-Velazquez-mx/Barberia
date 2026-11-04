@@ -12,5 +12,7 @@ data class MyAppointmentsUiState(
     /** Motivo opcional que se escribe en el diálogo de cancelar. */
     val cancelReason: String = "",
     val cancellingId: String? = null,
+    /** La cita que se quiso cancelar ya no existe: se avisa con un diálogo. */
+    val unavailableMessage: String? = null,
     val error: String? = null
 )

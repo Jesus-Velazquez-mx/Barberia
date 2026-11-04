@@ -108,6 +108,11 @@ fun AppointmentRoute(
         )
     }
 
+    // Al aceptar se vuelve a "Mis citas", que se recarga sola y ya no muestra esa cita.
+    state.appointmentUnavailableError?.let { message ->
+        AppointmentUnavailableDialog(message = message, onAccept = onBack)
+    }
+
     Appointment(
         state = state,
         onBack = onBack,
@@ -169,14 +174,11 @@ fun Appointment(
                 return@Column
             }
 
-            // Reintentar no recupera una cita que ya no existe: solo se puede volver.
-            state.appointmentUnavailableError?.let { message ->
-                LoadError(message = message, actionLabel = "VOLVER", onAction = onBack)
-                return@Column
-            }
+            // Sin la cita no hay nada que editar: el aviso lo da AppointmentUnavailableDialog.
+            if (state.appointmentUnavailableError != null) return@Column
 
             state.loadError?.let { message ->
-                LoadError(message = message, actionLabel = "REINTENTAR", onAction = onRetryCatalog)
+                LoadError(message = message, onRetry = onRetryCatalog)
                 return@Column
             }
 
@@ -613,15 +615,15 @@ private fun LockedHint(text: String) {
 }
 
 @Composable
-private fun LoadError(message: String, actionLabel: String, onAction: () -> Unit) {
+private fun LoadError(message: String, onRetry: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(message, color = MaterialTheme.colorScheme.error, fontSize = 14.sp, textAlign = TextAlign.Center)
         Spacer(Modifier.height(12.dp))
-        TextButton(onClick = onAction) {
-            Text(actionLabel, color = Dorado, fontWeight = FontWeight.Bold)
+        TextButton(onClick = onRetry) {
+            Text("REINTENTAR", color = Dorado, fontWeight = FontWeight.Bold)
         }
     }
 }

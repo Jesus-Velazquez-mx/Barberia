@@ -74,15 +74,26 @@ class MyAppointmentsViewModel @Inject constructor(
                     }
                 }
                 .onFailure { e ->
-                    _uiState.update { it.copy(cancellingId = null, error = e.toCancelMessage()) }
+                    _uiState.update {
+                        if (e is AppException.Http && e.code == 404) {
+                            it.copy(cancellingId = null, unavailableMessage = "La cita ya no está disponible")
+                        } else {
+                            it.copy(cancellingId = null, error = e.toCancelMessage())
+                        }
+                    }
                 }
         }
+    }
+
+    /** Se recarga la lista para que deje de mostrar la cita que ya no existe. */
+    fun onUnavailableAccepted() {
+        _uiState.update { it.copy(unavailableMessage = null) }
+        load()
     }
 
     private fun Throwable.toCancelMessage(): String = when {
         this is AppException.Http && code == 403 ->
             "Solo puedes cancelar una cita con ${Appointment.MIN_HOURS_BEFORE} horas o más de anticipación"
-        this is AppException.Http && code == 404 -> "La cita ya no existe"
         this is AppException.Http && code == 409 -> "Esta cita ya no se puede cancelar"
         else -> toUserMessage()
     }

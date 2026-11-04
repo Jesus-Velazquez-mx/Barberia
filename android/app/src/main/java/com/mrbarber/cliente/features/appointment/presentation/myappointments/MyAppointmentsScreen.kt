@@ -41,6 +41,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mrbarber.cliente.features.appointment.domain.model.Appointment
 import com.mrbarber.cliente.features.appointment.domain.model.BUSINESS_ZONE
 import com.mrbarber.cliente.features.appointment.domain.usecase.CancelAppointmentUseCase
+import com.mrbarber.cliente.features.appointment.presentation.AppointmentUnavailableDialog
 import com.mrbarber.cliente.ui.components.BackButton
 import com.mrbarber.cliente.ui.components.ConfirmDialog
 import com.mrbarber.cliente.ui.components.FullScreenLoading
@@ -90,6 +91,10 @@ fun MyAppointmentsRoute(
                 modifier = Modifier.fillMaxWidth()
             )
         }
+    }
+
+    state.unavailableMessage?.let { message ->
+        AppointmentUnavailableDialog(message = message, onAccept = viewModel::onUnavailableAccepted)
     }
 
     MyAppointments(
