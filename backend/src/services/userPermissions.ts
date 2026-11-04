@@ -88,7 +88,7 @@ export const canViewSuppliesCategories = (performer: UserIdentity): boolean =>
  * POST/PUT/DELETE /suppliesCategories: solo los usuarios con rol 'manager' pueden crear, editar o eliminar categorías de insumos.
  */
 export const canManageSuppliesCategories = (performer: UserIdentity): boolean => 
-    performer.role === 'manager' || performer.role === 'receptionist';
+    performer.role === 'manager';
 
 /**
  * /supplies: Los usuarios con rol 'manager' y 'receptionist' pueden registrar, consultar, editar o eliminar insumos.
