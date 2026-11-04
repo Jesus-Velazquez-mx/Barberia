@@ -1,6 +1,6 @@
 import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 import {
-    getAllSupplies,
+    getSuppliesByShopId,
     getSupplyById,
     getSupplyByNameAndShop,
     getSupplyBySkuAndShop,
@@ -10,16 +10,19 @@ import {
     type CreateSupplyInput,
     type UpdateSupplyInput,
 } from '../repositories/supplyRepository.js';
-import { getShopById } from '../repositories/shopRepository.js';
+import { getShopById, getShopIdsByManagerId } from '../repositories/shopRepository.js';
+import { getReceptionistByUserId } from '../repositories/receptionistRepository.js';
 import { getCategoryById } from '../repositories/suppliesCategoryRepository.js';
 import { isUserActive } from '../repositories/userRepository.js';
 import { decodeToken } from './jwtTokenService.js';
-import { canManageSupplies } from './userPermissions.js';
+import { canManageSupplies, canViewShopSupplies } from './userPermissions.js';
 
 /**
  * Recupera la lista de insumos.
+ * - Sin shopIds: usa las sucursales asignadas al recepcionista (su sucursal) o al gerente (las que administra).
+ * - Con shopIds: cada una debe estar asignada al usuario; si alguna no lo está, responde 403.
  */
-export const listSupplies = async (shopId?: string, token?: string) => {
+export const listSupplies = async (shopIds?: string[], token?: string) => {
     const performer = decodeToken(token!);
 
     if (!canManageSupplies(performer)) {
@@ -30,7 +33,30 @@ export const listSupplies = async (shopId?: string, token?: string) => {
         throw new ApiError(ApiErrorCode.ACCOUNT_DEACTIVATED, 'Account is deactivated');
     }
 
-    return await getAllSupplies(shopId);
+    let assignedShopIds: string[];
+    if (performer.role === 'receptionist') {
+        const receptionist = await getReceptionistByUserId(performer.id);
+        if (!receptionist) {
+            throw new ApiError(ApiErrorCode.FORBIDDEN, 'Receptionist is not assigned to a shop');
+        }
+        assignedShopIds = [receptionist.shop_id];
+    } else {
+        assignedShopIds = await getShopIdsByManagerId(performer.id);
+    }
+
+    let targetShopIds = assignedShopIds;
+    if (shopIds && shopIds.length > 0) {
+        const uniqueShopIds = [...new Set(shopIds)];
+        if (!uniqueShopIds.every((id) => canViewShopSupplies(id, assignedShopIds))) {
+            throw new ApiError(ApiErrorCode.FORBIDDEN, 'Not authorized to view supplies of one or more shops');
+        }
+        targetShopIds = uniqueShopIds;
+    }
+
+    // El repositorio no filtra con un arreglo vacío (devolvería todos los insumos), así que se corta aquí.
+    if (targetShopIds.length === 0) return [];
+
+    return await getSuppliesByShopId(targetShopIds);
 };
 
 /**

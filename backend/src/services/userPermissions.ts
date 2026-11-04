@@ -90,6 +90,13 @@ export const canManageSupplies = (performer: UserIdentity): boolean =>
     performer.role === 'manager' || performer.role === 'receptionist';
 
 /**
+ * GET /supplies: la recepción y los gerentes solo pueden consultar los insumos de las sucursales que tienen
+ * asignadas (la sucursal donde trabaja la recepción; las que administra el gerente).
+ */
+export const canViewShopSupplies = (shopId: string, assignedShopIds: string[]): boolean =>
+    assignedShopIds.includes(shopId);
+
+/**
  * GET /shifts: el personal (recepcionistas y gerentes) puede consultar los turnos; los clientes no.
  */
 export const canViewShifts = (performer: UserIdentity): boolean =>
