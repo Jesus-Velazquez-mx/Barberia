@@ -30,6 +30,8 @@ data class AppointmentUiState(
     val barbers: List<Barber> = emptyList(),
     val isLoadingBarbers: Boolean = false,
     val selectedBarberId: String? = null,
+    // Notas opcionales para el barbero
+    val notes: String = "",
     val isSubmitting: Boolean = false,
     val error: String? = null,
     val createdAppointment: Appointment? = null,
@@ -47,6 +49,9 @@ data class AppointmentUiState(
 
     private val servicesChanged: Boolean
         get() = editingAppointment?.let { selectedServiceIds != it.serviceIds.toSet() } == true
+
+    private val notesChanged: Boolean
+        get() = editingAppointment?.let { notes.trim() != it.notes.orEmpty() } == true
 
 
     val selectedShop: Shop? get() = shops.find { it.id == selectedShopId }
@@ -70,7 +75,7 @@ data class AppointmentUiState(
     val canConfirm: Boolean
         get() = when {
             !canChooseSchedule || isSubmitting -> false
-            isEditing -> if (selectedTime == null) servicesChanged else selectedBarberId != null
+            isEditing -> if (selectedTime == null) servicesChanged || notesChanged else selectedBarberId != null
             else -> selectedBarberId != null && selectedDate != null && selectedTime != null
         }
 }

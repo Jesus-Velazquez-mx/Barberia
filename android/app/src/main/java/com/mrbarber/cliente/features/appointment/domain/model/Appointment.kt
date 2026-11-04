@@ -19,5 +19,6 @@ data class Appointment(
 
     companion object {
         const val MIN_HOURS_BEFORE = 8L
+        const val MAX_NOTES_LENGTH = 500
     }
 }

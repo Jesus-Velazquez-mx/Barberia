@@ -13,7 +13,8 @@ class UpdateAppointmentUseCase @Inject constructor(
     suspend operator fun invoke(id: String, update: AppointmentUpdate): Result<Appointment> {
         val clean = update.copy(
             serviceIds = update.serviceIds?.distinct(),
-            notes = update.notes?.trim()?.ifEmpty { null }
+            // Vacías no se descartan: significan que el cliente borró las notas.
+            notes = update.notes?.trim()
         )
         validate(clean)?.let { return Result.failure(AppException.Validation(it)) }
         return repository.updateAppointment(id, clean)

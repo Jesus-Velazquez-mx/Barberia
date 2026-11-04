@@ -1,6 +1,7 @@
 package com.mrbarber.cliente.features.appointment.data.remote.dto
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 
 /**
  * Cuerpo de PUT /api/appointments/{id}. Con `explicitNulls = false` los campos nulos no se envían,
@@ -11,7 +12,9 @@ data class UpdateAppointmentRequestDto(
     val barberId: String? = null,
     val serviceIds: List<String>? = null,
     val scheduledStart: String? = null,
-    val notes: String? = null
+    // JsonElement porque el backend distingue ausente (no cambia) de null (borra las notas),
+    // y `explicitNulls = false` no enviaría un String? nulo; JsonNull sí se envía.
+    val notes: JsonElement? = null
 )
 
 /** Cuerpo de PUT /api/appointments/{id}/cancel. */

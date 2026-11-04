@@ -117,6 +117,7 @@ fun AppointmentRoute(
         onBarberSelected = viewModel::onBarberSelected,
         onDateSelected = viewModel::onDateSelected,
         onTimeSelected = viewModel::onTimeSelected,
+        onNotesChanged = viewModel::onNotesChanged,
         onConfirmClick = viewModel::onConfirmClick,
         modifier = modifier
     )
@@ -132,6 +133,7 @@ fun Appointment(
     onBarberSelected: (String) -> Unit,
     onDateSelected: (LocalDate) -> Unit,
     onTimeSelected: (LocalTime) -> Unit,
+    onNotesChanged: (String) -> Unit,
     onConfirmClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -310,6 +312,24 @@ fun Appointment(
                                     }
                                 }
                         }
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+
+                    SectionCard(title = "5. Notas (opcional)") {
+                        OutlinedTextField(
+                            value = state.notes,
+                            onValueChange = onNotesChanged,
+                            enabled = !state.isSubmitting,
+                            placeholder = { Text("Ej. Degradado bajo, sin barba") },
+                            supportingText = {
+                                Text("${state.notes.length}/${BookedAppointment.MAX_NOTES_LENGTH}", color = GrisClaro)
+                            },
+                            minLines = 2,
+                            maxLines = 5,
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
 
                     Spacer(Modifier.height(16.dp))
@@ -716,6 +736,7 @@ fun AppointmentPreview() {
             onBarberSelected = { state = state.copy(selectedBarberId = it, selectedTime = null) },
             onDateSelected = { state = state.copy(selectedDate = it, selectedTime = null) },
             onTimeSelected = { state = state.copy(selectedTime = it) },
+            onNotesChanged = { state = state.copy(notes = it) },
             onConfirmClick = {}
         )
     }

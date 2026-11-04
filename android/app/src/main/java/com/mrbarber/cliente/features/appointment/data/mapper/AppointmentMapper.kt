@@ -7,6 +7,8 @@ import com.mrbarber.cliente.features.appointment.domain.model.Appointment
 import com.mrbarber.cliente.features.appointment.domain.model.AppointmentUpdate
 import com.mrbarber.cliente.features.appointment.domain.model.NewAppointment
 import java.time.OffsetDateTime
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
 
 fun NewAppointment.toRequestDto(): CreateAppointmentRequestDto = CreateAppointmentRequestDto(
     barberId = barberId,
@@ -21,7 +23,7 @@ fun AppointmentUpdate.toRequestDto(): UpdateAppointmentRequestDto = UpdateAppoin
     serviceIds = serviceIds,
     // El backend solo acepta fechas en UTC con "Z".
     scheduledStart = scheduledStart?.toInstant()?.toString(),
-    notes = notes
+    notes = notes?.let { if (it.isEmpty()) JsonNull else JsonPrimitive(it) }
 )
 
 fun AppointmentResponseDto.toDomain(): Appointment = Appointment(

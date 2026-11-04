@@ -97,7 +97,8 @@ class AppointmentViewModel @Inject constructor(
                 editingAppointment = appointment,
                 selectedShopId = appointment.shopId,
                 selectedServiceIds = appointment.serviceIds.toSet(),
-                selectedDate = date.takeIf { it in state.availableDates }
+                selectedDate = date.takeIf { it in state.availableDates },
+                notes = appointment.notes.orEmpty()
             )
         }
         loadBarbers(appointment.shopId)
@@ -181,6 +182,8 @@ class AppointmentViewModel @Inject constructor(
         }
     }
 
+    fun onNotesChanged(notes: String) = edit { copy(notes = notes.take(Appointment.MAX_NOTES_LENGTH)) }
+
     fun onConfirmClick() {
         val state = _uiState.value
         if (!state.canConfirm) return
@@ -193,7 +196,8 @@ class AppointmentViewModel @Inject constructor(
             barberId = barberId,
             serviceIds = state.selectedServiceIds.toList(),
             // La fecha y hora elegidas son hora local de la sucursal, no del dispositivo.
-            scheduledStart = date.atTime(time).atZone(BUSINESS_ZONE).toOffsetDateTime()
+            scheduledStart = date.atTime(time).atZone(BUSINESS_ZONE).toOffsetDateTime(),
+            notes = state.notes
         )
 
         _uiState.update { it.copy(isSubmitting = true, error = null) }
@@ -232,7 +236,8 @@ class AppointmentViewModel @Inject constructor(
         val update = AppointmentUpdate(
             barberId = state.selectedBarberId.takeIf { newStart != null },
             serviceIds = serviceIds.takeIf { it.toSet() != original.serviceIds.toSet() },
-            scheduledStart = newStart
+            scheduledStart = newStart,
+            notes = state.notes.trim().takeIf { it != original.notes.orEmpty() }
         )
 
         _uiState.update { it.copy(isSubmitting = true, error = null) }
