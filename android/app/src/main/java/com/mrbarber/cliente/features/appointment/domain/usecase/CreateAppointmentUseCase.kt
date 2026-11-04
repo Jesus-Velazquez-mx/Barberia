@@ -40,7 +40,8 @@ companion object {
     /** Igual que MAX_BOOKING_DAYS_AHEAD en el backend. */
     private const val MAX_DAYS_AHEAD = 30L
 
-    /** es por día de calendario del negocio, no por horas: hoy + 30 días
+    /**
+     * Como en el backend, el límite es por día de calendario del negocio, no por horas: hoy + 30 días
      * se puede agendar completo, sin importar la hora actual ni la zona horaria del celular.
      */
     internal fun isWithinBookingWindow(
