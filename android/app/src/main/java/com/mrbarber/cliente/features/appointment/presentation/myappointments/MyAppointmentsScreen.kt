@@ -21,6 +21,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -39,6 +40,7 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mrbarber.cliente.features.appointment.domain.model.Appointment
 import com.mrbarber.cliente.features.appointment.domain.model.BUSINESS_ZONE
+import com.mrbarber.cliente.features.appointment.domain.usecase.CancelAppointmentUseCase
 import com.mrbarber.cliente.ui.components.BackButton
 import com.mrbarber.cliente.ui.components.ConfirmDialog
 import com.mrbarber.cliente.ui.components.FullScreenLoading
@@ -75,7 +77,19 @@ fun MyAppointmentsRoute(
             onDismiss = viewModel::onCancelDismiss,
             onConfirm = viewModel::onCancelConfirm,
             isDestructive = true
-        )
+        ) {
+            OutlinedTextField(
+                value = state.cancelReason,
+                onValueChange = viewModel::onCancelReasonChanged,
+                label = { Text("Motivo (opcional)") },
+                supportingText = {
+                    Text("${state.cancelReason.length}/${CancelAppointmentUseCase.MAX_REASON_LENGTH}", color = GrisClaro)
+                },
+                maxLines = 3,
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
     }
 
     MyAppointments(

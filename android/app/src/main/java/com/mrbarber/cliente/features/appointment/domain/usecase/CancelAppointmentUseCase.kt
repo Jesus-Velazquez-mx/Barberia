@@ -18,7 +18,7 @@ class CancelAppointmentUseCase @Inject constructor(
         return repository.cancelAppointment(id, clean)
     }
 
-    private companion object {
+    companion object {
         /** Igual que el límite de `reason` en PUT /api/appointments/{id}/cancel. */
         const val MAX_REASON_LENGTH = 255
     }

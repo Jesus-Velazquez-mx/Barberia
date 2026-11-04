@@ -9,6 +9,8 @@ data class MyAppointmentsUiState(
     val shopNames: Map<String, String> = emptyMap(),
     val serviceNames: Map<String, String> = emptyMap(),
     val appointmentToCancel: Appointment? = null,
+    /** Motivo opcional que se escribe en el diálogo de cancelar. */
+    val cancelReason: String = "",
     val cancellingId: String? = null,
     val error: String? = null
 )

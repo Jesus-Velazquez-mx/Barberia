@@ -52,15 +52,19 @@ class MyAppointmentsViewModel @Inject constructor(
     }
 
     fun onCancelClick(appointment: Appointment) =
-        _uiState.update { it.copy(appointmentToCancel = appointment, error = null) }
+        _uiState.update { it.copy(appointmentToCancel = appointment, cancelReason = "", error = null) }
+
+    fun onCancelReasonChanged(reason: String) =
+        _uiState.update { it.copy(cancelReason = reason.take(CancelAppointmentUseCase.MAX_REASON_LENGTH)) }
 
     fun onCancelDismiss() = _uiState.update { it.copy(appointmentToCancel = null) }
 
     fun onCancelConfirm() {
         val appointment = _uiState.value.appointmentToCancel ?: return
+        val reason = _uiState.value.cancelReason
         _uiState.update { it.copy(appointmentToCancel = null, cancellingId = appointment.id) }
         viewModelScope.launch {
-            cancelAppointmentUseCase(appointment.id)
+            cancelAppointmentUseCase(appointment.id, reason)
                 .onSuccess { cancelled ->
                     _uiState.update { state ->
                         state.copy(
