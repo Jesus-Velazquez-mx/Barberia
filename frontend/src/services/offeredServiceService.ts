@@ -4,7 +4,7 @@ import type { OfferedService, OfferedServicePayload } from '../types/offeredServ
 /*
  * Servicio de servicios ofrecidos (catálogo del dashboard de staff).
  *
- *   getOfferedServicesCatalog -> GET    /offeredServices         (manager y recepcionista reciben activos e inactivos)
+ *   getOfferedServicesCatalog -> GET    /offeredServices?includeInactive=true (manager y recepcionista reciben activos e inactivos)
  *   createOfferedService      -> POST   /offeredServices         (solo manager)
  *   updateOfferedService      -> PUT    /offeredServices/:id     (solo manager; acepta isActive para reactivar)
  *   deleteOfferedService      -> DELETE /offeredServices/:id     (solo manager; borrado lógico: isActive = false)
@@ -15,7 +15,7 @@ import type { OfferedService, OfferedServicePayload } from '../types/offeredServ
  */
 
 export const getOfferedServicesCatalog = async (token: string): Promise<OfferedService[]> => {
-    const response = await apiClient.get<OfferedService[]>('/offeredServices', {
+    const response = await apiClient.get<OfferedService[]>('/offeredServices?includeInactive=true', {
         headers: { Authorization: `Bearer ${token}` }
     });
     return response.data;

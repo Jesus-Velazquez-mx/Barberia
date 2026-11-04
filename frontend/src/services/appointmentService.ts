@@ -99,7 +99,7 @@ const barberFullName = (b: PublicBarber) => `${b.firstName} ${b.lastName}`.trim(
 async function loadCatalogs(token: string, shopIds: string[]): Promise<Catalogs> {
     const [shopsResult, servicesResult, ...barbersResults] = await Promise.allSettled([
         getShops(),
-        getOfferedServices(token),
+        getOfferedServices(token, true),
         ...shopIds.map((id) => getActiveBarbersByShop(id))
     ]);
 

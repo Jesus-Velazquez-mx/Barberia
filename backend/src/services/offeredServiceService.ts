@@ -16,7 +16,11 @@ import type { CreateServiceRequest, UpdateServiceRequest } from '../types/dto/se
 import type { OfferedServicesResponse } from '../types/dto/offeredServiceResponse.interface.js';
 import { toOfferedServiceResponse } from '../utils/offeredServicesMapper.js';
 
-export const listAllServices = async (token: string, categoryId?: string): Promise<OfferedServicesResponse[]> => {
+export const listAllServices = async (
+    token: string,
+    categoryId?: string,
+    includeInactive = false
+): Promise<OfferedServicesResponse[]> => {
     const performer = decodeToken(token);
 
     if (!(await isUserActive(performer.id))) {
@@ -28,8 +32,8 @@ export const listAllServices = async (token: string, categoryId?: string): Promi
         filters.categoryId = categoryId;
     }
 
-    // Si es cliente, inyectamos el filtro isActive = true
-    if (performer.role === 'client') {
+    // Los clientes siempre ven solo activos (includeInactive se ignora); el personal solo ve inactivos si lo pide
+    if (performer.role === 'client' || !includeInactive) {
         filters.isActive = true;
     }
 

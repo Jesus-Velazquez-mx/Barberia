@@ -23,8 +23,9 @@ export const getActiveBarbersByShop = async (shopId: string): Promise<PublicBarb
     return response.data;
 };
 
-export const getOfferedServices = async (token: string): Promise<OfferedService[]> => {
-    const response = await apiClient.get<OfferedService[]>('/offeredServices', {
+/* Por defecto solo servicios activos (flujo de reserva). includeInactive solo tiene efecto para el staff. */
+export const getOfferedServices = async (token: string, includeInactive = false): Promise<OfferedService[]> => {
+    const response = await apiClient.get<OfferedService[]>(`/offeredServices?includeInactive=${includeInactive}`, {
         headers: { Authorization: `Bearer ${token}` }
     });
     return response.data;
