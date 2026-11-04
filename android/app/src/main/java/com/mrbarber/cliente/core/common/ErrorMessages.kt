@@ -8,7 +8,7 @@ fun Throwable.toUserMessage(): String = when (this) {
         400 -> details.firstOrNull() ?: "Datos inválidos"
         401 -> "Tu sesión expiró. Vuelve a iniciar sesión."
         403 -> "No tienes permiso para realizar esta acción"
-        404 -> "No se encontró el usuario"
+        404 -> "No se encontró el recurso"
         in 500..599 -> "El servidor tuvo un problema. Intenta más tarde."
         else -> message ?: "Ocurrió un error inesperado"
     }
