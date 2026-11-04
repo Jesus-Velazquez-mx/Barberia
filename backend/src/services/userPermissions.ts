@@ -79,9 +79,16 @@ export const canViewRecommendationHistory = (performer: UserIdentity, targetClie
     performer.role === 'client' ? performer.id === targetClientId : true;
 
 /**
- * /supplies-categories: Solo los usuarios con rol 'manager' pueden crear, editar o eliminar categorías de insumos.
+ * GET /suppliesCategories y GET /suppliesCategories/:id: la recepción y los gerentes pueden consultar las categorías de insumos.
  */
-export const canManageSuppliesCategories = (performer: UserIdentity): boolean => performer.role === 'manager';
+export const canViewSuppliesCategories = (performer: UserIdentity): boolean =>
+    performer.role === 'manager' || performer.role === 'receptionist';
+
+/**
+ * POST/PUT/DELETE /suppliesCategories: solo los usuarios con rol 'manager' pueden crear, editar o eliminar categorías de insumos.
+ */
+export const canManageSuppliesCategories = (performer: UserIdentity): boolean => 
+    performer.role === 'manager' || performer.role === 'receptionist';
 
 /**
  * /supplies: Los usuarios con rol 'manager' y 'receptionist' pueden registrar, consultar, editar o eliminar insumos.

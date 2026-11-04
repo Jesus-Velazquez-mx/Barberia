@@ -34,8 +34,10 @@ const insertCategory = async (name: string, description: string | null = null): 
 describe('Pruebas de endpoints de Categorías de Insumos (Supplies Categories)', () => {
     let dummyManager: { id: string; email: string };
     let clientUser: { id: string; email: string };
+    let receptionistUser: { id: string; email: string };
     let managerToken: string;
     let clientToken: string;
+    let receptionistToken: string;
 
     let categoryId1: string;
     let categoryId2: string;
@@ -49,9 +51,11 @@ describe('Pruebas de endpoints de Categorías de Insumos (Supplies Categories)',
         // 1. Crear manager y cliente con sus tokens usando los helpers existentes
         dummyManager = await insertManager();
         clientUser = await insertUser('client');
+        receptionistUser = await insertUser('receptionist');
 
         managerToken = mintToken(dummyManager.id, 'manager', dummyManager.email);
         clientToken = mintToken(clientUser.id, 'client', clientUser.email);
+        receptionistToken = mintToken(receptionistUser.id, 'receptionist', receptionistUser.email);
 
         // 2. Insertar categorías base para probar los GET
         categoryId1 = await insertCategory('A_Test Category', 'Descripción A');
@@ -87,6 +91,15 @@ describe('Pruebas de endpoints de Categorías de Insumos (Supplies Categories)',
             expect(cat2).toBeDefined();
         });
 
+        test('Debe responder 200 y una lista de categorías (RECEPCIONISTA)', async () => {
+            const res = await request(app)
+                .get('/api/suppliesCategories')
+                .set('Authorization', `Bearer ${receptionistToken}`);
+
+            expect(res.status).toBe(200);
+            expect(res.body.data.find((c: any) => c.id === categoryId1)).toBeDefined();
+        });
+
         test('Debe responder 403 si un CLIENTE intenta listar las categorías', async () => {
             const res = await request(app).get('/api/suppliesCategories').set('Authorization', `Bearer ${clientToken}`);
 
@@ -109,6 +122,15 @@ describe('Pruebas de endpoints de Categorías de Insumos (Supplies Categories)',
             expect(res.body.data.id).toBe(categoryId1);
             expect(res.body.data.name).toBe('A_Test Category');
             expect(res.body.data.description).toBe('Descripción A');
+        });
+
+        test('Debe responder 200 y los detalles de la categoría (RECEPCIONISTA)', async () => {
+            const res = await request(app)
+                .get(`/api/suppliesCategories/${categoryId1}`)
+                .set('Authorization', `Bearer ${receptionistToken}`);
+
+            expect(res.status).toBe(200);
+            expect(res.body.data.id).toBe(categoryId1);
         });
 
         test('Debe responder 403 si un CLIENTE intenta obtener la categoría', async () => {
@@ -182,6 +204,16 @@ describe('Pruebas de endpoints de Categorías de Insumos (Supplies Categories)',
             expect(res.body.message).toMatch(/Not authorized/i);
         });
 
+        test('Debe responder 403 si una recepcionista intenta crear una categoría', async () => {
+            const res = await request(app)
+                .post('/api/suppliesCategories')
+                .set('Authorization', `Bearer ${receptionistToken}`)
+                .send({ name: generateUniqueFixtureName('CatRecep') });
+
+            expect(res.status).toBe(403);
+            expect(res.body.message).toMatch(/Not authorized/i);
+        });
+
         test('Debe responder 409 si el nombre de la categoría ya existe', async () => {
             const res = await request(app)
                 .post('/api/suppliesCategories')
@@ -237,6 +269,15 @@ describe('Pruebas de endpoints de Categorías de Insumos (Supplies Categories)',
             expect(res.status).toBe(403);
         });
 
+        test('Debe responder 403 si una recepcionista intenta actualizar', async () => {
+            const res = await request(app)
+                .put(`/api/suppliesCategories/${categoryToEditId}`)
+                .set('Authorization', `Bearer ${receptionistToken}`)
+                .send({ name: generateUniqueFixtureName('CatRecepEdit') });
+
+            expect(res.status).toBe(403);
+        });
+
         test('Debe responder 404 si la categoría a editar no existe', async () => {
             const fakeUuid = '550e8400-e29b-41d4-a716-446655440000';
             const res = await request(app)
@@ -283,6 +324,13 @@ describe('Pruebas de endpoints de Categorías de Insumos (Supplies Categories)',
             const res = await request(app)
                 .delete(`/api/suppliesCategories/${categoryToDeleteId}`)
                 .set('Authorization', `Bearer ${clientToken}`);
+            expect(res.status).toBe(403);
+        });
+
+        test('Debe responder 403 si lo intenta una recepcionista', async () => {
+            const res = await request(app)
+                .delete(`/api/suppliesCategories/${categoryToDeleteId}`)
+                .set('Authorization', `Bearer ${receptionistToken}`);
             expect(res.status).toBe(403);
         });
 

@@ -9,16 +9,16 @@ import {
 } from '../repositories/suppliesCategoryRepository.js';
 import { isUserActive } from '../repositories/userRepository.js';
 import { decodeToken } from './jwtTokenService.js';
-import { canManageSuppliesCategories } from '../services/userPermissions.js';
+import { canManageSuppliesCategories, canViewSuppliesCategories } from '../services/userPermissions.js';
 
 /**
  * Recupera la lista completa de categorías de insumos.
- * Requiere rol de manager y cuenta activa.
+ * Requiere rol de manager o receptionist y cuenta activa.
  */
 export const listCategories = async (token: string) => {
     const performer = decodeToken(token);
 
-    if (!canManageSuppliesCategories(performer)) {
+    if (!canViewSuppliesCategories(performer)) {
         throw new ApiError(ApiErrorCode.FORBIDDEN, 'Not authorized to view categories');
     }
 
@@ -31,13 +31,13 @@ export const listCategories = async (token: string) => {
 
 /**
  * Obtiene los detalles de una categoría por su ID.
- * Requiere rol de manager y cuenta activa.
+ * Requiere rol de manager o receptionist y cuenta activa.
  * Lanza un error 404 si la categoría no existe.
  */
 export const getCategory = async (id: string, token: string) => {
     const performer = decodeToken(token);
 
-    if (!canManageSuppliesCategories(performer)) {
+    if (!canViewSuppliesCategories(performer)) {
         throw new ApiError(ApiErrorCode.FORBIDDEN, 'Not authorized to view categories');
     }
 

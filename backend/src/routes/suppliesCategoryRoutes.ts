@@ -9,7 +9,9 @@ const router = Router();
  *   get:
  *     summary: Obtiene la lista de categorías de insumos
  *     tags: [Supplies Categories]
- *     description: Retorna un listado con todas las categorías de insumos ordenadas alfabéticamente. Endpoint público o accesible para staff.
+ *     description: Retorna un listado con todas las categorías de insumos ordenadas alfabéticamente. Accesible para recepcionistas y managers. Requiere token JWT en el header `Authorization`.
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: Éxito. `data` contiene el arreglo de categorías.
@@ -41,7 +43,7 @@ router.get('/suppliesCategories', list);
  *   post:
  *     summary: Registra una nueva categoría de insumos
  *     tags: [Supplies Categories]
- *     description: Permite a un manager o administrador crear una categoría para clasificar los productos del inventario. Requiere token JWT en el header `Authorization`.
+ *     description: Permite a un manager crear una categoría para clasificar los productos del inventario. Requiere token JWT en el header `Authorization`.
  *     security:
  *       - bearerAuth: []
  *     requestBody:
