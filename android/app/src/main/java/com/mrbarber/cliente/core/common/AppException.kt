@@ -14,6 +14,9 @@ sealed class AppException(message: String? = null, cause: Throwable? = null) : E
         val details: List<String> = emptyList()
     ) : AppException(message)
 
+    /** El recurso pedido ya no existe; reintentar no cambiaría el resultado. */
+    class NotFound(message: String) : AppException(message)
+
     /** Error de validación local, antes de llamar al servidor. */
     class Validation(message: String) : AppException(message)
 

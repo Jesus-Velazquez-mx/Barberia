@@ -18,6 +18,7 @@ import com.mrbarber.cliente.features.login.presentation.LoginRoute
 import com.mrbarber.cliente.features.profile.presentation.ProfileRoute
 import com.mrbarber.cliente.features.register.presentation.RegisterRoute
 import com.mrbarber.cliente.features.appointment.presentation.AppointmentRoute
+import com.mrbarber.cliente.features.appointment.presentation.myappointments.MyAppointmentsRoute
 
 
 @Composable
@@ -63,7 +64,8 @@ fun AppNavGraph(
         }
         composable<HomeDestination> {
             HomeRoute(
-                onBookAppointmentClick = { navController.navigate(AppointmentDestination) },
+                onBookAppointmentClick = { navController.navigate(AppointmentDestination()) },
+                onMyAppointmentsClick = { navController.navigate(MyAppointmentsDestination) },
                 onProfileClick = { navController.navigate(ProfileDestination) },
                 onLoggedOut = { navController.navigateToLoginClearingStack() }
             )
@@ -78,6 +80,12 @@ fun AppNavGraph(
             AppointmentRoute(
                 onBack = { navController.popBackStack() },
                 onAppointmentCreated = { navController.popBackStack() }
+            )
+        }
+        composable<MyAppointmentsDestination> {
+            MyAppointmentsRoute(
+                onBack = { navController.popBackStack() },
+                onEditClick = { id -> navController.navigate(AppointmentDestination(id)) }
             )
         }
     }

@@ -15,7 +15,8 @@ data class AppointmentResponseDto(
     val scheduledStart: String,
     val scheduledEnd: String,
     val notes: String? = null,
-    val services: List<AppointmentServiceDto> = emptyList()
+    val services: List<AppointmentServiceDto> = emptyList(),
+    val createdAt: String? = null
 ){
 }
 
