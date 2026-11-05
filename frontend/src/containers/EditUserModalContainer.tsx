@@ -3,8 +3,8 @@ import { useForm } from 'react-hook-form';
 import { updateUser, type UpdateUserValues } from '../services/userService';
 import { ApiError } from '../types/api';
 import type { EditUserFormValues, User } from '../types/auth';
-import { EditUserModal } from '../components/EditUserModalComponent';
-import { Toast } from '../components/ToastComponent';
+import { EditUserModal } from '../components/profile/EditUserModalComponent';
+import { Toast } from '../components/common/ToastComponent';
 import { useAuth } from '../context/AuthContext';
 import { displayToIsoDate, getTodayIso, isoToDisplayDate, isValidDisplayDate } from '../utils/dateFormat';
 

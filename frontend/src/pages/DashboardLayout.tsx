@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { DashboardSidebar } from '../components/DashboardSidebarComponent';
-import { LogoutConfirmModal } from '../components/LogoutConfirmModalComponent';
-import { Toast } from '../components/ToastComponent';
+import { DashboardSidebar } from '../components/dashboard/DashboardSidebarComponent';
+import { LogoutConfirmModal } from '../components/auth/LogoutConfirmModalComponent';
+import { Toast } from '../components/common/ToastComponent';
 import { useAuth } from '../context/AuthContext';
 import type { UserRole } from '../types/auth';
 import { Users, UserRound, Package, Settings, CalendarPlus, Calendar, Sparkles, Scissors } from 'lucide-react';

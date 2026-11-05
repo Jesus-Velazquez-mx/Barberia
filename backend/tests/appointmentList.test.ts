@@ -13,6 +13,7 @@ import {
     insertService,
     insertAppointment,
     cleanupFixtures,
+    getSeededShiftId,
 } from './helpers/availabilityFixtures.js';
 
 const { connectDB, closeDB, getPool } = connection;
@@ -94,7 +95,7 @@ describe('GET /api/appointments', () => {
         foreignShop = await insertShop(otherManager.id);
 
         const receptionist = await insertUser('receptionist');
-        const shiftId = (await getPool().query(`SELECT id FROM shifts LIMIT 1`)).rows[0].id;
+        const shiftId = await getSeededShiftId();
         await getPool().query(`INSERT INTO receptionists (user_id, shop_id, shift_id) VALUES ($1, $2, $3)`, [
             receptionist.id,
             shop1,
@@ -118,7 +119,7 @@ describe('GET /api/appointments', () => {
         foreignBarber = (await insertBarber(foreignShop)).id;
         serviceId = await insertService({ durationMinutes: 30 });
 
-        // Ventana por defecto: [hoy 00:00, día 30 23:59:59.999]
+        // Ventana por defecto: [hoy 00:00, hoy + 30 días 23:59:59.999] (último día agendable)
         ids.today = await insertAppointment(shop1, barber1, ...slot(0, 0), { clientId: client1Id });
         ids.day2Guest = await insertAppointment(shop1, barber1, ...slot(2, 10 * HOUR_MS), {
             guestClientName: 'Invitado',
@@ -129,7 +130,7 @@ describe('GET /api/appointments', () => {
             clientId: client2Id,
             status: 'cancelled',
         });
-        ids.lastDay = await insertAppointment(shop1, barber1, ...slot(29, 23 * HOUR_MS + 29 * MINUTE_MS), {
+        ids.lastDay = await insertAppointment(shop1, barber1, ...slot(30, 23 * HOUR_MS + 29 * MINUTE_MS), {
             clientId: client1Id,
             status: 'checked_in',
         });
@@ -138,7 +139,9 @@ describe('GET /api/appointments', () => {
         });
         // Fuera de la ventana por defecto
         ids.yesterday = await insertAppointment(shop1, barber1, ...slot(-1, 12 * HOUR_MS), { clientId: client1Id });
-        ids.day31 = await insertAppointment(shop1, barber1, ...slot(30, 0), { clientId: client1Id });
+        ids.dayAfterWindow = await insertAppointment(shop1, barber1, ...slot(31, 0), { clientId: client1Id });
+        // Fuera del rango from + 31 días cuando solo se envía from = hoy + 31
+        ids.beyondFromOnlyWindow = await insertAppointment(shop1, barber1, ...slot(62, 0), { clientId: client1Id });
 
         await getPool().query(
             `INSERT INTO appointment_services (appointment_id, service_id, price_at_booking, duration_minutes_at_booking)
@@ -187,7 +190,7 @@ describe('GET /api/appointments', () => {
     });
 
     describe('ventana de fechas', () => {
-        test('por defecto incluye hoy 00:00 y el día 30 a las 23:59, y excluye ayer y el día 31', async () => {
+        test('por defecto incluye hoy 00:00 y el último día agendable (hoy + 30) a las 23:59, y excluye ayer y hoy + 31', async () => {
             expectIds(await get(managerToken), ['today', 'day2Guest', 'shop2Cancelled', 'lastDay']);
         });
 
@@ -215,9 +218,9 @@ describe('GET /api/appointments', () => {
             expectIds(await get(managerToken, `?from=${withOffset}&to=${to.toISOString()}`), ['yesterday']);
         });
 
-        test('con solo from, to es from + 30 días', async () => {
-            const [day31Start] = slot(30, 0);
-            expectIds(await get(managerToken, `?from=${day31Start.toISOString()}`), ['day31']);
+        test('con solo from, to es from + 31 días', async () => {
+            const [from] = slot(31, 0);
+            expectIds(await get(managerToken, `?from=${from.toISOString()}`), ['dayAfterWindow']);
         });
     });
 

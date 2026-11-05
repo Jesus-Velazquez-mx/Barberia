@@ -9,6 +9,7 @@ import {
     generateUniquePhone,
     generateUniqueName as uniqueName,
 } from './helpers/uniqueValues.js';
+import { getSeededShiftId } from './helpers/availabilityFixtures.js';
 
 const { connectDB, closeDB, getPool } = connection;
 
@@ -56,11 +57,11 @@ const insertShop = async (managerId: string): Promise<string> => {
 
 const insertReceptionist = async (shopId: string) => {
     const user = await insertUser('receptionist');
-    const shift = await getPool().query(`SELECT id FROM shifts LIMIT 1`);
+    const shiftId = await getSeededShiftId();
     await getPool().query(`INSERT INTO receptionists (user_id, shop_id, shift_id) VALUES ($1, $2, $3)`, [
         user.id,
         shopId,
-        shift.rows[0].id,
+        shiftId,
     ]);
     return user;
 };

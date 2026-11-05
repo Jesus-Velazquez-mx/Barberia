@@ -1,4 +1,4 @@
-import type { SelectOption } from '../components/SelectFieldComponent';
+import type { SelectOption } from '../components/common/SelectFieldComponent';
 import type {
     AppointmentFilterValues,
     AppointmentRecord,

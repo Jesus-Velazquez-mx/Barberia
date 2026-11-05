@@ -1,71 +1,57 @@
-import { MOCK_SHIFTS } from '../mocks/shiftMocks';
+import { apiClient } from './apiClient';
 import { normalizeTime } from '../utils/shiftUtils';
 import type { Shift, ShiftPayload } from '../types/shiftType';
 
-/* Servicio con mock data. Cuando exista la API, reemplaza el cuerpo de cada función por su fetch
-   (GET/POST/PUT/DELETE /api/shifts) y recibe el token como en staffService; la firma ya devuelve
-   lo mismo y las reglas de abajo (409) son las que responde el backend. */
+/* ---------- Tipos de la API ---------- */
 
-let shifts: Shift[] = MOCK_SHIFTS.map((shift) => ({ ...shift }));
-
-const delay = (ms = 350) => new Promise<void>((resolve) => setTimeout(resolve, ms));
-
-const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
-
-const findConflict = (payload: ShiftPayload, ignoreId?: string): string | null => {
-  const others = shifts.filter((shift) => shift.id !== ignoreId);
-
-  if (others.some((shift) => sameName(shift.name, payload.name))) {
-    return 'Ya existe un turno con ese nombre.';
-  }
-  if (
-    others.some(
-      (shift) =>
-        normalizeTime(shift.startTime) === payload.startTime && normalizeTime(shift.endTime) === payload.endTime
-    )
-  ) {
-    return 'Ya existe un turno con ese horario.';
-  }
-  return null;
-};
-
-export async function getShifts(): Promise<Shift[]> {
-  await delay();
-  return shifts.map((shift) => ({ ...shift }));
+/* Coincide con la respuesta del backend (GET/POST/PUT /shifts). */
+interface ShiftApi {
+    id: string;
+    name: string;
+    start_time: string; // "08:00:00"
+    end_time: string;
+    created_at?: string;
+    updated_at?: string;
 }
 
-export async function createShift(payload: ShiftPayload): Promise<Shift> {
-  await delay();
+/* ---------- Utilidades ---------- */
 
-  const conflict = findConflict(payload);
-  if (conflict) throw new Error(conflict);
+const authHeaders = (token: string): RequestInit => ({ headers: { Authorization: `Bearer ${token}` } });
 
-  const created: Shift = { id: crypto.randomUUID(), ...payload};
-  shifts = [created, ...shifts];
-  return { ...created };
+const toShift = (a: ShiftApi): Shift => ({
+    id: a.id,
+    name: a.name,
+    startTime: normalizeTime(a.start_time), // "08:00:00" -> "08:00"
+    endTime: normalizeTime(a.end_time)
+});
+
+const toBody = (payload: ShiftPayload) => ({
+    name: payload.name.trim(),
+    start_time: payload.startTime, // "HH:MM"
+    end_time: payload.endTime
+});
+
+/* ---------- Consultas ---------- */
+
+export async function getShifts(token: string): Promise<Shift[]> {
+    const { data } = await apiClient.get<ShiftApi[]>('/shifts', authHeaders(token));
+    return data.map(toShift);
 }
 
-export async function updateShift(id: string, payload: ShiftPayload): Promise<Shift> {
-  await delay();
+/* ---------- Escritura ---------- */
 
-  const current = shifts.find((shift) => shift.id === id);
-  if (!current) throw new Error('No encontramos el turno.');
-
-  const conflict = findConflict(payload, id);
-  if (conflict) throw new Error(conflict);
-
-  const updated: Shift = { ...current, ...payload };
-  shifts = shifts.map((shift) => (shift.id === id ? updated : shift));
-  return { ...updated };
+/* El backend responde 409 si el nombre o el horario exacto ya existen, y 422 si la duración no es de 4, 6 u 8 horas. */
+export async function createShift(payload: ShiftPayload, token: string): Promise<Shift> {
+    const { data } = await apiClient.post<ShiftApi>('/shifts', toBody(payload), authHeaders(token));
+    return toShift(data);
 }
 
-export async function deleteShift(shift: Shift): Promise<void> {
-  await delay();
+export async function updateShift(id: string, payload: ShiftPayload, token: string): Promise<Shift> {
+    const { data } = await apiClient.put<ShiftApi>(`/shifts/${id}`, toBody(payload), authHeaders(token));
+    return toShift(data);
+}
 
-  const current = shifts.find((item) => item.id === shift.id);
-  if (!current) throw new Error('No encontramos el turno.');
-  
-
-
-  shifts = shifts.filter((item) => item.id !== shift.id);
+/* El backend responde 409 si es el único turno o tiene personal asignado. */
+export async function deleteShift(shift: Shift, token: string): Promise<void> {
+    await apiClient.delete(`/shifts/${shift.id}`, authHeaders(token));
 }

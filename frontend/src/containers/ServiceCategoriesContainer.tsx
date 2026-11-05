@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Plus } from 'lucide-react';
-import { Button } from '../components/ButtonComponent';
-import { ConfirmDeleteModal } from '../components/ConfirmDeleteModalComponent';
-import { FilterMenu } from '../components/FilterMenuComponent';
-import { ManagerPageHeader } from '../components/ManagerPageHeaderComponent';
-import { ReadOnlyNotice } from '../components/ReadOnlyNoticeComponent';
-import { SearchBar } from '../components/SearchBarComponent';
-import { ServiceCategoryFormModal } from '../components/ServiceCategoryFormModalComponent';
-import { ServiceCategoryTable, type ServiceCategoryRow } from '../components/ServiceCategoryTableComponent';
-import { Toast } from '../components/ToastComponent';
+import { Button } from '../components/common/ButtonComponent';
+import { ConfirmDeleteModal } from '../components/common/ConfirmDeleteModalComponent';
+import { FilterMenu } from '../components/common/FilterMenuComponent';
+import { ManagerPageHeader } from '../components/dashboard/ManagerPageHeaderComponent';
+import { ReadOnlyNotice } from '../components/common/ReadOnlyNoticeComponent';
+import { SearchBar } from '../components/common/SearchBarComponent';
+import { ServiceCategoryFormModal } from '../components/serviceCategories/ServiceCategoryFormModalComponent';
+import { ServiceCategoryTable, type ServiceCategoryRow } from '../components/serviceCategories/ServiceCategoryTableComponent';
+import { Toast } from '../components/common/ToastComponent';
 import { useAuth } from '../context/AuthContext';
 import { getOfferedServicesCatalog } from '../services/offeredServiceService';
 import {

@@ -20,6 +20,10 @@ const serviceIdParamsSchema = z.object({
 // Valida los filtros opcionales recibidos por la consulta (Query String)
 const serviceFilterQuerySchema = z.object({
     categoryId: z.uuid('Invalid category ID format').optional(),
+    includeInactive: z
+        .enum(['true', 'false'])
+        .default('false')
+        .transform((value) => value === 'true'),
 });
 
 // Valida el cuerpo de la petición HTTP al crear un nuevo servicio
@@ -57,14 +61,16 @@ const updateServiceSchema = z
 
 /**
  * Controlador para listar todos los servicios del catálogo.
- * Soporta filtrado opcional por categoría y discriminación de visibilidad basada en roles.
+ * Soporta filtrado opcional por categoría. Por defecto lista solo los servicios activos;
+ * si includeInactive=true, el personal (manager/recepcionista) también recibe los inactivos.
+ * El parámetro se ignora para clientes, que siempre reciben únicamente servicios activos.
  */
 export const listAll: ApiHandler<OfferedServicesResponse[]> = async (req, res) => {
     try {
         const token = extractBearerFromHeader(req);
         const queryFilters = serviceFilterQuerySchema.parse(req.query);
 
-        const result = await listAllServices(token, queryFilters.categoryId);
+        const result = await listAllServices(token, queryFilters.categoryId, queryFilters.includeInactive);
         sendSuccess({ res, data: result, message: 'Services retrieved successfully' });
     } catch (error: unknown) {
         if (error instanceof ZodError) {

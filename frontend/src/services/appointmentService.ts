@@ -1,9 +1,8 @@
 import { apiClient } from './apiClient';
+import { ApiError } from '../types/api';
 import type { PublicBarber } from '../types/barber';
 import type { AppointmentRecord, AppointmentStatus } from '../types/appointmentType';
 import { getShops, getActiveBarbersByShop, getOfferedServices } from './shopService';
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 /* ---------- Tipos de la API ---------- */
 
@@ -79,12 +78,6 @@ const STATUS_MAP: Record<string, AppointmentStatus> = {
 
 const authHeaders = (token: string): RequestInit => ({ headers: { Authorization: `Bearer ${token}` } });
 
-/* El backend limita el rango a 366 días; por defecto: 60 atrás y 180 adelante. */
-const defaultRange = (): DateRange => ({
-    from: new Date(Date.now() - 60 * DAY_MS),
-    to: new Date(Date.now() + 180 * DAY_MS)
-});
-
 /* ---------- Catálogos (nombres) ---------- */
 
 interface Catalogs {
@@ -99,7 +92,7 @@ const barberFullName = (b: PublicBarber) => `${b.firstName} ${b.lastName}`.trim(
 async function loadCatalogs(token: string, shopIds: string[]): Promise<Catalogs> {
     const [shopsResult, servicesResult, ...barbersResults] = await Promise.allSettled([
         getShops(),
-        getOfferedServices(token),
+        getOfferedServices(token, true),
         ...shopIds.map((id) => getActiveBarbersByShop(id))
     ]);
 
@@ -180,13 +173,16 @@ function toRecord(a: AppointmentApi, catalogs: Catalogs, client?: AppointmentCli
     };
 }
 
+/* Sin rango, el backend aplica su ventana por defecto (resolveWindow). */
 async function fetchRecords(
     token: string,
-    range: DateRange,
+    range?: DateRange,
     client?: AppointmentClientInfo
 ): Promise<AppointmentRecord[]> {
-    const params = new URLSearchParams({ from: range.from.toISOString(), to: range.to.toISOString() });
-    const { data } = await apiClient.get<AppointmentApi[]>(`/appointments?${params}`, authHeaders(token));
+    const query = range
+        ? `?${new URLSearchParams({ from: range.from.toISOString(), to: range.to.toISOString() })}`
+        : '';
+    const { data } = await apiClient.get<AppointmentApi[]>(`/appointments${query}`, authHeaders(token));
 
     const shopIds = [...new Set(data.map((a) => a.shopId))];
     const catalogs = await loadCatalogs(token, shopIds);
@@ -200,24 +196,30 @@ async function fetchRecords(
 export const getAppointments = async (
     token: string,
     _role?: string,
-    range: DateRange = defaultRange()
+    range?: DateRange
 ): Promise<AppointmentRecord[]> => fetchRecords(token, range);
 
 /* Vista del cliente: el backend devuelve solo sus citas. */
 export const getMyAppointments = async (
     token: string,
     client: AppointmentClientInfo,
-    range: DateRange = defaultRange()
+    range?: DateRange
 ): Promise<AppointmentRecord[]> => fetchRecords(token, range, client);
 
+/* GET /appointments/:id: sin importar fecha ni estado. Devuelve null si la cita no existe (404). */
 export const getAppointmentById = async (
     token: string,
     appointmentId: string,
-    client?: AppointmentClientInfo,
-    range: DateRange = defaultRange()
+    client?: AppointmentClientInfo
 ): Promise<AppointmentRecord | null> => {
-    const records = await fetchRecords(token, range, client);
-    return records.find((a) => a.id === appointmentId) ?? null;
+    try {
+        const { data } = await apiClient.get<AppointmentApi>(`/appointments/${appointmentId}`, authHeaders(token));
+        const catalogs = await loadCatalogs(token, [data.shopId]);
+        return toRecord(data, catalogs, client);
+    } catch (error) {
+        if (error instanceof ApiError && error.status === 404) return null;
+        throw error;
+    }
 };
 
 /* ---------- Escritura ---------- */

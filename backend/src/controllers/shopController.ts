@@ -4,7 +4,7 @@ import { sendFail, sendInternalServerError, sendSuccess, sendValidationError } f
 import { ApiError } from '../errors/ApiError.js';
 import { listShops, getActiveShopById, registerShop, editShop, removeShop } from '../services/shopService.js';
 import type { ShopResponse } from '../types/dto/shopResponse.interface.js';
-import { extractBearerFromHeader } from '../utils/headerHandling.js';
+import { extractBearerFromHeader, extractOptionalBearerFromHeader } from '../utils/headerHandling.js';
 
 // Validación del ID en los parámetros de la ruta
 const shopIdParamSchema = z.object({
@@ -87,8 +87,9 @@ const updateShopSchema = z.preprocess((val: unknown) => {
  */
 export const list: ApiHandler<ShopResponse[]> = async (req, res) => {
     try {
+        const token = extractOptionalBearerFromHeader(req);
         const includeInactive = req.query.includeInactive === 'true';
-        const result = await listShops(includeInactive);
+        const result = await listShops(includeInactive, token);
         const message = includeInactive ? 'Shops retrieved successfully' : 'Active shops retrieved successfully';
         sendSuccess({ res, data: result, message });
     } catch (error: unknown) {

@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { AppointmentDetailModal } from '../components/AppointmentDetailModalComponent';
-import { AppointmentFilters, FilterToggleButton } from '../components/AppointmentFiltersComponent';
-import { AppointmentTable } from '../components/AppointmentTableComponent';
-import { ManagerPageHeader } from '../components/ManagerPageHeaderComponent';
-import { SearchBar } from '../components/SearchBarComponent';
+import { AppointmentDetailModal } from '../components/appointments/AppointmentDetailModalComponent';
+import { AppointmentFilters, FilterToggleButton } from '../components/appointments/AppointmentFiltersComponent';
+import { AppointmentTable } from '../components/appointments/AppointmentTableComponent';
+import { ManagerPageHeader } from '../components/dashboard/ManagerPageHeaderComponent';
+import { SearchBar } from '../components/common/SearchBarComponent';
 import { useAuth } from '../context/AuthContext';
 import { getAppointments } from '../services/appointmentService';
 import type { AppointmentFilterValues, AppointmentRecord, SortDirection } from '../types/appointmentType';

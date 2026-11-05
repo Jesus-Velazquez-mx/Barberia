@@ -58,6 +58,20 @@ export const getShopIdsByManagerId = async (managerId: string): Promise<string[]
     return result.rows.map((row) => row.id);
 };
 
+export const getShopsByManagerId = async(managerId: string, includeInactive: boolean = false): Promise<Shop[]> => {
+    const pool = db.getPool();
+    const inactiveFilter = includeInactive ? '' : 'is_active = true AND';
+
+    const query = `
+        SELECT id, name, street, postal_code, number, phone, manager_id, is_active, created_at, updated_at
+        FROM shops 
+        WHERE ${inactiveFilter} manager_id = $1
+        ORDER BY name ASC
+    `;
+    const result = await pool.query(query, [managerId]);
+    return result.rows;
+}
+
 /**
  * Busca una sucursal por nombre (sin distinguir mayúsculas/minúsculas).
  */

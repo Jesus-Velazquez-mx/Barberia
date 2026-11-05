@@ -14,19 +14,19 @@ export type CreateSupplyInput = {
 export type UpdateSupplyInput = Partial<CreateSupplyInput>;
 
 /**
- * Recupera los insumos. Permite filtrar opcionalmente por sucursal.
+ * Recupera los insumos. Permite filtrar opcionalmente por varias sucursales.
  */
-export const getAllSupplies = async (shopId?: string): Promise<Supply[]> => {
+export const getSuppliesByShopId = async (shopIds: string[]): Promise<Supply[]> => {
     const pool = db.getPool();
     let query = `
         SELECT id, shop_id, category_id, name, description, unit, sku, created_at, updated_at
         FROM supplies
     `;
-    const values: string[] = [];
+    const values: unknown[] = [];
 
-    if (shopId) {
-        query += ` WHERE shop_id = $1`;
-        values.push(shopId);
+    if (shopIds.length > 0) {
+        query += ` WHERE shop_id = ANY($1)`;
+        values.push(shopIds);
     }
 
     query += ` ORDER BY name ASC`;

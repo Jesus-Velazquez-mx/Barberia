@@ -1,6 +1,6 @@
 // Datos mock SOLO para el dashboard del manager (sin backend).
 // Se elimina cuando existan los endpoints de personal y clientes ("Integrar frontend con backend").
-import type { SelectOption } from '../components/SelectFieldComponent';
+import type { SelectOption } from '../components/common/SelectFieldComponent';
 import type { ClientPayload, ClientRecord } from '../types/clientType';
 import type { StaffMember, StaffPayload, StaffRole } from '../types/staffType';
 import { ApiError } from '../types/api';

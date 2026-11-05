@@ -1,4 +1,4 @@
-import { BackLink } from '../../components/BackLinkComponent';
+import { BackLink } from '../../components/common/BackLinkComponent';
 import { OfferedServicesContainer } from '../../containers/OfferedServicesContainer';
 
 interface StaffOfferedServicesPageProps {

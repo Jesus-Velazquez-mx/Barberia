@@ -2,8 +2,9 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
-import { RoleProtectedRoute } from './components/RoleProtectedRoute';
-import { PublicRoute } from './components/PublicRoute';
+import { RoleProtectedRoute } from './components/auth/RoleProtectedRoute';
+import { PublicRoute } from './components/auth/PublicRoute';
+import { NotFoundRedirect } from './components/auth/NotFoundRedirect';
 import EditUserPage from './pages/client/EditUserPage';
 import BookAppointmentPage from './pages/BookAppointmentPage';
 import ManagerStaffPage from './pages/staff/ManagerStaffPage';
@@ -200,6 +201,11 @@ const router = createBrowserRouter([
         element: <RegisterPage />
       }
     ]
+  },
+  /* Cualquier ruta inexistente redirige al dashboard */
+  {
+    path: '*',
+    element: <NotFoundRedirect />
   }
 ]);
 

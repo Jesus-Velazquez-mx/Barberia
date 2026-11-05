@@ -3,8 +3,17 @@ import type { Shop, ShopPayload } from '../types/shop.ts';
 import type { PublicBarber } from '../types/barber.ts';
 import type { OfferedService } from '../types/offeredService.ts';
 
-export const getShops = async (): Promise<Shop[]> => {
-    const response = await apiClient.get<Shop[]>('/shops');
+export const getShops = async (token?: string): Promise<Shop[]> => {
+    let response;
+
+    if (token) {
+        response = await apiClient.get<Shop[]>('/shops', {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+    } else {
+        response = await apiClient.get<Shop[]>('/shops');
+    }
+
     return response.data;
 };
 
@@ -14,8 +23,9 @@ export const getActiveBarbersByShop = async (shopId: string): Promise<PublicBarb
     return response.data;
 };
 
-export const getOfferedServices = async (token: string): Promise<OfferedService[]> => {
-    const response = await apiClient.get<OfferedService[]>('/offeredServices', {
+/* Por defecto solo servicios activos (flujo de reserva). includeInactive solo tiene efecto para el staff. */
+export const getOfferedServices = async (token: string, includeInactive = false): Promise<OfferedService[]> => {
+    const response = await apiClient.get<OfferedService[]>(`/offeredServices?includeInactive=${includeInactive}`, {
         headers: { Authorization: `Bearer ${token}` }
     });
     return response.data;

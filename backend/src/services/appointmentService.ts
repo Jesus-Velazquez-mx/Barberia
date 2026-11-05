@@ -12,10 +12,11 @@ import { getBarberById } from '../repositories/barberRepository.js';
 import { getAppointmentClientsById, getClientByUserId } from '../repositories/clientRepository.js';
 import { getReceptionistByUserId } from '../repositories/receptionistRepository.js';
 import { getAllShifts } from '../repositories/shiftRepository.js';
-import { getAvailableSlots, getBookableServices } from './availabilityService.js';
+import { getAvailableSlots, getBookableServices, MAX_BOOKING_DAYS_AHEAD } from './availabilityService.js';
 import {
     canCreateAppointment,
     canEditAppointment,
+    canViewAppointment,
     canViewShopAppointments,
     isWithinClientEditCutoff,
 } from './userPermissions.js';
@@ -35,7 +36,8 @@ import type { AppointmentResponse, ClientAppointmentResponse } from '../types/dt
 
 const MS_PER_MINUTE = 60_000;
 const MS_PER_DAY = 24 * 60 * MS_PER_MINUTE;
-const DEFAULT_WINDOW_DAYS = 30;
+// Días que cubre la ventana por defecto, hoy incluido: hasta el último día que availabilityService deja agendar.
+const DEFAULT_WINDOW_DAYS = MAX_BOOKING_DAYS_AHEAD + 1;
 const MAX_WINDOW_DAYS = 366;
 
 /**
@@ -339,8 +341,9 @@ export const cancelAppointment = async (
 };
 
 /**
- * Rango de búsqueda por inicio programado. Sin from ni to: hoy 00:00 hasta el día 30 a las 23:59:59.999
- * (hora del negocio). Si falta solo uno, se completa: from = hoy 00:00; to = from + 30 días.
+ * Rango de búsqueda por inicio programado. Sin from ni to: hoy 00:00 hasta el último día agendable
+ * (hoy + MAX_BOOKING_DAYS_AHEAD) a las 23:59:59.999 (hora del negocio). Si falta solo uno, se completa:
+ * from = hoy 00:00; to = from + 31 días (menos 1 ms).
  */
 const resolveWindow = (query: ListAppointmentsQuery): { from: Date; to: Date } => {
     const from = query.from ?? getBusinessDayStart(0);
@@ -356,7 +359,51 @@ const resolveWindow = (query: ListAppointmentsQuery): { from: Date; to: Date } =
     if (to.getTime() - from.getTime() > MAX_WINDOW_DAYS * MS_PER_DAY) {
         throw new ApiError(ApiErrorCode.BAD_REQUEST, `Date range must not exceed ${MAX_WINDOW_DAYS} days`);
     }
+
     return { from, to };
+};
+
+/**
+ * Consulta una cita por id, sin importar su fecha ni su estado. Mismo alcance por rol que editarla:
+ * client: las propias; receptionist: las de su sucursal; manager: las de las sucursales que administra.
+ */
+export const getAppointment = async (
+    appointmentId: string,
+    token: string
+): Promise<AppointmentResponse | ClientAppointmentResponse> => {
+    const performer = await isUserSessionValid(token);
+
+    const appointment = await getAppointmentById(appointmentId);
+    if (!appointment) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Appointment not found');
+    }
+
+    const shop = await getShopById(appointment.shop_id);
+    if (!shop) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Shop not found');
+    }
+
+    const receptionistShopId =
+        performer.role === 'receptionist' ? ((await getReceptionistByUserId(performer.id))?.shop_id ?? null) : null;
+
+    if (
+        !canViewAppointment(
+            performer,
+            { clientId: appointment.client_id, shopId: appointment.shop_id, shopManagerId: shop.manager_id },
+            receptionistShopId
+        )
+    ) {
+        throw new ApiError(ApiErrorCode.FORBIDDEN, 'Not authorized to view this appointment');
+    }
+
+    const services = await getServicesByAppointmentIds([appointment.id]);
+
+    if (performer.role === 'client') {
+        return toClientAppointmentResponse(appointment, services);
+    }
+
+    const [client] = await getAppointmentClientsById(appointment.client_id !== null ? [appointment.client_id] : []);
+    return toAppointmentResponse(appointment, services, client ?? null);
 };
 
 /**

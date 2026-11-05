@@ -1,4 +1,4 @@
-import type { SelectOption } from '../components/SelectFieldComponent';
+import type { SelectOption } from '../components/common/SelectFieldComponent';
 import type { StaffRole } from '../types/staffType';
 
 export const STAFF_ROLE_LABELS: Record<StaffRole, string> = {

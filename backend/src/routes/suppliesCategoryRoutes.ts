@@ -9,7 +9,9 @@ const router = Router();
  *   get:
  *     summary: Obtiene la lista de categorías de insumos
  *     tags: [Supplies Categories]
- *     description: Retorna un listado con todas las categorías de insumos ordenadas alfabéticamente. Endpoint público o accesible para staff.
+ *     description: Retorna un listado con todas las categorías de insumos ordenadas alfabéticamente. Accesible para recepcionistas y managers. Requiere token JWT en el header `Authorization`.
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: Éxito. `data` contiene el arreglo de categorías.
@@ -41,7 +43,7 @@ router.get('/suppliesCategories', list);
  *   post:
  *     summary: Registra una nueva categoría de insumos
  *     tags: [Supplies Categories]
- *     description: Permite a un manager o administrador crear una categoría para clasificar los productos del inventario. Requiere token JWT en el header `Authorization`.
+ *     description: Permite a un manager o recepcionista crear una categoría para clasificar los productos del inventario. Requiere token JWT en el header `Authorization`.
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -68,7 +70,7 @@ router.get('/suppliesCategories', list);
  *       401:
  *         description: Token ausente o inválido.
  *       403:
- *         description: Prohibido. El usuario no tiene rol de manager o su cuenta está desactivada.
+ *         description: Prohibido. El usuario no tiene rol de manager o receptionist, o su cuenta está desactivada.
  *       409:
  *         description: El nombre de la categoría ya se encuentra en uso.
  *       500:
@@ -109,7 +111,7 @@ router.get('/suppliesCategories/:id', getById);
  *   put:
  *     summary: Edita una categoría de insumos existente
  *     tags: [Supplies Categories]
- *     description: Actualiza el nombre o la descripción de una categoría. Requiere token de manager.
+ *     description: Actualiza el nombre o la descripción de una categoría. Requiere token de manager o receptionist.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -157,7 +159,7 @@ router.put('/suppliesCategories/:id', update);
  *   delete:
  *     summary: Elimina una categoría de insumos
  *     tags: [Supplies Categories]
- *     description: Realiza un borrado físico de la categoría en la base de datos. Si la categoría ya está asignada a insumos existentes, la operación será bloqueada por integridad referencial. Requiere token de manager.
+ *     description: Realiza un borrado físico de la categoría en la base de datos. Si la categoría ya está asignada a insumos existentes, la operación será bloqueada por integridad referencial. Requiere token de manager o receptionist.
  *     security:
  *       - bearerAuth: []
  *     parameters:

@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { login } from '../services/authService';
 import { ApiError } from '../types/api';
 import type { LoginFormValues } from '../types/auth';
-import { LoginForm } from '../components/LoginFormComponent';
+import { LoginForm } from '../components/auth/LoginFormComponent';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getHomeRouteByRole } from '../utils/roleRedirect';

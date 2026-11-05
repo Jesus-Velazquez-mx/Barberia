@@ -26,7 +26,7 @@ class Settings(BaseSettings):
 
     # Anthropic params
     ANTHROPIC_API_KEY: str | None = None
-    ANTHROPIC_MODEL: str = "claude-haiku-4-5"
+    ANTHROPIC_MODEL: str = "claude-haiku-5-5"
 
     # Ollama params
     OLLAMA_BASE_URL: str = "http://localhost:11434"

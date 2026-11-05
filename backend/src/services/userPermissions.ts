@@ -70,6 +70,11 @@ export const canManageShopReceptionists = (shopId: string, managedShopIds: strin
  * /shops: Solo los usuarios con el rol 'manager' pueden registrar, editar o eliminar sucursales.
  */
 export const canManageShops = (performer: UserIdentity): boolean => performer.role === 'manager';
+/**
+ * /shops: Solo los usuarios con el rol de 'receptionist' o 'manager0' pueden consultar sucursales inactivas.
+ */
+export const canViewInactiveShops = (performer: UserIdentity): boolean => 
+    performer.role === 'manager' || performer.role === 'receptionist';
 
 /**
  * GET /recommendations: un cliente solo puede consultar su propio historial de recomendaciones; la recepción y los
@@ -79,14 +84,23 @@ export const canViewRecommendationHistory = (performer: UserIdentity, targetClie
     performer.role === 'client' ? performer.id === targetClientId : true;
 
 /**
- * /supplies-categories: Solo los usuarios con rol 'manager' pueden crear, editar o eliminar categorías de insumos.
+ * /suppliesCategories: los usuarios con rol 'manager' y 'receptionist' pueden consultar, crear, editar o eliminar categorías de insumos.
  */
-export const canManageSuppliesCategories = (performer: UserIdentity): boolean => performer.role === 'manager';
+export const canManageSuppliesCategories = (performer: UserIdentity): boolean =>
+    performer.role === 'manager' || performer.role === 'receptionist';
 
 /**
- * /supplies: Los usuarios con rol 'manager' puede registrar, editar o eliminar insumos.
+ * /supplies: Los usuarios con rol 'manager' y 'receptionist' pueden registrar, consultar, editar o eliminar insumos.
  */
-export const canManageSupplies = (performer: UserIdentity): boolean => performer.role === 'manager';
+export const canManageSupplies = (performer: UserIdentity): boolean =>
+    performer.role === 'manager' || performer.role === 'receptionist';
+
+/**
+ * /supplies: la recepción y los gerentes solo pueden consultar, registrar, editar o eliminar los insumos de las
+ * sucursales que tienen asignadas (la sucursal donde trabaja la recepción; las que administra el gerente).
+ */
+export const canViewShopSupplies = (shopId: string, assignedShopIds: string[]): boolean =>
+    assignedShopIds.includes(shopId);
 
 /**
  * GET /shifts: el personal (recepcionistas y gerentes) puede consultar los turnos; los clientes no.
@@ -141,12 +155,18 @@ export const canEditAppointment = (
     }
 };
 
+/**
+ * GET /appointments/:id: ver una cita tiene el mismo alcance por rol que editarla
+ * (client: las propias; receptionist: su sucursal; manager: sus sucursales).
+ */
+export const canViewAppointment = canEditAppointment;
+
 /** Horas mínimas de anticipación con las que un cliente puede editar o cancelar su cita. */
 export const CLIENT_EDIT_CUTOFF_HOURS = 8;
 
 /**
  * Solo los clientes están sujetos al límite de 8 horas; recepción y gerentes pueden editar hasta que la
- * cita pase a checked_in. Es una comparación entre instantes absolutos (sin zona horaria del negocio).
+ * cita pase a checked_in. Es una comparación entre instantes absolutos (sin zona horaria del negocio).\
  */
 export const isWithinClientEditCutoff = (
     performer: UserIdentity,

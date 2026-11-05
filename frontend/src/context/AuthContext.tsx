@@ -4,8 +4,8 @@ import router from '../router';
 import type { AuthContextValue, LoginResponse, User } from '../types/auth';
 import { isStoredTokenValid, isStoredUserValid } from '../utils/userValidation';
 import { setUnauthorizedHandler } from '../services/apiClient';
-import { Modal } from '../components/ModalComponent';
-import { Button } from '../components/ButtonComponent';
+import { Modal } from '../components/common/ModalComponent';
+import { Button } from '../components/common/ButtonComponent';
 import { ShieldAlert } from 'lucide-react';
 
 /* Páginas donde nunca debe mostrarse el modal de sesión inválida (Landing, Login, Register) */
