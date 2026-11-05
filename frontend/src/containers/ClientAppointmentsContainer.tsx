@@ -8,6 +8,7 @@ import { AppointmentFilters, FilterToggleButton } from '../components/appointmen
 import { AppointmentTable } from '../components/appointments/AppointmentTableComponent';
 import { CLIENT_APPOINTMENTS_PATH } from './ClientAppointmentDetailContainer';
 import { getMyAppointments } from '../services/appointmentService';
+import { getClientAppointmentsRange } from '../utils/appointmentUtils';
 
 const PAGE_SIZE = 8;
 
@@ -38,16 +39,11 @@ function parseDate(text: string, endOfDay = false): number | null {
 }
 
 function matchesFilters(a: AppointmentRecord, f: AppointmentFilterValues): boolean {
-  const start = new Date(a.scheduledStart).getTime();
   const created = new Date(a.createdAt).getTime();
 
-  const serviceFrom = parseDate(f.serviceFrom);
-  const serviceTo = parseDate(f.serviceTo, true);
   const createdFrom = parseDate(f.createdFrom);
   const createdTo = parseDate(f.createdTo, true);
 
-  if (serviceFrom !== null && start < serviceFrom) return false;
-  if (serviceTo !== null && start > serviceTo) return false;
   if (createdFrom !== null && created < createdFrom) return false;
   if (createdTo !== null && created > createdTo) return false;
   if (f.shopId !== 'all' && a.shopId !== f.shopId) return false;
@@ -84,21 +80,20 @@ export function ClientAppointmentsContainer() {
     validate: (value: string) => !value || parseDate(value) !== null || 'Usa el formato dd/mm/aaaa'
   };
 
-  const rangeRule = (fromField: 'serviceFrom' | 'createdFrom') => ({
+  const createdRangeRule = {
     validate: (value: string) => {
       if (!value) return true;
       const to = parseDate(value);
       if (to === null) return 'Usa el formato dd/mm/aaaa';
-      const from = parseDate(getValues(fromField));
+      const from = parseDate(getValues('createdFrom'));
       return from === null || to >= from || 'Debe ser posterior a la fecha inicial';
     }
-  });
+  };
 
+  /* El cliente ya separa sus citas en pestañas (próximas, pasadas y canceladas), así que no filtra por fecha de servicio. */
   const fields = {
-    serviceFrom: register('serviceFrom', dateRule),
-    serviceTo: register('serviceTo', rangeRule('serviceFrom')),
     createdFrom: register('createdFrom', dateRule),
-    createdTo: register('createdTo', rangeRule('createdFrom')),
+    createdTo: register('createdTo', createdRangeRule),
     shopId: register('shopId'),
     serviceId: register('serviceId')
   };
@@ -125,12 +120,13 @@ export function ClientAppointmentsContainer() {
     setIsLoading(true);
     setError('');
     try {
-      // El backend devuelve solo las citas del cliente autenticado.
-      const data = await getMyAppointments(token, {
-        id: user.id,
-        name: `${user.firstName} ${user.lastName}`,
-        email: user.email
-      });
+      // El backend devuelve solo las citas del cliente autenticado; se pide el rango más amplio que acepta
+      // (casi un año atrás hasta el último día agendable) para que las citas pasadas y canceladas aparezcan.
+      const data = await getMyAppointments(
+        token,
+        { id: user.id, name: `${user.firstName} ${user.lastName}`, email: user.email },
+        getClientAppointmentsRange()
+      );
       setAppointments(data);
     } catch {
       setError('No se pudieron cargar tus citas.');

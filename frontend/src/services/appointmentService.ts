@@ -65,6 +65,14 @@ export interface DateRange {
     to: Date;
 }
 
+/* Filtros que el backend aplica en GET /appointments (el personal los usa todos; el cliente solo el rango).
+   `status` usa los estados de la app (checkedIn, noShow...); se convierten a los del backend al consultar. */
+export interface AppointmentQuery {
+    range?: DateRange;
+    shopId?: string;
+    status?: AppointmentStatus;
+}
+
 /* ---------- Utilidades ---------- */
 
 const STATUS_MAP: Record<string, AppointmentStatus> = {
@@ -74,6 +82,15 @@ const STATUS_MAP: Record<string, AppointmentStatus> = {
     completed: 'completed',
     cancelled: 'cancelled',
     no_show: 'noShow'
+};
+
+const API_STATUS: Record<AppointmentStatus, string> = {
+    scheduled: 'scheduled',
+    rescheduled: 'rescheduled',
+    checkedIn: 'checked_in',
+    completed: 'completed',
+    cancelled: 'cancelled',
+    noShow: 'no_show'
 };
 
 const authHeaders = (token: string): RequestInit => ({ headers: { Authorization: `Bearer ${token}` } });
@@ -176,13 +193,19 @@ function toRecord(a: AppointmentApi, catalogs: Catalogs, client?: AppointmentCli
 /* Sin rango, el backend aplica su ventana por defecto (resolveWindow). */
 async function fetchRecords(
     token: string,
-    range?: DateRange,
+    query: AppointmentQuery = {},
     client?: AppointmentClientInfo
 ): Promise<AppointmentRecord[]> {
-    const query = range
-        ? `?${new URLSearchParams({ from: range.from.toISOString(), to: range.to.toISOString() })}`
-        : '';
-    const { data } = await apiClient.get<AppointmentApi[]>(`/appointments${query}`, authHeaders(token));
+    const params = new URLSearchParams();
+    if (query.range) {
+        params.set('from', query.range.from.toISOString());
+        params.set('to', query.range.to.toISOString());
+    }
+    if (query.shopId) params.set('shopId', query.shopId);
+    if (query.status) params.set('status', API_STATUS[query.status]);
+
+    const queryString = params.toString() ? `?${params}` : '';
+    const { data } = await apiClient.get<AppointmentApi[]>(`/appointments${queryString}`, authHeaders(token));
 
     const shopIds = [...new Set(data.map((a) => a.shopId))];
     const catalogs = await loadCatalogs(token, shopIds);
@@ -196,15 +219,15 @@ async function fetchRecords(
 export const getAppointments = async (
     token: string,
     _role?: string,
-    range?: DateRange
-): Promise<AppointmentRecord[]> => fetchRecords(token, range);
+    query?: AppointmentQuery
+): Promise<AppointmentRecord[]> => fetchRecords(token, query);
 
 /* Vista del cliente: el backend devuelve solo sus citas. */
 export const getMyAppointments = async (
     token: string,
     client: AppointmentClientInfo,
     range?: DateRange
-): Promise<AppointmentRecord[]> => fetchRecords(token, range, client);
+): Promise<AppointmentRecord[]> => fetchRecords(token, { range }, client);
 
 /* GET /appointments/:id: sin importar fecha ni estado. Devuelve null si la cita no existe (404). */
 export const getAppointmentById = async (

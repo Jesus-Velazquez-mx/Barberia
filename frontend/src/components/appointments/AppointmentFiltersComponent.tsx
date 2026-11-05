@@ -40,13 +40,14 @@ export function FilterToggleButton({ isOpen, activeCount, onClick }: FilterToggl
   );
 }
 
-type DateFilterKey = 'serviceFrom' | 'serviceTo' | 'createdFrom' | 'createdTo';
+type RequiredFilterKey = 'createdFrom' | 'createdTo';
 
 interface AppointmentFiltersProps {
   isOpen: boolean;
-  /* Un registro de react-hook-form por filtro (las reglas de validación viven en el contenedor). */
-  fields: Pick<Record<keyof AppointmentFilterValues, UseFormRegisterReturn>, DateFilterKey> &
-    Partial<Record<Exclude<keyof AppointmentFilterValues, DateFilterKey>, UseFormRegisterReturn>>;
+  /* Un registro de react-hook-form por filtro (las reglas de validación viven en el contenedor).
+     Sin serviceFrom y serviceTo (cliente) los filtros de fecha de servicio no se muestran. */
+  fields: Pick<Record<keyof AppointmentFilterValues, UseFormRegisterReturn>, RequiredFilterKey> &
+    Partial<Record<Exclude<keyof AppointmentFilterValues, RequiredFilterKey>, UseFormRegisterReturn>>;
   errors: FieldErrors<AppointmentFilterValues>;
   /* Solo el manager lo recibe; sin opciones (recepción) o con una sola sucursal el filtro no se muestra. */
   shopOptions?: SelectOption[];
@@ -94,20 +95,24 @@ export function AppointmentFilters({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <DateField
-          id="appointments-service-from"
-          label="Fecha de servicio (desde)"
-          min=""
-          error={errors.serviceFrom?.message}
-          registerProps={fields.serviceFrom}
-        />
-        <DateField
-          id="appointments-service-to"
-          label="Fecha de servicio (hasta)"
-          min=""
-          error={errors.serviceTo?.message}
-          registerProps={fields.serviceTo}
-        />
+        {fields.serviceFrom && fields.serviceTo && (
+          <>
+            <DateField
+              id="appointments-service-from"
+              label="Fecha de servicio (desde)"
+              min=""
+              error={errors.serviceFrom?.message}
+              registerProps={fields.serviceFrom}
+            />
+            <DateField
+              id="appointments-service-to"
+              label="Fecha de servicio (hasta)"
+              min=""
+              error={errors.serviceTo?.message}
+              registerProps={fields.serviceTo}
+            />
+          </>
+        )}
         <DateField
           id="appointments-created-from"
           label="Fecha de creación (desde)"
