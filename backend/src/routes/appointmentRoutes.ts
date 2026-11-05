@@ -211,8 +211,8 @@ router.get('/appointments', list);
  *       Reglas:
  *       - Solo se editan citas futuras con estado `scheduled` o `rescheduled`; una cita en `checked_in` (o cualquier otro estado) ya no se puede editar.
  *       - Un nuevo `scheduledStart` debe ser uno de los `startTimes` de `GET /api/shops/{id}/availability` para el barbero y los servicios finales,
- *         sin contar la propia cita como ocupada, y caer dentro de los 30 días posteriores a la fecha en que se agendó. Puede ser un día anterior o
- *         posterior, o el mismo día a otra hora.
+ *         **enviando `excludeAppointmentId` con el id de esta cita** para que su horario actual no la bloquee, y caer dentro de los 30 días
+ *         posteriores a la fecha en que se agendó. Puede ser un día anterior o posterior, o el mismo día a otra hora.
  *       - `barberId` debe ser un barbero activo de la misma sucursal que la cita; se puede conservar el mismo.
  *       - La duración es la suma de las duraciones de los servicios; si crece, el barbero debe tener tiempo libre suficiente. Los servicios que se
  *         conservan mantienen su precio y duración originales; los nuevos usan los valores actuales del catálogo.
