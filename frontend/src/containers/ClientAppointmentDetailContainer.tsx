@@ -23,7 +23,6 @@ export function ClientAppointmentDetailContainer() {
     setIsLoading(true);
     setError('');
     try {
-      // No hay GET /appointments/:id: el servicio la busca dentro del rango de fechas por defecto.
       const found = await getAppointmentById(token, appointmentId, {
         id: user.id,
         name: `${user.firstName} ${user.lastName}`,

@@ -155,6 +155,12 @@ export const canEditAppointment = (
     }
 };
 
+/**
+ * GET /appointments/:id: ver una cita tiene el mismo alcance por rol que editarla
+ * (client: las propias; receptionist: su sucursal; manager: sus sucursales).
+ */
+export const canViewAppointment = canEditAppointment;
+
 /** Horas mínimas de anticipación con las que un cliente puede editar o cancelar su cita. */
 export const CLIENT_EDIT_CUTOFF_HOURS = 8;
 
