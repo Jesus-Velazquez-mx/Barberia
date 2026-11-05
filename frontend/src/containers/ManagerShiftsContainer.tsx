@@ -10,8 +10,17 @@ import { ShiftTable } from '../components/shifts/ShiftTableComponent';
 import { Toast } from '../components/common/ToastComponent';
 import type { Shift, ShiftFormValues } from '../types/shiftType';
 import { createShift, deleteShift, getShifts, updateShift } from '../services/shiftService';
-import { formatShiftRange, getShiftLabel, normalizeTime, validateShiftTimes } from '../utils/shiftUtils';
+import {
+  formatShiftRange,
+  getShiftLabel,
+  normalizeTime,
+  toShiftName,
+  validateShiftTimes
+} from '../utils/shiftUtils';
 import { matchesQuery, paginate } from '../utils/listUtils';
+// Placeholders: copia estas dos líneas de ManagerStaffContainer (nombres y rutas pueden variar)
+import { useAuth } from '../context/AuthContext';
+import { getApiErrorMessage } from '../utils/apiErrorUtils';
 
 type FormState = { mode: 'create' } | { mode: 'edit'; shift: Shift } | null;
 
@@ -22,12 +31,9 @@ interface ToastState {
 
 const EMPTY_VALUES: ShiftFormValues = { name: '', startTime: '', endTime: '' };
 
-/* El servicio con mock lanza Error con el mensaje listo. Con la API real, cambia esto por
-   getApiErrorMessage(error, fallback), como en ManagerStaffContainer. */
-const getErrorMessage = (error: unknown, fallback: string): string =>
-  error instanceof Error && error.message ? error.message : fallback;
-
 export function ManagerShiftsContainer() {
+  const { token } = useAuth();
+
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -56,17 +62,18 @@ export function ManagerShiftsContainer() {
   const endTime = watch('endTime');
 
   const loadShifts = useCallback(async () => {
+    if (!token) return;
     setIsLoading(true);
     setLoadError('');
 
     try {
-      setShifts(await getShifts());
+      setShifts(await getShifts(token));
     } catch (error) {
-      setLoadError(getErrorMessage(error, 'No se pudieron cargar los turnos. Intenta de nuevo.'));
+      setLoadError(getApiErrorMessage(error, 'No se pudieron cargar los turnos. Intenta de nuevo.'));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [token]);
 
   useEffect(() => {
     void loadShifts();
@@ -108,14 +115,17 @@ export function ManagerShiftsContainer() {
   };
 
   const onSubmit = async (values: ShiftFormValues) => {
-    if (!formState) return;
+    if (!formState || !token) return;
     setServerError('');
 
     const isEdit = formState.mode === 'edit';
-    const payload: ShiftFormValues = { ...values, name: values.name.trim() };
+    // toShiftName devuelve 'Matutino' -> 'morning' para no renombrar el turno en la BD.
+    const payload: ShiftFormValues = { ...values, name: toShiftName(values.name) };
 
     try {
-      const saved = isEdit ? await updateShift(formState.shift.id, payload) : await createShift(payload);
+      const saved = isEdit
+        ? await updateShift(formState.shift.id, payload, token)
+        : await createShift(payload, token);
 
       setShifts((current) =>
         isEdit ? current.map((shift) => (shift.id === saved.id ? saved : shift)) : [saved, ...current]
@@ -127,7 +137,7 @@ export function ManagerShiftsContainer() {
       });
     } catch (error) {
       setServerError(
-        getErrorMessage(error, isEdit ? 'No se pudo actualizar el turno.' : 'No se pudo registrar el turno.')
+        getApiErrorMessage(error, isEdit ? 'No se pudo actualizar el turno.' : 'No se pudo registrar el turno.')
       );
     }
   };
@@ -150,18 +160,18 @@ export function ManagerShiftsContainer() {
   };
 
   const confirmDelete = async () => {
-    if (!deleteTarget) return;
+    if (!deleteTarget || !token) return;
 
     setIsDeleting(true);
     setDeleteError('');
 
     try {
-      await deleteShift(deleteTarget);
+      await deleteShift(deleteTarget, token);
       setShifts((current) => current.filter((shift) => shift.id !== deleteTarget.id));
       setDeleteTarget(null);
       setToast({ message: 'Turno eliminado correctamente.', type: 'success' });
     } catch (error) {
-      setDeleteError(getErrorMessage(error, 'No se pudo eliminar el turno.'));
+      setDeleteError(getApiErrorMessage(error, 'No se pudo eliminar el turno.'));
     } finally {
       setIsDeleting(false);
     }
@@ -252,10 +262,9 @@ export function ManagerShiftsContainer() {
         description={
           deleteTarget ? (
             <>
-              Está acción eliminará el turno <span className="text-[var(--text-h)]">{getShiftLabel(deleteTarget.name)}</span>{' '}
-              ({formatShiftRange(deleteTarget.startTime, deleteTarget.endTime)}).
-              <br />
-              
+              Esta acción eliminará el turno{' '}
+              <span className="text-[var(--text-h)]">{getShiftLabel(deleteTarget.name)}</span> (
+              {formatShiftRange(deleteTarget.startTime, deleteTarget.endTime)}).
             </>
           ) : null
         }
