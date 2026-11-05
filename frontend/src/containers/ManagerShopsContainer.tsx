@@ -3,16 +3,25 @@ import { useForm } from 'react-hook-form';
 import { Plus } from 'lucide-react';
 import { Button } from '../components/common/ButtonComponent';
 import { ConfirmDeleteModal } from '../components/common/ConfirmDeleteModalComponent';
+import { FilterMenu } from '../components/common/FilterMenuComponent';
 import { ManagerPageHeader } from '../components/dashboard/ManagerPageHeaderComponent';
 import { SearchBar } from '../components/common/SearchBarComponent';
 import { ShopFormModal } from '../components/shops/ShopFormModalComponent';
 import { ShopTable } from '../components/shops/ShopTableComponent';
 import { Toast } from '../components/common/ToastComponent';
-import { MOCK_MANAGERS } from '../mocks/shopMocks';
+import { useAuth } from '../context/AuthContext';
+import type { Shop } from '../types/shop';
 import type { ShopFormValues, ShopPayload, ShopRecord } from '../types/shopType';
-import { createShop, deleteShop, getShops, updateShop } from '../services/shopMockService';
+import { ApiError } from '../types/api';
+import { createShop, deleteShop, getShops, updateShop } from '../services/shopService';
+import { getApiErrorMessage } from '../utils/apiErrorUtils';
 import { matchesQuery, paginate } from '../utils/listUtils';
-import { formatPhone, normalizePhone } from '../utils/personUtils';
+import {
+  matchesStatus,
+  SERVICE_FILTER_ALL,
+  SERVICE_STATUS_FILTER_OPTIONS
+} from '../utils/offeredServiceUtils';
+import { formatPhone, joinFullName, normalizePhone } from '../utils/personUtils';
 import { POSTAL_CODE_PATTERN, SHOP_NAME_MAX, SHOP_NUMBER_PATTERN, SHOP_STREET_MAX } from '../utils/shopUtils';
 
 type FormState = { mode: 'create' } | { mode: 'edit'; shop: ShopRecord } | null;
@@ -28,23 +37,39 @@ const EMPTY_VALUES: ShopFormValues = {
   number: '',
   postalCode: '',
   phone: '',
-  managerId: ''
+  isActive: 'true'
 };
 
-/* El servicio con mock lanza Error con el mensaje listo. Con la API real, cambia esto por
-   getErrorMessage(error, fallback), como en ManagerStaffContainer. */
-const getErrorMessage = (error: unknown, fallback: string): string =>
-  error instanceof Error && error.message ? error.message : fallback;
+const SESSION_EXPIRED_MESSAGE = 'Tu sesión expiró. Inicia sesión de nuevo.';
+
+/* El backend responde en inglés: los casos esperados se traducen y el resto usa getApiErrorMessage. */
+const getErrorMessage = (error: unknown, fallback: string): string => {
+  if (error instanceof ApiError) {
+    if (error.status === 409) return 'Ya existe una sucursal con ese nombre.';
+    if (error.status === 404) return 'No encontramos la sucursal.';
+    if (error.status === 403) return 'No tienes permiso para administrar sucursales.';
+    if (error.status === 0) return 'No se pudo conectar con el servidor. Intenta de nuevo.';
+  }
+  return getApiErrorMessage(error, fallback);
+};
 
 /* Texto vacío -> null, para guardar NULL en las columnas opcionales. */
 const emptyToNull = (value: string): string | null => value.trim() || null;
 
 export function ManagerShopsContainer() {
+  const { token, user } = useAuth();
+
+  /* GET /shops con token de manager solo devuelve sus sucursales y POST /shops las asigna al manager
+     del token, así que el gerente de todas las filas es el usuario con sesión iniciada. */
+  const managerName = user ? joinFullName(user) : '';
+  const toRecord = useCallback((shop: Shop): ShopRecord => ({ ...shop, managerName }), [managerName]);
+
   const [shops, setShops] = useState<ShopRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
 
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState(SERVICE_FILTER_ALL);
   const [page, setPage] = useState(1);
 
   const [formState, setFormState] = useState<FormState>(null);
@@ -65,41 +90,51 @@ export function ManagerShopsContainer() {
   } = useForm<ShopFormValues>({ defaultValues: EMPTY_VALUES });
 
   const loadShops = useCallback(async () => {
+    if (!token) return;
+
     setIsLoading(true);
     setLoadError('');
 
     try {
-      setShops(await getShops());
+      setShops((await getShops(token, true)).map(toRecord));
     } catch (error) {
       setLoadError(getErrorMessage(error, 'No se pudieron cargar las sucursales. Intenta de nuevo.'));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [token, toRecord]);
 
   useEffect(() => {
     void loadShops();
   }, [loadShops]);
 
-  /* ---------- Lista: búsqueda y paginación ---------- */
+  /* ---------- Lista: búsqueda, filtro de estado y paginación ---------- */
 
-  const filteredShops = shops.filter((shop) =>
-    matchesQuery(
-      [
-        shop.name,
-        shop.street,
-        shop.postalCode,
-        shop.phone,
-        shop.phone ? formatPhone(shop.phone) : null,
-        shop.managerName
-      ],
-      search
-    )
+  const filteredShops = shops.filter(
+    (shop) =>
+      matchesStatus(shop.isActive, statusFilter) &&
+      matchesQuery(
+        [
+          shop.name,
+          shop.street,
+          shop.postalCode,
+          shop.phone,
+          shop.phone ? formatPhone(shop.phone) : null,
+          shop.managerName
+        ],
+        search
+      )
   );
   const pageResult = paginate(filteredShops, page);
+  const hasActiveCriteria = search !== '' || statusFilter !== SERVICE_FILTER_ALL;
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
+    setPage(1);
+  };
+
+  const handleStatusFilterChange = (value: string) => {
+    setStatusFilter(value);
     setPage(1);
   };
 
@@ -118,7 +153,7 @@ export function ManagerShopsContainer() {
       number: shop.number ?? '',
       postalCode: shop.postalCode ?? '',
       phone: shop.phone ? formatPhone(shop.phone) : '',
-      managerId: shop.managerId
+      isActive: shop.isActive ? 'true' : 'false'
     });
     setServerError('');
     setFormState({ mode: 'edit', shop });
@@ -133,6 +168,11 @@ export function ManagerShopsContainer() {
     if (!formState) return;
     setServerError('');
 
+    if (!token) {
+      setServerError(SESSION_EXPIRED_MESSAGE);
+      return;
+    }
+
     const isEdit = formState.mode === 'edit';
 
     const payload: ShopPayload = {
@@ -141,11 +181,13 @@ export function ManagerShopsContainer() {
       number: emptyToNull(values.number),
       postalCode: emptyToNull(values.postalCode),
       phone: values.phone.trim() ? normalizePhone(values.phone) : null,
-      managerId: values.managerId
+      isActive: values.isActive === 'true'
     };
 
     try {
-      const saved = isEdit ? await updateShop(formState.shop.id, payload) : await createShop(payload);
+      const saved = toRecord(
+        isEdit ? await updateShop(formState.shop.id, payload, token) : await createShop(payload, token)
+      );
 
       setShops((current) =>
         isEdit ? current.map((shop) => (shop.id === saved.id ? saved : shop)) : [saved, ...current]
@@ -166,7 +208,7 @@ export function ManagerShopsContainer() {
     void handleSubmit(onSubmit)(event);
   };
 
-  /* ---------- Baja ---------- */
+  /* ---------- Eliminación (borrado lógico) ---------- */
 
   const openDelete = (shop: ShopRecord) => {
     setDeleteError('');
@@ -182,14 +224,22 @@ export function ManagerShopsContainer() {
   const confirmDelete = async () => {
     if (!deleteTarget) return;
 
+    if (!token) {
+      setDeleteError(SESSION_EXPIRED_MESSAGE);
+      return;
+    }
+
     setIsDeleting(true);
     setDeleteError('');
 
     try {
-      await deleteShop(deleteTarget);
-      setShops((current) => current.filter((shop) => shop.id !== deleteTarget.id));
+      await deleteShop(deleteTarget, token);
+      /* El backend no borra la fila: marca la sucursal como inactiva. */
+      setShops((current) =>
+        current.map((shop) => (shop.id === deleteTarget.id ? { ...shop, isActive: false } : shop))
+      );
       setDeleteTarget(null);
-      setToast({ message: 'Sucursal eliminada correctamente.', type: 'success' });
+      setToast({ message: 'Sucursal desactivada correctamente.', type: 'success' });
     } catch (error) {
       setDeleteError(getErrorMessage(error, 'No se pudo eliminar la sucursal.'));
     } finally {
@@ -226,11 +276,19 @@ export function ManagerShopsContainer() {
       'Debe tener 10 dígitos.'
   });
 
-  const managerRegister = register('managerId', { required: 'Selecciona un gerente.' });
+  const isActiveRegister = register('isActive');
 
   return (
     <>
       <ManagerPageHeader title="Sucursales" subtitle="Directorio y administración de sucursales.">
+        <FilterMenu
+          label="Estado"
+          title="Estado"
+          options={SERVICE_STATUS_FILTER_OPTIONS}
+          value={statusFilter}
+          defaultValue={SERVICE_FILTER_ALL}
+          onChange={handleStatusFilterChange}
+        />
         <Button
           type="button"
           onClick={openCreate}
@@ -256,10 +314,13 @@ export function ManagerShopsContainer() {
           startIndex={pageResult.from === 0 ? 0 : pageResult.from - 1}
           isLoading={isLoading}
           error={loadError}
-          emptyMessage={search ? 'No se encontraron sucursales con esos criterios.' : 'Aún no hay sucursales registradas.'}
+          emptyMessage={
+            hasActiveCriteria ? 'No se encontraron sucursales con esos criterios.' : 'Aún no hay sucursales registradas.'
+          }
           onRetry={() => void loadShops()}
           onEdit={openEdit}
           onDelete={openDelete}
+          canDelete={(row) => row.isActive}
           pagination={{
             from: pageResult.from,
             to: pageResult.to,
@@ -277,13 +338,12 @@ export function ManagerShopsContainer() {
         onClose={closeForm}
         onSubmit={handleFormSubmit}
         mode={formState?.mode ?? 'create'}
-        managerOptions={MOCK_MANAGERS}
         nameRegister={nameRegister}
         streetRegister={streetRegister}
         numberRegister={numberRegister}
         postalCodeRegister={postalCodeRegister}
         phoneRegister={phoneRegister}
-        managerRegister={managerRegister}
+        isActiveRegister={isActiveRegister}
         errors={errors}
         serverError={serverError}
         isSubmitting={isSubmitting}
@@ -297,8 +357,10 @@ export function ManagerShopsContainer() {
         description={
           deleteTarget ? (
             <>
-              Esta acción dará de baja la sucursal{' '}
-              <span className="text-[var(--text-h)]">{deleteTarget.name}</span>.
+              La sucursal <strong className="text-[var(--text-h)]">{deleteTarget.name}</strong> quedará inactiva y
+              dejará de estar disponible para agendar citas.
+              <br />
+              Se conserva el historial y puedes reactivarla después desde Editar.
             </>
           ) : null
         }
