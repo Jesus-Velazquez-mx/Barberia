@@ -1,21 +1,21 @@
 import type { FieldErrors, UseFormRegisterReturn } from 'react-hook-form';
 import { FormModal } from '../common/FormModalComponent';
 import { InputField } from '../common/InputFieldComponent';
-import { SelectField, type SelectOption } from '../common/SelectFieldComponent';
+import { SelectField } from '../common/SelectFieldComponent';
 import type { ShopFormValues } from '../../types/shopType';
+import { ACTIVE_SELECT_OPTIONS } from '../../utils/offeredServiceUtils';
 
 interface ShopFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
   mode: 'create' | 'edit';
-  managerOptions: SelectOption[];
   nameRegister: UseFormRegisterReturn;
   streetRegister: UseFormRegisterReturn;
   numberRegister: UseFormRegisterReturn;
   postalCodeRegister: UseFormRegisterReturn;
   phoneRegister: UseFormRegisterReturn;
-  managerRegister: UseFormRegisterReturn;
+  isActiveRegister: UseFormRegisterReturn;
   errors: FieldErrors<ShopFormValues>;
   serverError: string;
   isSubmitting: boolean;
@@ -26,13 +26,12 @@ export function ShopFormModal({
   onClose,
   onSubmit,
   mode,
-  managerOptions,
   nameRegister,
   streetRegister,
   numberRegister,
   postalCodeRegister,
   phoneRegister,
-  managerRegister,
+  isActiveRegister,
   errors,
   serverError,
   isSubmitting
@@ -106,11 +105,11 @@ export function ShopFormModal({
       </div>
 
       <SelectField
-        id="shopManager"
-        label="Gerente *"
-        options={[{ value: '', label: 'Selecciona un gerente' }, ...managerOptions]}
-        error={errors.managerId?.message}
-        registerProps={managerRegister}
+        id="shopStatus"
+        label="Estado *"
+        options={ACTIVE_SELECT_OPTIONS}
+        error={errors.isActive?.message}
+        registerProps={isActiveRegister}
       />
     </FormModal>
   );

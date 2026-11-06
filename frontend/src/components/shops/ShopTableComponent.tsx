@@ -1,3 +1,4 @@
+import { ActiveStatusBadge } from '../common/ActiveStatusBadgeComponent';
 import { DataTable, type DataTableColumn, type DataTableProps } from '../common/DataTableComponent';
 import { formatPhone } from '../../utils/personUtils';
 import { formatShopAddress } from '../../utils/shopUtils';
@@ -23,6 +24,11 @@ const COLUMNS: DataTableColumn<ShopRecord>[] = [
     key: 'manager',
     header: 'Gerente',
     render: (shop) => shop.managerName
+  },
+  {
+    key: 'status',
+    header: 'Estado',
+    render: (shop) => <ActiveStatusBadge isActive={shop.isActive} />
   }
 ];
 
