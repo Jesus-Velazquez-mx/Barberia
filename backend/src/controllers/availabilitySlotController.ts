@@ -6,11 +6,7 @@ import { getAvailableSlots } from '../services/availabilityService.js';
 import type { AvailableSlotsByBarber } from '../services/availabilityService.js';
 import { getBusinessToday } from '../utils/businessTime.js';
 import { extractOptionalBearerFromHeader } from '../utils/headerHandling.js';
-import { isUserSessionValid } from '../utils/userSession.js';
-import { getAppointmentById } from '../repositories/appointmentRepository.js';
-import { getShopById } from '../repositories/shopRepository.js';
-import { getReceptionistByUserId } from '../repositories/receptionistRepository.js';
-import { canEditAppointment } from '../services/userPermissions.js';
+import { assertCanExcludeAppointmentFromAvailability } from '../services/appointmentService.js';
 
 // Validación del ID de la sucursal en los parámetros de la ruta
 const getAvailabilityParamsSchema = z.object({
@@ -44,49 +40,17 @@ export const getAvailability: ApiHandler<AvailableSlotsByBarber[]> = async (req,
         const validQuery = getAvailabilityQuerySchema.parse(req.query);
         const shopId = validParams.id;
 
-        // Cuando se pide excluir una cita, se aplican validaciones de seguridad adicionales.
+        // Excluir una cita exige token (401) y las mismas reglas de alcance que PUT /appointments/:id:
+        // cita inexistente → 404, sin permiso → 403, cita de otra sucursal → 422 (en ese orden).
         if (validQuery.excludeAppointmentId) {
-            // 1. Se exige token JWT. Sin token → 401.
             const bearerToken = extractOptionalBearerFromHeader(req);
             if (!bearerToken) {
-                throw new ApiError(ApiErrorCode.UNAUTHORIZED, 'Token is required when excludeAppointmentId is provided');
-            }
-
-            // 2. Validar la sesión (cuenta activa, token válido).
-            const performer = await isUserSessionValid(bearerToken);
-
-            // 3. Verificar que la cita exista. Si no → 404.
-            const appointment = await getAppointmentById(validQuery.excludeAppointmentId);
-            if (!appointment) {
-                throw new ApiError(ApiErrorCode.NOT_FOUND, 'Appointment not found');
-            }
-
-            // 4. Verificar que la cita pertenezca a la sucursal consultada. Si no → 422.
-            if (appointment.shop_id !== shopId) {
                 throw new ApiError(
-                    ApiErrorCode.INVALID_INPUT,
-                    'The appointment does not belong to the requested shop'
+                    ApiErrorCode.UNAUTHORIZED,
+                    'Token is required when excludeAppointmentId is provided'
                 );
             }
-
-            // 5. Verificar que el solicitante pueda editar esa cita (mismas reglas que PUT /appointments/:id). Si no → 403.
-            const shop = await getShopById(appointment.shop_id);
-            if (!shop) {
-                throw new ApiError(ApiErrorCode.NOT_FOUND, 'Shop not found');
-            }
-            const receptionistShopId =
-                performer.role === 'receptionist'
-                    ? ((await getReceptionistByUserId(performer.id))?.shop_id ?? null)
-                    : null;
-            if (
-                !canEditAppointment(
-                    performer,
-                    { clientId: appointment.client_id, shopId: appointment.shop_id, shopManagerId: shop.manager_id },
-                    receptionistShopId
-                )
-            ) {
-                throw new ApiError(ApiErrorCode.FORBIDDEN, 'Not authorized to exclude this appointment');
-            }
+            await assertCanExcludeAppointmentFromAvailability(validQuery.excludeAppointmentId, bearerToken, shopId);
         }
 
         // Llama al servicio de dominio para calcular los horarios agendables por barbero

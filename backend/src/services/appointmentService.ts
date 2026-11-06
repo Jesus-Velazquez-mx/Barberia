@@ -138,15 +138,18 @@ export const registerAppointment = async (
 /** Días después de la fecha en que se agendó dentro de los cuales se puede reprogramar una cita. */
 const RESCHEDULE_WINDOW_DAYS = 30;
 
+type SessionPerformer = Awaited<ReturnType<typeof isUserSessionValid>>;
+
 /**
- * Prólogo compartido por editar y cancelar: valida la sesión, que la cita exista, el alcance del rol, el estado
- * (scheduled / rescheduled), que no haya empezado y el límite de 8 horas (solo clientes).
+ * Valida la sesión, que la cita exista (404) y que el solicitante tenga alcance para editarla según su rol (403).
+ * Es la única fuente de las reglas de alcance de PUT /appointments/:id; la usan editar, cancelar y la disponibilidad
+ * con excludeAppointmentId, para que no se desincronicen.
  */
-const loadModifiableAppointment = async (
+const loadAppointmentInEditScope = async (
     appointmentId: string,
     token: string,
-    action: 'edit' | 'cancel'
-): Promise<{ performer: Awaited<ReturnType<typeof isUserSessionValid>>; appointment: Appointment }> => {
+    action: string
+): Promise<{ performer: SessionPerformer; appointment: Appointment }> => {
     const performer = await isUserSessionValid(token);
 
     const appointment = await getAppointmentById(appointmentId);
@@ -172,6 +175,36 @@ const loadModifiableAppointment = async (
     ) {
         throw new ApiError(ApiErrorCode.FORBIDDEN, `Not authorized to ${action} this appointment`);
     }
+
+    return { performer, appointment };
+};
+
+/**
+ * GET /shops/:id/availability con excludeAppointmentId: exige que el solicitante pueda editar la cita (mismas
+ * reglas de alcance que PUT /appointments/:id) y que la cita sea de la sucursal consultada. El alcance (403) se
+ * valida antes que la sucursal (422) para no revelar a qué sucursal pertenece una cita ajena.
+ */
+export const assertCanExcludeAppointmentFromAvailability = async (
+    appointmentId: string,
+    token: string,
+    shopId: string
+): Promise<void> => {
+    const { appointment } = await loadAppointmentInEditScope(appointmentId, token, 'exclude');
+    if (appointment.shop_id !== shopId) {
+        throw new ApiError(ApiErrorCode.INVALID_INPUT, 'The appointment does not belong to the requested shop');
+    }
+};
+
+/**
+ * Prólogo compartido por editar y cancelar: además del alcance (loadAppointmentInEditScope), valida el estado
+ * (scheduled / rescheduled), que no haya empezado y el límite de 8 horas (solo clientes).
+ */
+const loadModifiableAppointment = async (
+    appointmentId: string,
+    token: string,
+    action: 'edit' | 'cancel'
+): Promise<{ performer: SessionPerformer; appointment: Appointment }> => {
+    const { performer, appointment } = await loadAppointmentInEditScope(appointmentId, token, action);
 
     if (appointment.status !== 'scheduled' && appointment.status !== 'rescheduled') {
         throw new ApiError(

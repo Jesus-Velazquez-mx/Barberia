@@ -388,11 +388,18 @@ router.get('/shops/:id/receptionists', listReceptionistsByShop);
  *       **Con `excludeAppointmentId`**: la cita indicada se excluye del cálculo de ocupación, mostrando los horarios que estarían libres si esa
  *       cita se moviera. Esto permite reagendar una cita sin que su propio horario actual la bloquee. En este modo:
  *       - Se **exige** token JWT (sin token → 401).
+ *       - La cita debe existir (si no → 404).
  *       - Se valida que el solicitante tenga permiso para editar esa cita, con las mismas reglas de alcance por rol que `PUT /api/appointments/{id}`:
  *         client solo su propia cita; receptionist solo citas de su sucursal; manager solo citas de las sucursales que administra (sin permiso → 403).
- *       - La cita debe pertenecer a la sucursal `{id}` (si no → 422).
- *       - La cita debe existir (si no → 404).
- *       Todo horario que devuelve este endpoint con `excludeAppointmentId` es aceptado por `PUT /api/appointments/{id}` para la misma cita, barbero y servicios.
+ *       - La cita debe pertenecer a la sucursal `{id}` (si no → 422). Esta validación ocurre después de la de permiso, para no revelar
+ *         a qué sucursal pertenece una cita ajena.
+ *
+ *       Con `excludeAppointmentId` este endpoint solo garantiza la **ocupación**: los horarios devueltos no chocan con ninguna otra cita
+ *       del barbero, con las mismas reglas que usa `PUT /api/appointments/{id}` para la misma cita, barbero y servicios. **No** valida las
+ *       demás reglas de edición del PUT, que puede rechazar un horario devuelto aquí cuando:
+ *       - la cita no está en `scheduled` o `rescheduled`, o ya empezó (409);
+ *       - el solicitante es client y faltan menos de 8 horas para la cita (403);
+ *       - la nueva fecha cae más de 30 días después de la fecha en que se agendó la cita (422).
  *     security:
  *       - {}
  *       - bearerAuth: []
@@ -432,8 +439,8 @@ router.get('/shops/:id/receptionists', listReceptionistsByShop);
  *         description: |
  *           ID de la cita que se está reagendando. Si se envía, esa cita no cuenta como ocupada al calcular
  *           la disponibilidad. Requiere token JWT; sin token responde 401. El solicitante debe poder editar
- *           la cita (mismas reglas que `PUT /api/appointments/{id}`); sin permiso responde 403.
- *           La cita debe pertenecer a la sucursal `{id}` (422) y debe existir (404).
+ *           la cita (mismas reglas de alcance que `PUT /api/appointments/{id}`); sin permiso responde 403.
+ *           La cita debe existir (404) y pertenecer a la sucursal `{id}` (422).
  *     responses:
  *       200:
  *         description: Éxito. Retorna los slots de inicio disponibles agrupados por barbero.
