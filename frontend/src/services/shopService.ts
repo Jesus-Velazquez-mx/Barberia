@@ -3,21 +3,7 @@ import type { Shop, ShopPayload } from '../types/shop.ts';
 import type { PublicBarber } from '../types/barber.ts';
 import type { OfferedService } from '../types/offeredService.ts';
 
-<<<<<<< HEAD
-export const getShops = async (token?: string, includeInactive = false): Promise<Shop[]> => {
-    const path = includeInactive ? '/shops?includeInactive=true' : '/shops';
-    let response;
-
-    if (token) {
-        response = await apiClient.get<Shop[]>(path, {
-            headers: { Authorization: `Bearer ${token}` }
-        });
-    } else {
-        response = await apiClient.get<Shop[]>(path);
-    }
-=======
 const authHeaders = (token: string): RequestInit => ({ headers: { Authorization: `Bearer ${token}` } });
->>>>>>> e1b3aad782c8873ae3a0a7e4296d3ca2f7a37e92
 
 /* Por defecto devuelve solo sucursales activas (flujo de agendar cita).
    Con includeInactive=true y token de manager devuelve todas sus sucursales (activas e inactivas). */
@@ -53,15 +39,7 @@ export const updateShop = async (id: string, payload: ShopPayload, token: string
     return response.data;
 };
 
-<<<<<<< HEAD
-/* Baja lógica (is_active = false): la sucursal deja de aparecer en el listado. */
-export const deleteShop = async (shop: Shop, token: string): Promise<void> => {
-    await apiClient.delete(`/shops/${shop.id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-    });
-=======
 /* Baja lógica (is_active = false): la sucursal se marca como inactiva en la base de datos. */
 export const deleteShop = async (shop: Pick<Shop, 'id'>, token: string): Promise<void> => {
     await apiClient.delete(`/shops/${shop.id}`, authHeaders(token));
->>>>>>> e1b3aad782c8873ae3a0a7e4296d3ca2f7a37e92
 };
