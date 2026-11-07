@@ -24,7 +24,8 @@ export interface DataTableProps<T> {
   /* Si no se pasan onEdit ni onDelete (vista de solo lectura), la columna ACCIONES no se muestra. */
   onEdit?: (row: T) => void;
   onDelete?: (row: T) => void;
-  /* Permite ocultar el botón de eliminar en filas concretas (p. ej. registros ya inactivos). */
+  /* Permite ocultar los botones de editar o eliminar en filas concretas (p. ej. registros ya inactivos). */
+  canEdit?: (row: T) => boolean;
   canDelete?: (row: T) => boolean;
   pagination: TablePaginationProps;
 }
@@ -44,6 +45,7 @@ export function DataTable<T>({
   onRetry,
   onEdit,
   onDelete,
+  canEdit,
   canDelete,
   pagination
 }: DataTableProps<T>) {
@@ -126,7 +128,7 @@ export function DataTable<T>({
                     {hasActions && (
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-1">
-                          {onEdit && (
+                          {onEdit && (canEdit ? canEdit(row) : true) && (
                             <button
                               type="button"
                               onClick={() => onEdit(row)}

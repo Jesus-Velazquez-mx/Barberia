@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Plus } from 'lucide-react';
 import { Button } from '../components/common/ButtonComponent';
@@ -7,16 +7,28 @@ import { FilterMenu } from '../components/common/FilterMenuComponent';
 import { ManagerPageHeader } from '../components/dashboard/ManagerPageHeaderComponent';
 import { SearchBar } from '../components/common/SearchBarComponent';
 import { StaffFormModal } from '../components/staff/StaffFormModalComponent';
-import { StaffTable } from '../components/staff/StaffTableComponent';
+import { StaffTable, type StaffRow } from '../components/staff/StaffTableComponent';
 import { Toast } from '../components/common/ToastComponent';
 import { useAuth } from '../context/AuthContext';
-import { MOCK_SHIFT_OPTIONS, MOCK_SHOP_OPTIONS } from '../mocks/adminMock';
-import { createStaff, deleteStaff, getStaff, updateStaff } from '../services/staffService';
+import { getShifts } from '../services/shiftService';
+import { getShops } from '../services/shopService';
+import { createStaff, deleteStaff, getStaff, reactivateStaff, updateStaff } from '../services/staffService';
+import { ApiError } from '../types/api';
+import type { Shift } from '../types/shiftType';
+import type { Shop } from '../types/shop';
 import type { StaffFormValues, StaffMember, StaffPayload } from '../types/staffType';
 import { getApiErrorMessage } from '../utils/apiErrorUtils';
+import { displayToIsoDate, getTodayIso, isoToDisplayDate, isValidDisplayDate } from '../utils/dateFormat';
+import { getGenderLabel } from '../utils/genderOptions';
 import { matchesQuery, paginate } from '../utils/listUtils';
 import { formatPhone, joinFullName, normalizePhone, resolveNameParts, splitFullName } from '../utils/personUtils';
-import { STAFF_ROLE_FILTER_ALL, STAFF_ROLE_FILTER_OPTIONS } from '../utils/staffOptions';
+import { formatShiftRange, getShiftLabel } from '../utils/shiftUtils';
+import {
+  STAFF_ROLE_FILTER_ALL,
+  STAFF_ROLE_FILTER_OPTIONS,
+  STAFF_STATUS_FILTER_ACTIVE,
+  STAFF_STATUS_FILTER_OPTIONS
+} from '../utils/staffOptions';
 
 type FormState = { mode: 'create' } | { mode: 'edit'; member: StaffMember } | null;
 
@@ -29,6 +41,8 @@ const EMPTY_VALUES: StaffFormValues = {
   fullName: '',
   phone: '',
   email: '',
+  birthDate: '',
+  gender: '',
   role: 'barber',
   shopId: '',
   shiftId: '',
@@ -37,19 +51,50 @@ const EMPTY_VALUES: StaffFormValues = {
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/;
 
+/* Traduce al español los mensajes de error esperados del backend de barberos y recepcionistas. */
+const getStaffErrorMessage = (error: unknown, fallback: string): string => {
+  if (error instanceof ApiError) {
+    const msg = error.message;
+    if (error.status === 409) {
+      if (/scheduled|rescheduled|checked-in|appointments/i.test(msg)) {
+        return 'No se puede dar de baja al barbero porque tiene citas pendientes o en curso.';
+      }
+      if (/deleted|reactivation/i.test(msg)) {
+        return 'Este integrante está dado de baja. Puedes reactivarlo desde Nuevo Personal escribiendo su correo.';
+      }
+      if (/phone/i.test(msg)) return 'Este teléfono ya está registrado.';
+      if (/email/i.test(msg)) return 'Este correo electrónico ya está registrado.';
+    }
+    if (error.status === 404) {
+      if (/shop/i.test(msg)) return 'La sucursal seleccionada no existe.';
+      if (/shift/i.test(msg)) return 'El turno seleccionado no existe.';
+      return 'No encontramos al integrante del personal.';
+    }
+    if (error.status === 403) return 'No tienes permiso para realizar esta acción.';
+    if (error.status === 0) return 'No se pudo conectar con el servidor. Intenta de nuevo.';
+  }
+  return getApiErrorMessage(error, fallback);
+};
+
 export function ManagerStaffContainer() {
   const { token } = useAuth();
 
   const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [shops, setShops] = useState<Shop[]>([]);
+  const [shifts, setShifts] = useState<Shift[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
 
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState(STAFF_ROLE_FILTER_ALL);
+  const [statusFilter, setStatusFilter] = useState(STAFF_STATUS_FILTER_ACTIVE);
   const [page, setPage] = useState(1);
 
   const [formState, setFormState] = useState<FormState>(null);
   const [serverError, setServerError] = useState('');
+  const [isReactivating, setIsReactivating] = useState(false);
+  const [reactivatePassword, setReactivatePassword] = useState('');
+  const [reactivatePasswordError, setReactivatePasswordError] = useState('');
 
   const [deleteTarget, setDeleteTarget] = useState<StaffMember | null>(null);
   const [deleteError, setDeleteError] = useState('');
@@ -66,34 +111,104 @@ export function ManagerStaffContainer() {
     formState: { errors, isSubmitting }
   } = useForm<StaffFormValues>({ defaultValues: EMPTY_VALUES });
   const role = watch('role');
+  const watchedEmail = watch('email');
 
-  const loadStaff = useCallback(async () => {
+  /* Detecta en tiempo real si el correo escrito pertenece a un integrante dado de baja. */
+  const inactiveEmailMatch = useMemo(() => {
+    if (formState?.mode !== 'create') return null;
+    const normalized = watchedEmail.trim().toLowerCase();
+    if (!normalized) return null;
+    return staff.find((member) => !member.isActive && member.email?.toLowerCase() === normalized) ?? null;
+  }, [formState, watchedEmail, staff]);
+
+  useEffect(() => {
+    setReactivatePassword('');
+    setReactivatePasswordError('');
+  }, [inactiveEmailMatch?.id]);
+
+  const loadData = useCallback(async () => {
     if (!token) return;
 
     setIsLoading(true);
     setLoadError('');
 
     try {
-      setStaff(await getStaff(token));
+      const [loadedShops, loadedShifts] = await Promise.all([getShops(token, true), getShifts(token)]);
+      const loadedStaff = await getStaff(token, true, loadedShops);
+
+      setShops(loadedShops);
+      setShifts(loadedShifts);
+      setStaff(loadedStaff);
     } catch (error) {
-      setLoadError(getApiErrorMessage(error, 'No se pudo cargar el personal. Intenta de nuevo.'));
+      setLoadError(getStaffErrorMessage(error, 'No se pudo cargar el personal. Intenta de nuevo.'));
     } finally {
       setIsLoading(false);
     }
   }, [token]);
 
   useEffect(() => {
-    void loadStaff();
-  }, [loadStaff]);
+    void loadData();
+  }, [loadData]);
 
-  /* ---------- Lista: filtro por rol, búsqueda y paginación ---------- */
+  /* ---------- Opciones de sucursales y turnos para el formulario ---------- */
 
-  const filteredStaff = staff.filter(
+  const editingShopId = formState?.mode === 'edit' ? formState.member.shopId : null;
+  const shopOptions = useMemo(
+    () =>
+      shops
+        .filter((shop) => shop.isActive || shop.id === editingShopId)
+        .map((shop) => ({
+          value: shop.id,
+          label: shop.isActive ? shop.name : `${shop.name} (inactiva)`
+        })),
+    [shops, editingShopId]
+  );
+
+  const shiftOptions = useMemo(
+    () =>
+      shifts.map((shift) => ({
+        value: shift.id,
+        label: `${getShiftLabel(shift.name)} (${formatShiftRange(shift.startTime, shift.endTime)})`
+      })),
+    [shifts]
+  );
+
+  /* ---------- Lista: filtro por rol, filtro por estado, búsqueda y paginación ---------- */
+
+  const rows: StaffRow[] = useMemo(
+    () =>
+      staff.map((member) => {
+        const shop = shops.find((item) => item.id === member.shopId);
+        const shift = shifts.find((item) => item.id === member.shiftId);
+        return {
+          ...member,
+          shopName: shop?.name ?? '—',
+          shiftLabel: shift ? `${getShiftLabel(shift.name)} (${formatShiftRange(shift.startTime, shift.endTime)})` : '—'
+        };
+      }),
+    [staff, shops, shifts]
+  );
+
+  const filteredStaff = rows.filter(
     (member) =>
       (roleFilter === STAFF_ROLE_FILTER_ALL || member.role === roleFilter) &&
-      matchesQuery([joinFullName(member), member.email, member.phone, formatPhone(member.phone)], search)
+      (statusFilter === STAFF_STATUS_FILTER_ACTIVE ? member.isActive : !member.isActive) &&
+      matchesQuery(
+        [
+          joinFullName(member),
+          member.email,
+          member.phone,
+          formatPhone(member.phone),
+          getGenderLabel(member.gender),
+          member.shopName,
+          member.shiftLabel
+        ],
+        search
+      )
   );
   const pageResult = paginate(filteredStaff, page);
+  const hasActiveCriteria =
+    search !== '' || roleFilter !== STAFF_ROLE_FILTER_ALL || statusFilter !== STAFF_STATUS_FILTER_ACTIVE;
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
@@ -105,11 +220,18 @@ export function ManagerStaffContainer() {
     setPage(1);
   };
 
-  /* ---------- Alta y edición ---------- */
+  const handleStatusFilterChange = (value: string) => {
+    setStatusFilter(value);
+    setPage(1);
+  };
+
+  /* ---------- Alta, reactivación y edición ---------- */
 
   const openCreate = () => {
     reset(EMPTY_VALUES);
     setServerError('');
+    setReactivatePassword('');
+    setReactivatePasswordError('');
     setFormState({ mode: 'create' });
   };
 
@@ -118,18 +240,76 @@ export function ManagerStaffContainer() {
       fullName: joinFullName(member),
       phone: formatPhone(member.phone),
       email: member.email ?? '',
+      birthDate: isoToDisplayDate(member.birthDate),
+      gender: member.gender,
       role: member.role,
       shopId: member.shopId,
       shiftId: member.shiftId,
       password: ''
     });
     setServerError('');
+    setReactivatePassword('');
+    setReactivatePasswordError('');
     setFormState({ mode: 'edit', member });
   };
 
   const closeForm = () => {
+    if (isReactivating) return;
     setFormState(null);
     setServerError('');
+    setReactivatePassword('');
+    setReactivatePasswordError('');
+  };
+
+  const handleReactivatePasswordChange = (value: string) => {
+    setReactivatePassword(value);
+    if (reactivatePasswordError) setReactivatePasswordError('');
+  };
+
+  const handleReactivate = async () => {
+    if (!inactiveEmailMatch) return;
+    setServerError('');
+    setReactivatePasswordError('');
+
+    if (inactiveEmailMatch.role === 'receptionist') {
+      if (!reactivatePassword) {
+        setReactivatePasswordError('Ingresa una nueva contraseña para reactivar al recepcionista.');
+        return;
+      }
+      if (reactivatePassword.length < 6) {
+        setReactivatePasswordError('La contraseña debe tener al menos 6 caracteres.');
+        return;
+      }
+    }
+
+    if (!token) {
+      setServerError('Tu sesión expiró. Inicia sesión de nuevo.');
+      return;
+    }
+
+    setIsReactivating(true);
+    try {
+      const reactivated = await reactivateStaff(
+        inactiveEmailMatch,
+        token,
+        inactiveEmailMatch.role === 'receptionist' ? reactivatePassword : undefined
+      );
+      setStaff((current) =>
+        current.map((member) => (member.id === reactivated.id ? reactivated : member))
+      );
+      setFormState(null);
+      setServerError('');
+      setReactivatePassword('');
+      setReactivatePasswordError('');
+      setToast({
+        message: `${joinFullName(reactivated)} fue reactivado correctamente.`,
+        type: 'success'
+      });
+    } catch (error) {
+      setServerError(getStaffErrorMessage(error, 'No se pudo reactivar al personal.'));
+    } finally {
+      setIsReactivating(false);
+    }
   };
 
   const onSubmit = async (values: StaffFormValues) => {
@@ -153,8 +333,10 @@ export function ManagerStaffContainer() {
 
     const payload: StaffPayload = {
       ...name,
-      email: values.email.trim() || null,
+      email: values.email.trim(),
       phone: normalizePhone(values.phone),
+      birthDate: displayToIsoDate(values.birthDate),
+      gender: values.gender,
       role: memberRole,
       shopId: values.shopId,
       shiftId: values.shiftId,
@@ -165,7 +347,9 @@ export function ManagerStaffContainer() {
       const saved = isEdit ? await updateStaff(formState.member.id, payload, token) : await createStaff(payload, token);
 
       setStaff((current) =>
-        isEdit ? current.map((member) => (member.id === saved.id ? saved : member)) : [saved, ...current]
+        isEdit || current.some((member) => member.id === saved.id)
+          ? current.map((member) => (member.id === saved.id ? saved : member))
+          : [saved, ...current]
       );
       closeForm();
       setToast({
@@ -174,7 +358,10 @@ export function ManagerStaffContainer() {
       });
     } catch (error) {
       setServerError(
-        getApiErrorMessage(error, isEdit ? 'No se pudo actualizar el personal.' : 'No se pudo registrar el personal.')
+        getStaffErrorMessage(
+          error,
+          isEdit ? 'No se pudo actualizar el personal.' : 'No se pudo registrar el personal.'
+        )
       );
     }
   };
@@ -183,7 +370,7 @@ export function ManagerStaffContainer() {
     void handleSubmit(onSubmit)(event);
   };
 
-  /* ---------- Baja ---------- */
+  /* ---------- Baja (borrado lógico) ---------- */
 
   const openDelete = (member: StaffMember) => {
     setDeleteError('');
@@ -209,11 +396,14 @@ export function ManagerStaffContainer() {
 
     try {
       await deleteStaff(deleteTarget, token);
-      setStaff((current) => current.filter((member) => member.id !== deleteTarget.id));
+      /* El backend realiza borrado lógico (deleted_at); se marca como inactivo en la tabla. */
+      setStaff((current) =>
+        current.map((member) => (member.id === deleteTarget.id ? { ...member, isActive: false } : member))
+      );
       setDeleteTarget(null);
-      setToast({ message: 'Personal eliminado correctamente.', type: 'success' });
+      setToast({ message: 'Personal dado de baja correctamente.', type: 'success' });
     } catch (error) {
-      setDeleteError(getApiErrorMessage(error, 'No se pudo eliminar al personal.'));
+      setDeleteError(getStaffErrorMessage(error, 'No se pudo eliminar al personal.'));
     } finally {
       setIsDeleting(false);
     }
@@ -232,34 +422,53 @@ export function ManagerStaffContainer() {
       (/^[\d\s-]+$/.test(value.trim()) && normalizePhone(value).length === 10) || 'Debe tener 10 dígitos.'
   });
 
-  // El correo solo es obligatorio para recepcionistas: los barberos no tienen cuenta.
   const emailRegister = register('email', {
-    validate: (value, formValues) => {
-      const email = value.trim();
-      if (!email) return formValues.role === 'receptionist' ? 'El correo es obligatorio.' : true;
-      return EMAIL_PATTERN.test(email) || 'El correo no es válido.';
+    required: 'El correo es obligatorio.',
+    validate: (value) => EMAIL_PATTERN.test(value.trim()) || 'El correo no es válido.'
+  });
+
+  const birthDateRegister = register('birthDate', {
+    required: 'La fecha de nacimiento es obligatoria.',
+    validate: (value) => {
+      if (!isValidDisplayDate(value)) return 'Usa el formato dd/mm/aaaa.';
+      const iso = displayToIsoDate(value);
+      if (iso > getTodayIso()) return 'La fecha de nacimiento no puede ser en el futuro.';
+      return iso >= '1900-01-01' || 'La fecha de nacimiento no es válida.';
     }
   });
 
+  const genderRegister = register('gender', { required: 'Selecciona un género.' });
   const roleRegister = register('role', { required: 'Selecciona un rol.' });
   const shopRegister = register('shopId', { required: 'Selecciona una sucursal.' });
   const shiftRegister = register('shiftId', { required: 'Selecciona un turno.' });
 
-  // El campo solo se muestra (y por tanto solo se valida) al dar de alta a un recepcionista.
+  // La contraseña solo se pide al dar de alta a un recepcionista; para barberos y en modo edición se ignora.
   const passwordRegister = register('password', {
-    required: 'La contraseña es obligatoria.',
-    minLength: { value: 6, message: 'Debe tener al menos 6 caracteres.' }
+    validate: (value, formValues) => {
+      if (formState?.mode !== 'create' || formValues.role !== 'receptionist') return true;
+      if (!value) return 'La contraseña es obligatoria.';
+      return value.length >= 6 || 'Debe tener al menos 6 caracteres.';
+    }
   });
 
   return (
     <>
       <ManagerPageHeader title="Personal" subtitle="Directorio y administración del personal.">
         <FilterMenu
+          label="Rol"
           title="Rol"
           options={STAFF_ROLE_FILTER_OPTIONS}
           value={roleFilter}
           defaultValue={STAFF_ROLE_FILTER_ALL}
           onChange={handleRoleFilterChange}
+        />
+        <FilterMenu
+          label="Estado"
+          title="Estado"
+          options={STAFF_STATUS_FILTER_OPTIONS}
+          value={statusFilter}
+          defaultValue={STAFF_STATUS_FILTER_ACTIVE}
+          onChange={handleStatusFilterChange}
         />
         <Button
           type="button"
@@ -275,7 +484,7 @@ export function ManagerStaffContainer() {
         <SearchBar
           value={search}
           onChange={handleSearchChange}
-          placeholder="Buscar personal por nombre, teléfono o correo..."
+          placeholder="Buscar personal por nombre, teléfono, correo, sucursal o turno..."
           ariaLabel="Buscar personal"
         />
       </div>
@@ -287,13 +496,15 @@ export function ManagerStaffContainer() {
           isLoading={isLoading}
           error={loadError}
           emptyMessage={
-            search || roleFilter !== STAFF_ROLE_FILTER_ALL
+            hasActiveCriteria
               ? 'No se encontró personal con esos criterios.'
               : 'Aún no hay personal registrado.'
           }
-          onRetry={() => void loadStaff()}
+          onRetry={() => void loadData()}
           onEdit={openEdit}
           onDelete={openDelete}
+          canEdit={(member) => member.isActive}
+          canDelete={(member) => member.isActive}
           pagination={{
             from: pageResult.from,
             to: pageResult.to,
@@ -312,15 +523,23 @@ export function ManagerStaffContainer() {
         onSubmit={handleFormSubmit}
         mode={formState?.mode ?? 'create'}
         role={role}
-        shopOptions={MOCK_SHOP_OPTIONS}
-        shiftOptions={MOCK_SHIFT_OPTIONS}
+        shopOptions={shopOptions}
+        shiftOptions={shiftOptions}
         fullNameRegister={fullNameRegister}
         phoneRegister={phoneRegister}
         emailRegister={emailRegister}
+        birthDateRegister={birthDateRegister}
+        genderRegister={genderRegister}
         roleRegister={roleRegister}
         shopRegister={shopRegister}
         shiftRegister={shiftRegister}
         passwordRegister={passwordRegister}
+        inactiveEmailMatch={inactiveEmailMatch}
+        onReactivate={() => void handleReactivate()}
+        isReactivating={isReactivating}
+        reactivatePassword={reactivatePassword}
+        onReactivatePasswordChange={handleReactivatePasswordChange}
+        reactivatePasswordError={reactivatePasswordError}
         errors={errors}
         serverError={serverError}
         isSubmitting={isSubmitting}
@@ -330,17 +549,18 @@ export function ManagerStaffContainer() {
         isOpen={deleteTarget !== null}
         onClose={closeDelete}
         onConfirm={() => void confirmDelete()}
-        title="¿Eliminar personal del sistema?"
+        title="¿Dar de baja al personal?"
         description={
           deleteTarget ? (
             <>
-              Esta acción dará de baja a <strong className="text-[var(--text-h)]">{joinFullName(deleteTarget)}</strong>.
+              Esta acción dará de baja a <strong className="text-[var(--text-h)]">{joinFullName(deleteTarget)}</strong>{' '}
+              y su estado pasará a inactivo.
               <br />
-              Dejará de aparecer en el directorio del personal.
+              Podrás reactivarlo después desde Nuevo Personal escribiendo su correo electrónico.
             </>
           ) : null
         }
-        confirmLabel="Sí, eliminar"
+        confirmLabel="Sí, dar de baja"
         serverError={deleteError}
         isSubmitting={isDeleting}
       />
