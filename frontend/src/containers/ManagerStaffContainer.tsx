@@ -113,13 +113,17 @@ export function ManagerStaffContainer() {
   const role = watch('role');
   const watchedEmail = watch('email');
 
-  /* Detecta en tiempo real si el correo escrito pertenece a un integrante dado de baja. */
+  /* Detecta en tiempo real si el correo escrito pertenece a un integrante dado de baja del rol elegido. */
   const inactiveEmailMatch = useMemo(() => {
     if (formState?.mode !== 'create') return null;
     const normalized = watchedEmail.trim().toLowerCase();
     if (!normalized) return null;
-    return staff.find((member) => !member.isActive && member.email?.toLowerCase() === normalized) ?? null;
-  }, [formState, watchedEmail, staff]);
+    return (
+      staff.find(
+        (member) => !member.isActive && member.role === role && member.email?.toLowerCase() === normalized
+      ) ?? null
+    );
+  }, [formState, watchedEmail, staff, role]);
 
   useEffect(() => {
     setReactivatePassword('');
@@ -134,7 +138,7 @@ export function ManagerStaffContainer() {
 
     try {
       const [loadedShops, loadedShifts] = await Promise.all([getShops(token, true), getShifts(token)]);
-      const loadedStaff = await getStaff(token, true, loadedShops);
+      const loadedStaff = await getStaff(token, loadedShops);
 
       setShops(loadedShops);
       setShifts(loadedShifts);

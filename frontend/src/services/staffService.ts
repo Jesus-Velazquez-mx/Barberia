@@ -1,5 +1,4 @@
 import { apiClient } from './apiClient';
-import { getShops } from './shopService';
 import type { Shop } from '../types/shop';
 import type { StaffMember, StaffPayload } from '../types/staffType';
 
@@ -65,18 +64,25 @@ const toReceptionistMember = (receptionist: ReceptionistApi): StaffMember => ({
     isActive: receptionist.deletedAt === null
 });
 
+/* Campos comunes que se envían al backend al crear o actualizar (sin rol ni contraseña). */
+const toStaffBody = ({ firstName, lastName, email, phone, birthDate, gender, shopId, shiftId }: StaffPayload) => ({
+    firstName,
+    lastName,
+    email,
+    phone,
+    birthDate,
+    gender,
+    shopId,
+    shiftId
+});
+
 /* ---------- Consultas ---------- */
 
-/* Obtiene los barberos y recepcionistas de una sucursal (incluyendo dados de baja si includeInactive = true). */
-export const getStaffByShop = async (
-    shopId: string,
-    token: string,
-    includeInactive = true
-): Promise<StaffMember[]> => {
-    const query = includeInactive ? '?includeInactive=true' : '';
+/* Barberos y recepcionistas de una sucursal, incluidos los dados de baja. */
+const getStaffByShop = async (shopId: string, token: string): Promise<StaffMember[]> => {
     const [barbersRes, receptionistsRes] = await Promise.all([
-        apiClient.get<BarberApi[]>(`/shops/${shopId}/barbers${query}`, authHeaders(token)),
-        apiClient.get<ReceptionistApi[]>(`/shops/${shopId}/receptionists${query}`, authHeaders(token))
+        apiClient.get<BarberApi[]>(`/shops/${shopId}/barbers?includeInactive=true`, authHeaders(token)),
+        apiClient.get<ReceptionistApi[]>(`/shops/${shopId}/receptionists?includeInactive=true`, authHeaders(token))
     ]);
 
     return [
@@ -85,53 +91,28 @@ export const getStaffByShop = async (
     ];
 };
 
-/* Obtiene todo el personal de las sucursales indicadas (o de todas las que administra el manager si no se pasan). */
-export const getStaff = async (
-    token: string,
-    includeInactive = true,
-    shops?: Shop[]
-): Promise<StaffMember[]> => {
-    const targetShops = shops ?? (await getShops(token, true));
-    if (targetShops.length === 0) return [];
+/* Personal de las sucursales indicadas. Si una sucursal falla se omite; solo falla si fallan todas. */
+export const getStaff = async (token: string, shops: Shop[]): Promise<StaffMember[]> => {
+    if (shops.length === 0) return [];
 
-    const byShop = await Promise.all(targetShops.map((shop) => getStaffByShop(shop.id, token, includeInactive)));
-    return byShop.flat();
+    const results = await Promise.allSettled(shops.map((shop) => getStaffByShop(shop.id, token)));
+    const loaded = results.filter((result) => result.status === 'fulfilled');
+    if (loaded.length === 0) throw (results[0] as PromiseRejectedResult).reason;
+
+    return loaded.flatMap((result) => result.value);
 };
 
 /* ---------- Escritura ---------- */
 
 export const createStaff = async (payload: StaffPayload, token: string): Promise<StaffMember> => {
     if (payload.role === 'barber') {
-        const { data } = await apiClient.post<BarberApi>(
-            '/barbers',
-            {
-                firstName: payload.firstName,
-                lastName: payload.lastName,
-                email: payload.email,
-                phone: payload.phone,
-                birthDate: payload.birthDate,
-                gender: payload.gender,
-                shopId: payload.shopId,
-                shiftId: payload.shiftId
-            },
-            authHeaders(token)
-        );
+        const { data } = await apiClient.post<BarberApi>('/barbers', toStaffBody(payload), authHeaders(token));
         return toBarberMember(data);
     }
 
     const { data } = await apiClient.post<ReceptionistApi>(
         '/receptionists',
-        {
-            firstName: payload.firstName,
-            lastName: payload.lastName,
-            email: payload.email,
-            phone: payload.phone,
-            birthDate: payload.birthDate,
-            gender: payload.gender,
-            ...(payload.password && { password: payload.password }),
-            shopId: payload.shopId,
-            shiftId: payload.shiftId
-        },
+        { ...toStaffBody(payload), ...(payload.password && { password: payload.password }) },
         authHeaders(token)
     );
     return toReceptionistMember(data);
@@ -160,16 +141,7 @@ export const reactivateStaff = async (
     );
 
 export const updateStaff = async (id: string, payload: StaffPayload, token: string): Promise<StaffMember> => {
-    const body = {
-        firstName: payload.firstName,
-        lastName: payload.lastName,
-        email: payload.email,
-        phone: payload.phone,
-        birthDate: payload.birthDate,
-        gender: payload.gender,
-        shopId: payload.shopId,
-        shiftId: payload.shiftId
-    };
+    const body = toStaffBody(payload);
 
     if (payload.role === 'barber') {
         const { data } = await apiClient.put<BarberApi>(`/barbers/${id}`, body, authHeaders(token));
