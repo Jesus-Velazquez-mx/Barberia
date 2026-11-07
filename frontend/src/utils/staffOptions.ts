@@ -12,11 +12,19 @@ export const STAFF_ROLE_OPTIONS: SelectOption[] = [
     { value: 'receptionist', label: STAFF_ROLE_LABELS.receptionist }
 ];
 
-/* Opciones del menú de filtros de la lista de personal. */
+/* Opciones del menú de filtros de rol de la lista de personal. */
 export const STAFF_ROLE_FILTER_ALL = 'all';
 
 export const STAFF_ROLE_FILTER_OPTIONS = [
     { value: STAFF_ROLE_FILTER_ALL, label: 'Todos' },
     { value: 'barber', label: 'Barberos' },
     { value: 'receptionist', label: 'Recepcionistas' }
+];
+
+/* Opciones del menú de filtro de estado: por defecto muestra los activos y permite cambiar a inactivos. */
+export const STAFF_STATUS_FILTER_ACTIVE = 'active';
+
+export const STAFF_STATUS_FILTER_OPTIONS = [
+    { value: STAFF_STATUS_FILTER_ACTIVE, label: 'Activos' },
+    { value: 'inactive', label: 'Inactivos' }
 ];
