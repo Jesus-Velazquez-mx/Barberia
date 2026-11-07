@@ -12,7 +12,7 @@ import { Toast } from '../components/common/ToastComponent';
 import { useAuth } from '../context/AuthContext';
 import { getShifts } from '../services/shiftService';
 import { getShops } from '../services/shopService';
-import { createStaff, deleteStaff, getStaffByShop, reactivateStaff, updateStaff } from '../services/staffService';
+import { createStaff, deleteStaff, getStaff, reactivateStaff, updateStaff } from '../services/staffService';
 import { ApiError } from '../types/api';
 import type { Shift } from '../types/shiftType';
 import type { Shop } from '../types/shop';
@@ -93,6 +93,8 @@ export function ManagerStaffContainer() {
   const [formState, setFormState] = useState<FormState>(null);
   const [serverError, setServerError] = useState('');
   const [isReactivating, setIsReactivating] = useState(false);
+  const [reactivatePassword, setReactivatePassword] = useState('');
+  const [reactivatePasswordError, setReactivatePasswordError] = useState('');
 
   const [deleteTarget, setDeleteTarget] = useState<StaffMember | null>(null);
   const [deleteError, setDeleteError] = useState('');
@@ -119,6 +121,11 @@ export function ManagerStaffContainer() {
     return staff.find((member) => !member.isActive && member.email?.toLowerCase() === normalized) ?? null;
   }, [formState, watchedEmail, staff]);
 
+  useEffect(() => {
+    setReactivatePassword('');
+    setReactivatePasswordError('');
+  }, [inactiveEmailMatch?.id]);
+
   const loadData = useCallback(async () => {
     if (!token) return;
 
@@ -127,13 +134,11 @@ export function ManagerStaffContainer() {
 
     try {
       const [loadedShops, loadedShifts] = await Promise.all([getShops(token, true), getShifts(token)]);
-      const staffByShop = await Promise.all(
-        loadedShops.map((shop) => getStaffByShop(shop.id, token, true))
-      );
+      const loadedStaff = await getStaff(token, true, loadedShops);
 
       setShops(loadedShops);
       setShifts(loadedShifts);
-      setStaff(staffByShop.flat());
+      setStaff(loadedStaff);
     } catch (error) {
       setLoadError(getStaffErrorMessage(error, 'No se pudo cargar el personal. Intenta de nuevo.'));
     } finally {
@@ -225,6 +230,8 @@ export function ManagerStaffContainer() {
   const openCreate = () => {
     reset(EMPTY_VALUES);
     setServerError('');
+    setReactivatePassword('');
+    setReactivatePasswordError('');
     setFormState({ mode: 'create' });
   };
 
@@ -241,6 +248,8 @@ export function ManagerStaffContainer() {
       password: ''
     });
     setServerError('');
+    setReactivatePassword('');
+    setReactivatePasswordError('');
     setFormState({ mode: 'edit', member });
   };
 
@@ -248,11 +257,30 @@ export function ManagerStaffContainer() {
     if (isReactivating) return;
     setFormState(null);
     setServerError('');
+    setReactivatePassword('');
+    setReactivatePasswordError('');
+  };
+
+  const handleReactivatePasswordChange = (value: string) => {
+    setReactivatePassword(value);
+    if (reactivatePasswordError) setReactivatePasswordError('');
   };
 
   const handleReactivate = async () => {
     if (!inactiveEmailMatch) return;
     setServerError('');
+    setReactivatePasswordError('');
+
+    if (inactiveEmailMatch.role === 'receptionist') {
+      if (!reactivatePassword) {
+        setReactivatePasswordError('Ingresa una nueva contraseña para reactivar al recepcionista.');
+        return;
+      }
+      if (reactivatePassword.length < 6) {
+        setReactivatePasswordError('La contraseña debe tener al menos 6 caracteres.');
+        return;
+      }
+    }
 
     if (!token) {
       setServerError('Tu sesión expiró. Inicia sesión de nuevo.');
@@ -261,12 +289,18 @@ export function ManagerStaffContainer() {
 
     setIsReactivating(true);
     try {
-      const reactivated = await reactivateStaff(inactiveEmailMatch, token);
+      const reactivated = await reactivateStaff(
+        inactiveEmailMatch,
+        token,
+        inactiveEmailMatch.role === 'receptionist' ? reactivatePassword : undefined
+      );
       setStaff((current) =>
         current.map((member) => (member.id === reactivated.id ? reactivated : member))
       );
       setFormState(null);
       setServerError('');
+      setReactivatePassword('');
+      setReactivatePasswordError('');
       setToast({
         message: `${joinFullName(reactivated)} fue reactivado correctamente.`,
         type: 'success'
@@ -469,6 +503,7 @@ export function ManagerStaffContainer() {
           onRetry={() => void loadData()}
           onEdit={openEdit}
           onDelete={openDelete}
+          canEdit={(member) => member.isActive}
           canDelete={(member) => member.isActive}
           pagination={{
             from: pageResult.from,
@@ -502,6 +537,9 @@ export function ManagerStaffContainer() {
         inactiveEmailMatch={inactiveEmailMatch}
         onReactivate={() => void handleReactivate()}
         isReactivating={isReactivating}
+        reactivatePassword={reactivatePassword}
+        onReactivatePasswordChange={handleReactivatePasswordChange}
+        reactivatePasswordError={reactivatePasswordError}
         errors={errors}
         serverError={serverError}
         isSubmitting={isSubmitting}

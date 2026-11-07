@@ -32,6 +32,9 @@ interface StaffFormModalProps {
   inactiveEmailMatch?: StaffMember | null;
   onReactivate?: () => void;
   isReactivating?: boolean;
+  reactivatePassword?: string;
+  onReactivatePasswordChange?: (value: string) => void;
+  reactivatePasswordError?: string;
   errors: FieldErrors<StaffFormValues>;
   serverError: string;
   isSubmitting: boolean;
@@ -57,6 +60,9 @@ export function StaffFormModal({
   inactiveEmailMatch,
   onReactivate,
   isReactivating = false,
+  reactivatePassword = '',
+  onReactivatePasswordChange,
+  reactivatePasswordError = '',
   errors,
   serverError,
   isSubmitting
@@ -112,26 +118,66 @@ export function StaffFormModal({
       {inactiveEmailMatch && onReactivate && (
         <div
           role="alert"
-          className="flex flex-col gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-[0.85rem] text-amber-200 sm:flex-row sm:items-center sm:justify-between"
+          className="flex flex-col gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-[0.85rem] text-amber-200"
         >
-          <div>
-            <p className="m-0 font-semibold text-amber-300">
-              Este correo ya está registrado a nombre de {joinFullName(inactiveEmailMatch)} (
-              {STAFF_ROLE_LABELS[inactiveEmailMatch.role].toLowerCase()} inactivo).
-            </p>
-            <p className="m-0 mt-0.5 text-amber-200/90">
-              ¿Te gustaría reactivarlo sin necesidad de llenar el resto del formulario?
-            </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="m-0 font-semibold text-amber-300">
+                Este correo ya está registrado a nombre de {joinFullName(inactiveEmailMatch)} (
+                {STAFF_ROLE_LABELS[inactiveEmailMatch.role].toLowerCase()} inactivo).
+              </p>
+              <p className="m-0 mt-0.5 text-amber-200/90">
+                {inactiveEmailMatch.role === 'receptionist'
+                  ? '¿Te gustaría reactivarlo? Asigna una nueva contraseña para reactivar su cuenta:'
+                  : '¿Te gustaría reactivarlo sin necesidad de llenar el resto del formulario?'}
+              </p>
+            </div>
+            {inactiveEmailMatch.role === 'barber' && (
+              <Button
+                type="button"
+                onClick={onReactivate}
+                isLoading={isReactivating}
+                loadingText="Reactivando..."
+                className="!h-9 shrink-0 !px-4 !text-xs !font-semibold !normal-case"
+              >
+                Sí, reactivar
+              </Button>
+            )}
           </div>
-          <Button
-            type="button"
-            onClick={onReactivate}
-            isLoading={isReactivating}
-            loadingText="Reactivando..."
-            className="!h-9 shrink-0 !px-4 !text-xs !font-semibold !normal-case"
-          >
-            Sí, reactivar
-          </Button>
+
+          {inactiveEmailMatch.role === 'receptionist' && (
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+              <div className="flex-1">
+                <input
+                  id="reactivateReceptionistPassword"
+                  type="password"
+                  value={reactivatePassword}
+                  onChange={(event) => onReactivatePasswordChange?.(event.target.value)}
+                  placeholder="Nueva contraseña (mínimo 6 caracteres)"
+                  autoComplete="new-password"
+                  aria-label="Nueva contraseña para reactivar recepcionista"
+                  aria-invalid={Boolean(reactivatePasswordError)}
+                  className={`h-9 w-full rounded-lg border bg-[#1A1A1A] px-3 text-sm text-[var(--text-h)] placeholder:text-white/40 focus:outline-none ${
+                    reactivatePasswordError
+                      ? 'border-[#ff4d4d] focus:border-[#ff4d4d]'
+                      : 'border-white/15 focus:border-[var(--accent)]'
+                  }`}
+                />
+                {reactivatePasswordError && (
+                  <p className="m-0 mt-1 text-xs font-medium text-[#ff4d4d]">{reactivatePasswordError}</p>
+                )}
+              </div>
+              <Button
+                type="button"
+                onClick={onReactivate}
+                isLoading={isReactivating}
+                loadingText="Reactivando..."
+                className="!h-9 shrink-0 !px-4 !text-xs !font-semibold !normal-case"
+              >
+                Sí, reactivar
+              </Button>
+            </div>
+          )}
         </div>
       )}
 

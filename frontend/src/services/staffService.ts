@@ -1,5 +1,6 @@
 import { apiClient } from './apiClient';
 import { getShops } from './shopService';
+import type { Shop } from '../types/shop';
 import type { StaffMember, StaffPayload } from '../types/staffType';
 
 /* ---------- Tipos de la API ---------- */
@@ -84,12 +85,16 @@ export const getStaffByShop = async (
     ];
 };
 
-/* Obtiene todo el personal de todas las sucursales que administra el manager. */
-export const getStaff = async (token: string, includeInactive = true): Promise<StaffMember[]> => {
-    const shops = await getShops(token, true);
-    if (shops.length === 0) return [];
+/* Obtiene todo el personal de las sucursales indicadas (o de todas las que administra el manager si no se pasan). */
+export const getStaff = async (
+    token: string,
+    includeInactive = true,
+    shops?: Shop[]
+): Promise<StaffMember[]> => {
+    const targetShops = shops ?? (await getShops(token, true));
+    if (targetShops.length === 0) return [];
 
-    const byShop = await Promise.all(shops.map((shop) => getStaffByShop(shop.id, token, includeInactive)));
+    const byShop = await Promise.all(targetShops.map((shop) => getStaffByShop(shop.id, token, includeInactive)));
     return byShop.flat();
 };
 
@@ -132,8 +137,12 @@ export const createStaff = async (payload: StaffPayload, token: string): Promise
     return toReceptionistMember(data);
 };
 
-/* Reactiva un barbero o recepcionista dado de baja conservando sus datos actuales. */
-export const reactivateStaff = async (member: StaffMember, token: string): Promise<StaffMember> =>
+/* Reactiva un barbero o recepcionista dado de baja conservando sus datos actuales (y nueva contraseña para recepcionista). */
+export const reactivateStaff = async (
+    member: StaffMember,
+    token: string,
+    password?: string
+): Promise<StaffMember> =>
     createStaff(
         {
             firstName: member.firstName,
@@ -144,7 +153,8 @@ export const reactivateStaff = async (member: StaffMember, token: string): Promi
             gender: member.gender,
             role: member.role,
             shopId: member.shopId,
-            shiftId: member.shiftId
+            shiftId: member.shiftId,
+            ...(password && { password })
         },
         token
     );
