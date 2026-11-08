@@ -5,6 +5,8 @@ export interface ClientRecord {
     lastName: string;
     email: string;
     phone: string | null;
+    birthDate: string;
+    gender: string;
     completedServicesCount: number;
 }
 
@@ -14,6 +16,9 @@ export interface ClientFormValues {
     fullName: string;
     phone: string;
     email: string;
+    birthDate: string;
+    gender: string;
+    password: string;
 }
 
 /* Lo que se envía al servicio. */
@@ -22,4 +27,7 @@ export interface ClientPayload {
     lastName: string;
     email: string;
     phone: string;
+    birthDate: string;
+    gender: string;
+    password?: string;
 }

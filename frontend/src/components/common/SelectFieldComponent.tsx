@@ -15,16 +15,20 @@ interface SelectFieldProps {
 }
 
 export function SelectField({ id, label, options, error, disabled, registerProps }: SelectFieldProps) {
+  const borderClasses = error
+    ? 'border-[#ff4d4d] focus:border-[#ff4d4d] focus:shadow-[0_0_0_2px_rgba(255,77,77,0.2)]'
+    : 'border-[#333333] focus:border-[var(--accent)]';
+
   return (
-    <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="text-[0.85rem] font-semibold text-[var(--labels)]">
+    <div className="flex w-full flex-col gap-2">
+      <label htmlFor={id} className="w-full text-left text-[0.9rem] font-semibold text-[var(--labels)]">
         {label}
       </label>
 
-      <div className="relative">
+      <div className="relative w-full">
         <select
           id={id}
-          className="w-full appearance-none rounded-lg border border-white/10 bg-black/20 px-3.5 py-2.5 pr-9 text-[var(--text-h)] outline-none focus:border-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60"
+          className={`w-full box-border appearance-none rounded-lg border bg-[#121212] p-[10px] pr-9 text-[13px] text-[var(--text-h)] outline-none disabled:cursor-not-allowed disabled:opacity-60 ${borderClasses}`}
           aria-invalid={Boolean(error)}
           disabled={disabled}
           {...registerProps}
@@ -46,9 +50,9 @@ export function SelectField({ id, label, options, error, disabled, registerProps
       </div>
 
       {error && (
-        <p className="text-[0.8rem] text-[#ff4d4d]" role="alert">
+        <span className="self-start text-[0.8rem] font-medium text-[#ff4d4d]" role="alert">
           {error}
-        </p>
+        </span>
       )}
     </div>
   );

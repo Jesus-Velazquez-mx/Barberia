@@ -10,8 +10,11 @@ import { SearchBar } from '../components/common/SearchBarComponent';
 import { Toast } from '../components/common/ToastComponent';
 import { useAuth } from '../context/AuthContext';
 import { createClient, deleteClient, getClients, updateClient } from '../services/clientService';
+import { ApiError } from '../types/api';
 import type { ClientFormValues, ClientPayload, ClientRecord } from '../types/clientType';
 import { getApiErrorMessage } from '../utils/apiErrorUtils';
+import { displayToIsoDate, getTodayIso, isoToDisplayDate, isValidDisplayDate } from '../utils/dateFormat';
+import { getGenderLabel } from '../utils/genderOptions';
 import { matchesQuery, paginate } from '../utils/listUtils';
 import { formatPhone, joinFullName, normalizePhone, resolveNameParts, splitFullName } from '../utils/personUtils';
 
@@ -22,9 +25,31 @@ interface ToastState {
   type: 'success' | 'error';
 }
 
-const EMPTY_VALUES: ClientFormValues = { fullName: '', phone: '', email: '' };
+const EMPTY_VALUES: ClientFormValues = {
+  fullName: '',
+  phone: '',
+  email: '',
+  birthDate: '',
+  gender: '',
+  password: ''
+};
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/;
+
+/* Traduce al español los mensajes de error esperados del backend de clientes. */
+const getClientErrorMessage = (error: unknown, fallback: string): string => {
+  if (error instanceof ApiError) {
+    const msg = error.message;
+    if (error.status === 409) {
+      if (/phone/i.test(msg)) return 'Este teléfono ya está registrado.';
+      if (/email/i.test(msg)) return 'Este correo electrónico ya está registrado.';
+    }
+    if (error.status === 404) return 'No encontramos al cliente.';
+    if (error.status === 403) return 'No tienes permiso para realizar esta acción.';
+    if (error.status === 0) return 'No se pudo conectar con el servidor. Intenta de nuevo.';
+  }
+  return getApiErrorMessage(error, fallback);
+};
 
 export function ManagerClientsContainer() {
   const { token } = useAuth();
@@ -62,7 +87,7 @@ export function ManagerClientsContainer() {
     try {
       setClients(await getClients(token));
     } catch (error) {
-      setLoadError(getApiErrorMessage(error, 'No se pudieron cargar los clientes. Intenta de nuevo.'));
+      setLoadError(getClientErrorMessage(error, 'No se pudieron cargar los clientes. Intenta de nuevo.'));
     } finally {
       setIsLoading(false);
     }
@@ -75,7 +100,16 @@ export function ManagerClientsContainer() {
   /* ---------- Lista: búsqueda y paginación ---------- */
 
   const filteredClients = clients.filter((client) =>
-    matchesQuery([joinFullName(client), client.email, client.phone, formatPhone(client.phone)], search)
+    matchesQuery(
+      [
+        joinFullName(client),
+        client.email,
+        client.phone,
+        formatPhone(client.phone),
+        getGenderLabel(client.gender)
+      ],
+      search
+    )
   );
   const pageResult = paginate(filteredClients, page);
 
@@ -96,7 +130,10 @@ export function ManagerClientsContainer() {
     reset({
       fullName: joinFullName(client),
       phone: formatPhone(client.phone),
-      email: client.email
+      email: client.email,
+      birthDate: isoToDisplayDate(client.birthDate),
+      gender: client.gender,
+      password: ''
     });
     setServerError('');
     setFormState({ mode: 'edit', client });
@@ -126,7 +163,10 @@ export function ManagerClientsContainer() {
     const payload: ClientPayload = {
       ...name,
       email: values.email.trim(),
-      phone: normalizePhone(values.phone)
+      phone: normalizePhone(values.phone),
+      birthDate: displayToIsoDate(values.birthDate),
+      gender: values.gender,
+      ...(!isEdit && { password: values.password })
     };
 
     try {
@@ -144,7 +184,7 @@ export function ManagerClientsContainer() {
       });
     } catch (error) {
       setServerError(
-        getApiErrorMessage(error, isEdit ? 'No se pudo actualizar el cliente.' : 'No se pudo registrar el cliente.')
+        getClientErrorMessage(error, isEdit ? 'No se pudo actualizar el cliente.' : 'No se pudo registrar el cliente.')
       );
     }
   };
@@ -183,7 +223,7 @@ export function ManagerClientsContainer() {
       setDeleteTarget(null);
       setToast({ message: 'Cliente eliminado correctamente.', type: 'success' });
     } catch (error) {
-      setDeleteError(getApiErrorMessage(error, 'No se pudo eliminar al cliente.'));
+      setDeleteError(getClientErrorMessage(error, 'No se pudo eliminar al cliente.'));
     } finally {
       setIsDeleting(false);
     }
@@ -193,7 +233,14 @@ export function ManagerClientsContainer() {
 
   const fullNameRegister = register('fullName', {
     required: 'El nombre es obligatorio.',
-    validate: (value) => splitFullName(value) !== null || 'Ingresa nombre y apellido.'
+    validate: (value) => {
+      const parts = splitFullName(value);
+      if (!parts) return 'Ingresa nombre y apellido.';
+      if (parts.firstName.length < 2 || parts.lastName.length < 2) {
+        return 'Nombre y apellido deben tener al menos 2 caracteres.';
+      }
+      return true;
+    }
   });
 
   const phoneRegister = register('phone', {
@@ -205,6 +252,27 @@ export function ManagerClientsContainer() {
   const emailRegister = register('email', {
     required: 'El correo es obligatorio.',
     validate: (value) => EMAIL_PATTERN.test(value.trim()) || 'El correo no es válido.'
+  });
+
+  const birthDateRegister = register('birthDate', {
+    required: 'La fecha de nacimiento es obligatoria.',
+    validate: (value) => {
+      if (!isValidDisplayDate(value)) return 'Usa el formato dd/mm/aaaa.';
+      const iso = displayToIsoDate(value);
+      if (iso > getTodayIso()) return 'La fecha de nacimiento no puede ser en el futuro.';
+      return iso >= '1900-01-01' || 'La fecha de nacimiento no es válida.';
+    }
+  });
+
+  const genderRegister = register('gender', { required: 'Selecciona un género.' });
+
+  // La contraseña solo se pide al dar de alta al cliente; en modo edición se ignora.
+  const passwordRegister = register('password', {
+    validate: (value) => {
+      if (formState?.mode !== 'create') return true;
+      if (!value) return 'La contraseña es obligatoria.';
+      return value.length >= 6 || 'Debe tener al menos 6 caracteres.';
+    }
   });
 
   return (
@@ -224,7 +292,7 @@ export function ManagerClientsContainer() {
         <SearchBar
           value={search}
           onChange={handleSearchChange}
-          placeholder="Buscar cliente por nombre, teléfono o correo..."
+          placeholder="Buscar cliente por nombre, teléfono, correo o género..."
           ariaLabel="Buscar cliente"
         />
       </div>
@@ -259,6 +327,9 @@ export function ManagerClientsContainer() {
         fullNameRegister={fullNameRegister}
         phoneRegister={phoneRegister}
         emailRegister={emailRegister}
+        birthDateRegister={birthDateRegister}
+        genderRegister={genderRegister}
+        passwordRegister={passwordRegister}
         errors={errors}
         serverError={serverError}
         isSubmitting={isSubmitting}
@@ -270,11 +341,14 @@ export function ManagerClientsContainer() {
         onConfirm={() => void confirmDelete()}
         title="¿Eliminar cliente permanentemente?"
         description={
-          <>
-            Esta acción no se puede deshacer.
-            <br />
-            Se eliminarán los datos de acceso, historial de servicios agendados y puntos acumulados.
-          </>
+          deleteTarget ? (
+            <>
+              Esta acción eliminará permanentemente a{' '}
+              <strong className="text-[var(--text-h)]">{joinFullName(deleteTarget)}</strong> y no se puede deshacer.
+              <br />
+              Se eliminarán sus datos de acceso y puntos acumulados.
+            </>
+          ) : null
         }
         confirmLabel="Sí, eliminar cuenta"
         serverError={deleteError}
