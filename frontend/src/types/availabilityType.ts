@@ -19,6 +19,10 @@ export interface GetAvailabilityParams {
     shopId: string;
     date: string; // YYYY-MM-DD
     serviceIds: string[]; // UUIDs, la duración es la suma de los servicios
+    /** Cita que se está editando: no cuenta como ocupada, para que no choque consigo misma al reagendar. */
+    excludeAppointmentId?: string;
+    /** Token JWT (requerido por el backend cuando se envía excludeAppointmentId). */
+    token?: string;
 }
 
 /* Estado de un día en el calendario:
