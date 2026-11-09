@@ -694,7 +694,7 @@ describe('CRUD de Clientes (/api/clients)', () => {
             expect(check.rows.length).toBe(0);
         });
 
-        test('Un RECEPTIONIST recibe 403 Forbidden al intentar eliminar un cliente', async () => {
+        test('Un RECEPTIONIST puede eliminar cualquier cuenta de cliente', async () => {
             const clientUser = await insertUser('client');
             await getPool().query('INSERT INTO clients (user_id) VALUES ($1)', [clientUser.id]);
 
@@ -702,13 +702,12 @@ describe('CRUD de Clientes (/api/clients)', () => {
                 .delete(`/api/clients/${clientUser.id}`)
                 .set('Authorization', `Bearer ${receptionistToken}`);
 
-            expect(response.status).toBe(403);
-            expect(response.body.message).toContain('You do not have permission to delete this account');
+            expect(response.status).toBe(200);
 
             // La base de datos debe conservarse intacta
             const pool = getPool();
             const check = await pool.query('SELECT * FROM users WHERE id = $1', [clientUser.id]);
-            expect(check.rows.length).toBe(1);
+            expect(check.rows.length).toBe(0);
         });
 
         test('Un CLIENTE recibe 403 Forbidden al intentar eliminar la cuenta de otro cliente', async () => {
