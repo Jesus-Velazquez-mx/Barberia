@@ -16,7 +16,7 @@ export interface PublicBarberResponse {
 export interface BarberResponse extends PublicBarberResponse {
     email: string | null;
     phone: string | null;
-    birthDate: Date;
+    birthDate: string;
     gender: string;
     isAcceptingBookings: boolean;
     deletedAt: Date | null;

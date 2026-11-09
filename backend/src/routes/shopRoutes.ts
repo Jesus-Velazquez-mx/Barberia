@@ -292,7 +292,7 @@ router.delete('/shops/:id', remove);
  *                       bio: { type: string, nullable: true }
  *                       email: { type: string, format: email, nullable: true, description: Solo personal }
  *                       phone: { type: string, nullable: true, description: Solo personal }
- *                       birthDate: { type: string, format: date-time, description: Solo personal }
+ *                       birthDate: { type: string, format: date, description: Solo personal }
  *                       gender: { type: string, description: Solo personal }
  *                       isAcceptingBookings: { type: boolean, description: Solo personal }
  *                       deletedAt: { type: string, format: date-time, nullable: true, description: Solo personal }
@@ -355,7 +355,7 @@ router.get('/shops/:id/barbers', listByShop);
  *                       lastName: { type: string, example: "Katsuragi" }
  *                       email: { type: string, format: email }
  *                       phone: { type: string, nullable: true }
- *                       birthDate: { type: string, format: date-time }
+ *                       birthDate: { type: string, format: date }
  *                       gender: { type: string }
  *                       deletedAt: { type: string, format: date-time, nullable: true }
  *                       createdAt: { type: string, format: date-time }

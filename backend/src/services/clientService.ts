@@ -23,7 +23,7 @@ export interface CreateClientDTO {
     email: string;
     password: string;
     phone?: string | null;
-    birthDate: Date;
+    birthDate: string;
     gender: string;
     facialStructureType?: FacialStructureType | null;
     completedServicesCount?: number;
@@ -36,7 +36,7 @@ export interface UpdateClientDTO {
     password?: string;
     firstName?: string;
     lastName?: string;
-    birthDate?: Date;
+    birthDate?: string;
     gender?: string;
     facialStructureType?: FacialStructureType | null;
     completedServicesCount?: number;

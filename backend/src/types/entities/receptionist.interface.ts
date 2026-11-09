@@ -14,7 +14,7 @@ export interface ReceptionistWithUser extends Receptionist {
     phone: string | null;
     first_name: string;
     last_name: string;
-    birth_date: Date;
+    birth_date: string;
     gender: string;
     created_at: Date;
     updated_at: Date;
