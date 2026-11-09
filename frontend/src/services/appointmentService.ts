@@ -1,8 +1,15 @@
 import { apiClient } from './apiClient';
 import { ApiError } from '../types/api';
 import type { PublicBarber } from '../types/barber';
-import type { AppointmentRecord, AppointmentStatus } from '../types/appointmentType';
+import type {
+    AppointmentRecord,
+    AppointmentStatus,
+    CancelAppointmentPayload,
+    UpdateAppointmentPayload
+} from '../types/appointmentType';
 import { getShops, getActiveBarbersByShop, getOfferedServices } from './shopService';
+
+export type { CancelAppointmentPayload, UpdateAppointmentPayload };
 
 /* ---------- Tipos de la API ---------- */
 
@@ -250,4 +257,49 @@ export const getAppointmentById = async (
 /* Si otra persona tomó el horario primero, el backend responde 409. */
 export const createAppointment = async (token: string, payload: CreateAppointmentPayload): Promise<void> => {
     await apiClient.post<AppointmentApi>('/appointments', payload, authHeaders(token));
+};
+
+/**
+ * Edita una cita existente (horario, barbero, servicios y/o notas).
+ * Requiere token JWT. Retorna el AppointmentRecord actualizado con catálogos resueltos.
+ * - Cliente: solo sus propias citas con al menos 8 horas de anticipación.
+ * - Personal (recepcionista / manager): citas de su ámbito, sin límite de 8 horas.
+ * - Si el nuevo horario choca o la cita ya no es editable, responde 409.
+ */
+export const updateAppointment = async (
+    token: string,
+    appointmentId: string,
+    payload: UpdateAppointmentPayload,
+    client?: AppointmentClientInfo
+): Promise<AppointmentRecord> => {
+    const { data } = await apiClient.put<AppointmentApi>(
+        `/appointments/${appointmentId}`,
+        payload,
+        authHeaders(token)
+    );
+    const catalogs = await loadCatalogs(token, [data.shopId]);
+    return toRecord(data, catalogs, client);
+};
+
+/**
+ * Cancela una cita (status 'cancelled').
+ * Requiere token JWT. Opcionalmente recibe motivo de cancelación.
+ * Retorna el AppointmentRecord cancelado con catálogos resueltos.
+ * - Solo se pueden cancelar citas futuras con estado scheduled o rescheduled.
+ * - Cliente: solo sus propias citas con al menos 8 horas de anticipación.
+ * - Personal: citas de su ámbito, sin límite de 8 horas.
+ */
+export const cancelAppointment = async (
+    token: string,
+    appointmentId: string,
+    payload?: CancelAppointmentPayload,
+    client?: AppointmentClientInfo
+): Promise<AppointmentRecord> => {
+    const { data } = await apiClient.put<AppointmentApi>(
+        `/appointments/${appointmentId}/cancel`,
+        payload ?? {},
+        authHeaders(token)
+    );
+    const catalogs = await loadCatalogs(token, [data.shopId]);
+    return toRecord(data, catalogs, client);
 };
