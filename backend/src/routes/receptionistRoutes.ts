@@ -38,7 +38,7 @@ const router = Router();
  *                     lastName: { type: string, example: "Katsuragi" }
  *                     email: { type: string, format: email, example: "misato@barberia.com" }
  *                     phone: { type: string, nullable: true, example: "5551234567" }
- *                     birthDate: { type: string, format: date-time }
+ *                     birthDate: { type: string, format: date }
  *                     gender: { type: string, example: "female" }
  *                     deletedAt: { type: string, format: date-time, nullable: true, example: null }
  *                     createdAt: { type: string, format: date-time }

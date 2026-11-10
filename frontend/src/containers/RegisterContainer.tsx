@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { register as registerUser } from '../services/authService';
 import { ApiError } from '../types/api';
 import type { RegisterFormValues } from '../types/auth';
-import { RegisterForm } from '../components/RegisterFormComponent';
+import { RegisterForm } from '../components/auth/RegisterFormComponent';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { displayToIsoDate, getTodayIso, isValidDisplayDate } from '../utils/dateFormat';

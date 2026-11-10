@@ -2,25 +2,27 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
-import { RoleProtectedRoute } from './components/RoleProtectedRoute';
-import { PublicRoute } from './components/PublicRoute';
+import { RoleProtectedRoute } from './components/auth/RoleProtectedRoute';
+import { PublicRoute } from './components/auth/PublicRoute';
+import { NotFoundRedirect } from './components/auth/NotFoundRedirect';
 import EditUserPage from './pages/client/EditUserPage';
 import BookAppointmentPage from './pages/BookAppointmentPage';
 import ManagerStaffPage from './pages/staff/ManagerStaffPage';
 import ManagerClientsPage from './pages/staff/StaffClientsPage';
 import StaffAppointmentsPage from './pages/staff/StaffAppointmentsPage';
-import ManagerSectionPlaceholderPage from './pages/staff/ManagerSectionPlaceholderPage';
 import ManagerManagementPage from './pages/staff/ManagerManagementPage';
 import StaffInventoryPage from './pages/staff/StaffInventoryPage';
 import StaffSuppliesPage from './pages/staff/StaffSuppliesPage';
 import StaffSupplyCategoriesPage from './pages/staff/StaffSupplyCategoriesPage';
+import StaffOfferedServicesPage from './pages/staff/StaffOfferedServicesPage';
+import StaffServiceCategoriesPage from './pages/staff/StaffServiceCategoriesPage';
+import ReceptionistServicesPage from './pages/staff/ReceptionistServicesPage';
 import DashboardLayout from './pages/DashboardLayout';
 import RecommendationPage from './pages/client/RecommendationPage';
 import ClientAppointmentsPage from './pages/client/ClientAppointmentPage';
 import ClientAppointmentDetailPage from './pages/client/ClientAppointmentDetailPage';
-
-/* Enlace "Volver" de los CRUD de Gestión que aún son placeholders. */
-const MANAGEMENT_BACK_LINK = { to: '/manager/management', label: 'Volver a Gestión' };
+import ManagerShiftsPage  from './pages/staff/ManagerShiftsPage';
+import ManagerShopsPage from './pages/staff/ManagerShopsPage';
 
 const router = createBrowserRouter([
   /* Client */
@@ -109,46 +111,20 @@ const router = createBrowserRouter([
           {
             // Temporal: se reemplaza por el CRUD de sucursales
             path: '/manager/management/shops',
-            element: (
-              <ManagerSectionPlaceholderPage
-                title="Sucursales"
-                subtitle="Administración de las sucursales de la barbería."
-                backTo={MANAGEMENT_BACK_LINK}
-              />
-            )
+            element: <ManagerShopsPage />
           },
           {
             // Temporal: se reemplaza por el CRUD de turnos
             path: '/manager/management/shifts',
-            element: (
-              <ManagerSectionPlaceholderPage
-                title="Turnos"
-                subtitle="Horarios de los turnos de trabajo."
-                backTo={MANAGEMENT_BACK_LINK}
-              />
-            )
+            element: <ManagerShiftsPage />
           },
           {
-            // Temporal: se reemplaza por el CRUD de servicios ofrecidos
             path: '/manager/management/services',
-            element: (
-              <ManagerSectionPlaceholderPage
-                title="Servicios ofrecidos"
-                subtitle="Administración de los servicios, su duración y su precio."
-                backTo={MANAGEMENT_BACK_LINK}
-              />
-            )
+            element: <StaffOfferedServicesPage role="manager" />
           },
           {
-            // Temporal: se reemplaza por el CRUD de categorías de servicios
             path: '/manager/management/service-categories',
-            element: (
-              <ManagerSectionPlaceholderPage
-                title="Categorías de servicios"
-                subtitle="Organización de los servicios por categoría."
-                backTo={MANAGEMENT_BACK_LINK}
-              />
-            )
+            element: <StaffServiceCategoriesPage role="manager" />
           }
         ]
       }
@@ -190,6 +166,19 @@ const router = createBrowserRouter([
           {
             path: '/receptionist/inventory/supply-categories',
             element: <StaffSupplyCategoriesPage role="receptionist" />
+          },
+          {
+            // Catálogo de servicios en modo consulta (la recepcionista no puede editar ni eliminar)
+            path: '/receptionist/services',
+            element: <ReceptionistServicesPage />
+          },
+          {
+            path: '/receptionist/services/offered',
+            element: <StaffOfferedServicesPage role="receptionist" />
+          },
+          {
+            path: '/receptionist/services/categories',
+            element: <StaffServiceCategoriesPage role="receptionist" />
           }
         ]
       }
@@ -212,6 +201,11 @@ const router = createBrowserRouter([
         element: <RegisterPage />
       }
     ]
+  },
+  /* Cualquier ruta inexistente redirige al dashboard */
+  {
+    path: '*',
+    element: <NotFoundRedirect />
   }
 ]);
 

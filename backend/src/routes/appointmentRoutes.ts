@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { create, list } from '../controllers/appointmentController.js';
+import { cancel, create, getById, list, update } from '../controllers/appointmentController.js';
 
 const router = Router();
 
@@ -105,8 +105,8 @@ router.post('/appointments', create);
  *     tags: [Appointments]
  *     description: |
  *       Lista las citas cuyo inicio programado (`scheduledStart`) cae dentro de [`from`, `to`] (ambos inclusivos), ordenadas por inicio.
- *       Sin `from` ni `to` se usan los próximos 30 días: de hoy 00:00 al día 30 a las 23:59:59.999, en la zona horaria del negocio.
- *       Si solo falta uno: `from` = hoy 00:00 y `to` = `from` + 30 días. El rango no puede ser negativo ni exceder 366 días. Requiere token JWT.
+ *       Sin `from` ni `to` se usa la ventana agendable: de hoy 00:00 al fin del día hoy + 30 (último día que permite agendar la disponibilidad), 23:59:59.999, en la zona horaria del negocio.
+ *       Si solo falta uno: `from` = hoy 00:00 y `to` = `from` + 31 días (menos 1 ms). El rango no puede ser negativo ni exceder 366 días. Requiere token JWT.
  *       Alcance por rol:
  *       - client: solo sus propias citas. Los filtros `clientId`, `shopId`, `clientType` y `barberId` se ignoran.
  *       - receptionist: las citas de la sucursal donde trabaja.
@@ -123,13 +123,13 @@ router.post('/appointments', create);
  *       - in: query
  *         name: to
  *         schema: { type: string, format: date-time }
- *         description: Fin del rango, inclusivo. Por defecto el día 30 a las 23:59:59.999 hora del negocio.
+ *         description: Fin del rango, inclusivo. Por defecto el fin del día hoy + 30 (23:59:59.999 hora del negocio).
  *         example: "2026-10-31T23:59:59-07:00"
  *       - in: query
  *         name: status
  *         schema:
  *           type: array
- *           items: { type: string, enum: [scheduled, checked_in, completed, cancelled, no_show] }
+ *           items: { type: string, enum: [scheduled, rescheduled, checked_in, completed, cancelled, no_show] }
  *         style: form
  *         explode: false
  *         description: Uno o varios estados, separados por comas o repitiendo el parámetro.
@@ -193,5 +193,175 @@ router.post('/appointments', create);
  *         description: Error interno del servidor.
  */
 router.get('/appointments', list);
+
+/**
+ * @swagger
+ * /api/appointments/{id}:
+ *   get:
+ *     summary: Consulta una cita por id
+ *     tags: [Appointments]
+ *     description: |
+ *       Devuelve una cita sin importar su fecha ni su estado. Requiere token JWT.
+ *       Alcance por rol:
+ *       - client: solo sus propias citas.
+ *       - receptionist: las citas de la sucursal donde trabaja.
+ *       - manager: las citas de las sucursales que administra.
+ *       El cliente recibe la cita sin los datos del cliente; el personal los recibe.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *         description: Id de la cita.
+ *     responses:
+ *       200:
+ *         description: Cita encontrada. `data` tiene la misma forma que cada elemento de `GET /api/appointments`.
+ *       400:
+ *         description: Id con formato UUID inválido.
+ *       401:
+ *         description: Token ausente o inválido.
+ *       403:
+ *         description: Cuenta desactivada o la cita no está dentro del alcance del rol.
+ *       404:
+ *         description: Cita no encontrada.
+ *       500:
+ *         description: Error interno del servidor.
+ */
+router.get('/appointments/:id', getById);
+
+/**
+ * @swagger
+ * /api/appointments/{id}:
+ *   put:
+ *     summary: Edita una cita
+ *     tags: [Appointments]
+ *     description: |
+ *       Edita el horario, el barbero, los servicios y/o las notas de una cita. Todos los campos son opcionales, pero debe enviarse al menos uno;
+ *       lo que no se envía se conserva. El cliente, el invitado y la sucursal no se pueden editar (cualquier otro campo responde 400): para cambiar
+ *       de sucursal hay que cancelar la cita y crear una nueva. Requiere token JWT.
+ *       Permisos por rol:
+ *       - client: solo sus propias citas y solo si faltan 8 horas o más para la hora agendada.
+ *       - receptionist: citas de la sucursal donde trabaja. No está sujeta al límite de 8 horas.
+ *       - manager: citas de las sucursales que administra. No está sujeto al límite de 8 horas.
+ *       Reglas:
+ *       - Solo se editan citas futuras con estado `scheduled` o `rescheduled`; una cita en `checked_in` (o cualquier otro estado) ya no se puede editar.
+ *       - Un nuevo `scheduledStart` debe ser uno de los `startTimes` de `GET /api/shops/{id}/availability` para el barbero y los servicios finales,
+ *         **enviando `excludeAppointmentId` con el id de esta cita** para que su horario actual no la bloquee, y caer dentro de los 30 días
+ *         posteriores a la fecha en que se agendó. Puede ser un día anterior o posterior, o el mismo día a otra hora.
+ *       - `barberId` debe ser un barbero activo de la misma sucursal que la cita; se puede conservar el mismo.
+ *       - La duración es la suma de las duraciones de los servicios; si crece, el barbero debe tener tiempo libre suficiente. Los servicios que se
+ *         conservan mantienen su precio y duración originales; los nuevos usan los valores actuales del catálogo.
+ *       - Cambiar `scheduledStart` o `barberId` deja la cita en `rescheduled`; editar solo servicios o notas conserva su estado.
+ *       Si una edición y otra reserva compiten por el mismo horario, solo una lo obtiene; la otra recibe 409.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *         description: Id de la cita.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             minProperties: 1
+ *             additionalProperties: false
+ *             properties:
+ *               barberId: { type: string, format: uuid }
+ *               serviceIds:
+ *                 type: array
+ *                 minItems: 1
+ *                 items: { type: string, format: uuid }
+ *                 description: Servicios finales de la cita (reemplazan a los actuales), sin repetir.
+ *               scheduledStart:
+ *                 type: string
+ *                 format: date-time
+ *                 example: "2026-10-20T09:00:00.000Z"
+ *               notes:
+ *                 type: string
+ *                 maxLength: 500
+ *                 nullable: true
+ *                 description: Envía null para borrar las notas.
+ *     responses:
+ *       200:
+ *         description: Cita actualizada. `data` tiene la misma forma que la respuesta de `POST /api/appointments` (con `originalScheduledStart` sin cambios).
+ *       400:
+ *         description: Error de validación (UUID, fecha, servicios repetidos, cuerpo vacío o campos no editables).
+ *       401:
+ *         description: Token ausente o inválido.
+ *       403:
+ *         description: Cuenta desactivada, la cita no está dentro del alcance del rol, o un cliente intenta editar con menos de 8 horas de anticipación.
+ *       404:
+ *         description: Cita, barbero o servicio no encontrado / inactivo.
+ *       409:
+ *         description: La cita ya no es editable (estado distinto de scheduled / rescheduled o ya inició) o el horario no está disponible.
+ *       422:
+ *         description: Barbero de otra sucursal o que no acepta reservas, o nuevo horario fuera de los 30 días posteriores a la fecha en que se agendó.
+ *       500:
+ *         description: Error interno del servidor.
+ */
+router.put('/appointments/:id', update);
+
+
+/**
+ * @swagger
+ * /api/appointments/{id}/cancel:
+ *   put:
+ *     summary: Cancela una cita
+ *     tags: [Appointments]
+ *     description: |
+ *       Cancela una cita (status `cancelled`, se registra `cancelledAt` y el motivo opcional). Requiere token JWT. El cuerpo es opcional.
+ *       Permisos por rol:
+ *       - client: solo sus propias citas y solo si faltan 8 horas o más para la hora agendada.
+ *       - receptionist: citas de la sucursal donde trabaja. No está sujeta al límite de 8 horas.
+ *       - manager: citas de las sucursales que administra. No está sujeto al límite de 8 horas.
+ *       Reglas:
+ *       - Solo se cancelan citas futuras con estado `scheduled` o `rescheduled`; cualquier otro estado (incluida una cita ya cancelada) responde 409.
+ *       - El horario del barbero queda libre para nuevas reservas.
+ *       - Si la cita canjeaba una recompensa, el cliente la conserva; solo se pierde con no-show.
+ *       - No hay reembolsos ni límite de cancelaciones.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *         description: Id de la cita.
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             additionalProperties: false
+ *             properties:
+ *               reason:
+ *                 type: string
+ *                 maxLength: 255
+ *                 nullable: true
+ *                 description: Motivo de la cancelación.
+ *     responses:
+ *       200:
+ *         description: Cita cancelada. `data` tiene la misma forma que la respuesta de `PUT /api/appointments/{id}`.
+ *       400:
+ *         description: Error de validación (UUID, motivo demasiado largo o campos no permitidos).
+ *       401:
+ *         description: Token ausente o inválido.
+ *       403:
+ *         description: Cuenta desactivada, la cita no está dentro del alcance del rol, o un cliente intenta cancelar con menos de 8 horas de anticipación.
+ *       404:
+ *         description: Cita no encontrada.
+ *       409:
+ *         description: La cita ya no se puede cancelar (estado distinto de scheduled / rescheduled o ya inició).
+ *       500:
+ *         description: Error interno del servidor.
+ */
+router.put('/appointments/:id/cancel', cancel);
 
 export default router;

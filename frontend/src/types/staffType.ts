@@ -5,12 +5,15 @@ export interface StaffMember {
     id: string;
     firstName: string;
     lastName: string;
-    /* Los barberos no tienen cuenta de usuario: su correo es opcional. */
     email: string | null;
     phone: string | null;
+    /* Formato YYYY-MM-DD. */
+    birthDate: string;
+    gender: string;
     role: StaffRole;
     shopId: string;
     shiftId: string;
+    isActive: boolean;
 }
 
 /* Valores del formulario de alta/edición de personal. */
@@ -19,6 +22,9 @@ export interface StaffFormValues {
     fullName: string;
     phone: string;
     email: string;
+    /* Formato dd/mm/aaaa en el formulario (ver utils/dateFormat). */
+    birthDate: string;
+    gender: string;
     role: StaffRole;
     shopId: string;
     shiftId: string;
@@ -30,8 +36,11 @@ export interface StaffFormValues {
 export interface StaffPayload {
     firstName: string;
     lastName: string;
-    email: string | null;
+    email: string;
     phone: string;
+    /* Formato YYYY-MM-DD para la API. */
+    birthDate: string;
+    gender: string;
     role: StaffRole;
     shopId: string;
     shiftId: string;

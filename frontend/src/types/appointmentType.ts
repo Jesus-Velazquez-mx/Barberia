@@ -35,6 +35,8 @@ export interface AppointmentRecord {
     cancelledAt: string | null;
     cancellationReason: string | null;
     notes: string | null;
+    /* true cuando la cita se canjeó con la recompensa de lealtad (is_reward_redemption). */
+    isRewardRedemption?: boolean;
     services: AppointmentServiceItem[];
     createdAt: string;
     updatedAt: string;
@@ -56,3 +58,17 @@ export interface AppointmentFilterValues {
 }
 
 export type SortDirection = 'asc' | 'desc';
+
+/** Carga útil para editar una cita existente (PUT /api/appointments/:id). */
+export interface UpdateAppointmentPayload {
+    barberId?: string;
+    serviceIds?: string[];
+    scheduledStart?: string;
+    notes?: string | null;
+}
+
+/** Carga útil para cancelar una cita existente (PUT /api/appointments/:id/cancel). */
+export interface CancelAppointmentPayload {
+    reason?: string | null;
+}
+

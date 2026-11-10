@@ -1,9 +1,15 @@
 import { apiClient } from './apiClient';
+import { ApiError } from '../types/api';
 import type { PublicBarber } from '../types/barber';
-import type { AppointmentRecord, AppointmentStatus } from '../types/appointmentType';
+import type {
+    AppointmentRecord,
+    AppointmentStatus,
+    CancelAppointmentPayload,
+    UpdateAppointmentPayload
+} from '../types/appointmentType';
 import { getShops, getActiveBarbersByShop, getOfferedServices } from './shopService';
 
-const DAY_MS = 24 * 60 * 60 * 1000;
+export type { CancelAppointmentPayload, UpdateAppointmentPayload };
 
 /* ---------- Tipos de la API ---------- */
 
@@ -66,6 +72,14 @@ export interface DateRange {
     to: Date;
 }
 
+/* Filtros que el backend aplica en GET /appointments (el personal los usa todos; el cliente solo el rango).
+   `status` usa los estados de la app (checkedIn, noShow...); se convierten a los del backend al consultar. */
+export interface AppointmentQuery {
+    range?: DateRange;
+    shopId?: string;
+    status?: AppointmentStatus;
+}
+
 /* ---------- Utilidades ---------- */
 
 const STATUS_MAP: Record<string, AppointmentStatus> = {
@@ -77,13 +91,16 @@ const STATUS_MAP: Record<string, AppointmentStatus> = {
     no_show: 'noShow'
 };
 
-const authHeaders = (token: string): RequestInit => ({ headers: { Authorization: `Bearer ${token}` } });
+const API_STATUS: Record<AppointmentStatus, string> = {
+    scheduled: 'scheduled',
+    rescheduled: 'rescheduled',
+    checkedIn: 'checked_in',
+    completed: 'completed',
+    cancelled: 'cancelled',
+    noShow: 'no_show'
+};
 
-/* El backend limita el rango a 366 días; por defecto: 60 atrás y 180 adelante. */
-const defaultRange = (): DateRange => ({
-    from: new Date(Date.now() - 60 * DAY_MS),
-    to: new Date(Date.now() + 180 * DAY_MS)
-});
+const authHeaders = (token: string): RequestInit => ({ headers: { Authorization: `Bearer ${token}` } });
 
 /* ---------- Catálogos (nombres) ---------- */
 
@@ -99,7 +116,7 @@ const barberFullName = (b: PublicBarber) => `${b.firstName} ${b.lastName}`.trim(
 async function loadCatalogs(token: string, shopIds: string[]): Promise<Catalogs> {
     const [shopsResult, servicesResult, ...barbersResults] = await Promise.allSettled([
         getShops(),
-        getOfferedServices(token),
+        getOfferedServices(token, true),
         ...shopIds.map((id) => getActiveBarbersByShop(id))
     ]);
 
@@ -167,6 +184,7 @@ function toRecord(a: AppointmentApi, catalogs: Catalogs, client?: AppointmentCli
         cancelledAt: a.cancelledAt,
         cancellationReason: a.cancellationReason,
         notes: a.notes,
+        isRewardRedemption: a.isRewardRedemption,
         services: a.services.map((s) => ({
             serviceId: s.serviceId,
             name: catalogs.services.get(s.serviceId) ?? 'Servicio',
@@ -179,13 +197,22 @@ function toRecord(a: AppointmentApi, catalogs: Catalogs, client?: AppointmentCli
     };
 }
 
+/* Sin rango, el backend aplica su ventana por defecto (resolveWindow). */
 async function fetchRecords(
     token: string,
-    range: DateRange,
+    query: AppointmentQuery = {},
     client?: AppointmentClientInfo
 ): Promise<AppointmentRecord[]> {
-    const params = new URLSearchParams({ from: range.from.toISOString(), to: range.to.toISOString() });
-    const { data } = await apiClient.get<AppointmentApi[]>(`/appointments?${params}`, authHeaders(token));
+    const params = new URLSearchParams();
+    if (query.range) {
+        params.set('from', query.range.from.toISOString());
+        params.set('to', query.range.to.toISOString());
+    }
+    if (query.shopId) params.set('shopId', query.shopId);
+    if (query.status) params.set('status', API_STATUS[query.status]);
+
+    const queryString = params.toString() ? `?${params}` : '';
+    const { data } = await apiClient.get<AppointmentApi[]>(`/appointments${queryString}`, authHeaders(token));
 
     const shopIds = [...new Set(data.map((a) => a.shopId))];
     const catalogs = await loadCatalogs(token, shopIds);
@@ -199,24 +226,30 @@ async function fetchRecords(
 export const getAppointments = async (
     token: string,
     _role?: string,
-    range: DateRange = defaultRange()
-): Promise<AppointmentRecord[]> => fetchRecords(token, range);
+    query?: AppointmentQuery
+): Promise<AppointmentRecord[]> => fetchRecords(token, query);
 
 /* Vista del cliente: el backend devuelve solo sus citas. */
 export const getMyAppointments = async (
     token: string,
     client: AppointmentClientInfo,
-    range: DateRange = defaultRange()
-): Promise<AppointmentRecord[]> => fetchRecords(token, range, client);
+    range?: DateRange
+): Promise<AppointmentRecord[]> => fetchRecords(token, { range }, client);
 
+/* GET /appointments/:id: sin importar fecha ni estado. Devuelve null si la cita no existe (404). */
 export const getAppointmentById = async (
     token: string,
     appointmentId: string,
-    client?: AppointmentClientInfo,
-    range: DateRange = defaultRange()
+    client?: AppointmentClientInfo
 ): Promise<AppointmentRecord | null> => {
-    const records = await fetchRecords(token, range, client);
-    return records.find((a) => a.id === appointmentId) ?? null;
+    try {
+        const { data } = await apiClient.get<AppointmentApi>(`/appointments/${appointmentId}`, authHeaders(token));
+        const catalogs = await loadCatalogs(token, [data.shopId]);
+        return toRecord(data, catalogs, client);
+    } catch (error) {
+        if (error instanceof ApiError && error.status === 404) return null;
+        throw error;
+    }
 };
 
 /* ---------- Escritura ---------- */
@@ -224,4 +257,49 @@ export const getAppointmentById = async (
 /* Si otra persona tomó el horario primero, el backend responde 409. */
 export const createAppointment = async (token: string, payload: CreateAppointmentPayload): Promise<void> => {
     await apiClient.post<AppointmentApi>('/appointments', payload, authHeaders(token));
+};
+
+/**
+ * Edita una cita existente (horario, barbero, servicios y/o notas).
+ * Requiere token JWT. Retorna el AppointmentRecord actualizado con catálogos resueltos.
+ * - Cliente: solo sus propias citas con al menos 8 horas de anticipación.
+ * - Personal (recepcionista / manager): citas de su ámbito, sin límite de 8 horas.
+ * - Si el nuevo horario choca o la cita ya no es editable, responde 409.
+ */
+export const updateAppointment = async (
+    token: string,
+    appointmentId: string,
+    payload: UpdateAppointmentPayload,
+    client?: AppointmentClientInfo
+): Promise<AppointmentRecord> => {
+    const { data } = await apiClient.put<AppointmentApi>(
+        `/appointments/${appointmentId}`,
+        payload,
+        authHeaders(token)
+    );
+    const catalogs = await loadCatalogs(token, [data.shopId]);
+    return toRecord(data, catalogs, client);
+};
+
+/**
+ * Cancela una cita (status 'cancelled').
+ * Requiere token JWT. Opcionalmente recibe motivo de cancelación.
+ * Retorna el AppointmentRecord cancelado con catálogos resueltos.
+ * - Solo se pueden cancelar citas futuras con estado scheduled o rescheduled.
+ * - Cliente: solo sus propias citas con al menos 8 horas de anticipación.
+ * - Personal: citas de su ámbito, sin límite de 8 horas.
+ */
+export const cancelAppointment = async (
+    token: string,
+    appointmentId: string,
+    payload?: CancelAppointmentPayload,
+    client?: AppointmentClientInfo
+): Promise<AppointmentRecord> => {
+    const { data } = await apiClient.put<AppointmentApi>(
+        `/appointments/${appointmentId}/cancel`,
+        payload ?? {},
+        authHeaders(token)
+    );
+    const catalogs = await loadCatalogs(token, [data.shopId]);
+    return toRecord(data, catalogs, client);
 };

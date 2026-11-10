@@ -3,8 +3,8 @@ import { useForm } from 'react-hook-form';
 import { changePassword } from '../services/userService';
 import { ApiError } from '../types/api';
 import type { ChangePasswordFormValues } from '../types/auth';
-import { ChangePasswordModal } from '../components/ChangePasswordModalComponent';
-import { Toast } from '../components/ToastComponent';
+import { ChangePasswordModal } from '../components/profile/ChangePasswordModalComponent';
+import { Toast } from '../components/common/ToastComponent';
 import { useAuth } from '../context/AuthContext';
 
 const REQUIRED_MESSAGE = 'Debe capturar su contraseña actual, la nueva contraseña y su confirmación.';

@@ -1,19 +1,17 @@
-import type { SelectOption } from '../components/SelectFieldComponent';
+import type { SelectOption } from '../components/common/SelectFieldComponent';
 import type {
     AppointmentFilterValues,
     AppointmentRecord,
     AppointmentStatus,
     SortDirection
 } from '../types/appointmentType';
-import { displayToIsoDate, getTodayIso, isoToDisplayDate } from './dateFormat';
+import type { AppointmentQuery } from '../services/appointmentService';
+import { displayToIsoDate, isValidDisplayDate } from './dateFormat';
 import { matchesQuery } from './listUtils';
 
 /* Zona horaria del negocio (la misma que usa el backend). Las fechas y horas de las citas se
    muestran y se comparan siempre en esta zona, sin importar la del navegador. */
 export const BUSINESS_TIMEZONE = 'America/Mazatlan';
-
-/* Días hacia atrás que se muestran por defecto en el filtro de fecha de servicio. */
-export const DEFAULT_DAYS_BACK = 60;
 
 export const STATUS_LABELS: Record<AppointmentStatus, string> = {
     scheduled: 'Agendada',
@@ -45,9 +43,10 @@ export const shiftIsoDate = (isoDate: string, days: number): string => {
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 };
 
-/* Valores iniciales de los filtros: citas de los últimos 60 días en adelante, todos los servicios y estados. */
+/* Valores iniciales de los filtros: sin fechas (el backend aplica su ventana por defecto), todas las sucursales,
+   servicios y estados. */
 export const getDefaultFilters = (): AppointmentFilterValues => ({
-    serviceFrom: isoToDisplayDate(shiftIsoDate(getTodayIso(), -DEFAULT_DAYS_BACK)),
+    serviceFrom: '',
     serviceTo: '',
     createdFrom: '',
     createdTo: '',
@@ -80,6 +79,78 @@ export const formatAppointmentDateTime = (isoDateTime: string): string =>
 
 export const formatPrice = (amount: number): string =>
     amount.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+
+/* ---------- Consulta al backend ---------- */
+
+/* El backend rechaza rangos de más de 366 días: máximo 366 días entre la fecha inicial y la final, inclusive. */
+export const MAX_RANGE_DAYS = 366;
+
+/* Desfase (ms) de la zona del negocio respecto a UTC en un instante dado (negativo al oeste de UTC). */
+const businessOffsetMs = (utcMs: number): number => {
+    const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: BUSINESS_TIMEZONE,
+        hourCycle: 'h23',
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: 'numeric',
+        second: 'numeric'
+    }).formatToParts(new Date(utcMs));
+    const get = (type: string) => Number(parts.find((part) => part.type === type)?.value);
+
+    const wallMs = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'), get('second'));
+    return wallMs - Math.floor(utcMs / 1000) * 1000;
+};
+
+/* YYYY-MM-DD -> instante en que empieza ese día en la zona del negocio. */
+const businessDayStart = (isoDate: string): Date => {
+    const [year, month, day] = isoDate.split('-').map(Number);
+    const wallMs = Date.UTC(year, month - 1, day);
+    // Dos pasadas: el desfase se evalúa en el instante resultante por si cambia (horario de verano).
+    const firstGuess = wallMs - businessOffsetMs(wallMs);
+    return new Date(wallMs - businessOffsetMs(firstGuess));
+};
+
+/* Rango [inicio del día `from`, fin del día `to`] en la zona del negocio (to inclusivo). */
+const businessDayRange = (fromIso: string, toIso: string): { from: Date; to: Date } => ({
+    from: businessDayStart(fromIso),
+    to: new Date(businessDayStart(shiftIsoDate(toIso, 1)).getTime() - 1)
+});
+
+/* Último día agendable: hoy + 30 (igual que MAX_BOOKING_DAYS_AHEAD del backend). */
+const BOOKING_DAYS_AHEAD = 30;
+
+/* Rango para la vista del cliente: del pasado más lejano que acepta el backend hasta el último día agendable,
+   para que las pestañas "Pasadas" y "Canceladas" tengan citas. Hoy y los días se cuentan en la zona del negocio. */
+export const getClientAppointmentsRange = (): { from: Date; to: Date } => {
+    const today = toBusinessDate(new Date().toISOString());
+    const daysBack = MAX_RANGE_DAYS - 1 - BOOKING_DAYS_AHEAD;
+    return businessDayRange(shiftIsoDate(today, -daysBack), shiftIsoDate(today, BOOKING_DAYS_AHEAD));
+};
+
+/* Filtros que se resuelven en el backend: fecha de servicio, sucursal (solo manager) y estado.
+   El resto (búsqueda, servicio, fecha de creación) se aplica sobre lo ya cargado.
+   Sin fechas no se envía rango y el backend usa su ventana por defecto. Con solo una fecha, la otra se completa
+   al máximo que acepta el backend, de modo que "sin límite" no quede recortado por esa ventana.
+   Regresa null si una fecha está incompleta o el rango no es válido. */
+export const toAppointmentQuery = (filters: AppointmentFilterValues, includeShop: boolean): AppointmentQuery | null => {
+    if (filters.serviceFrom !== '' && !isValidDisplayDate(filters.serviceFrom)) return null;
+    if (filters.serviceTo !== '' && !isValidDisplayDate(filters.serviceTo)) return null;
+
+    let from = displayToIsoDate(filters.serviceFrom);
+    let to = displayToIsoDate(filters.serviceTo);
+
+    if (from && to && (to < from || to > shiftIsoDate(from, MAX_RANGE_DAYS - 1))) return null;
+    if (from && !to) to = shiftIsoDate(from, MAX_RANGE_DAYS - 1);
+    if (to && !from) from = shiftIsoDate(to, -(MAX_RANGE_DAYS - 1));
+
+    return {
+        range: from && to ? businessDayRange(from, to) : undefined,
+        shopId: includeShop && filters.shopId !== 'all' ? filters.shopId : undefined,
+        status: filters.status !== 'all' ? (filters.status as AppointmentStatus) : undefined
+    };
+};
 
 /* ---------- Totales de una cita ---------- */
 
@@ -128,35 +199,41 @@ export const sortByServiceDate = (appointments: AppointmentRecord[], direction: 
     );
 };
 
-/* Opciones del filtro de sucursal, tomadas de las sucursales que aparecen en las citas cargadas.
-   Con una sola sucursal (p. ej. recepción, que solo ve la suya) el filtro no aporta y no se muestra. */
-export function buildShopOptions(appointments: AppointmentRecord[]): SelectOption[] {
-    const byId = new Map<string, string>();
-    appointments.forEach((appointment) => byId.set(appointment.shopId, appointment.shopName));
+/* Catálogos id -> nombre para las opciones de los filtros. Como la sucursal y el estado se filtran en el
+   backend, las citas cargadas ya no incluyen las demás sucursales; por eso los catálogos se acumulan entre
+   consultas y las opciones no desaparecen al elegir una. */
+export type LabelCatalog = ReadonlyMap<string, string>;
 
-    const options = [...byId.entries()]
-        .map(([value, label]) => ({ value, label }))
-        .sort((a, b) => a.label.localeCompare(b.label, 'es'));
+export const collectShopLabels = (appointments: AppointmentRecord[]): [string, string][] =>
+    appointments.map((appointment) => [appointment.shopId, appointment.shopName]);
 
-    return [{ value: 'all', label: 'Todas las sucursales' }, ...options];
-}
-
-/* Opciones del filtro de servicio, tomadas de los servicios que aparecen en las citas cargadas. */
-export function buildServiceOptions(appointments: AppointmentRecord[]): SelectOption[] {
-    const byId = new Map<string, string>();
-    appointments.forEach((appointment) =>
-        appointment.services.forEach((service) => byId.set(service.serviceId, service.name))
+export const collectServiceLabels = (appointments: AppointmentRecord[]): [string, string][] =>
+    appointments.flatMap((appointment) =>
+        appointment.services.map((service): [string, string] => [service.serviceId, service.name])
     );
 
-    const options = [...byId.entries()]
+/* Agrega entradas a un catálogo. Devuelve el mismo objeto si no hay nada nuevo (evita renders de más). */
+export const mergeCatalog = (catalog: LabelCatalog, entries: [string, string][]): LabelCatalog => {
+    if (entries.every(([id, label]) => catalog.get(id) === label)) return catalog;
+    return new Map([...catalog, ...entries]);
+};
+
+const buildOptions = (catalog: LabelCatalog, allLabel: string): SelectOption[] => {
+    const options = [...catalog.entries()]
         .map(([value, label]) => ({ value, label }))
         .sort((a, b) => a.label.localeCompare(b.label, 'es'));
 
-    return [{ value: 'all', label: 'Todos los servicios' }, ...options];
-}
+    return [{ value: 'all', label: allLabel }, ...options];
+};
 
-/* Cantidad de filtros del panel distintos de su valor por defecto (la búsqueda no cuenta: está fuera del panel).
-   El rango de 60 días por defecto no cuenta como filtro activo. */
+/* Con una sola sucursal (p. ej. recepción, que solo ve la suya) el filtro no aporta y no se muestra. */
+export const buildShopOptions = (catalog: LabelCatalog): SelectOption[] =>
+    buildOptions(catalog, 'Todas las sucursales');
+
+export const buildServiceOptions = (catalog: LabelCatalog): SelectOption[] =>
+    buildOptions(catalog, 'Todos los servicios');
+
+/* Cantidad de filtros del panel distintos de su valor por defecto (la búsqueda no cuenta: está fuera del panel). */
 export const countActiveFilters = (filters: AppointmentFilterValues): number => {
     const defaults = getDefaultFilters();
     return (Object.keys(defaults) as (keyof AppointmentFilterValues)[]).filter((key) => filters[key] !== defaults[key])

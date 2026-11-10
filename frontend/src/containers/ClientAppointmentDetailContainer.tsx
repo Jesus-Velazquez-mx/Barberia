@@ -3,9 +3,9 @@ import { useParams } from 'react-router-dom';
 import { Pencil, RotateCw, XCircle } from 'lucide-react';
 import type { AppointmentRecord } from '../types/appointmentType';
 import { useAuth } from '../context/AuthContext';
-//import { buildMockAppointments } from '../mocks/clientAppointmentMocks';
-import { AppointmentDetailContent } from '../components/AppointmentDetailContentComponent';
-import { AppointmentStatusBadge } from '../components/AppointmentStatusBadgeComponent';
+import { AppointmentDetailContent } from '../components/appointments/AppointmentDetailContentComponent';
+import { AppointmentStatusBadge } from '../components/appointments/AppointmentStatusBadgeComponent';
+import { RewardBadge } from '../components/appointments/RewardBadgeComponent';
 import { getAppointmentById } from '../services/appointmentService';
 
 export const CLIENT_APPOINTMENTS_PATH = '/client/appointments';
@@ -23,7 +23,6 @@ export function ClientAppointmentDetailContainer() {
     setIsLoading(true);
     setError('');
     try {
-      // No hay GET /appointments/:id: el servicio la busca dentro del rango de fechas por defecto.
       const found = await getAppointmentById(token, appointmentId, {
         id: user.id,
         name: `${user.firstName} ${user.lastName}`,
@@ -89,7 +88,10 @@ export function ClientAppointmentDetailContainer() {
         <>
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
             <span className="text-sm text-[var(--text)]">ID: {appointment.id.slice(0, 8)}</span>
-            <AppointmentStatusBadge status={appointment.status} />
+            <div className="flex flex-wrap items-center gap-2">
+              {appointment.isRewardRedemption && <RewardBadge />}
+              <AppointmentStatusBadge status={appointment.status} />
+            </div>
           </div>
 
           <AppointmentDetailContent appointment={appointment} showClient={false} />

@@ -2,6 +2,7 @@ import bcrypt from 'bcrypt';
 import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 import { decodeToken } from './jwtTokenService.js';
 import { isUserActive } from '../repositories/userRepository.js';
+import { hasPendingAppointmentsByClientId } from '../repositories/appointmentRepository.js';
 import {
     createClient,
     getClientById,
@@ -22,7 +23,7 @@ export interface CreateClientDTO {
     email: string;
     password: string;
     phone?: string | null;
-    birthDate: Date;
+    birthDate: string;
     gender: string;
     facialStructureType?: FacialStructureType | null;
     completedServicesCount?: number;
@@ -35,7 +36,7 @@ export interface UpdateClientDTO {
     password?: string;
     firstName?: string;
     lastName?: string;
-    birthDate?: Date;
+    birthDate?: string;
     gender?: string;
     facialStructureType?: FacialStructureType | null;
     completedServicesCount?: number;
@@ -176,7 +177,9 @@ export const updateClient = async (fields: UpdateClientDTO, token: string): Prom
 
 /**
  * Elimina físicamente a un cliente por su ID.
- * Un cliente puede eliminar su propia cuenta; los managers pueden eliminar cualquier cuenta de cliente.
+ * Un cliente puede eliminar su propia cuenta; los managers y recepcionistas pueden eliminar cualquier cuenta de cliente.
+ * No se puede eliminar a un cliente con citas pendientes (scheduled, rescheduled o checked_in): responde 409.
+ * La revisión abarca todas las sucursales y fechas, sin importar el alcance del solicitante.
  */
 export const deleteClient = async (id: string, token: string): Promise<void> => {
     const actor = decodeToken(token);
@@ -190,10 +193,14 @@ export const deleteClient = async (id: string, token: string): Promise<void> => 
     }
 
     const isSelf = actor.id === id;
-    const isManager = actor.role === 'manager';
+    const isStaff = actor.role === 'manager' || actor.role === 'receptionist';
 
-    if (!isSelf && !isManager) {
+    if (!isSelf && !isStaff) {
         throw new ApiError(ApiErrorCode.FORBIDDEN, 'You do not have permission to delete this account');
+    }
+
+    if (await hasPendingAppointmentsByClientId(id)) {
+        throw new ApiError(ApiErrorCode.CONFLICT, 'Cannot delete a client with pending appointments');
     }
 
     await deleteClientById(id);

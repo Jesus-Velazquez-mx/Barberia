@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { deleteUser } from '../services/userService';
 import { ApiError } from '../types/api';
 import type { DeleteAccountFormValues } from '../types/auth';
-import { DeleteAccountModal } from '../components/DeleteAccountModalComponent';
+import { DeleteAccountModal } from '../components/profile/DeleteAccountModalComponent';
 import { useAuth } from '../context/AuthContext';
 
 const CONFIRMATION_WORD = 'ELIMINAR';

@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Plus } from 'lucide-react';
-import { Button } from '../components/ButtonComponent';
-import { ConfirmDeleteModal } from '../components/ConfirmDeleteModalComponent';
-import { ManagerPageHeader } from '../components/ManagerPageHeaderComponent';
-import { SearchBar } from '../components/SearchBarComponent';
-import { SupplyCategoryFormModal } from '../components/SupplyCategoryFormModalComponent';
-import { SupplyCategoryTable } from '../components/SupplyCategoryTableComponent';
-import { Toast } from '../components/ToastComponent';
+import { Button } from '../components/common/ButtonComponent';
+import { ConfirmDeleteModal } from '../components/common/ConfirmDeleteModalComponent';
+import { ManagerPageHeader } from '../components/dashboard/ManagerPageHeaderComponent';
+import { SearchBar } from '../components/common/SearchBarComponent';
+import { SupplyCategoryFormModal } from '../components/supplies/SupplyCategoryFormModalComponent';
+import { SupplyCategoryTable } from '../components/supplies/SupplyCategoryTableComponent';
+import { Toast } from '../components/common/ToastComponent';
 import { useAuth } from '../context/AuthContext';
 import {
   createSupplyCategory,

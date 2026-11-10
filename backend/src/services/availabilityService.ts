@@ -25,6 +25,8 @@ export interface GetAvailableSlotsInput {
     date: string;
     /** Servicios de la cita; los horarios se calculan con la suma de sus duraciones. */
     serviceIds: string[];
+    /** Cita que se está editando: no cuenta como ocupada, para que no choque consigo misma. */
+    excludeAppointmentId?: string;
 }
 
 export interface AvailableSlotsByBarber {
@@ -101,6 +103,7 @@ export const getAvailableSlots = async ({
     shopId,
     date,
     serviceIds,
+    excludeAppointmentId,
 }: GetAvailableSlotsInput): Promise<AvailableSlotsByBarber[]> => {
     const dayStart = parseDate(date);
     // "Ahora" en hora de pared del negocio (BUSINESS_TIMEZONE), no del servidor.
@@ -139,7 +142,8 @@ export const getAvailableSlots = async ({
         getBlockingAppointmentsByBarberIdsAndRange(
             barberIds,
             new Date(businessWallClockToUtcMs(dayStart)),
-            new Date(businessWallClockToUtcMs(dayStart + MS_PER_DAY))
+            new Date(businessWallClockToUtcMs(dayStart + MS_PER_DAY)),
+            excludeAppointmentId
         ),
         getAllShifts(),
     ]);
