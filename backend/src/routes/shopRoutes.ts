@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { list, getById, create, update, remove } from '../controllers/shopController.js';
 import { listByShop } from '../controllers/barberController.js';
 import { listByShop as listReceptionistsByShop } from '../controllers/receptionistController.js';
-import { getAvailability } from '../controllers/availabilitySlotController.js';
+import { getAvailability, getNextAvailability } from '../controllers/availabilitySlotController.js';
 
 const router = Router();
 
@@ -482,5 +482,85 @@ router.get('/shops/:id/receptionists', listReceptionistsByShop);
  *         description: Error interno del servidor.
  */
 router.get('/shops/:id/availability', getAvailability);
+
+/**
+ * @swagger
+ * /api/shops/{id}/availability/next:
+ *   get:
+ *     summary: Consulta el próximo slot disponible de hoy de cada barbero de la sucursal (apoyo al walk-in)
+ *     tags: [Shops, Availability, Appointments]
+ *     description: |
+ *       Apoya el flujo "Registrar servicio sin cita": devuelve el slot disponible más próximo de **cada** barbero de la sucursal
+ *       que pueda dar los servicios indicados, ordenado por `startTime` ascendente. No hay desempate automático: el staff comunica
+ *       las opciones al cliente y éste elige barbero y hora.
+ *       - Solo se consideran slots del **día actual** (zona horaria del negocio, `BUSINESS_TIMEZONE`); no se devuelven horas ya pasadas.
+ *       - Se calcula con las mismas reglas que `GET /api/shops/{id}/availability` (turno del barbero, `is_accepting_bookings`,
+ *         días abiertos lunes a sábado y citas `scheduled`, `rescheduled` y `checked_in`); cada `startTime` es el primero de los
+ *         `startTimes` que ese endpoint devuelve hoy para el barbero, por lo que es aceptado por `POST /api/appointments` con ese
+ *         barbero y esos mismos servicios.
+ *       - **Barbero sin slot restante hoy: se omite de la lista.** Si a ningún barbero le queda disponibilidad hoy (p. ej. domingo
+ *         o ya terminaron los turnos), responde 200 con una lista vacía.
+ *       - Solo personal de la sucursal: el recepcionista que trabaja en ella o el manager que la administra.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID único de la sucursal.
+ *       - in: query
+ *         name: serviceIds
+ *         required: true
+ *         style: form
+ *         explode: true
+ *         schema:
+ *           type: array
+ *           items:
+ *             type: string
+ *             format: uuid
+ *         description: IDs de los servicios del walk-in, sin repetir. Se repite el parámetro (?serviceIds=a&serviceIds=b) o se separan por comas (?serviceIds=a,b).
+ *     responses:
+ *       200:
+ *         description: Éxito. Retorna el próximo slot de hoy por barbero, ordenado por hora; lista vacía si no queda disponibilidad hoy.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       barberId:
+ *                         type: string
+ *                         format: uuid
+ *                       barberName:
+ *                         type: string
+ *                         example: Juan Pérez
+ *                       startTime:
+ *                         type: string
+ *                         format: date-time
+ *                 message:
+ *                   type: string
+ *                   example: Next available slots retrieved successfully
+ *                 error:
+ *                   nullable: true
+ *                   example: null
+ *       400:
+ *         description: Error de validación (id de sucursal inválido, serviceIds faltante, inválido o con repetidos).
+ *       401:
+ *         description: Token ausente o inválido.
+ *       403:
+ *         description: El solicitante es cliente, o es personal de otra sucursal.
+ *       404:
+ *         description: Sucursal no encontrada/inactiva, o algún servicio no encontrado/inactivo.
+ *       500:
+ *         description: Error interno del servidor.
+ */
+router.get('/shops/:id/availability/next', getNextAvailability);
 
 export default router;
