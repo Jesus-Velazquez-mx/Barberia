@@ -19,7 +19,7 @@ jest.unstable_mockModule('../src/repositories/appointmentRepository.js', () => (
 }));
 jest.unstable_mockModule('../src/repositories/shiftRepository.js', () => ({ getAllShifts }));
 
-const { getAvailableSlots, computeStartMinutes, MAX_BOOKING_DAYS_AHEAD } =
+const { getAvailableSlots, getNextAvailableSlots, computeStartMinutes, MAX_BOOKING_DAYS_AHEAD } =
     await import('../src/services/availabilityService.js');
 const { ApiError, ApiErrorCode } = await import('../src/errors/ApiError.js');
 const { getBusinessToday, businessWallClockToUtcMs } = await import('../src/utils/businessTime.js');
@@ -281,5 +281,82 @@ describe('getAvailableSlots', () => {
         await expect(
             getAvailableSlots({ shopId: SHOP, date: '2026-02-30', serviceIds: [SERVICE] })
         ).rejects.toMatchObject({ code: ApiErrorCode.INVALID_INPUT });
+    });
+});
+
+describe('getNextAvailableSlots', () => {
+    // Miércoles 14 de octubre de 2026 en la zona por defecto del negocio (America/Mazatlan, UTC-7).
+    const WEDNESDAY = '2026-10-14';
+    const atWed = (hhmm: string) => at(hhmm, WEDNESDAY).toISOString();
+    const freezeAt = (date: string, hhmm: string) =>
+        jest.spyOn(Date, 'now').mockReturnValue(at(hhmm, date).getTime());
+
+    const runNext = () => getNextAvailableSlots({ shopId: SHOP, serviceIds: [SERVICE] });
+
+    beforeEach(() => {
+        // Servicio de 30 min y tres barberos con el turno 09:00-13:00 del beforeEach general.
+        getServicesByIds.mockResolvedValue([{ id: SERVICE, duration_minutes: 30, is_active: true }]);
+        getActiveBarbersByShop.mockResolvedValue([
+            { id: 'barber-1', shift_id: SHIFT, first_name: 'Carlos', last_name: 'Ruiz' },
+            { id: 'barber-2', shift_id: SHIFT, first_name: 'Beto', last_name: 'López' },
+            { id: 'barber-3', shift_id: SHIFT, first_name: 'Ana', last_name: 'Díaz' },
+        ]);
+    });
+
+    afterEach(() => {
+        jest.restoreAllMocks();
+    });
+
+    test('devuelve el próximo slot de cada barbero, ordenado por hora y descartando horas pasadas', async () => {
+        freezeAt(WEDNESDAY, '10:05');
+        getBlockingAppointmentsByBarberIdsAndRange.mockResolvedValue([
+            { barber_id: 'barber-1', scheduled_start: at('10:00', WEDNESDAY), scheduled_end: at('11:00', WEDNESDAY) },
+        ]);
+
+        // 10:05: el primer inicio libre es 10:15 (09:00-10:00 ya pasó); barber-1 está ocupado hasta las 11:00.
+        // barber-2 y barber-3 empatan a las 10:15 y se ordenan por nombre solo para una respuesta estable.
+        expect(await runNext()).toEqual([
+            { barberId: 'barber-3', barberName: 'Ana Díaz', startTime: atWed('10:15') },
+            { barberId: 'barber-2', barberName: 'Beto López', startTime: atWed('10:15') },
+            { barberId: 'barber-1', barberName: 'Carlos Ruiz', startTime: atWed('11:00') },
+        ]);
+    });
+
+    test('consulta la disponibilidad del día actual del negocio', async () => {
+        freezeAt(WEDNESDAY, '10:05');
+        await runNext();
+        // El rango de citas consultado es el del miércoles en hora del negocio.
+        const [, from, to] = getBlockingAppointmentsByBarberIdsAndRange.mock.calls[0];
+        expect(from).toEqual(at('00:00', WEDNESDAY));
+        expect(to).toEqual(at('00:00', addDays(WEDNESDAY, 1)));
+    });
+
+    test('un barbero sin cupo restante hoy se omite de la lista', async () => {
+        freezeAt(WEDNESDAY, '10:05');
+        getBlockingAppointmentsByBarberIdsAndRange.mockResolvedValue([
+            { barber_id: 'barber-2', scheduled_start: at('10:00', WEDNESDAY), scheduled_end: at('13:00', WEDNESDAY) },
+        ]);
+
+        const result = await runNext();
+        expect(result.map((s) => s.barberId)).toEqual(['barber-3', 'barber-1']);
+    });
+
+    test('domingo (día cerrado): lista vacía', async () => {
+        freezeAt(nextDayOfWeek(WEDNESDAY, 0), '10:05');
+        expect(await runNext()).toEqual([]);
+        // Sin ningún slot no hace falta volver a consultar los barberos para obtener sus nombres.
+        expect(getActiveBarbersByShop).toHaveBeenCalledTimes(1);
+    });
+
+    test('después del fin de los turnos: lista vacía', async () => {
+        freezeAt(WEDNESDAY, '12:45');
+        // Servicio de 30 min, turno hasta 13:00: el último inicio posible era 12:30.
+        expect(await runNext()).toEqual([]);
+    });
+
+    test('sucursal sin barberos elegibles: lista vacía', async () => {
+        freezeAt(WEDNESDAY, '10:05');
+        getActiveBarbersByShop.mockResolvedValue([]);
+        expect(await runNext()).toEqual([]);
     });
 });
