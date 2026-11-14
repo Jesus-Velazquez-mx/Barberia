@@ -9,16 +9,19 @@ import {
   getAppointmentTotal
 } from '../../utils/appointmentUtils';
 import { AppointmentStatusBadge } from './AppointmentStatusBadgeComponent';
-import { Button } from '../common/ButtonComponent';
 import { Modal } from '../common/ModalComponent';
 import { RewardBadge } from './RewardBadgeComponent';
+import { Trash, Pencil, X } from 'lucide-react';
 
 interface AppointmentDetailModalProps {
   /* null = modal cerrado. */
   appointment: AppointmentRecord | null;
   onClose: () => void;
+  /* Si se pasa, se muestra "Editar cita". El contenedor decide cuándo se puede editar. */
+  onEdit?: () => void;
+  /* Si se pasa, se muestra "Cancelar cita". El contenedor decide cuándo se puede cancelar. */
+  onCancel?: () => void;
 }
-
 /* ---------- Piezas ---------- */
 
 /* Dato corto (etiqueta arriba, valor abajo) dentro de un recuadro. */
@@ -153,7 +156,7 @@ function Timeline({ appointment }: { appointment: AppointmentRecord }) {
 
 /* ---------- Modal ---------- */
 
-export function AppointmentDetailModal({ appointment, onClose }: AppointmentDetailModalProps) {
+export function AppointmentDetailModal({ appointment, onClose, onEdit, onCancel }: AppointmentDetailModalProps) {
   return (
     <Modal isOpen={appointment !== null} onClose={onClose} className="!max-w-4xl pb-8">
       {appointment && (
@@ -166,6 +169,14 @@ export function AppointmentDetailModal({ appointment, onClose }: AppointmentDeta
             <div className="flex flex-wrap items-center gap-2">
               {appointment.isRewardRedemption && <RewardBadge />}
               <AppointmentStatusBadge status={appointment.status} />
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Cerrar"
+                className="ml-1 cursor-pointer text-[var(--text)] transition-colors hover:text-[var(--text-h)]"
+              >
+                <X size={20} />
+              </button>
             </div>
           </div>
 
@@ -232,15 +243,32 @@ export function AppointmentDetailModal({ appointment, onClose }: AppointmentDeta
             </section>
           )}
 
-          <div className="mt-6 flex justify-end">
-            <Button
-              type="button"
-              onClick={onClose}
-              className="!h-11 !border !border-solid !border-white/10 !bg-[#2A2A2A] px-8 !normal-case !text-[var(--text-h)]"
-            >
-              Cerrar
-            </Button>
+          {/* Sin acciones (p. ej. cita ya cancelada) no se dibuja la barra, para no dejar un hueco vacío. */}
+          {(onEdit || onCancel) && (
+          <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
+            {onEdit && (
+              <button
+                type="button"
+                onClick={onEdit}
+                className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-[#262626] px-5 text-sm font-semibold text-[var(--text-h)] transition-colors hover:border-[var(--accent)]/60"
+              >
+                <Pencil size={16} aria-hidden="true" />
+                Editar cita
+              </button>
+            )}
+
+            {onCancel && (
+              <button
+                type="button"
+                onClick={onCancel}
+                className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-lg border border-[#C4608F]/40 bg-[#C4608F]/10 px-5 text-sm font-semibold text-[#E58AB3] transition-colors hover:border-[#C4608F] hover:bg-[#C4608F]/20"
+              >
+                <Trash size={16} aria-hidden="true" />
+                Cancelar cita
+              </button>
+            )}
           </div>
+          )}
         </>
       )}
     </Modal>
