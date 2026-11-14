@@ -43,21 +43,7 @@ El registro en línea siempre crea una cuenta de cliente. Las cuentas de recepci
 
 El repositorio contiene cuatro proyectos independientes. Cada uno tiene sus propias dependencias y no comparten herramientas de workspace.
 
-```text
-  Web SPA (React)            App Android (Compose)
-  Cloudflare Worker          solo clientes
-          \                      /
-           \   REST / JSON      /
-            v                  v
-        API backend (Express 5, Docker en EC2)
-          |              |                 |
-          v              v                 v
-     PostgreSQL (RDS)   Servicio de IA   AWS S3
-                        (FastAPI)        fotos de clientes
-                           |
-                           v
-                  LLM: API de Anthropic u Ollama
-```
+<img width="1000" height="721" alt="Arquitectura Barberia v4" src="https://github.com/user-attachments/assets/29c410f6-6c23-4d7c-a7d4-5fc4ffdf9a41" />
 
 Puntos clave del diseño:
 
