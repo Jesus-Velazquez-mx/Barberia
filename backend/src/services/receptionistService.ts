@@ -6,7 +6,7 @@ import {
     getReceptionistsByShop,
     createReceptionist,
     reactivateReceptionist,
-    type CreateReceptionistInput,
+    updateReceptionistAssignmentById,
 } from '../repositories/receptionistRepository.js';
 import { getUserByEmail, isUserActive, softDeleteStaff, updateUserById } from '../repositories/userRepository.js';
 import { getShopById, getShopIdsByManagerId } from '../repositories/shopRepository.js';
@@ -35,6 +35,8 @@ export interface UpdateReceptionistInput {
     phone?: string;
     birthDate?: Date;
     gender?: string;
+    shopId?: string;
+    shiftId?: string;
 }
 
 /**
@@ -114,20 +116,9 @@ export const registerReceptionist = async (
 
     assertShopManaged(data.shopId, managedShopIds);
 
-    const input: CreateReceptionistInput = {
-        email: data.email,
-        phone: data.phone ?? null,
-        passwordHash: await bcrypt.hash(data.password, 10),
-        firstName: data.firstName,
-        lastName: data.lastName,
-        birthDate: data.birthDate,
-        gender: data.gender,
-        shopId: data.shopId,
-        shiftId: data.shiftId,
-    };
-
     // El correo es único en toda la tabla users: solo un recepcionista dado de baja puede reactivarse con él.
     const existingUser = await getUserByEmail(data.email);
+    const passwordHash = await bcrypt.hash(data.password, 10);
 
     if (existingUser) {
         if (existingUser.role !== 'receptionist') {
@@ -139,16 +130,36 @@ export const registerReceptionist = async (
             throw new ApiError(ApiErrorCode.USER_ALREADY_EXISTS, 'Email already in use by an active receptionist');
         }
 
-        const reactivated = await reactivateReceptionist(existingUser.id, input);
+        const reactivated = await reactivateReceptionist(existingUser.id, {
+            email: data.email,
+            phone: data.phone ?? null,
+            passwordHash,
+            firstName: data.firstName,
+            lastName: data.lastName,
+            birthDate: data.birthDate,
+            gender: data.gender,
+            shopId: data.shopId,
+            shiftId: data.shiftId,
+        });
         return toReceptionistDetailResponse(reactivated);
     }
 
-    const created = await createReceptionist(input);
+    const created = await createReceptionist({
+        email: data.email,
+        phone: data.phone ?? null,
+        passwordHash,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        birthDate: data.birthDate,
+        gender: data.gender,
+        shopId: data.shopId,
+        shiftId: data.shiftId,
+    });
     return toReceptionistDetailResponse(created);
 };
 
 /**
- * Actualiza los datos personales del recepcionista objetivo. La sucursal y el turno no se modifican aquí.
+ * Actualiza los datos personales, sucursal y turno del recepcionista objetivo.
  */
 export const updateReceptionist = async (
     target: UpdateReceptionistInput,
@@ -169,16 +180,44 @@ export const updateReceptionist = async (
         );
     }
 
-    // updateUserById valida que correo y teléfono no pertenezcan a otro usuario (409)
-    await updateUserById({
-        id: target.id,
-        firstName: target.firstName,
-        lastName: target.lastName,
-        email: target.email,
-        phone: target.phone,
-        birthDate: target.birthDate,
-        gender: target.gender,
-    });
+    if (target.shopId !== undefined) {
+        const shop = await getShopById(target.shopId);
+        if (!shop) throw new ApiError(ApiErrorCode.NOT_FOUND, 'Shop not found');
+        assertShopManaged(target.shopId, managedShopIds);
+    }
+
+    if (target.shiftId !== undefined) {
+        const shift = await getShiftById(target.shiftId);
+        if (!shift) throw new ApiError(ApiErrorCode.NOT_FOUND, 'Shift not found');
+    }
+
+    const hasUserFields =
+        target.firstName !== undefined ||
+        target.lastName !== undefined ||
+        target.email !== undefined ||
+        target.phone !== undefined ||
+        target.birthDate !== undefined ||
+        target.gender !== undefined;
+
+    if (hasUserFields) {
+        // updateUserById valida que correo y teléfono no pertenezcan a otro usuario (409)
+        await updateUserById({
+            id: target.id,
+            firstName: target.firstName,
+            lastName: target.lastName,
+            email: target.email,
+            phone: target.phone,
+            birthDate: target.birthDate,
+            gender: target.gender,
+        });
+    }
+
+    if (target.shopId !== undefined || target.shiftId !== undefined) {
+        await updateReceptionistAssignmentById(target.id, {
+            shopId: target.shopId,
+            shiftId: target.shiftId,
+        });
+    }
 
     const updated = await getReceptionistWithUserById(target.id);
     if (!updated) {

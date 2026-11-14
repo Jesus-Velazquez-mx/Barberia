@@ -13,7 +13,7 @@ import {
     type CreateBarberInput,
     type UpdateBarberInput,
 } from '../repositories/barberRepository.js';
-import { isUserActive } from '../repositories/userRepository.js';
+import { getUserByEmail, getUserByPhone, isUserActive } from '../repositories/userRepository.js';
 import { getShopById } from '../repositories/shopRepository.js';
 import type { BarberResponse, PublicBarberResponse } from '../types/dto/barberResponse.interface.js';
 import { toBarberResponse, toPublicBarberResponse } from '../utils/barberMapper.js';
@@ -101,7 +101,15 @@ export const registerBarber = async (data: CreateBarberInput, token: string): Pr
     const shift = await getShiftById(data.shiftId);
     if (!shift) throw new ApiError(ApiErrorCode.NOT_FOUND, 'Shift not found');
 
-    // 1. Verificamos duplicidad de Email y aplicamos regla de Reactivación
+    // Verificar que el correo o teléfono no pertenezcan ya a un usuario (recepcionista, manager o cliente)
+    if (await getUserByEmail(data.email)) {
+        throw new ApiError(ApiErrorCode.USER_ALREADY_EXISTS, 'Email already in use');
+    }
+    if (data.phone && (await getUserByPhone(data.phone))) {
+        throw new ApiError(ApiErrorCode.USER_ALREADY_EXISTS, 'Phone number already in use');
+    }
+
+    // 1. Verificamos duplicidad de Email en barbers y aplicamos regla de Reactivación
     const existingByEmail = await getBarberByEmail(data.email);
 
     if (existingByEmail) {
@@ -169,6 +177,36 @@ export const updateBarber = async (target: UpdateBarberInput, token: string): Pr
         );
     }
 
+    if (target.shopId !== undefined) {
+        const shop = await getShopById(target.shopId);
+        if (!shop) throw new ApiError(ApiErrorCode.NOT_FOUND, 'Shop not found');
+    }
+
+    if (target.shiftId !== undefined) {
+        const shift = await getShiftById(target.shiftId);
+        if (!shift) throw new ApiError(ApiErrorCode.NOT_FOUND, 'Shift not found');
+    }
+
+    if (target.email && target.email !== barber.email) {
+        const [existingBarber, existingUser] = await Promise.all([
+            getBarberByEmail(target.email),
+            getUserByEmail(target.email),
+        ]);
+        if ((existingBarber && existingBarber.id !== target.id) || existingUser) {
+            throw new ApiError(ApiErrorCode.USER_ALREADY_EXISTS, 'Email already in use');
+        }
+    }
+
+    if (target.phone && target.phone !== barber.phone) {
+        const [existingBarber, existingUser] = await Promise.all([
+            getBarberByPhone(target.phone),
+            getUserByPhone(target.phone),
+        ]);
+        if ((existingBarber && existingBarber.id !== target.id) || existingUser) {
+            throw new ApiError(ApiErrorCode.USER_ALREADY_EXISTS, 'Phone number already in use');
+        }
+    }
+
     const updated = await updateBarberProfileById({
         id: target.id,
         firstName: target.firstName,
@@ -177,6 +215,8 @@ export const updateBarber = async (target: UpdateBarberInput, token: string): Pr
         phone: target.phone,
         birthDate: target.birthDate,
         gender: target.gender,
+        shopId: target.shopId,
+        shiftId: target.shiftId,
         bio: target.bio,
         isAcceptingBookings: target.isAcceptingBookings,
     });

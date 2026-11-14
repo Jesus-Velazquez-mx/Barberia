@@ -1,6 +1,7 @@
 import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 import {
     cancelAppointmentById,
+    checkInAppointmentById,
     createAppointmentWithServices,
     getAppointmentById,
     getAppointments,
@@ -12,8 +13,14 @@ import { getBarberById } from '../repositories/barberRepository.js';
 import { getAppointmentClientsById, getClientByUserId } from '../repositories/clientRepository.js';
 import { getReceptionistByUserId } from '../repositories/receptionistRepository.js';
 import { getAllShifts } from '../repositories/shiftRepository.js';
-import { getAvailableSlots, getBookableServices, MAX_BOOKING_DAYS_AHEAD } from './availabilityService.js';
 import {
+    getAvailableSlots,
+    getBookableServices,
+    MAX_BOOKING_DAYS_AHEAD,
+    SLOT_STEP_MINUTES,
+} from './availabilityService.js';
+import {
+    canCheckInAppointment,
     canCreateAppointment,
     canEditAppointment,
     canViewAppointment,
@@ -36,6 +43,7 @@ import type { AppointmentResponse, ClientAppointmentResponse } from '../types/dt
 
 const MS_PER_MINUTE = 60_000;
 const MS_PER_DAY = 24 * 60 * MS_PER_MINUTE;
+export const NO_SHOW_GRACE_MINUTES = 10;
 // Días que cubre la ventana por defecto, hoy incluido: hasta el último día que availabilityService deja agendar.
 const DEFAULT_WINDOW_DAYS = MAX_BOOKING_DAYS_AHEAD + 1;
 const MAX_WINDOW_DAYS = 366;
@@ -371,6 +379,72 @@ export const cancelAppointment = async (
 
     const [client] = await getAppointmentClientsById(cancelled.client_id !== null ? [cancelled.client_id] : []);
     return toAppointmentResponse(cancelled, services, client ?? null);
+};
+
+/**
+ * Registra la llegada del cliente a su cita (check-in).
+ * Solo recepción (de la sucursal de la cita) y gerentes (de las sucursales que administran).
+ * Solo aplica para citas en estado `scheduled` o `rescheduled` dentro de la ventana
+ * `[scheduled_start - SLOT_STEP_MINUTES, scheduled_start + NO_SHOW_GRACE_MINUTES)`.
+ * Si se hace antes de `scheduled_start`, exige que el mismo barbero no tenga citas bloqueantes en el slot previo.
+ */
+export const checkInAppointment = async (appointmentId: string, token: string): Promise<AppointmentResponse> => {
+    const performer = await isUserSessionValid(token);
+
+    const appointment = await getAppointmentById(appointmentId);
+    if (!appointment) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Appointment not found');
+    }
+
+    const shop = await getShopById(appointment.shop_id);
+    if (!shop) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Shop not found');
+    }
+
+    const receptionistShopId =
+        performer.role === 'receptionist' ? ((await getReceptionistByUserId(performer.id))?.shop_id ?? null) : null;
+
+    if (
+        !canCheckInAppointment(
+            performer,
+            { shopId: appointment.shop_id, shopManagerId: shop.manager_id },
+            receptionistShopId
+        )
+    ) {
+        throw new ApiError(ApiErrorCode.FORBIDDEN, 'Not authorized to check in this appointment');
+    }
+
+    if (appointment.status !== 'scheduled' && appointment.status !== 'rescheduled') {
+        throw new ApiError(ApiErrorCode.CONFLICT, 'Only scheduled or rescheduled appointments can be checked in');
+    }
+
+    const now = new Date();
+    const startMs = appointment.scheduled_start.getTime();
+    const earlyWindowStartMs = startMs - SLOT_STEP_MINUTES * MS_PER_MINUTE;
+    const lateCutoffMs = startMs + NO_SHOW_GRACE_MINUTES * MS_PER_MINUTE;
+
+    if (now.getTime() < earlyWindowStartMs) {
+        throw new ApiError(
+            ApiErrorCode.CONFLICT,
+            'Too early to check in; check-in opens 15 minutes before the scheduled start'
+        );
+    }
+
+    if (now.getTime() >= lateCutoffMs) {
+        throw new ApiError(ApiErrorCode.CONFLICT, 'Check-in window has expired (10 minutes after scheduled start)');
+    }
+
+    const previousSlotRange =
+        now.getTime() < startMs ? { from: new Date(earlyWindowStartMs), to: appointment.scheduled_start } : null;
+
+    const { appointment: checkedIn, services } = await checkInAppointmentById(
+        appointment.id,
+        appointment.barber_id,
+        previousSlotRange
+    );
+
+    const [client] = await getAppointmentClientsById(checkedIn.client_id !== null ? [checkedIn.client_id] : []);
+    return toAppointmentResponse(checkedIn, services, client ?? null);
 };
 
 /**

@@ -152,7 +152,7 @@ export const getAllClients = async (): Promise<ClientWithUser[]> => {
 
 /**
  * Ejecuta una transacción SQL para crear un cliente manipulando users y clients.
- * Valida unicidad de email y teléfono antes de insertar.
+ * Valida unicidad de email y teléfono (tanto en users como en barbers) antes de insertar.
  */
 export const createClient = async (data: CreateClientRepositoryInput): Promise<ClientWithUser> => {
     const pool = db.getPool();
@@ -162,14 +162,20 @@ export const createClient = async (data: CreateClientRepositoryInput): Promise<C
         await client.query('BEGIN');
 
         // 1. Valida unicidad de correo
-        const emailCheck = await client.query('SELECT id FROM users WHERE email = $1', [data.email]);
+        const emailCheck = await client.query(
+            'SELECT id FROM users WHERE email = $1 UNION ALL SELECT id FROM barbers WHERE email = $1',
+            [data.email]
+        );
         if (emailCheck.rows.length > 0) {
             throw new ApiError(ApiErrorCode.USER_ALREADY_EXISTS, 'Email is already registered');
         }
 
         // 2. Valida unicidad de teléfono si se proporciona
         if (data.phone) {
-            const phoneCheck = await client.query('SELECT id FROM users WHERE phone = $1', [data.phone]);
+            const phoneCheck = await client.query(
+                'SELECT id FROM users WHERE phone = $1 UNION ALL SELECT id FROM barbers WHERE phone = $1',
+                [data.phone]
+            );
             if (phoneCheck.rows.length > 0) {
                 throw new ApiError(ApiErrorCode.USER_ALREADY_EXISTS, 'Phone is already registered');
             }
@@ -249,20 +255,24 @@ export const updateClientById = async (fields: UpdateClientRepositoryInput): Pro
 
         // 2. Verifica unicidad de correo y teléfono si se están modificando
         if (fields.email !== undefined) {
-            const emailCheck = await client.query('SELECT id FROM users WHERE email = $1 AND id <> $2', [
-                fields.email,
-                fields.id,
-            ]);
+            const emailCheck = await client.query(
+                `SELECT id FROM users WHERE email = $1 AND id <> $2
+                 UNION ALL
+                 SELECT id FROM barbers WHERE email = $1`,
+                [fields.email, fields.id]
+            );
             if (emailCheck.rows.length > 0) {
                 throw new ApiError(ApiErrorCode.USER_ALREADY_EXISTS, 'Email is already registered');
             }
         }
 
         if (fields.phone !== undefined && fields.phone !== null) {
-            const phoneCheck = await client.query('SELECT id FROM users WHERE phone = $1 AND id <> $2', [
-                fields.phone,
-                fields.id,
-            ]);
+            const phoneCheck = await client.query(
+                `SELECT id FROM users WHERE phone = $1 AND id <> $2
+                 UNION ALL
+                 SELECT id FROM barbers WHERE phone = $1`,
+                [fields.phone, fields.id]
+            );
             if (phoneCheck.rows.length > 0) {
                 throw new ApiError(ApiErrorCode.USER_ALREADY_EXISTS, 'Phone is already registered');
             }

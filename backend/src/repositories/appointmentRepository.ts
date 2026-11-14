@@ -1,3 +1,4 @@
+import type { PoolClient } from 'pg';
 import db from '../connection/connection.js';
 import type { Appointment, AppointmentStatus } from '../types/entities/appointment.interface.js';
 import type { AppointmentService } from '../types/entities/appointmentService.interface.js';
@@ -49,11 +50,12 @@ export const getBlockingAppointmentsByBarberIdsAndRange = async (
     barberIds: string[],
     from: Date,
     to: Date,
-    excludeAppointmentId?: string
+    excludeAppointmentId?: string,
+    queryable: Pick<PoolClient, 'query'> = db.getPool()
 ): Promise<Pick<Appointment, 'barber_id' | 'scheduled_start' | 'scheduled_end'>[]> => {
     if (barberIds.length === 0) return [];
 
-    const result = await db.getPool().query(
+    const result = await queryable.query(
         `SELECT barber_id, scheduled_start, scheduled_end FROM appointments
          WHERE barber_id = ANY($1::uuid[])
            AND status IN ('scheduled', 'rescheduled', 'checked_in')
@@ -346,3 +348,66 @@ export const cancelAppointmentById = async (
         client.release();
     }
 };
+
+/**
+ * Registra el check-in de una cita (status = checked_in, checked_in_at = now()) en una transacción.
+ * Toma el candado FOR UPDATE de la fila del barbero para serializar contra creación/edición de citas
+ * al validar si el slot previo está ocupado, y realiza una transición atómica por estado para no
+ * competir con el job de no-show ni con otro check-in/cancelación concurrente.
+ */
+export const checkInAppointmentById = async (
+    appointmentId: string,
+    barberId: string,
+    previousSlotRange: { from: Date; to: Date } | null = null
+): Promise<{ appointment: Appointment; services: AppointmentService[] }> => {
+    const pool = db.getPool();
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        await client.query(`SELECT id FROM barbers WHERE id = $1 FOR UPDATE`, [barberId]);
+
+        if (previousSlotRange !== null) {
+            const blocking = await getBlockingAppointmentsByBarberIdsAndRange(
+                [barberId],
+                previousSlotRange.from,
+                previousSlotRange.to,
+                appointmentId,
+                client
+            );
+            if (blocking.length > 0) {
+                throw new ApiError(ApiErrorCode.CONFLICT, 'Barber is busy during the previous slot');
+            }
+        }
+
+        const result = await client.query(
+            `UPDATE appointments
+             SET status = 'checked_in', checked_in_at = now()
+             WHERE id = $1 AND status IN ('scheduled', 'rescheduled')
+             RETURNING ${APPOINTMENT_COLUMNS}`,
+            [appointmentId]
+        );
+        if (result.rows.length === 0) {
+            throw new ApiError(ApiErrorCode.CONFLICT, 'Only scheduled or rescheduled appointments can be checked in');
+        }
+
+        const services = await client.query(
+            `SELECT id, appointment_id, service_id, price_at_booking, duration_minutes_at_booking, created_at
+             FROM appointment_services
+             WHERE appointment_id = $1
+             ORDER BY created_at ASC, id ASC`,
+            [appointmentId]
+        );
+
+        await client.query('COMMIT');
+        return { appointment: result.rows[0], services: services.rows };
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
+};
+
+export const checkInAppointment = checkInAppointmentById;
