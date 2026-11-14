@@ -202,7 +202,7 @@ export const insertAppointment = async (
         clientId?: string;
         guestClientName?: string;
         isWalkIn?: boolean;
-        status?: 'scheduled' | 'checked_in' | 'completed' | 'cancelled' | 'no_show';
+        status?: 'scheduled' | 'rescheduled' | 'checked_in' | 'completed' | 'cancelled' | 'no_show';
     }
 ): Promise<string> => {
     const isRegisteredClient = !!options?.clientId;

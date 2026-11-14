@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { cancel, create, getById, list, update } from '../controllers/appointmentController.js';
+import { cancel, checkIn, create, getById, list, update } from '../controllers/appointmentController.js';
 
 const router = Router();
 
@@ -363,5 +363,51 @@ router.put('/appointments/:id', update);
  *         description: Error interno del servidor.
  */
 router.put('/appointments/:id/cancel', cancel);
+
+/**
+ * @swagger
+ * /api/appointments/{id}/check-in:
+ *   put:
+ *     summary: Registra el check-in de una cita
+ *     tags: [Appointments]
+ *     description: |
+ *       Registra la llegada del cliente a su cita (`status` pasa a `checked_in` y se guarda `checkedInAt`; `scheduledStart` y `scheduledEnd` no cambian).
+ *       Una vez en `checked_in`, la cita deja de ser editable y cancelable. Requiere token JWT.
+ *       Permisos por rol:
+ *       - client: no permitido (403).
+ *       - receptionist: citas de la sucursal donde trabaja.
+ *       - manager: citas de las sucursales que administra.
+ *       Reglas:
+ *       - Solo aplica a citas en estado `scheduled` o `rescheduled`; cualquier otro estado (incluido `checked_in`) responde 409.
+ *       - Ventana de check-in: desde `scheduledStart - 15 min` hasta antes de `scheduledStart + 10 min` (`[scheduledStart - 15 min, scheduledStart + 10 min)`).
+ *         Antes de `scheduledStart - 15 min` responde 409 (demasiado pronto) y a partir de `scheduledStart + 10 min` responde 409 (ventana expirada), aunque el job de no-show aún no haya corrido.
+ *       - Check-in anticipado (`[scheduledStart - 15 min, scheduledStart)`): solo se permite si el mismo barbero no tiene otra cita `scheduled`, `rescheduled` o `checked_in`
+ *         que se traslape con `[scheduledStart - 15 min, scheduledStart)`. Citas en `cancelled`, `no_show` o `completed` y citas de otros barberos no bloquean.
+ *       - Desde `scheduledStart` (`[scheduledStart, scheduledStart + 10 min)`) no aplica la condición del slot previo del barbero.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *         description: Id de la cita.
+ *     responses:
+ *       200:
+ *         description: Check-in registrado. `data` tiene la misma forma que la respuesta de `PUT /api/appointments/{id}/cancel`.
+ *       400:
+ *         description: Id con formato UUID inválido.
+ *       401:
+ *         description: Token ausente o inválido.
+ *       403:
+ *         description: Cuenta desactivada, el rol `client` intenta hacer check-in o el personal actúa fuera de sus sucursales.
+ *       404:
+ *         description: Cita no encontrada.
+ *       409:
+ *         description: Estado inválido, fuera de la ventana de check-in (muy pronto o expirada) o barbero ocupado en el slot previo durante check-in anticipado.
+ *       500:
+ *         description: Error interno del servidor.
+ */
+router.put('/appointments/:id/check-in', checkIn);
 
 export default router;
