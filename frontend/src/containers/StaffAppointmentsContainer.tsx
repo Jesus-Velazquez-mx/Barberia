@@ -49,7 +49,7 @@ export function StaffAppointmentsContainer() {
   const latestRequest = useRef(0);
 
   const [search, setSearch] = useState('');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [page, setPage] = useState(1);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<AppointmentRecord | null>(null);

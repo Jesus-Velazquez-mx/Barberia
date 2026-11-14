@@ -1,3 +1,4 @@
+import { dateOnlySchema } from '../utils/dateOnly.js';
 import { z, ZodError } from 'zod';
 import type { UserResponse } from '../types/dto/userResponse.interface.js';
 import {
@@ -22,7 +23,7 @@ const updateUserSchema = z.object({
         password: z.string().min(6).optional(),
         firstName: z.string().min(2).optional(),
         lastName: z.string().min(2).optional(),
-        birthDate: z.coerce.date().optional(),
+        birthDate: dateOnlySchema.optional(),
         gender: z.string().optional(),
     }) satisfies z.ZodType<UpdateUserInput>,
     token: z.jwt(),

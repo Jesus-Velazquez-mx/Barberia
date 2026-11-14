@@ -110,6 +110,21 @@ export const getAppointments = async (filters: AppointmentListFilters): Promise<
 };
 
 /**
+ * Indica si el cliente tiene alguna cita pendiente (scheduled, rescheduled o checked_in), en cualquier sucursal
+ * y sin importar la fecha. A diferencia de getAppointments, no está acotada por ventana ni por alcance de rol.
+ */
+export const hasPendingAppointmentsByClientId = async (clientId: string): Promise<boolean> => {
+    const result = await db.getPool().query(
+        `SELECT EXISTS (
+             SELECT 1 FROM appointments
+             WHERE client_id = $1 AND status IN ('scheduled', 'rescheduled', 'checked_in')
+         ) AS has_pending`,
+        [clientId]
+    );
+    return result.rows[0].has_pending;
+};
+
+/**
  * Servicios agendados de varias citas en una sola consulta (evita N+1).
  */
 export const getServicesByAppointmentIds = async (appointmentIds: string[]): Promise<AppointmentService[]> => {

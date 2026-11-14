@@ -1,5 +1,6 @@
 import { DataTable, type DataTableColumn, type DataTableProps } from '../common/DataTableComponent';
 import type { ClientRecord } from '../../types/clientType';
+import { getGenderLabel } from '../../utils/genderOptions';
 import { formatPhone, joinFullName } from '../../utils/personUtils';
 
 const COLUMNS: DataTableColumn<ClientRecord>[] = [
@@ -13,6 +14,11 @@ const COLUMNS: DataTableColumn<ClientRecord>[] = [
     key: 'email',
     header: 'Correo electrónico',
     render: (client) => <span className="text-[var(--text)]">{client.email}</span>
+  },
+  {
+    key: 'gender',
+    header: 'Género',
+    render: (client) => <span className="text-[var(--text)]">{getGenderLabel(client.gender)}</span>
   },
   { key: 'services', header: 'Servicios', render: (client) => client.completedServicesCount }
 ];

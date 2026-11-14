@@ -1,3 +1,4 @@
+import { dateOnlySchema } from '../utils/dateOnly.js';
 import { z, ZodError } from 'zod';
 import { type LoginInput, loginUser, type RegisterInput, registerUser } from '../services/authService.js';
 import type { ApiHandler } from '../utils/apiResponse.js';
@@ -17,7 +18,7 @@ const registerSchema: z.ZodType<RegisterInput> = z.object({
     phone: z.string().max(10).optional(),
     email: z.email(),
     password: z.string().min(6),
-    birthDate: z.coerce.date(),
+    birthDate: dateOnlySchema,
     gender: z.string(),
 });
 

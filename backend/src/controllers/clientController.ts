@@ -1,3 +1,4 @@
+import { dateOnlySchema } from '../utils/dateOnly.js';
 import { z, ZodError } from 'zod';
 import type { ApiHandler } from '../utils/apiResponse.js';
 import { sendSuccess, sendFail, sendValidationError, sendInternalServerError } from '../utils/apiResponse.js';
@@ -23,7 +24,7 @@ const createClientSchema = z.object({
     email: z.email('Invalid email format').trim().max(255),
     phone: z.string().trim().length(10, 'Phone must have 10 digits').optional().nullable(),
     password: z.string().min(6, 'Password must have at least 6 characters'),
-    birthDate: z.coerce.date(),
+    birthDate: dateOnlySchema,
     gender: z.string().trim().min(1).max(10),
     facialStructureType: z
         .enum(['oval', 'triangle', 'heart', 'round', 'diamond', 'square', 'rectangle'])
@@ -39,7 +40,7 @@ const updateClientFieldsSchema = z.object({
     password: z.string().min(6, 'Password must have at least 6 characters').optional(),
     firstName: z.string().trim().min(2).max(100).optional(),
     lastName: z.string().trim().min(2).max(100).optional(),
-    birthDate: z.coerce.date().optional(),
+    birthDate: dateOnlySchema.optional(),
     gender: z.string().trim().min(1).max(10).optional(),
     facialStructureType: z
         .enum(['oval', 'triangle', 'heart', 'round', 'diamond', 'square', 'rectangle'])

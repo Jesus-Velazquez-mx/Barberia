@@ -8,7 +8,7 @@ export interface Barber {
     shift_id: string;
     bio: string | null;
     is_accepting_bookings: boolean;
-    birth_date: Date;
+    birth_date: string;
     gender: string;
     deleted_at: Date | null;
     created_at: Date;

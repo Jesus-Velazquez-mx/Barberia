@@ -20,7 +20,7 @@ export interface RegisterReceptionistInput {
     lastName: string;
     email: string;
     phone?: string | null;
-    birthDate: Date;
+    birthDate: string;
     gender: string;
     password: string;
     shopId: string;
@@ -33,7 +33,7 @@ export interface UpdateReceptionistInput {
     lastName?: string;
     email?: string;
     phone?: string;
-    birthDate?: Date;
+    birthDate?: string;
     gender?: string;
 }
 
