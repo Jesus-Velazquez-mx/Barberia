@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import { X } from 'lucide-react';
-import type { AppointmentRecord } from '../../types/appointmentType';
+import type { AppointmentRecord, CancelAppointmentPayload } from '../../types/appointmentType';
 import { formatAppointmentDate, formatAppointmentTime, formatPrice } from '../../utils/appointmentUtils';
 import { Modal } from '../common/ModalComponent';
 import type { UserRole } from './EditAppointmentModalComponent';
@@ -18,15 +18,13 @@ const REASON_MAX_LENGTH = 255; // appointments.cancellation_reason es varchar(25
 /* Tipos                                                              */
 /* ------------------------------------------------------------------ */
 
-export interface CancelPayload {
-  /* Motivo obligatorio (máx. 255 caracteres), sin espacios al inicio ni al final. */
-  reason: string;
-}
+/* Motivo opcional (máx. 255 caracteres), igual que PUT /appointments/:id/cancel. null si no se escribió nada. */
+export type CancelPayload = CancelAppointmentPayload;
 
 interface CancelAppointmentModalProps {
   appointment: AppointmentRecord;
   role: UserRole;
-  /** POST/PATCH de cancelación. Debe lanzar un Error con mensaje legible si falla. */
+  /** PUT /appointments/:id/cancel. Debe lanzar un Error con mensaje legible si falla. */
   onSubmit: (appointmentId: string, payload: CancelPayload) => Promise<void>;
   onClose: () => void;
 }
@@ -54,7 +52,6 @@ function SummaryRow({ label, children }: { label: string; children: ReactNode })
  */
 export function CancelAppointmentModal({ appointment, role, onSubmit, onClose }: CancelAppointmentModalProps) {
   const [reason, setReason] = useState('');
-  const [reasonError, setReasonError] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -83,16 +80,10 @@ export function CancelAppointmentModal({ appointment, role, onSubmit, onClose }:
     event.preventDefault();
     if (lockReason || saving) return;
 
-    const trimmed = reason.trim();
-    if (!trimmed) {
-      setReasonError('Escribe el motivo de la cancelación.');
-      return;
-    }
-
     setSaving(true);
     setError(null);
     try {
-      await onSubmit(appointment.id, { reason: trimmed });
+      await onSubmit(appointment.id, { reason: reason.trim() || null });
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo cancelar la cita.');
@@ -107,7 +98,7 @@ export function CancelAppointmentModal({ appointment, role, onSubmit, onClose }:
         <div>
           <h2 className="m-0 text-xl font-semibold text-(--text-h)">Cancelar cita</h2>
           <span className="mt-1 block text-[0.9rem] text-(--text)">
-           Esta acción no se puede deshacer. ¿Estas seguro de cancelar esta cita?.
+            Esta acción no se puede deshacer. ¿Estás seguro de cancelar esta cita?
           </span>
         </div>
         <button
@@ -123,7 +114,7 @@ export function CancelAppointmentModal({ appointment, role, onSubmit, onClose }:
       <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
         {/* Resumen de lo que se va a cancelar */}
         <div className="rounded-lg border border-white/10 bg-black/20 px-3.5 py-1.5">
-         <SummaryRow label="ID">{appointment.id.slice(0, 8)}</SummaryRow>
+          <SummaryRow label="ID">{appointment.id.slice(0, 8)}</SummaryRow>
           {!isClient && <SummaryRow label="Cliente">{appointment.clientName}</SummaryRow>}
           <SummaryRow label="Fecha">{formatAppointmentDate(appointment.scheduledStart)}</SummaryRow>
           <SummaryRow label="Horario">
@@ -136,37 +127,24 @@ export function CancelAppointmentModal({ appointment, role, onSubmit, onClose }:
           </SummaryRow>
         </div>
 
-        {/* Motivo (obligatorio) */}
+        {/* Motivo (opcional) */}
         {!lockReason && (
           <label className="flex flex-col gap-2">
             <span className="text-xs font-bold uppercase tracking-wide text-(--accent)">
-              Motivo de la cancelación <span aria-hidden="true">*</span>
+              Motivo de la cancelación <span className="font-normal normal-case text-(--text)">(opcional)</span>
             </span>
             <textarea
               rows={3}
               value={reason}
               maxLength={REASON_MAX_LENGTH}
               disabled={saving}
-              required
-              aria-invalid={reasonError !== ''}
-              aria-describedby={reasonError ? 'cancel-reason-error' : undefined}
               placeholder={isClient ? 'Cuéntanos por qué cancelas…' : 'Motivo de la cancelación…'}
-              onChange={(e) => {
-                setReason(e.target.value);
-                if (reasonError) setReasonError('');
-              }}
-              className={`w-full resize-none rounded-lg border bg-black/20 px-3.5 py-2.5 text-sm text-(--text-h) outline-none placeholder:text-(--text) disabled:opacity-60 ${
-                reasonError ? 'border-[#ff4d4d] focus:border-[#ff4d4d]' : 'border-white/10 focus:border-(--accent)'
-              }`}
+              onChange={(e) => setReason(e.target.value)}
+              className="w-full resize-none rounded-lg border border-white/10 bg-black/20 px-3.5 py-2.5 text-sm text-(--text-h) outline-none placeholder:text-(--text) focus:border-(--accent) disabled:opacity-60"
             />
-            <div className="flex items-start justify-between gap-3 text-xs">
-              <span id="cancel-reason-error" className="font-semibold text-[#ff4d4d]" role="alert">
-                {reasonError}
-              </span>
-              <span className="shrink-0 text-(--text)">
-                {reason.length}/{REASON_MAX_LENGTH}
-              </span>
-            </div>
+            <span className="self-end text-xs text-(--text)">
+              {reason.length}/{REASON_MAX_LENGTH}
+            </span>
           </label>
         )}
 

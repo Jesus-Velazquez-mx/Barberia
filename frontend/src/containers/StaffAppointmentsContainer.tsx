@@ -8,9 +8,8 @@ import { SearchBar } from '../components/common/SearchBarComponent';
 import { useAuth } from '../context/AuthContext';
 import { getAppointments, type AppointmentQuery } from '../services/appointmentService';
 import type { AppointmentFilterValues, AppointmentRecord, SortDirection } from '../types/appointmentType';
-import { EditAppointmentModal } from '../components/appointments/EditAppointmentModalComponent';
 import type { UserRole } from '../components/appointments/EditAppointmentModalComponent';
-import { MOCK_BARBERS, MOCK_CATALOG, mockLoadSlots, mockUpdateAppointment, toMockEditable, mockCancelAppointment} from '../mocks/editAppointmentMockData';
+import { CancelAppointmentContainer, EditAppointmentContainer } from './AppointmentActionsContainer';
 import {
   MAX_RANGE_DAYS,
   STATUS_OPTIONS,
@@ -31,7 +30,6 @@ import {
 import { getApiErrorMessage } from '../utils/apiErrorUtils';
 import { displayToIsoDate, isValidDisplayDate } from '../utils/dateFormat';
 import { paginate } from '../utils/listUtils';
-import { CancelAppointmentModal } from '../components/appointments/CancelAppointmentModalComponent';
 
 const INVALID_DATE_MESSAGE = 'Fecha no válida (dd/mm/aaaa).';
 const RANGE_MESSAGE = 'No puede ser anterior a la fecha inicial.';
@@ -70,14 +68,17 @@ export function StaffAppointmentsContainer() {
 
   /* Los filtros se aplican al instante, sin botón "Aplicar". */
   const filters = watch();
-  const canEdit = (a: AppointmentRecord) =>
-  (a.status === 'scheduled' || a.status === 'rescheduled') && new Date(a.scheduledStart).getTime() > Date.now();
+  /* El personal no tiene el límite de 8 horas: basta con que la cita siga agendada o reagendada y no haya empezado. */
+  const canModify = (a: AppointmentRecord) =>
+    (a.status === 'scheduled' || a.status === 'rescheduled') && new Date(a.scheduledStart).getTime() > Date.now();
 
   /* Fecha de servicio, sucursal y estado se piden al backend; null mientras una fecha está incompleta o
      el rango es inválido (en ese caso se conserva la última consulta válida). */
   const nextQuery = toAppointmentQuery(filters, canFilterByShop);
   const nextQueryKey = nextQuery ? JSON.stringify(nextQuery) : null;
-  const [query, setQuery] = useState<AppointmentQuery>(() => toAppointmentQuery(getDefaultFilters(), canFilterByShop) ?? {});
+  const [query, setQuery] = useState<AppointmentQuery>(
+    () => toAppointmentQuery(getDefaultFilters(), canFilterByShop) ?? {}
+  );
 
   useEffect(() => {
     // Si la consulta no cambió (p. ej. en el primer render) se conserva el objeto para no volver a consultar.
@@ -230,56 +231,45 @@ export function StaffAppointmentsContainer() {
         />
       </div>
 
-      {<AppointmentDetailModal appointment={selectedAppointment} onClose={() => setSelectedAppointment(null)} />}
-        
-        <AppointmentDetailModal
-          appointment={selectedAppointment}
-          onClose={() => setSelectedAppointment(null)}
-          onEdit={
-            selectedAppointment && canEdit(selectedAppointment)
-              ? () => {
-                  // Se cierra el detalle antes de abrir la edición para no apilar dos modales.
-                  setEditingAppointment(selectedAppointment);
-                  setSelectedAppointment(null);
-                }
-              : undefined
-          }
-          onCancel={
-            selectedAppointment && canEdit(selectedAppointment)
-              ? () => {
-                  setCancelingAppointment(selectedAppointment);
-                  setSelectedAppointment(null);
-                }
-              : undefined
-          }
+      <AppointmentDetailModal
+        appointment={selectedAppointment}
+        onClose={() => setSelectedAppointment(null)}
+        onEdit={
+          selectedAppointment && canModify(selectedAppointment)
+            ? () => {
+                // Se cierra el detalle antes de abrir la edición para no apilar dos modales.
+                setEditingAppointment(selectedAppointment);
+                setSelectedAppointment(null);
+              }
+            : undefined
+        }
+        onCancel={
+          selectedAppointment && canModify(selectedAppointment)
+            ? () => {
+                setCancelingAppointment(selectedAppointment);
+                setSelectedAppointment(null);
+              }
+            : undefined
+        }
+      />
+
+      {editingAppointment && (
+        <EditAppointmentContainer
+          appointment={editingAppointment}
+          role={role as UserRole}
+          onDone={loadAppointments}
+          onClose={() => setEditingAppointment(null)}
         />
+      )}
 
-        {editingAppointment && (
-          <EditAppointmentModal
-            appointment={toMockEditable(editingAppointment)}
-            role={role as UserRole}
-            catalog={MOCK_CATALOG}
-            barbers={MOCK_BARBERS}
-            loadSlots={mockLoadSlots}
-            onSubmit={async (id, payload) => {
-              await mockUpdateAppointment(id, payload);
-              await loadAppointments(); // con la API real, la tabla se actualiza aquí
-            }}
-            onClose={() => setEditingAppointment(null)}
-          />
-        )}
-
-        {cancelingAppointment && (
-          <CancelAppointmentModal
-            appointment={cancelingAppointment}
-            role={role as UserRole}
-            onSubmit={async (id, payload) => {
-              await mockCancelAppointment(id, payload);
-              await loadAppointments();
-            }}
-            onClose={() => setCancelingAppointment(null)}
-          />
-        )}
+      {cancelingAppointment && (
+        <CancelAppointmentContainer
+          appointment={cancelingAppointment}
+          role={role as UserRole}
+          onDone={loadAppointments}
+          onClose={() => setCancelingAppointment(null)}
+        />
+      )}
     </>
   );
 }

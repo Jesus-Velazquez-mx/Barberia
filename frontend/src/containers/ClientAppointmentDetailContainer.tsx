@@ -6,19 +6,8 @@ import { useAuth } from '../context/AuthContext';
 import { AppointmentDetailContent } from '../components/appointments/AppointmentDetailContentComponent';
 import { AppointmentStatusBadge } from '../components/appointments/AppointmentStatusBadgeComponent';
 import { RewardBadge } from '../components/appointments/RewardBadgeComponent';
-// NUEVO
-import { EditAppointmentModal } from '../components/appointments/EditAppointmentModalComponent';
-import { CancelAppointmentModal } from '../components/appointments/CancelAppointmentModalComponent';
-import { getAppointmentById } from '../services/appointmentService';
-// NUEVO: por ahora los modales de editar y cancelar usan datos simulados
-import {
-  MOCK_BARBERS,
-  MOCK_CATALOG,
-  mockCancelAppointment,
-  mockLoadSlots,
-  mockUpdateAppointment,
-  toMockEditable
-} from '../mocks/editAppointmentMockData';
+import { getAppointmentById, type AppointmentClientInfo } from '../services/appointmentService';
+import { CancelAppointmentContainer, EditAppointmentContainer } from './AppointmentActionsContainer';
 
 export const CLIENT_APPOINTMENTS_PATH = '/client/appointments';
 
@@ -29,22 +18,22 @@ export function ClientAppointmentDetailContainer() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // NUEVO: estado del modal de edición
   const [isEditOpen, setIsEditOpen] = useState(false);
-  // NUEVO: estado del modal de cancelación
   const [isCancelOpen, setIsCancelOpen] = useState(false);
-  // NUEVO: con silent no se muestra el esqueleto, así el modal no se desmonta al refrescar tras guardar.
+
+  /* El backend no devuelve los datos del cliente en sus propias citas; se completan con la sesión. */
+  const client: AppointmentClientInfo | undefined = user
+    ? { id: user.id, name: `${user.firstName} ${user.lastName}`, email: user.email }
+    : undefined;
+
+  /* Con silent no se muestra el esqueleto, así el modal no se desmonta al refrescar tras guardar. */
   const load = async ({ silent = false }: { silent?: boolean } = {}) => {
-    if (!user || !token || !appointmentId) return;
+    if (!client || !token || !appointmentId) return;
 
     if (!silent) setIsLoading(true);
     setError('');
     try {
-      const found = await getAppointmentById(token, appointmentId, {
-        id: user.id,
-        name: `${user.firstName} ${user.lastName}`,
-        email: user.email
-      });
+      const found = await getAppointmentById(token, appointmentId, client);
 
       if (!found) {
         setAppointment(null);
@@ -63,11 +52,12 @@ export function ClientAppointmentDetailContainer() {
     void load();
   }, [user?.id, token, appointmentId]);
 
-  // Solo se puede editar o cancelar una cita agendada o reagendada que aún no ha terminado.
+  /* Solo se puede editar o cancelar una cita agendada o reagendada que aún no ha empezado. Si faltan menos de
+     8 horas los botones se muestran igual y el modal explica por qué ya no se puede (regla exclusiva del cliente). */
   const canModify =
     appointment !== null &&
     (appointment.status === 'scheduled' || appointment.status === 'rescheduled') &&
-    new Date(appointment.scheduledEnd).getTime() > Date.now();
+    new Date(appointment.scheduledStart).getTime() > Date.now();
 
   return (
     <div className="rounded-xl border border-white/10 bg-[#1A1A1A] p-6">
@@ -135,29 +125,24 @@ export function ClientAppointmentDetailContainer() {
             </div>
           )}
 
-          {/* NUEVO: se monta solo al abrir para que el formulario arranque limpio cada vez */}
+          {/* Se montan solo al abrir para que el formulario arranque limpio cada vez. Tras guardar se recarga la
+              cita; al cancelarla el estado pasa a "Cancelada" y los botones desaparecen (canModify). */}
           {isEditOpen && (
-            <EditAppointmentModal
-              appointment={toMockEditable(appointment)}
+            <EditAppointmentContainer
+              appointment={appointment}
               role="client"
-              catalog={MOCK_CATALOG}
-              barbers={MOCK_BARBERS}
-              loadSlots={mockLoadSlots}
-              onSubmit={mockUpdateAppointment}
+              client={client}
+              onDone={() => load({ silent: true })}
               onClose={() => setIsEditOpen(false)}
             />
           )}
 
-          {/* NUEVO: cancelación con motivo obligatorio. Tras cancelar se recarga la cita, así que el estado
-              pasa a "Cancelada" y los botones de editar y cancelar desaparecen (canModify). */}
           {isCancelOpen && (
-            <CancelAppointmentModal
+            <CancelAppointmentContainer
               appointment={appointment}
               role="client"
-              onSubmit={async (id, payload) => {
-                await mockCancelAppointment(id, payload);
-                await load({ silent: true });
-              }}
+              client={client}
+              onDone={() => load({ silent: true })}
               onClose={() => setIsCancelOpen(false)}
             />
           )}

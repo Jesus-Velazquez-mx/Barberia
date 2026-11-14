@@ -22,6 +22,7 @@ interface AppointmentDetailModalProps {
   /* Si se pasa, se muestra "Cancelar cita". El contenedor decide cuándo se puede cancelar. */
   onCancel?: () => void;
 }
+
 /* ---------- Piezas ---------- */
 
 /* Dato corto (etiqueta arriba, valor abajo) dentro de un recuadro. */
@@ -245,29 +246,29 @@ export function AppointmentDetailModal({ appointment, onClose, onEdit, onCancel 
 
           {/* Sin acciones (p. ej. cita ya cancelada) no se dibuja la barra, para no dejar un hueco vacío. */}
           {(onEdit || onCancel) && (
-          <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
-            {onEdit && (
-              <button
-                type="button"
-                onClick={onEdit}
-                className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-[#262626] px-5 text-sm font-semibold text-[var(--text-h)] transition-colors hover:border-[var(--accent)]/60"
-              >
-                <Pencil size={16} aria-hidden="true" />
-                Editar cita
-              </button>
-            )}
+            <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
+              {onEdit && (
+                <button
+                  type="button"
+                  onClick={onEdit}
+                  className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-[#262626] px-5 text-sm font-semibold text-[var(--text-h)] transition-colors hover:border-[var(--accent)]/60"
+                >
+                  <Pencil size={16} aria-hidden="true" />
+                  Editar cita
+                </button>
+              )}
 
-            {onCancel && (
-              <button
-                type="button"
-                onClick={onCancel}
-                className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-lg border border-[#C4608F]/40 bg-[#C4608F]/10 px-5 text-sm font-semibold text-[#E58AB3] transition-colors hover:border-[#C4608F] hover:bg-[#C4608F]/20"
-              >
-                <Trash size={16} aria-hidden="true" />
-                Cancelar cita
-              </button>
-            )}
-          </div>
+              {onCancel && (
+                <button
+                  type="button"
+                  onClick={onCancel}
+                  className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-lg border border-[#C4608F]/40 bg-[#C4608F]/10 px-5 text-sm font-semibold text-[#E58AB3] transition-colors hover:border-[#C4608F] hover:bg-[#C4608F]/20"
+                >
+                  <Trash size={16} aria-hidden="true" />
+                  Cancelar cita
+                </button>
+              )}
+            </div>
           )}
         </>
       )}

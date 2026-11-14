@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
-import { Check, ChevronDown, Lock, Plus, X } from 'lucide-react';
+import { Calendar, Check, ChevronDown, Lock, Plus, X } from 'lucide-react';
 import type { AppointmentRecord } from '../../types/appointmentType';
 import { formatAppointmentTime, formatPrice } from '../../utils/appointmentUtils';
+import { isoToDisplayDate } from '../../utils/dateFormat';
 import { Button } from '../common/ButtonComponent';
 import { Modal } from '../common/ModalComponent';
 import { AppointmentStatusBadge } from './AppointmentStatusBadgeComponent';
@@ -15,6 +16,7 @@ import { AppointmentStatusBadge } from './AppointmentStatusBadgeComponent';
 const BUSINESS_TZ = 'America/Mazatlan';
 const RESCHEDULE_WINDOW_DAYS = 30; // desde la fecha en que se agendó
 const CLIENT_CUTOFF_HOURS = 8; // solo aplica al rol client
+const NOTES_MAX_LENGTH = 500; // mismo límite que valida PUT /appointments/:id
 const MS_PER_MIN = 60_000;
 const MS_PER_HOUR = 60 * MS_PER_MIN;
 
@@ -36,9 +38,6 @@ export interface BarberOption {
   name: string;
 }
 
-/* AppointmentRecord ya trae todo lo demás; solo se piden los ids que el modal necesita para consultar y guardar. */
-export type EditableAppointment = AppointmentRecord & { shopId: string; barberId: string };
-
 export interface SlotsByBarber {
   barberId: string;
   startTimes: string[]; // ISO UTC, como los devuelve GET /shops/:id/availability
@@ -59,7 +58,7 @@ export interface LoadSlotsParams {
 }
 
 interface EditAppointmentModalProps {
-  appointment: EditableAppointment;
+  appointment: AppointmentRecord;
   role: UserRole;
   /** Servicios activos del catálogo. Los de la cita conservan su snapshot (precio y duración al agendar). */
   catalog: ModalService[];
@@ -67,7 +66,7 @@ interface EditAppointmentModalProps {
   barbers: BarberOption[];
   /** GET /shops/:shopId/availability excluyendo la propia cita. */
   loadSlots: (params: LoadSlotsParams) => Promise<SlotsByBarber[]>;
-  /** PATCH de la cita. Debe lanzar un Error con mensaje legible si falla. */
+  /** PUT /appointments/:id. Debe lanzar un Error con mensaje legible si falla. */
   onSubmit: (appointmentId: string, payload: UpdatePayload) => Promise<void>;
   onClose: () => void;
 }
@@ -140,9 +139,7 @@ function Tile({
 }
 
 function SectionTitle({ children }: { children: ReactNode }) {
-  return (
-    <h3 className="m-0 mb-3 font-sans text-xs font-bold uppercase tracking-wide text-(--accent)">{children}</h3>
-  );
+  return <h3 className="m-0 mb-3 font-sans text-xs font-bold uppercase tracking-wide text-(--accent)">{children}</h3>;
 }
 
 /*
@@ -230,7 +227,6 @@ function BarberSelect({
   );
 }
 
-const fieldControl ='w-full bg-transparent !p-0 !text-sm font-semibold text-(--text-h) outline-none [color-scheme:dark]';
 const notice = 'rounded-lg border px-3 py-2 text-sm';
 
 /* ------------------------------------------------------------------ */
@@ -329,14 +325,16 @@ export function EditAppointmentModal({
   const serviceKey = [...serviceIds].sort().join(',');
 
   useEffect(() => {
-    if (lockReason || serviceIds.length === 0 || !date) {
+    // Se usa serviceKey (y no serviceIds) para no volver a consultar solo porque cambió el orden.
+    const ids = serviceKey ? serviceKey.split(',') : [];
+    if (lockReason || ids.length === 0 || !date) {
       setSlots([]);
       return;
     }
     let cancelled = false;
     setLoadingSlots(true);
     setSlotsError(null);
-    loadSlots({ shopId: appointment.shopId, date, serviceIds, excludeAppointmentId: appointment.id })
+    loadSlots({ shopId: appointment.shopId, date, serviceIds: ids, excludeAppointmentId: appointment.id })
       .then((result) => {
         if (!cancelled) setSlots(result);
       })
@@ -352,7 +350,7 @@ export function EditAppointmentModal({
     return () => {
       cancelled = true;
     };
-  }, [date, serviceKey, lockReason, appointment.id, appointment.shopId]);
+  }, [date, serviceKey, lockReason, appointment.id, appointment.shopId, loadSlots]);
 
   const slotOptions = useMemo(() => {
     const fromApi = slots.find((s) => s.barberId === barberId)?.startTimes ?? [];
@@ -373,7 +371,7 @@ export function EditAppointmentModal({
   const barberChanged = barberId !== appointment.barberId;
   const servicesChanged =
     serviceIds.length !== originalServiceIds.length || serviceIds.some((id) => !originalServiceIds.includes(id));
-  const notesChanged = isStaff && notes.trim() !== (appointment.notes ?? '').trim();
+  const notesChanged = notes.trim() !== (appointment.notes ?? '').trim();
   const willReschedule = startChanged || barberChanged;
   const dirty = willReschedule || servicesChanged || notesChanged;
   const canSave = !lockReason && dirty && serviceIds.length > 0 && effectiveStart !== '' && !saving;
@@ -394,8 +392,7 @@ export function EditAppointmentModal({
           // Se despliegan los horarios para que se vea qué falta elegir.
           setIsSlotsOpen(true);
           setError('Elige un horario disponible.');
-        }
-        else if (!dirty) setError('No hay cambios que guardar.');
+        } else if (!dirty) setError('No hay cambios que guardar.');
       }
       return;
     }
@@ -443,214 +440,232 @@ export function EditAppointmentModal({
       </div>
 
       <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
-      <fieldset disabled={!!lockReason || saving} className="m-0 flex min-w-0 flex-col gap-4 border-0 p-0 disabled:opacity-60">
-        {isStaff && (
-          <Tile label="Cliente">
-            <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
-              <span>{appointment.clientName}</span>
-              <span className="font-normal text-(--text)">{appointment.clientEmail ?? 'Sin correo'}</span>
-              {!appointment.isRegisteredClient && (
-                <span className="rounded-full bg-[#2C2C2C] px-2 py-0.5 text-[0.65rem] font-semibold uppercase text-(--text)">
-                  Visitante
-                </span>
-              )}
-            </span>
-          </Tile>
-        )}
-
-        <div className="grid grid-cols-2 gap-3">
-          <Tile as="label" label="Fecha" editable className="col-span-2">
-            <input
-              type="date"
-              value={date}
-              min={minDate}
-              max={maxDate}
-              onChange={(e) => e.target.value && setDate(e.target.value)}
-              className={fieldControl}
-            />
-            <span className="mt-0.5 block text-xs font-normal text-(--text)">Hasta el {dayLabel(maxDate)}</span>
-          </Tile>
-
-          <Tile label="Barbero" editable className="relative">
-            <BarberSelect value={barberId} options={barbers} onChange={setBarberId} />
-          </Tile>
-
-          <Tile label="Sucursal" locked>
-            {appointment.shopName}
-          </Tile>
-        </div>
-
-        <section>
-          <button
-            type="button"
-            onClick={() => setIsSlotsOpen((open) => !open)}
-            aria-expanded={isSlotsOpen}
-            aria-controls="available-slots"
-            className="flex w-full cursor-pointer items-center justify-between gap-3 border-0 bg-transparent !p-0 text-left"
-          >
-            <span className="font-sans text-xs font-bold uppercase tracking-wide text-(--accent)">
-              Horarios disponibles
-              {totalMinutes > 0 && <span className="font-normal normal-case text-(--text)"> · {totalMinutes} min</span>}
-            </span>
-            <ChevronDown
-              size={18}
-              aria-hidden="true"
-              className={`shrink-0 text-(--accent) transition-transform ${isSlotsOpen ? 'rotate-180' : ''}`}
-            />
-          </button>
-
-          {/* Resumen siempre visible, aunque la lista esté plegada. */}
-          <span className="mt-1 block text-sm text-(--text)">
-            {effectiveStart
-              ? `${effectiveStart === originalStartIso ? 'Horario actual' : 'Nuevo horario'}: ${dayLabel(date)} · ${formatAppointmentTime(effectiveStart)} - ${formatAppointmentTime(endIso)}`
-              : loadingSlots
-                ? 'Cargando horarios…'
-                : serviceIds.length > 0 && !slotsError && slotOptions.length === 0
-                  ? 'No hay horarios disponibles ese día.'
-                  : 'Elige un horario'}
-          </span>
-
-          {isSlotsOpen && (
-            <div id="available-slots" className="mt-3">
-              {loadingSlots && <span className="text-sm text-(--text)">Cargando horarios…</span>}
-              {slotsError && (
-                <div className={`${notice} border-[#ff4d4d]/40 bg-[#ff4d4d]/10 text-[#ff4d4d]`}>{slotsError}</div>
-              )}
-              {!loadingSlots && !slotsError && serviceIds.length > 0 && slotOptions.length === 0 && (
-                <span className="text-sm text-(--text)">
-                  No hay horarios disponibles ese día. Prueba con otra fecha o barbero.
-                </span>
-              )}
-              <div className="flex flex-wrap gap-2">
-                {slotOptions.map((iso) => {
-                  const selected = iso === effectiveStart;
-                  return (
-                    <button
-                      type="button"
-                      key={iso}
-                      onClick={() => setStartIso(iso)}
-                      aria-pressed={selected}
-                      className={`cursor-pointer rounded-lg border px-3.5 py-1.5 !text-sm transition-colors ${
-                        selected
-                          ? 'border-(--accent) bg-(--accent)/15 text-(--text-h)'
-                          : 'border-white/15 bg-black/20 text-(--text-h) hover:border-(--accent)'
-                      }`}
-                    >
-                      {formatAppointmentTime(iso)}
-                      {iso === originalStartIso && <span className="text-(--text)"> · actual</span>}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+        <fieldset
+          disabled={!!lockReason || saving}
+          className="m-0 flex min-w-0 flex-col gap-4 border-0 p-0 disabled:opacity-60"
+        >
+          {isStaff && (
+            <Tile label="Cliente">
+              <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                <span>{appointment.clientName}</span>
+                <span className="font-normal text-(--text)">{appointment.clientEmail ?? 'Sin correo'}</span>
+                {!appointment.isRegisteredClient && (
+                  <span className="rounded-full bg-[#2C2C2C] px-2 py-0.5 text-[0.65rem] font-semibold uppercase text-(--text)">
+                    Visitante
+                  </span>
+                )}
+              </span>
+            </Tile>
           )}
-        </section>
 
-        <section>
-          <SectionTitle>Servicios</SectionTitle>
-          <ul className="m-0 list-none p-0">
-            {selectedServices.map((s) => (
-              <li
-                key={s.serviceId}
-                className="flex items-center justify-between gap-4 border-b border-white/5 py-3 text-sm first:pt-0"
-              >
-                <span className="text-(--text-h)">
-                  {s.name}
-                  <span className="ml-2 text-xs text-(--text)">{s.durationMinutes} min</span>
-                </span>
-                <span className="flex items-center gap-3">
-                  <span className="font-semibold text-(--text-h)">{formatPrice(s.price)}</span>
-                  {selectedServices.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeService(s.serviceId)}
-                      aria-label={`Quitar ${s.name}`}
-                      className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-full text-(--text) transition-colors hover:bg-white/10 hover:text-(--text-h)"
-                    >
-                      <X size={14} aria-hidden="true" />
-                    </button>
-                  )}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <div className="grid grid-cols-2 gap-3">
+            {/* El <input type="date"> nativo muestra la fecha según el idioma del navegador (mm/dd/aaaa en en-US)
+                y no se puede forzar. Se muestra el texto en dd/mm/aaaa (igual que DateField) y el input nativo,
+                transparente, queda encima solo para abrir el calendario. */}
+            <Tile as="label" label="Fecha" editable className="relative col-span-2">
+              <span className="flex items-center justify-between gap-2">
+                <span>{isoToDisplayDate(date)}</span>
+                <Calendar size={16} aria-hidden="true" className="shrink-0 text-(--accent)" />
+              </span>
+              <input
+                type="date"
+                value={date}
+                min={minDate}
+                max={maxDate}
+                aria-label="Fecha"
+                onChange={(e) => e.target.value && setDate(e.target.value)}
+                onClick={(e) => {
+                  try {
+                    e.currentTarget.showPicker();
+                  } catch {
+                    // Navegadores sin showPicker: el input sigue siendo editable con el teclado.
+                  }
+                }}
+                className="absolute inset-0 h-full w-full cursor-pointer opacity-0 [color-scheme:dark]"
+              />
+              <span className="mt-0.5 block text-xs font-normal text-(--text)">Hasta el {dayLabel(maxDate)}</span>
+            </Tile>
 
-          {availableToAdd.length > 0 && (
-            <div className="mt-3">
+            <Tile label="Barbero" editable className="relative">
+              <BarberSelect value={barberId} options={barbers} onChange={setBarberId} />
+            </Tile>
+
+            <Tile label="Sucursal" locked>
+              {appointment.shopName}
+            </Tile>
+          </div>
+
+          <Tile label={`Horarios disponibles ${totalMinutes > 0 ? `· ${totalMinutes} min` : ''}`}>
+            <div className="flex w-full justify-between">
+              {/* Resumen siempre visible, aunque la lista esté plegada. */}
+              <span className="mt-1 block text-sm text-white">
+                {effectiveStart
+                  ? `${effectiveStart === originalStartIso ? 'Horario actual' : 'Nuevo horario'}: ${formatAppointmentTime(effectiveStart)} - ${formatAppointmentTime(endIso)}`
+                  : loadingSlots
+                    ? 'Cargando horarios…'
+                    : serviceIds.length > 0 && !slotsError && slotOptions.length === 0
+                      ? 'No hay horarios disponibles ese día.'
+                      : 'Elige un horario'}
+              </span>
               <button
                 type="button"
-                onClick={() => setIsAddingService((open) => !open)}
-                aria-expanded={isAddingService}
-                className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-4 py-2 !text-sm font-semibold text-(--text) transition-colors hover:border-(--accent)/60 hover:text-(--text-h)"
+                onClick={() => setIsSlotsOpen((open) => !open)}
+                aria-expanded={isSlotsOpen}
+                aria-controls="available-slots"
+                className="flex w-fit cursor-pointer items-center justify-between border-0 bg-transparent p-0!"
               >
-                <span
+                <ChevronDown
+                  size={18}
                   aria-hidden="true"
-                  className="flex h-5 w-5 items-center justify-center rounded-full border border-(--accent) text-(--accent)"
-                >
-                  <Plus size={12} />
-                </span>
-                Añadir otro servicio
+                  className={`shrink-0 text-(--accent) transition-transform ${isSlotsOpen ? 'rotate-180' : ''}`}
+                />
               </button>
+            </div>
 
-              {isAddingService && (
-                <ul className="m-0 mt-2 list-none overflow-hidden rounded-lg border border-white/10 bg-black/20 p-0">
-                  {availableToAdd.map((s) => (
-                    <li key={s.serviceId} className="border-b border-white/5 last:border-b-0">
+            {isSlotsOpen && (
+              <div id="available-slots" className="mt-3">
+                {loadingSlots && <span className="text-sm text-(--text)">Cargando horarios…</span>}
+                {slotsError && (
+                  <div className={`${notice} border-[#ff4d4d]/40 bg-[#ff4d4d]/10 text-[#ff4d4d]`}>{slotsError}</div>
+                )}
+                {!loadingSlots && !slotsError && serviceIds.length > 0 && slotOptions.length === 0 && (
+                  <span className="text-sm text-(--text)">
+                    No hay horarios disponibles ese día. Prueba con otra fecha o barbero.
+                  </span>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  {slotOptions.map((iso) => {
+                    const selected = iso === effectiveStart;
+                    return (
                       <button
                         type="button"
-                        onClick={() => addService(s.serviceId)}
-                        className="flex w-full cursor-pointer items-center justify-between gap-4 px-3.5 py-2.5 text-left !text-sm text-(--text-h) transition-colors hover:bg-white/5"
+                        key={iso}
+                        onClick={() => setStartIso(iso)}
+                        aria-pressed={selected}
+                        className={`cursor-pointer rounded-lg border px-3.5 py-1.5 !text-sm transition-colors ${
+                          selected
+                            ? 'border-(--accent) bg-(--accent)/15 text-(--text-h)'
+                            : 'border-white/15 bg-black/20 text-(--text-h) hover:border-(--accent)'
+                        }`}
                       >
-                        <span>
-                          {s.name}
-                          <span className="ml-2 text-xs text-(--text)">{s.durationMinutes} min</span>
-                        </span>
-                        <span className="font-semibold">{formatPrice(s.price)}</span>
+                        {formatAppointmentTime(iso)}
+                        {iso === originalStartIso && <span className="text-(--text)"> · actual</span>}
                       </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </Tile>
 
-          <div className="mt-4 flex items-start justify-between gap-4 border-t border-white/10 pt-4">
-            <span className="font-sans text-xs font-bold uppercase tracking-wide text-(--accent)">Total</span>
-            <div className="text-right">
-              <span className="block text-2xl font-semibold text-(--accent)">{formatPrice(totalPrice)}</span>
-              <span className="block text-base text-(--text)">{formatDuration(totalMinutes)}</span>
-              {totalPrice !== originalTotal && (
-                <span className="block text-xs text-(--text)">Antes {formatPrice(originalTotal)}</span>
-              )}
-            </div>
-          </div>
-        </section>
+          <section>
+            <SectionTitle>Servicios</SectionTitle>
+            <ul className="m-0 list-none p-0">
+              {selectedServices.map((s) => (
+                <li
+                  key={s.serviceId}
+                  className="flex items-center justify-between gap-4 border-b border-white/5 py-3 text-sm first:pt-0"
+                >
+                  <span className="text-(--text-h)">
+                    {s.name}
+                    <span className="ml-2 text-xs text-(--text)">{s.durationMinutes} min</span>
+                  </span>
+                  <span className="flex items-center gap-3">
+                    <span className="font-semibold text-(--text-h)">{formatPrice(s.price)}</span>
+                    {selectedServices.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeService(s.serviceId)}
+                        aria-label={`Quitar ${s.name}`}
+                        className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-full text-(--text) transition-colors hover:bg-white/10 hover:text-(--text-h)"
+                      >
+                        <X size={14} aria-hidden="true" />
+                      </button>
+                    )}
+                  </span>
+                </li>
+              ))}
+            </ul>
 
-        {isStaff && (
+            {availableToAdd.length > 0 && (
+              <div className="mt-3">
+                <button
+                  type="button"
+                  onClick={() => setIsAddingService((open) => !open)}
+                  aria-expanded={isAddingService}
+                  className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-4 py-2 !text-sm font-semibold text-(--text) transition-colors hover:border-(--accent)/60 hover:text-(--text-h)"
+                >
+                  <span
+                    aria-hidden="true"
+                    className="flex h-5 w-5 items-center justify-center rounded-full border border-(--accent) text-(--accent)"
+                  >
+                    <Plus size={12} />
+                  </span>
+                  Añadir otro servicio
+                </button>
+
+                {isAddingService && (
+                  <ul className="m-0 mt-2 list-none overflow-hidden rounded-lg border border-white/10 bg-black/20 p-0">
+                    {availableToAdd.map((s) => (
+                      <li key={s.serviceId} className="border-b border-white/5 last:border-b-0">
+                        <button
+                          type="button"
+                          onClick={() => addService(s.serviceId)}
+                          className="flex w-full cursor-pointer items-center justify-between gap-4 px-3.5 py-2.5 text-left !text-sm text-(--text-h) transition-colors hover:bg-white/5"
+                        >
+                          <span>
+                            {s.name}
+                            <span className="ml-2 text-xs text-(--text)">{s.durationMinutes} min</span>
+                          </span>
+                          <span className="font-semibold">{formatPrice(s.price)}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+
+            <div className="mt-4 flex items-start justify-between gap-4 border-t border-white/10 pt-4">
+              <span className="font-sans text-xs font-bold uppercase tracking-wide text-(--accent)">Total</span>
+              <div className="text-right">
+                <span className="block text-2xl font-semibold text-(--accent)">{formatPrice(totalPrice)}</span>
+                <span className="block text-base text-(--text)">{formatDuration(totalMinutes)}</span>
+                {totalPrice !== originalTotal && (
+                  <span className="block text-xs text-(--text)">Antes {formatPrice(originalTotal)}</span>
+                )}
+              </div>
+            </div>
+          </section>
+
+          {/* El cliente también ve y edita las notas de su cita (regla: fecha, barbero, servicios y notas son editables). */}
           <section>
             <SectionTitle>Notas</SectionTitle>
             <textarea
               rows={3}
               value={notes}
-              placeholder="Agregar una nota interna…"
+              maxLength={NOTES_MAX_LENGTH}
+              placeholder="Agregar una nota…"
               onChange={(e) => setNotes(e.target.value)}
               className="w-full resize-y rounded-lg border border-white/10 bg-black/20 px-3.5 py-2.5 text-sm text-(--text-h) outline-none placeholder:text-(--text) focus:border-(--accent)"
             />
+            <span className="block text-right text-xs text-(--text)">
+              {notes.length}/{NOTES_MAX_LENGTH}
+            </span>
           </section>
-        )}
-      </fieldset>
+        </fieldset>
 
-      {!lockReason && willReschedule && (
-        <div className={`${notice} border-(--accent)/40 bg-(--accent)/10 text-(--text-h)`}>
-          Al guardar, la cita pasará a <strong>Reagendada</strong>.
-        </div>
-      )}
-      {!lockReason && role === 'client' && (
-        <span className="text-xs text-(--text)">
-          Puedes editar hasta {CLIENT_CUTOFF_HOURS} horas antes de la cita y reagendar hasta {RESCHEDULE_WINDOW_DAYS} días
-          después de la fecha en que la agendaste.
-        </span>
-      )}
+        {!lockReason && willReschedule && (
+          <div className={`${notice} border-(--accent)/40 bg-(--accent)/10 text-(--text-h)`}>
+            Al guardar, la cita pasará a <strong>Reagendada</strong>.
+          </div>
+        )}
+        {!lockReason && role === 'client' && (
+          <span className="text-xs text-(--text)">
+            Puedes editar hasta {CLIENT_CUTOFF_HOURS} horas antes de la cita y reagendar hasta {RESCHEDULE_WINDOW_DAYS}{' '}
+            días después de la fecha en que la agendaste.
+          </span>
+        )}
         {(lockReason || error) && (
           <p className="text-center text-[0.85rem] font-semibold text-[#ff4d4d]" role="alert">
             {lockReason ?? error}
