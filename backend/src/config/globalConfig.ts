@@ -53,7 +53,9 @@ const loadConfig = () => {
         throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
     }
 
-    console.log(AI_SERVICE_URL + " -- " + AI_PROVIDER)
+    if (ENV === 'local') {
+        console.log(`AI Service URL: ${AI_SERVICE_URL}\nAI Provider: ${AI_PROVIDER}\n`);
+    }
 
     return {
         ENV,
