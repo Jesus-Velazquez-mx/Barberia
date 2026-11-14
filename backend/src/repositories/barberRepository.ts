@@ -10,8 +10,6 @@ export interface UpdateBarberInput {
     phone?: string;
     birthDate?: string;
     gender?: string;
-    shopId?: string;
-    shiftId?: string;
     bio?: string;
     isAcceptingBookings?: boolean;
 }
@@ -149,8 +147,6 @@ export const updateBarberProfileById = async (fields: UpdateBarberInput): Promis
         ['phone', 'phone'],
         ['birthDate', 'birth_date'],
         ['gender', 'gender'],
-        ['shopId', 'shop_id'],
-        ['shiftId', 'shift_id'],
         ['bio', 'bio'],
         ['isAcceptingBookings', 'is_accepting_bookings'],
     ];

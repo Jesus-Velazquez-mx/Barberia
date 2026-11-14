@@ -44,8 +44,6 @@ const updateBarberSchema = z
             .regex(/^\d{4}-\d{2}-\d{2}$/, 'Format must be YYYY-MM-DD')
             .optional(),
         gender: z.string().max(10).optional(),
-        shopId: z.uuid('Invalid shop ID').optional(),
-        shiftId: z.uuid('Invalid shift ID').optional(),
         bio: z.string().max(2000).optional(),
         isAcceptingBookings: z.boolean().optional(),
     })

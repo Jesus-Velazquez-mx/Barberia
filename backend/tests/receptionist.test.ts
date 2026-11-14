@@ -409,16 +409,16 @@ describe('Pruebas de endpoints de Recepcionistas (Receptionists)', () => {
             expect(res.body.data.shopId).toBe(shopId);
         });
 
-        test('Debe actualizar la sucursal y el turno cuando se envíen', async () => {
+        test('No modifica la sucursal ni el turno aunque se envíen', async () => {
             const rec = await insertReceptionist(shopId, shiftId);
             const res = await request(app)
                 .put(`/api/receptionists/${rec.id}`)
                 .set('Authorization', `Bearer ${managerToken}`)
-                .send({ firstName: 'Mismo', shopId: reassignShopId, shiftId: otherShiftId });
+                .send({ firstName: 'Mismo', shopId: emptyShopId, shiftId: otherShiftId });
 
             expect(res.status).toBe(200);
-            expect(res.body.data.shopId).toBe(reassignShopId);
-            expect(res.body.data.shiftId).toBe(otherShiftId);
+            expect(res.body.data.shopId).toBe(shopId);
+            expect(res.body.data.shiftId).toBe(shiftId);
         });
 
         test('Debe responder 400 con cuerpo vacío', async () => {

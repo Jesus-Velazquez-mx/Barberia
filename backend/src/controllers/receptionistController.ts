@@ -32,7 +32,7 @@ const createReceptionistSchema = z.object({
     shiftId: z.uuid('Invalid shift ID'),
 });
 
-// La contraseña no se modifica desde este endpoint
+// La sucursal, el turno y la contraseña no se modifican desde este endpoint
 const updateReceptionistSchema = z
     .object({
         firstName: z.string().trim().min(1).max(100).optional(),
@@ -41,8 +41,6 @@ const updateReceptionistSchema = z
         phone: z.string().trim().max(10).optional(),
         birthDate: z.coerce.date().optional(),
         gender: z.string().max(10).optional(),
-        shopId: z.uuid('Invalid shop ID').optional(),
-        shiftId: z.uuid('Invalid shift ID').optional(),
     })
     .refine(
         (data) => {

@@ -20,18 +20,6 @@ export interface CreateReceptionistInput {
     shiftId: string;
 }
 
-export interface ReactivateReceptionistInput {
-    email: string;
-    phone: string | null;
-    passwordHash: string;
-    firstName: string;
-    lastName: string;
-    birthDate: Date;
-    gender: string;
-    shopId: string;
-    shiftId: string;
-}
-
 /**
  * Busca el perfil de un recepcionista por su user_id. No filtra por deleted_at:
  * los llamadores que necesitan excluir recepcionistas dados de baja (p. ej.
@@ -90,7 +78,7 @@ export const getReceptionistsByShop = async (
 /**
  * Crea la cuenta (users) y el perfil (receptionists) de un recepcionista en una sola transacción.
  * La fila de users debe insertarse primero: el trigger check_user_role valida el rol al insertar en receptionists.
- * Correo y teléfono se verifican dentro de la transacción (tanto en users como en barbers) para que devuelva 409.
+ * Correo y teléfono se verifican dentro de la transacción para que una carrera devuelva 409 y no un error de BD.
  */
 export const createReceptionist = async (input: CreateReceptionistInput): Promise<ReceptionistWithUser> => {
     const pool = db.getPool();
@@ -99,19 +87,13 @@ export const createReceptionist = async (input: CreateReceptionistInput): Promis
     try {
         await client.query('BEGIN');
 
-        const emailCheck = await client.query(
-            `SELECT id FROM users WHERE email = $1 UNION ALL SELECT id FROM barbers WHERE email = $1`,
-            [input.email]
-        );
+        const emailCheck = await client.query('SELECT id FROM users WHERE email = $1', [input.email]);
         if (emailCheck.rows.length > 0) {
             throw new ApiError(ApiErrorCode.USER_ALREADY_EXISTS, 'Email is already registered');
         }
 
         if (input.phone) {
-            const phoneCheck = await client.query(
-                `SELECT id FROM users WHERE phone = $1 UNION ALL SELECT id FROM barbers WHERE phone = $1`,
-                [input.phone]
-            );
+            const phoneCheck = await client.query('SELECT id FROM users WHERE phone = $1', [input.phone]);
             if (phoneCheck.rows.length > 0) {
                 throw new ApiError(ApiErrorCode.USER_ALREADY_EXISTS, 'Phone is already registered');
             }
@@ -158,12 +140,12 @@ export const createReceptionist = async (input: CreateReceptionistInput): Promis
 };
 
 /**
- * Reactiva a un recepcionista dado de baja sobrescribiendo sus datos personales, sucursal y turno
- * con los nuevos (y la contraseña si se proporcionó una nueva), y limpiando deleted_at. Conserva el mismo user_id.
+ * Reactiva a un recepcionista dado de baja sobrescribiendo sus datos personales, contraseña, sucursal y turno
+ * con los nuevos, y limpiando deleted_at. Conserva el mismo user_id.
  */
 export const reactivateReceptionist = async (
     userId: string,
-    input: ReactivateReceptionistInput
+    input: CreateReceptionistInput
 ): Promise<ReceptionistWithUser> => {
     const pool = db.getPool();
     const client = await pool.connect();
@@ -173,18 +155,11 @@ export const reactivateReceptionist = async (
 
         await client.query('SELECT user_id FROM receptionists WHERE user_id = $1 FOR UPDATE', [userId]);
 
-        const emailCheck = await client.query(`SELECT id FROM barbers WHERE email = $1`, [input.email]);
-        if (emailCheck.rows.length > 0) {
-            throw new ApiError(ApiErrorCode.USER_ALREADY_EXISTS, 'Email is already registered');
-        }
-
         if (input.phone) {
-            const phoneCheck = await client.query(
-                `SELECT id FROM users WHERE phone = $1 AND id <> $2
-                 UNION ALL
-                 SELECT id FROM barbers WHERE phone = $1`,
-                [input.phone, userId]
-            );
+            const phoneCheck = await client.query('SELECT id FROM users WHERE phone = $1 AND id <> $2', [
+                input.phone,
+                userId,
+            ]);
             if (phoneCheck.rows.length > 0) {
                 throw new ApiError(ApiErrorCode.USER_ALREADY_EXISTS, 'Phone is already registered');
             }
@@ -192,12 +167,7 @@ export const reactivateReceptionist = async (
 
         await client.query(
             `UPDATE users
-             SET phone = $1,
-                 password_hash = $2,
-                 first_name = $3,
-                 last_name = $4,
-                 birth_date = $5,
-                 gender = $6
+             SET phone = $1, password_hash = $2, first_name = $3, last_name = $4, birth_date = $5, gender = $6
              WHERE id = $7`,
             [input.phone, input.passwordHash, input.firstName, input.lastName, input.birthDate, input.gender, userId]
         );
@@ -223,33 +193,4 @@ export const reactivateReceptionist = async (
     } finally {
         client.release();
     }
-};
-
-/**
- * Actualiza la sucursal y/o el turno asignados a un recepcionista activo.
- */
-export const updateReceptionistAssignmentById = async (
-    userId: string,
-    fields: { shopId?: string; shiftId?: string }
-): Promise<void> => {
-    const pool = db.getPool();
-    const setClauses: string[] = [];
-    const values: unknown[] = [];
-
-    if (fields.shopId !== undefined) {
-        values.push(fields.shopId);
-        setClauses.push(`shop_id = $${values.length}`);
-    }
-    if (fields.shiftId !== undefined) {
-        values.push(fields.shiftId);
-        setClauses.push(`shift_id = $${values.length}`);
-    }
-
-    if (setClauses.length === 0) return;
-
-    values.push(userId);
-    await pool.query(
-        `UPDATE receptionists SET ${setClauses.join(', ')} WHERE user_id = $${values.length} AND deleted_at IS NULL`,
-        values
-    );
 };

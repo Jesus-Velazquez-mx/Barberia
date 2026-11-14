@@ -43,23 +43,6 @@ export const getUserByEmail = async (email: string): Promise<User | null> => {
     return result.rows.length ? result.rows[0] : null;
 };
 
-/**
- * Busca un usuario por su número de teléfono.
- */
-export const getUserByPhone = async (phone: string): Promise<User | null> => {
-    const pool = db.getPool();
-
-    const query = `
-        SELECT u.id, u.role, u.email, u.phone, u.password_hash, u.first_name, u.last_name,
-               u.birth_date, u.gender, u.created_at, u.updated_at
-        FROM users u
-        WHERE u.phone = $1
-    `;
-
-    const result = await pool.query(query, [phone]);
-    return result.rows.length ? result.rows[0] : null;
-};
-
 export const getUserById = async (id: string): Promise<User | null> => {
     const pool = db.getPool();
 
@@ -111,35 +94,23 @@ export const isUserActive = async (userId: string): Promise<boolean> => {
 
 /**
  * Ejecuta una transacción SQL para asegurar una creación segura del usuario.
- * Primero verifica si el correo ya está registrado (en users o barbers) y, si no, crea el usuario
+ * Primero verifica si el correo ya está registrado y, si no, crea el usuario
  * junto con su fila en `clients` (todo registro nuevo es un cliente). Revierte
  * (rollback) todos los cambios si ocurre algún error.
  */
 export const createNewUser = async (userData: CreateUserInput): Promise<{ user: User; client: Client }> => {
     const pool = db.getPool();
-    const client = await pool.connect();
+    const client = await pool.connect(); // Obtiene un cliente específico para la transacción
 
     try {
-        await client.query('BEGIN');
+        await client.query('BEGIN'); // Inicia la transacción
 
-        // 1. Verifica si el correo o teléfono ya existen en users o barbers
-        const checkEmail = await client.query(
-            `SELECT id FROM users WHERE email = $1 UNION ALL SELECT id FROM barbers WHERE email = $1`,
-            [userData.email]
-        );
+        // 1. Verifica si el usuario ya existe para evitar duplicados
+        const checkQuery = `SELECT id FROM users WHERE email = $1`;
+        const checkResult = await client.query(checkQuery, [userData.email]);
 
-        if (checkEmail.rows.length > 0) {
-            throw new ApiError(ApiErrorCode.USER_ALREADY_EXISTS, 'Email is already registered');
-        }
-
-        if (userData.phone) {
-            const checkPhone = await client.query(
-                `SELECT id FROM users WHERE phone = $1 UNION ALL SELECT id FROM barbers WHERE phone = $1`,
-                [userData.phone]
-            );
-            if (checkPhone.rows.length > 0) {
-                throw new ApiError(ApiErrorCode.USER_ALREADY_EXISTS, 'Phone is already registered');
-            }
+        if (checkResult.rows.length > 0) {
+            throw new ApiError(ApiErrorCode.USER_ALREADY_EXISTS, 'Email is already registered'); // Dispara el rollback
         }
 
         const { email, role, phone, password_hash, first_name, last_name, birth_date, gender } = userData;
@@ -163,20 +134,20 @@ export const createNewUser = async (userData: CreateUserInput): Promise<{ user: 
             [newUser.id]
         );
 
-        await client.query('COMMIT');
+        await client.query('COMMIT'); // Guarda los cambios en la base de datos
         return { user: newUser, client: clientResult.rows[0] };
     } catch (error) {
-        await client.query('ROLLBACK');
+        await client.query('ROLLBACK'); // Cancela la transacción si ocurre un error
         throw error;
     } finally {
-        client.release();
+        client.release(); // Siempre libera la conexión de vuelta al pool
     }
 };
 
 /**
  * Ejecuta una transacción SQL para actualizar los datos compartidos (tabla users)
  * de un usuario. Solo modifica las columnas presentes en `fields`, valida que el
- * correo/teléfono no pertenezcan ya a otro usuario o barbero, y revierte todo si algo falla.
+ * correo/teléfono no pertenezcan ya a otro usuario, y revierte todo si algo falla.
  */
 export const updateUserById = async (fields: UpdateUserInput): Promise<User> => {
     const pool = db.getPool();
@@ -191,25 +162,21 @@ export const updateUserById = async (fields: UpdateUserInput): Promise<User> => 
             throw new ApiError(ApiErrorCode.NOT_FOUND, 'User not found');
         }
 
-        // 2. Verifica que el correo/teléfono, si se están cambiando, no estén en uso por otro usuario o barbero
+        // 2. Verifica que el correo/teléfono, si se están cambiando, no estén en uso por otro usuario
         if (fields.email !== undefined) {
-            const emailCheck = await client.query(
-                `SELECT id FROM users WHERE email = $1 AND id <> $2
-                 UNION ALL
-                 SELECT id FROM barbers WHERE email = $1`,
-                [fields.email, fields.id]
-            );
+            const emailCheck = await client.query('SELECT id FROM users WHERE email = $1 AND id <> $2', [
+                fields.email,
+                fields.id,
+            ]);
             if (emailCheck.rows.length > 0) {
                 throw new ApiError(ApiErrorCode.USER_ALREADY_EXISTS, 'Email is already registered');
             }
         }
-        if (fields.phone !== undefined && fields.phone !== null) {
-            const phoneCheck = await client.query(
-                `SELECT id FROM users WHERE phone = $1 AND id <> $2
-                 UNION ALL
-                 SELECT id FROM barbers WHERE phone = $1`,
-                [fields.phone, fields.id]
-            );
+        if (fields.phone !== undefined) {
+            const phoneCheck = await client.query('SELECT id FROM users WHERE phone = $1 AND id <> $2', [
+                fields.phone,
+                fields.id,
+            ]);
             if (phoneCheck.rows.length > 0) {
                 throw new ApiError(ApiErrorCode.USER_ALREADY_EXISTS, 'Phone is already registered');
             }
@@ -272,7 +239,7 @@ export const hardDeleteClient = async (id: string): Promise<void> => {
     const client = await pool.connect();
 
     try {
-        await client.query('BEGIN');
+        await client.query('BEGIN'); // Inicia la transacción
 
         // 1. Borra primero el registro de la tabla 'clients'
         await client.query('DELETE FROM clients WHERE user_id = $1', [id]);
@@ -285,12 +252,12 @@ export const hardDeleteClient = async (id: string): Promise<void> => {
             throw new ApiError(ApiErrorCode.NOT_FOUND, 'User not found');
         }
 
-        await client.query('COMMIT');
+        await client.query('COMMIT'); // Aplica los cambios
     } catch (error) {
-        await client.query('ROLLBACK');
+        await client.query('ROLLBACK'); // Revierte los cambios en caso de error
         throw error;
     } finally {
-        client.release();
+        client.release(); // Libera la conexión
     }
 };
 
@@ -300,6 +267,14 @@ export const hardDeleteClient = async (id: string): Promise<void> => {
  * fecha y hora actual en la tabla correspondiente a su rol. Los barberos no
  * tienen cuenta de usuario, así que se dan de baja por su propio endpoint
  * (ver deleteBarber en barberService.ts), no por aquí.
+ *
+ * SELECT ... FOR UPDATE bloquea la fila antes de dar de baja: así, una operación
+ * concurrente que dependa de ese deleted_at (p. ej. check_manager_deletable, que
+ * bloquea la baja si el manager aún tiene tiendas asignadas) no puede colarse
+ * entre la verificación de esa fila y este UPDATE. Sin el candado, ambas
+ * transacciones podrían no ver los cambios de la otra bajo READ COMMITTED y
+ * confirmarse las dos, dejando una fila (p. ej. una tienda) asignada a un
+ * miembro del staff ya dado de baja.
  */
 export const softDeleteStaff = async (id: string, role: UserRole): Promise<void> => {
     const pool = db.getPool();
