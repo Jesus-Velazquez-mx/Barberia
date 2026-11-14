@@ -10,6 +10,7 @@ interface ClientApi {
     birthDate: string;
     gender: string;
     completedServicesCount: number;
+    clientTelegramId: string | null;
 }
 
 const authHeaders = (token: string): RequestInit => ({ headers: { Authorization: `Bearer ${token}` } });
@@ -22,7 +23,8 @@ const toClientRecord = (client: ClientApi): ClientRecord => ({
     phone: client.phone,
     birthDate: client.birthDate ? client.birthDate.slice(0, 10) : '',
     gender: client.gender,
-    completedServicesCount: client.completedServicesCount
+    completedServicesCount: client.completedServicesCount,
+    clientTelegramId: client.clientTelegramId
 });
 
 /* Obtiene todos los clientes registrados (solo manager o receptionist). */
@@ -76,4 +78,13 @@ export const updateClient = async (id: string, payload: ClientPayload, token: st
 /* Elimina físicamente la cuenta de un cliente. */
 export const deleteClient = async (id: string, token: string): Promise<void> => {
     await apiClient.delete(`/clients/${id}`, authHeaders(token));
+};
+
+/* Muestra los datos de un solo cliente. */
+export const getClientById = async (id: string, token: string): Promise<ClientRecord> => {
+    const { data } = await apiClient.get<ClientApi>(
+        `/clients/${id}`,
+        authHeaders(token)
+    );
+    return toClientRecord(data);
 };

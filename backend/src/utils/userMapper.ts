@@ -55,6 +55,7 @@ export const toClientDetailResponse = (client: ClientWithUser): ClientDetailResp
     completedServicesCount: client.completed_services_count,
     createdAt: client.created_at,
     updatedAt: client.updated_at,
+    clientTelegramId: client.client_telegram_id,
 });
 
 // The *Profile mappers below are used to nest role data inside `user` in

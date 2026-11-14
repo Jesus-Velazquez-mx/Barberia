@@ -21,9 +21,10 @@ import DashboardLayout from './pages/DashboardLayout';
 import RecommendationPage from './pages/client/RecommendationPage';
 import ClientAppointmentsPage from './pages/client/ClientAppointmentPage';
 import ClientAppointmentDetailPage from './pages/client/ClientAppointmentDetailPage';
-import ManagerShiftsPage  from './pages/staff/ManagerShiftsPage';
+import ManagerShiftsPage from './pages/staff/ManagerShiftsPage';
 import ManagerShopsPage from './pages/staff/ManagerShopsPage';
-
+import ClientReminderPage from './pages/client/ClientReminderPage'
+import ManagerNotificationTestPage from './pages/staff/ManagerNotificationTestPage'
 const router = createBrowserRouter([
   /* Client */
   {
@@ -58,7 +59,11 @@ const router = createBrowserRouter([
           {
             path: '/client/profile',
             element: <EditUserPage />
-          }
+          },
+          {
+            path: '/client/reminders',
+            element: <ClientReminderPage />
+          },
         ]
       }
     ]
@@ -125,7 +130,11 @@ const router = createBrowserRouter([
           {
             path: '/manager/management/service-categories',
             element: <StaffServiceCategoriesPage role="manager" />
-          }
+          },
+          {
+            path: '/manager/reminders',
+            element: <ManagerNotificationTestPage />
+          },
         ]
       }
     ]
