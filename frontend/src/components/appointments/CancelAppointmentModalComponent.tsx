@@ -107,7 +107,7 @@ export function CancelAppointmentModal({ appointment, role, onSubmit, onClose }:
         <div>
           <h2 className="m-0 text-xl font-semibold text-(--text-h)">Cancelar cita</h2>
           <span className="mt-1 block text-[0.9rem] text-(--text)">
-            ID: {appointment.id.slice(0, 8)} · Esta acción no se puede deshacer. ¿Estas seguro de cancelar esta cita?.
+           Esta acción no se puede deshacer. ¿Estas seguro de cancelar esta cita?.
           </span>
         </div>
         <button
@@ -123,6 +123,7 @@ export function CancelAppointmentModal({ appointment, role, onSubmit, onClose }:
       <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
         {/* Resumen de lo que se va a cancelar */}
         <div className="rounded-lg border border-white/10 bg-black/20 px-3.5 py-1.5">
+         <SummaryRow label="ID">{appointment.id.slice(0, 8)}</SummaryRow>
           {!isClient && <SummaryRow label="Cliente">{appointment.clientName}</SummaryRow>}
           <SummaryRow label="Fecha">{formatAppointmentDate(appointment.scheduledStart)}</SummaryRow>
           <SummaryRow label="Horario">
