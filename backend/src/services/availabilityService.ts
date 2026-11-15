@@ -31,6 +31,8 @@ export interface GetAvailableSlotsInput {
 
 export interface AvailableSlotsByBarber {
     barberId: string;
+    firstName: string;
+    lastName: string;
     /** Horarios de inicio agendables en ISO 8601 UTC. */
     startTimes: string[];
 }
@@ -133,7 +135,7 @@ export const getAvailableSlots = async ({
 
     // Ninguna sucursal abre en domingo: ningún barbero tiene horarios ese día.
     if (!OPEN_DAYS_OF_WEEK.includes(dayOfWeek)) {
-        return barbers.map((barber: { id: string }) => ({ barberId: barber.id, startTimes: [] }));
+        return barbers.map((barber: { id: string; first_name: string; last_name: string }) => ({ barberId: barber.id, firstName: barber.first_name, lastName: barber.last_name, startTimes: [] }));
     }
 
     // El día de negocio [dayStart, dayStart + 1 día) en hora de pared corresponde a este rango
@@ -154,7 +156,7 @@ export const getAvailableSlots = async ({
     // Hoy no se ofrecen inicios que ya pasaron.
     const notBefore = dayStart === todayStart ? (now - dayStart) / MS_PER_MINUTE : -Infinity;
 
-    return barbers.map((barber: { id: string; shift_id: string }) => {
+    return barbers.map((barber: { id: string; first_name: string; last_name: string; shift_id: string }) => {
         const shift = shifts.find((s) => s.id === barber.shift_id);
         const windows: Interval[] = shift ? [[timeToMinutes(shift.start_time), timeToMinutes(shift.end_time)]] : [];
 
@@ -164,6 +166,8 @@ export const getAvailableSlots = async ({
 
         return {
             barberId: barber.id,
+            firstName: barber.first_name,
+            lastName: barber.last_name,
             startTimes: computeStartMinutes(windows, busy, duration, notBefore).map((m) =>
                 new Date(businessWallClockToUtcMs(dayStart + m * MS_PER_MINUTE)).toISOString()
             ),
@@ -179,7 +183,8 @@ export interface GetNextAvailableSlotsInput {
 
 export interface NextAvailableSlot {
     barberId: string;
-    barberName: string;
+    firstName: string;
+    lastName: string;
     /** Próximo horario de inicio agendable hoy, en ISO 8601 UTC. */
     startTime: string;
 }
@@ -202,10 +207,10 @@ export const getNextAvailableSlots = async ({
     if (withSlot.length === 0) return [];
 
     // getAvailableSlots solo expone ids; los nombres salen de los mismos barberos elegibles de la sucursal.
-    const barbers = await getActiveBarbersByShop(shopId);
-    const nameById = new Map(barbers.map((b) => [b.id, `${b.first_name} ${b.last_name}`]));
+    // const barbers = await getActiveBarbersByShop(shopId);
+    // const nameById = new Map(barbers.map((b) => [b.id, `${b.first_name} ${b.last_name}`]));
 
     return withSlot
-        .map((b) => ({ barberId: b.barberId, barberName: nameById.get(b.barberId) ?? '', startTime: b.startTimes[0] }))
-        .sort((a, b) => a.startTime.localeCompare(b.startTime) || a.barberName.localeCompare(b.barberName));
+        .map((b) => ({ barberId: b.barberId, firstName: b.firstName, lastName: b.lastName, startTime: b.startTimes[0] }))
+        .sort((a, b) => a.startTime.localeCompare(b.startTime) || a.firstName.localeCompare(b.firstName));
 };

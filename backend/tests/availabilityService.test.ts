@@ -316,9 +316,9 @@ describe('getNextAvailableSlots', () => {
         // 10:05: el primer inicio libre es 10:15 (09:00-10:00 ya pasó); barber-1 está ocupado hasta las 11:00.
         // barber-2 y barber-3 empatan a las 10:15 y se ordenan por nombre solo para una respuesta estable.
         expect(await runNext()).toEqual([
-            { barberId: 'barber-3', barberName: 'Ana Díaz', startTime: atWed('10:15') },
-            { barberId: 'barber-2', barberName: 'Beto López', startTime: atWed('10:15') },
-            { barberId: 'barber-1', barberName: 'Carlos Ruiz', startTime: atWed('11:00') },
+            { barberId: 'barber-3', firstName: 'Ana', lastName: 'Díaz', startTime: atWed('10:15') },
+            { barberId: 'barber-2', firstName: 'Beto', lastName: 'López', startTime: atWed('10:15') },
+            { barberId: 'barber-1', firstName: 'Carlos', lastName: 'Ruiz', startTime: atWed('11:00') },
         ]);
     });
 

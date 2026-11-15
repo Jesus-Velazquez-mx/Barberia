@@ -81,8 +81,8 @@ describe('GET /api/shops/:id/availability/next', () => {
         shopId = await insertShop(manager.id, { name: generateUniqueName('NextShop') });
         const otherShopId = await insertShop(manager.id, { name: generateUniqueName('OtherNextShop') });
 
-        // Turno 09:00-13:00 y servicio de 30 min
-        const shiftId = await insertShift(generateUniqueName('NextShift'), '09:00', '13:00');
+        // Turno 10:00-14:00 y servicio de 30 min
+        const shiftId = await insertShift(generateUniqueName('NextShift'), '10:00', '14:00');
         serviceId = await insertService({ durationMinutes: 30, isActive: true });
 
         freeBarberId = (await insertBarber(shopId, { shiftId, firstName: 'Ana', lastName: 'Libre' })).id;
@@ -92,7 +92,7 @@ describe('GET /api/shops/:id/availability/next', () => {
         await insertBarber(otherShopId, { shiftId });
 
         await insertAppointment(shopId, busyBarberId, at('10:00'), at('11:00'), { status: 'scheduled' });
-        await insertAppointment(shopId, fullBarberId, at('09:00'), at('13:00'), { status: 'checked_in' });
+        await insertAppointment(shopId, fullBarberId, at('10:00'), at('14:00'), { status: 'checked_in' });
 
         // Recepcionistas: uno de shopId y uno de otherShopId
         receptionist = { ...(await insertReceptionist(shopId, shiftId)), role: 'receptionist' };
@@ -105,7 +105,7 @@ describe('GET /api/shops/:id/availability/next', () => {
     });
 
     beforeEach(() => {
-        // 10:05 del miércoles: los inicios de 09:00 a 10:00 ya pasaron.
+        // 10:05 del miércoles: los inicios de 10:00 a 10:00 ya pasaron.
         freezeAt('10:05');
     });
 
@@ -132,8 +132,8 @@ describe('GET /api/shops/:id/availability/next', () => {
         expect(res.body.message).toMatch(/Next available slots retrieved successfully/i);
         // El barbero lleno y el que no acepta reservas se omiten.
         expect(res.body.data).toEqual([
-            { barberId: freeBarberId, barberName: 'Ana Libre', startTime: at('10:15').toISOString() },
-            { barberId: busyBarberId, barberName: 'Beto Ocupado', startTime: at('11:00').toISOString() },
+            { barberId: freeBarberId, firstName: 'Ana', lastName: 'Libre', startTime: at('10:15').toISOString() },
+            { barberId: busyBarberId, firstName: 'Beto', lastName: 'Ocupado', startTime: at('11:00').toISOString() },
         ]);
         expect(res.body.data.map((s: { barberId: string }) => s.barberId)).not.toContain(fullBarberId);
         expect(res.body.data.map((s: { barberId: string }) => s.barberId)).not.toContain(notAcceptingBarberId);
@@ -162,7 +162,7 @@ describe('GET /api/shops/:id/availability/next', () => {
     });
 
     test('ya no quedan slots hoy (después del turno): lista vacía', async () => {
-        freezeAt('12:45');
+        freezeAt('13:45');
         const res = await getNext(receptionist);
 
         expect(res.status).toBe(200);
