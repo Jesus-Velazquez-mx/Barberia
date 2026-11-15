@@ -16,6 +16,7 @@ import { getAvailableSlots, getBookableServices, MAX_BOOKING_DAYS_AHEAD } from '
 import {
     canCreateAppointment,
     canEditAppointment,
+    canManageShopWalkIns,
     canViewAppointment,
     canViewShopAppointments,
     isWithinClientEditCutoff,
@@ -192,6 +193,29 @@ export const assertCanExcludeAppointmentFromAvailability = async (
     const { appointment } = await loadAppointmentInEditScope(appointmentId, token, 'exclude');
     if (appointment.shop_id !== shopId) {
         throw new ApiError(ApiErrorCode.INVALID_INPUT, 'The appointment does not belong to the requested shop');
+    }
+};
+
+/**
+ * GET /shops/:id/availability/next: valida la sesión (401) y que el solicitante sea personal de la sucursal (403).
+ * Los clientes se rechazan antes de consultar la sucursal; una sucursal inexistente responde 404.
+ */
+export const assertCanManageShopWalkIns = async (shopId: string, token: string): Promise<void> => {
+    const performer = await isUserSessionValid(token);
+    if (performer.role === 'client') {
+        throw new ApiError(ApiErrorCode.FORBIDDEN, 'Not authorized to manage walk-ins of this shop');
+    }
+
+    const shop = await getShopById(shopId);
+    if (!shop) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Shop not found');
+    }
+
+    const receptionistShopId =
+        performer.role === 'receptionist' ? ((await getReceptionistByUserId(performer.id))?.shop_id ?? null) : null;
+
+    if (!canManageShopWalkIns(performer, { shopId: shop.id, shopManagerId: shop.manager_id }, receptionistShopId)) {
+        throw new ApiError(ApiErrorCode.FORBIDDEN, 'Not authorized to manage walk-ins of this shop');
     }
 };
 

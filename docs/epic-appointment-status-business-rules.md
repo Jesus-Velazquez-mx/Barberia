@@ -103,7 +103,7 @@ Comportamiento ya existente que se conserva: una cita `checked_in` (o terminal) 
 
 - **R-NX-1 [Aprobada]** Un endpoint devuelve, para una sucursal y un conjunto de servicios, el **próximo slot disponible de cada barbero** de la sucursal que pueda dar esos servicios, ordenado por hora de inicio ascendente. No hay desempate automático: el staff comunica las opciones al cliente y este elige barbero y hora.
 - **R-NX-2** Solo se consideran slots del día actual; no se devuelven horas ya pasadas. Respeta turnos del barbero, `is_accepting_bookings`, días abiertos (lunes a sábado) y citas que ocupan agenda (reutiliza el cálculo de disponibilidad existente).
-- **R-NX-3** Un barbero sin slot restante hoy se omite de la lista (o se devuelve con `startTime: null`; decidir al implementar y documentar). Si ningún barbero tiene slot hoy, la lista es vacía.
+- **R-NX-3 [Implementada]** Un barbero sin slot restante hoy **se omite** de la lista (no se devuelve con `startTime: null`): así cada elemento es una opción que el staff puede ofrecer, y el front no tiene que filtrar nulos. Si ningún barbero tiene slot hoy (domingo, turnos terminados o agendas llenas), responde 200 con lista vacía. Endpoint: `GET /api/shops/:id/availability/next?serviceIds=...` → `[{ barberId, barberName, startTime }]`; los empates en `startTime` se ordenan por nombre solo para que la respuesta sea estable.
 - **R-NX-4** Solo staff de la sucursal puede consultarlo; los clientes y el staff de otra sucursal reciben 403.
 - **R-NX-5** Todo slot devuelto debe ser aceptado por la creación de citas con `isWalkIn = true`.
 
