@@ -4,12 +4,15 @@ import com.mrbarber.cliente.core.network.ApiResponse
 import com.mrbarber.cliente.features.appointment.data.remote.dto.AppointmentResponseDto
 import com.mrbarber.cliente.features.appointment.data.remote.dto.BarberAvailabilityDto
 import com.mrbarber.cliente.features.appointment.data.remote.dto.BarberDto
+import com.mrbarber.cliente.features.appointment.data.remote.dto.CancelAppointmentRequestDto
 import com.mrbarber.cliente.features.appointment.data.remote.dto.CreateAppointmentRequestDto
 import com.mrbarber.cliente.features.appointment.data.remote.dto.OfferedServiceDto
 import com.mrbarber.cliente.features.appointment.data.remote.dto.ShopDto
+import com.mrbarber.cliente.features.appointment.data.remote.dto.UpdateAppointmentRequestDto
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -33,4 +36,22 @@ interface AppointmentApi {
         @Query("date") date: String,
         @Query("serviceIds") serviceIds: List<String>
     ): ApiResponse<List<BarberAvailabilityDto>>
+
+    /** Para un cliente devuelve solo sus citas; sin `from`/`to` el backend usa de hoy a 30 días. */
+    @GET("api/appointments")
+    suspend fun getMyAppointments(
+        @Query("status") status: List<String>
+    ): ApiResponse<List<AppointmentResponseDto>>
+
+    @PUT("api/appointments/{id}")
+    suspend fun update(
+        @Path("id") id: String,
+        @Body body: UpdateAppointmentRequestDto
+    ): ApiResponse<AppointmentResponseDto>
+
+    @PUT("api/appointments/{id}/cancel")
+    suspend fun cancel(
+        @Path("id") id: String,
+        @Body body: CancelAppointmentRequestDto
+    ): ApiResponse<AppointmentResponseDto>
 }

@@ -1,6 +1,7 @@
 package com.mrbarber.cliente.features.appointment.domain.repository
 
 import com.mrbarber.cliente.features.appointment.domain.model.Appointment
+import com.mrbarber.cliente.features.appointment.domain.model.AppointmentUpdate
 import com.mrbarber.cliente.features.appointment.domain.model.Barber
 import com.mrbarber.cliente.features.appointment.domain.model.BarberAvailability
 import com.mrbarber.cliente.features.appointment.domain.model.NewAppointment
@@ -18,4 +19,13 @@ interface AppointmentRepository {
         date: LocalDate,
         serviceIds: List<String>
     ): Result<List<BarberAvailability>>
+
+    suspend fun getMyAppointments(): Result<List<Appointment>>
+
+    suspend fun getAppointment(id: String): Result<Appointment>
+
+    suspend fun updateAppointment(id: String, update: AppointmentUpdate): Result<Appointment>
+
+    suspend fun cancelAppointment(id: String, reason: String? = null): Result<Appointment>
+
 }

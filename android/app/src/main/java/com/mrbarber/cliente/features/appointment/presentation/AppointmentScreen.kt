@@ -89,12 +89,28 @@ fun AppointmentRoute(
 
     // Se confirma la cita al usuario antes de salir de la pantalla.
     state.createdAppointment?.let { appointment ->
-        AppointmentCreatedDialog(
+        AppointmentSavedDialog(
+            title = "¡Cita agendada!",
             appointment = appointment,
             shopName = state.selectedShop?.name,
             barberName = state.selectedBarber?.name,
             onDismiss = onAppointmentCreated
         )
+    }
+
+    state.updatedAppointment?.let { appointment ->
+        AppointmentSavedDialog(
+            title = "¡Cita reagendada!",
+            appointment = appointment,
+            shopName = state.selectedShop?.name,
+            barberName = (state.selectedBarber ?: state.currentBarber)?.name,
+            onDismiss = onAppointmentCreated
+        )
+    }
+
+    // Al aceptar se vuelve a "Mis citas", que se recarga sola y ya no muestra esa cita.
+    state.appointmentUnavailableError?.let { message ->
+        AppointmentUnavailableDialog(message = message, onAccept = onBack)
     }
 
     Appointment(
@@ -106,6 +122,7 @@ fun AppointmentRoute(
         onBarberSelected = viewModel::onBarberSelected,
         onDateSelected = viewModel::onDateSelected,
         onTimeSelected = viewModel::onTimeSelected,
+        onNotesChanged = viewModel::onNotesChanged,
         onConfirmClick = viewModel::onConfirmClick,
         modifier = modifier
     )
@@ -121,6 +138,7 @@ fun Appointment(
     onBarberSelected: (String) -> Unit,
     onDateSelected: (LocalDate) -> Unit,
     onTimeSelected: (LocalTime) -> Unit,
+    onNotesChanged: (String) -> Unit,
     onConfirmClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -140,7 +158,7 @@ fun Appointment(
             Spacer(Modifier.height(8.dp))
 
             Text(
-                "AGENDAR CITA",
+                if (state.isRescheduling) "REAGENDAR CITA" else "AGENDAR CITA",
                 fontSize = 26.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
@@ -156,18 +174,29 @@ fun Appointment(
                 return@Column
             }
 
-            state.catalogError?.let { message ->
-                CatalogError(message = message, onRetry = onRetryCatalog)
+            // Sin la cita no hay nada que editar: el aviso lo da AppointmentUnavailableDialog.
+            if (state.appointmentUnavailableError != null) return@Column
+
+            state.loadError?.let { message ->
+                LoadError(message = message, onRetry = onRetryCatalog)
                 return@Column
             }
 
+            // Al modificar no se puede cambiar de sucursal: hay que cancelar y agendar otra cita.
             SectionCard(title = "1. Sucursal") {
                 ShopDropdown(
                     shops = state.shops,
                     selectedShop = state.selectedShop,
-                    enabled = !state.isSubmitting,
+                    enabled = !state.isSubmitting && !state.isEditing,
                     onShopSelected = onShopSelected
                 )
+                if (state.isEditing) {
+                    Text(
+                        "Para cambiar de sucursal cancela esta cita y agenda una nueva.",
+                        fontSize = 12.sp,
+                        color = GrisClaro
+                    )
+                }
             }
 
             Spacer(Modifier.height(16.dp))
@@ -210,6 +239,12 @@ fun Appointment(
             AnimatedVisibility(visible = state.canChooseSchedule) {
                 Column {
                     SectionCard(title = "3. Día y horario") {
+                        state.editingAppointment?.let { original ->
+                            CurrentScheduleHint(
+                                appointment = original,
+                                barberName = state.currentBarber?.name
+                            )
+                        }
                         Text("Día", fontSize = 14.sp, color = GrisClaro)
                         Row(
                             modifier = Modifier.horizontalScroll(rememberScrollState()),
@@ -237,6 +272,14 @@ fun Appointment(
                     // Solo se ofrecen los barberos libres en el horario elegido.
                     SectionCard(title = "4. Barbero") {
                         when {
+                            state.selectedTime == null && state.isEditing ->
+                                Text(
+                                    "Se conserva ${state.currentBarber?.name ?: "el barbero actual"}. " +
+                                        "Elige otro horario para cambiar de barbero.",
+                                    fontSize = 13.sp,
+                                    color = GrisClaro
+                                )
+
                             state.selectedTime == null ->
                                 Text(
                                     "Elige un horario para ver los barberos disponibles.",
@@ -275,6 +318,24 @@ fun Appointment(
 
                     Spacer(Modifier.height(16.dp))
 
+                    SectionCard(title = "5. Notas (opcional)") {
+                        OutlinedTextField(
+                            value = state.notes,
+                            onValueChange = onNotesChanged,
+                            enabled = !state.isSubmitting,
+                            placeholder = { Text("Ej. Degradado bajo, sin barba") },
+                            supportingText = {
+                                Text("${state.notes.length}/${BookedAppointment.MAX_NOTES_LENGTH}", color = GrisClaro)
+                            },
+                            minLines = 2,
+                            maxLines = 5,
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+
                     AppointmentSummary(state = state)
 
                     state.error?.let {
@@ -285,7 +346,7 @@ fun Appointment(
                     Spacer(Modifier.height(16.dp))
 
                     LoadingButton(
-                        text = "CONFIRMAR CITA",
+                        text = if (state.isEditing) "GUARDAR CAMBIOS" else "CONFIRMAR CITA",
                         onClick = onConfirmClick,
                         enabled = state.canConfirm,
                         isLoading = state.isSubmitting
@@ -498,15 +559,20 @@ private fun TimeSlots(
 
 @Composable
 private fun AppointmentSummary(state: AppointmentUiState) {
+    // Al modificar sin elegir horario nuevo, se muestran la fecha, hora y barbero que se conservan.
+    val keptStart = state.editingAppointment
+        ?.takeIf { state.selectedTime == null }
+        ?.scheduledStart?.atZoneSameInstant(BUSINESS_ZONE)
+    val date = keptStart?.toLocalDate() ?: state.selectedDate
+    val time = keptStart?.toLocalTime() ?: state.selectedTime
+    val barber = if (keptStart != null) state.currentBarber else state.selectedBarber
+
     SectionCard(title = "Resumen") {
         SummaryRow("Sucursal", state.selectedShop?.name)
         SummaryRow("Servicios", state.selectedServices.joinToString { it.name }.ifEmpty { null })
-        SummaryRow(
-            "Fecha",
-            state.selectedDate?.format(FULL_DATE_FORMAT)?.replaceFirstChar { it.uppercase() }
-        )
-        SummaryRow("Hora", state.selectedTime?.format(TIME_FORMAT))
-        SummaryRow("Barbero", state.selectedBarber?.name)
+        SummaryRow("Fecha", date?.format(FULL_DATE_FORMAT)?.replaceFirstChar { it.uppercase() })
+        SummaryRow("Hora", time?.format(TIME_FORMAT))
+        SummaryRow("Barbero", barber?.name)
         HorizontalDivider(color = GrisClaro.copy(alpha = 0.3f))
         Row(modifier = Modifier.fillMaxWidth()) {
             Text("Total", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
@@ -549,7 +615,7 @@ private fun LockedHint(text: String) {
 }
 
 @Composable
-private fun CatalogError(message: String, onRetry: () -> Unit) {
+private fun LoadError(message: String, onRetry: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -563,7 +629,33 @@ private fun CatalogError(message: String, onRetry: () -> Unit) {
 }
 
 @Composable
-private fun AppointmentCreatedDialog(
+private fun CurrentScheduleHint(appointment: BookedAppointment, barberName: String?) {
+    val start = appointment.scheduledStart.atZoneSameInstant(BUSINESS_ZONE)
+    val details = buildString {
+        append(start.format(FULL_DATE_FORMAT).replaceFirstChar { it.uppercase() })
+        append(" a las ${start.format(TIME_FORMAT)}")
+        barberName?.let { append(" con $it") }
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .border(1.dp, Dorado.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+            .padding(12.dp)
+    ) {
+        Text("Horario actual", fontSize = 12.sp, color = GrisClaro)
+        Text(details, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        Text(
+            "Elige otro día y horario solo si quieres cambiarlo.",
+            fontSize = 12.sp,
+            color = GrisClaro
+        )
+    }
+}
+
+@Composable
+private fun AppointmentSavedDialog(
+    title: String,
     appointment: BookedAppointment,
     shopName: String?,
     barberName: String?,
@@ -581,7 +673,7 @@ private fun AppointmentCreatedDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("¡Cita agendada!") },
+        title = { Text(title) },
         text = { Text(details) },
         confirmButton = {
             TextButton(onClick = onDismiss) {
@@ -646,6 +738,7 @@ fun AppointmentPreview() {
             onBarberSelected = { state = state.copy(selectedBarberId = it, selectedTime = null) },
             onDateSelected = { state = state.copy(selectedDate = it, selectedTime = null) },
             onTimeSelected = { state = state.copy(selectedTime = it) },
+            onNotesChanged = { state = state.copy(notes = it) },
             onConfirmClick = {}
         )
     }

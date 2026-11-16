@@ -11,13 +11,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -26,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -47,6 +48,7 @@ import com.mrbarber.cliente.ui.components.SectionCard
 import com.mrbarber.cliente.ui.theme.Dorado
 import com.mrbarber.cliente.ui.theme.GrisClaro
 import com.mrbarber.cliente.ui.theme.MrBarberTheme
+import com.mrbarber.cliente.ui.theme.Rojo
 import java.time.LocalDate
 
 @Composable
@@ -203,23 +205,21 @@ fun Profile(
                 ) {
                     Text("CERRAR SESIÓN", fontWeight = FontWeight.Bold)
                 }
-                TextButton(
+                Button(
                     onClick = { showDeleteDialog = true },
                     enabled = !state.isBusy,
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Rojo, contentColor = Color.White),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     if (state.isDeleting) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(20.dp),
                             strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.error
+                            color = Color.White
                         )
                     } else {
-                        Text(
-                            "ELIMINAR CUENTA",
-                            color = MaterialTheme.colorScheme.error,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Text("ELIMINAR CUENTA", fontWeight = FontWeight.Bold)
                     }
                 }
             }

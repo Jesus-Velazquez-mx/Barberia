@@ -8,9 +8,12 @@ import java.time.LocalDate
 import java.time.LocalTime
 
 data class AppointmentUiState(
-    // Carga inicial de sucursales y servicios
+    // Carga inicial: sucursales y servicios, y la cita si se está modificando
     val isLoadingCatalog: Boolean = false,
-    val catalogError: String? = null,
+    /** Falló la carga inicial; se puede reintentar. */
+    val loadError: String? = null,
+    /** La cita a modificar ya no existe; reintentar no ayuda. */
+    val appointmentUnavailableError: String? = null,
     // Paso 1: sucursal y servicios
     val shops: List<Shop> = emptyList(),
     val selectedShopId: String? = null,
@@ -27,10 +30,30 @@ data class AppointmentUiState(
     val barbers: List<Barber> = emptyList(),
     val isLoadingBarbers: Boolean = false,
     val selectedBarberId: String? = null,
+    // Notas opcionales para el barbero
+    val notes: String = "",
     val isSubmitting: Boolean = false,
     val error: String? = null,
-    val createdAppointment: Appointment? = null
+    val createdAppointment: Appointment? = null,
+    // Modo edición: la cita original y el resultado de guardarla
+    /** Se abrió para reagendar; a diferencia de [isEditing], se sabe desde antes de cargar la cita. */
+    val isRescheduling: Boolean = false,
+    val editingAppointment: Appointment? = null,
+    val updatedAppointment: Appointment? = null
 ) {
+    val isEditing: Boolean get() = editingAppointment != null
+
+    /** Barbero de la cita original; se conserva mientras no se elija otro horario. */
+    val currentBarber: Barber?
+        get() = editingAppointment?.let { original -> barbers.find { it.id == original.barberId } }
+
+    private val servicesChanged: Boolean
+        get() = editingAppointment?.let { selectedServiceIds != it.serviceIds.toSet() } == true
+
+    private val notesChanged: Boolean
+        get() = editingAppointment?.let { notes.trim() != it.notes.orEmpty() } == true
+
+
     val selectedShop: Shop? get() = shops.find { it.id == selectedShopId }
     val selectedServices: List<OfferedService> get() = services.filter { it.id in selectedServiceIds }
     val selectedBarber: Barber? get() = barbers.find { it.id == selectedBarberId }
@@ -47,7 +70,12 @@ data class AppointmentUiState(
         }.orEmpty()
 
     val canChooseSchedule: Boolean get() = selectedShopId != null && selectedServiceIds.isNotEmpty()
+    // Al editar, elegir horario es opcional (sin horario se conserva el actual con su barbero),
+    // pero si se elige uno también hay que elegir barbero.
     val canConfirm: Boolean
-        get() = canChooseSchedule && selectedBarberId != null && selectedDate != null &&
-            selectedTime != null && !isSubmitting
+        get() = when {
+            !canChooseSchedule || isSubmitting -> false
+            isEditing -> if (selectedTime == null) servicesChanged || notesChanged else selectedBarberId != null
+            else -> selectedBarberId != null && selectedDate != null && selectedTime != null
+        }
 }

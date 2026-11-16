@@ -37,6 +37,7 @@ import com.mrbarber.cliente.ui.theme.MrBarberTheme
 @Composable
 fun HomeRoute(
     onBookAppointmentClick: () -> Unit,
+    onMyAppointmentsClick: () -> Unit,
     onProfileClick: () -> Unit,
     onLoggedOut: () -> Unit,
     modifier: Modifier = Modifier,
@@ -51,6 +52,7 @@ fun HomeRoute(
     Home(
         state = state,
         onBookAppointmentClick = onBookAppointmentClick,
+        onMyAppointmentsClick = onMyAppointmentsClick,
         onProfileClick = onProfileClick,
         modifier = modifier
     )
@@ -60,6 +62,7 @@ fun HomeRoute(
 fun Home(
     state: HomeUiState,
     onBookAppointmentClick: () -> Unit,
+    onMyAppointmentsClick: () -> Unit,
     onProfileClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -107,6 +110,17 @@ fun Home(
             Spacer(Modifier.height(12.dp))
 
             OutlinedButton(
+                onClick = onMyAppointmentsClick,
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Dorado),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("MIS CITAS", fontWeight = FontWeight.Bold)
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            OutlinedButton(
                 onClick = onProfileClick,
                 shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = Dorado),
@@ -125,6 +139,7 @@ fun HomePreview() {
         Home(
             state = HomeUiState(isLoading = false, userName = "Asuka Langley Soryu"),
             onBookAppointmentClick = {},
+            onMyAppointmentsClick = {},
             onProfileClick = {}
         )
     }
