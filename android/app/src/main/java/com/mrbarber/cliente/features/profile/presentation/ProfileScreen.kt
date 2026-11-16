@@ -52,6 +52,7 @@ import java.time.LocalDate
 @Composable
 fun ProfileRoute(
     onBack: () -> Unit,
+    onNotificationsClick: () -> Unit,
     onLoggedOut: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ProfileViewModel = hiltViewModel()
@@ -65,6 +66,7 @@ fun ProfileRoute(
     Profile(
         state = state,
         onBack = onBack,
+        onNotificationsClick = onNotificationsClick,
         onFirstNameChange = viewModel::onFirstNameChange,
         onLastNameChange = viewModel::onLastNameChange,
         onEmailChange = viewModel::onEmailChange,
@@ -82,6 +84,7 @@ fun ProfileRoute(
 fun Profile(
     state: ProfileUiState,
     onBack: () -> Unit,
+    onNotificationsClick: () -> Unit,
     onFirstNameChange: (String) -> Unit,
     onLastNameChange: (String) -> Unit,
     onEmailChange: (String) -> Unit,
@@ -193,6 +196,20 @@ fun Profile(
 
             Spacer(Modifier.height(16.dp))
 
+            SectionCard(title = "Notificaciones") {
+                OutlinedButton(
+                    onClick = onNotificationsClick,
+                    enabled = !state.isBusy,
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Dorado),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("AVISOS POR TELEGRAM", fontWeight = FontWeight.Bold)
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
             SectionCard(title = "Cuenta") {
                 OutlinedButton(
                     onClick = { showLogoutDialog = true },
@@ -273,6 +290,7 @@ fun ProfilePreview() {
                 gender = Gender.FEMALE
             ),
             onBack = {},
+            onNotificationsClick = {},
             onFirstNameChange = {},
             onLastNameChange = {},
             onEmailChange = {},

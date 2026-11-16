@@ -17,3 +17,6 @@ data object ProfileDestination
 
 @Serializable
 data object AppointmentDestination
+
+@Serializable
+data object TelegramNotificationsDestination

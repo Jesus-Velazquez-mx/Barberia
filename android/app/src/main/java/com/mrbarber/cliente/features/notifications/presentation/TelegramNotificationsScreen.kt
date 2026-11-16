@@ -1,0 +1,226 @@
+package com.mrbarber.cliente.features.notifications.presentation
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.mrbarber.cliente.ui.components.BackButton
+import com.mrbarber.cliente.ui.components.SectionCard
+import com.mrbarber.cliente.ui.theme.Dorado
+import com.mrbarber.cliente.ui.theme.GrisClaro
+import com.mrbarber.cliente.ui.theme.MrBarberTheme
+import com.mrbarber.cliente.ui.theme.Negro
+import com.mrbarber.cliente.ui.theme.TelegramAzul
+
+/**
+ * Pantalla para vincular la cuenta con el bot de Telegram y recibir avisos de las citas.
+ *
+ * Por ahora solo es la parte visual: [onConnectClick] es quien debe abrir el enlace del bot.
+ */
+@Composable
+fun TelegramNotificationsRoute(
+    onBack: () -> Unit,
+    onConnectClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    TelegramNotifications(
+        isLinked = false,
+        isLoading = false,
+        onBack = onBack,
+        onConnectClick = onConnectClick,
+        modifier = modifier
+    )
+}
+
+@Composable
+fun TelegramNotifications(
+    isLinked: Boolean,
+    isLoading: Boolean,
+    onBack: () -> Unit,
+    onConnectClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 8.dp)
+        ) {
+            BackButton(onClick = onBack, enabled = !isLoading)
+
+            Spacer(Modifier.height(8.dp))
+
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("NOTIFICACIONES", fontSize = 26.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(24.dp))
+                TelegramBadge()
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = "Recibe tus avisos por Telegram",
+                    fontSize = 20.sp,
+                    color = Dorado,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = "Te avisaremos cuando confirmes una cita y antes de que llegue la hora.",
+                    fontSize = 14.sp,
+                    color = GrisClaro,
+                    textAlign = TextAlign.Center
+                )
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            SectionCard(title = "¿Cómo funciona?") {
+                Step(number = 1, text = "Toca el botón para abrir nuestro bot en Telegram.")
+                Step(number = 2, text = "En el chat del bot, pulsa \"Iniciar\".")
+                Step(number = 3, text = "Listo: tu cuenta queda vinculada y empezarás a recibir avisos.")
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            if (isLinked) {
+                LinkedStatus()
+            } else {
+                Button(
+                    onClick = onConnectClick,
+                    enabled = !isLoading,
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = TelegramAzul,
+                        contentColor = Color.White
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp)
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                            color = Color.White
+                        )
+                    } else {
+                        Text("CONECTAR CON TELEGRAM", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(24.dp))
+        }
+    }
+}
+
+/** Círculo azul con un avión de papel, evocando el logo de Telegram sin depender de iconos. */
+@Composable
+private fun TelegramBadge() {
+    Box(
+        modifier = Modifier
+            .size(96.dp)
+            .background(TelegramAzul, CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Text("✈", fontSize = 44.sp, color = Color.White)
+    }
+}
+
+@Composable
+private fun Step(number: Int, text: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(28.dp)
+                .background(Dorado, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = number.toString(),
+                color = Negro,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp
+            )
+        }
+        Text(text = text, fontSize = 14.sp, modifier = Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun LinkedStatus() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Dorado.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "✓ Telegram vinculado",
+            color = Dorado,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun TelegramNotificationsPreview() {
+    MrBarberTheme {
+        TelegramNotifications(
+            isLinked = false,
+            isLoading = false,
+            onBack = {},
+            onConnectClick = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun TelegramNotificationsLinkedPreview() {
+    MrBarberTheme {
+        TelegramNotifications(
+            isLinked = true,
+            isLoading = false,
+            onBack = {},
+            onConnectClick = {}
+        )
+    }
+}
