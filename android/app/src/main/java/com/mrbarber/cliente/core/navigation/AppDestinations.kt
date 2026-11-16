@@ -21,3 +21,6 @@ data class AppointmentDestination(val appointmentId: String? = null)
 
 @Serializable
 data object MyAppointmentsDestination
+
+@Serializable
+data object TelegramNotificationsDestination

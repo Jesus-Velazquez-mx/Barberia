@@ -15,6 +15,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.mrbarber.cliente.features.home.presentation.HomeRoute
 import com.mrbarber.cliente.features.login.presentation.LoginRoute
+import com.mrbarber.cliente.features.notifications.presentation.TelegramNotificationsRoute
 import com.mrbarber.cliente.features.profile.presentation.ProfileRoute
 import com.mrbarber.cliente.features.register.presentation.RegisterRoute
 import com.mrbarber.cliente.features.appointment.presentation.AppointmentRoute
@@ -73,7 +74,15 @@ fun AppNavGraph(
         composable<ProfileDestination> {
             ProfileRoute(
                 onBack = { navController.popBackStack() },
+                onNotificationsClick = { navController.navigate(TelegramNotificationsDestination) },
                 onLoggedOut = { navController.navigateToLoginClearingStack() }
+            )
+        }
+        composable<TelegramNotificationsDestination> {
+            TelegramNotificationsRoute(
+                onBack = { navController.popBackStack() },
+                // TODO: abrir el enlace del bot (https://t.me/<bot>?start=<token>) cuando exista el backend.
+                onConnectClick = {}
             )
         }
         composable<AppointmentDestination> {
