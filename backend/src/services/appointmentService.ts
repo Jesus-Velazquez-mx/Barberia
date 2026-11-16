@@ -414,34 +414,30 @@ export const checkInAppointment = async (appointmentId: string, token: string): 
         throw new ApiError(ApiErrorCode.FORBIDDEN, 'Not authorized to check in this appointment');
     }
 
-    if (appointment.status !== 'scheduled' && appointment.status !== 'rescheduled') {
-        throw new ApiError(ApiErrorCode.CONFLICT, 'Only scheduled or rescheduled appointments can be checked in');
-    }
+    // La validación de estado y ventana se ejecuta dentro de la transacción, sobre la cita ya bloqueada,
+    // para no usar datos obsoletos si una edición concurrente cambia barbero u horario.
+    const { appointment: checkedIn, services } = await checkInAppointmentById(appointment.id, (locked) => {
+        if (locked.status !== 'scheduled' && locked.status !== 'rescheduled') {
+            throw new ApiError(ApiErrorCode.CONFLICT, 'Only scheduled or rescheduled appointments can be checked in');
+        }
 
-    const now = new Date();
-    const startMs = appointment.scheduled_start.getTime();
-    const earlyWindowStartMs = startMs - SLOT_STEP_MINUTES * MS_PER_MINUTE;
-    const lateCutoffMs = startMs + NO_SHOW_GRACE_MINUTES * MS_PER_MINUTE;
+        const now = Date.now();
+        const startMs = locked.scheduled_start.getTime();
+        const earlyWindowStartMs = startMs - SLOT_STEP_MINUTES * MS_PER_MINUTE;
+        const lateCutoffMs = startMs + NO_SHOW_GRACE_MINUTES * MS_PER_MINUTE;
 
-    if (now.getTime() < earlyWindowStartMs) {
-        throw new ApiError(
-            ApiErrorCode.CONFLICT,
-            'Too early to check in; check-in opens 15 minutes before the scheduled start'
-        );
-    }
+        if (now < earlyWindowStartMs) {
+            throw new ApiError(
+                ApiErrorCode.CONFLICT,
+                'Too early to check in; check-in opens 15 minutes before the scheduled start'
+            );
+        }
+        if (now >= lateCutoffMs) {
+            throw new ApiError(ApiErrorCode.CONFLICT, 'Check-in window has expired (10 minutes after scheduled start)');
+        }
 
-    if (now.getTime() >= lateCutoffMs) {
-        throw new ApiError(ApiErrorCode.CONFLICT, 'Check-in window has expired (10 minutes after scheduled start)');
-    }
-
-    const previousSlotRange =
-        now.getTime() < startMs ? { from: new Date(earlyWindowStartMs), to: appointment.scheduled_start } : null;
-
-    const { appointment: checkedIn, services } = await checkInAppointmentById(
-        appointment.id,
-        appointment.barber_id,
-        previousSlotRange
-    );
+        return now < startMs ? { from: new Date(earlyWindowStartMs), to: locked.scheduled_start } : null;
+    });
 
     const [client] = await getAppointmentClientsById(checkedIn.client_id !== null ? [checkedIn.client_id] : []);
     return toAppointmentResponse(checkedIn, services, client ?? null);

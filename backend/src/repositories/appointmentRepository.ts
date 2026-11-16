@@ -366,14 +366,16 @@ export const cancelAppointmentById = async (
 
 /**
  * Registra el check-in de una cita (status = checked_in, checked_in_at = now()) en una transacción.
- * Toma el candado FOR UPDATE de la fila del barbero para serializar contra creación/edición de citas
- * al validar si el slot previo está ocupado, y realiza una transición atómica por estado para no
- * competir con el job de no-show ni con otro check-in/cancelación concurrente.
+ * Respeta el mismo orden de candados que la edición (primero la cita, luego la fila del barbero), para
+ * evitar interbloqueos. La cita se vuelve a leer ya con candado y `resolvePreviousSlot` valida estado y
+ * ventana de check-in con esos valores vigentes (puede lanzar ApiError). Si devuelve un rango, se exige que
+ * el barbero actual de la cita no tenga citas bloqueantes en él. Así, una edición concurrente (otro barbero
+ * u horario) no puede dejar pasar un check-in validado con datos obsoletos, y la transición por estado
+ * no compite con el job de no-show ni con otro check-in/cancelación.
  */
 export const checkInAppointmentById = async (
     appointmentId: string,
-    barberId: string,
-    previousSlotRange: { from: Date; to: Date } | null = null
+    resolvePreviousSlot: (appointment: Appointment) => { from: Date; to: Date } | null
 ): Promise<{ appointment: Appointment; services: AppointmentService[] }> => {
     const pool = db.getPool();
     const client = await pool.connect();
@@ -381,11 +383,21 @@ export const checkInAppointmentById = async (
     try {
         await client.query('BEGIN');
 
-        await client.query(`SELECT id FROM barbers WHERE id = $1 FOR UPDATE`, [barberId]);
+        const locked = await client.query(`SELECT ${APPOINTMENT_COLUMNS} FROM appointments WHERE id = $1 FOR UPDATE`, [
+            appointmentId,
+        ]);
+        if (locked.rows.length === 0) {
+            throw new ApiError(ApiErrorCode.NOT_FOUND, 'Appointment not found');
+        }
+        const current: Appointment = locked.rows[0];
+
+        const previousSlotRange = resolvePreviousSlot(current);
+
+        await client.query(`SELECT id FROM barbers WHERE id = $1 FOR UPDATE`, [current.barber_id]);
 
         if (previousSlotRange !== null) {
             const blocking = await getBlockingAppointmentsByBarberIdsAndRange(
-                [barberId],
+                [current.barber_id],
                 previousSlotRange.from,
                 previousSlotRange.to,
                 appointmentId,
@@ -424,5 +436,3 @@ export const checkInAppointmentById = async (
         client.release();
     }
 };
-
-export const checkInAppointment = checkInAppointmentById;

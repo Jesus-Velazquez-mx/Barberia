@@ -35,7 +35,7 @@ const loadConfig = () => {
     const AWS_BUCKET = process.env.AWS_BUCKET;
     const AWS_BUCKET_KEY_PREFIX = process.env.AWS_BUCKET_KEY_PREFIX;
 
-    const BUSINESS_TIMEZONE = process.env.BUSINESS_TIMEZONE;
+    const BUSINESS_TIMEZONE = process.env.BUSINESS_TIMEZONE ?? 'America/Mazatlan';
 
     const required: Record<string, string | undefined> = {
         JWT_SECRET,
@@ -45,6 +45,7 @@ const loadConfig = () => {
         AWS_REGION,
         AWS_BUCKET,
         AWS_BUCKET_KEY_PREFIX,
+        BUSINESS_TIMEZONE
     };
 
     const missing = Object.keys(required).filter((key) => !required[key]);

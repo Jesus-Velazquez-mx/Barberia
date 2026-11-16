@@ -232,6 +232,58 @@ describe('PUT /api/appointments/:id/check-in', () => {
         expect(res.status).toBe(409);
     });
 
+    test('200 en check-in anticipado justo dentro de la ventana (a ~14.5 min del inicio)', async () => {
+        const id = await mk({ start: minutesFromNow(14.5) });
+        expect((await checkIn(receptionistToken, id)).status).toBe(200);
+    });
+
+    test('check-in y edición concurrentes de la misma cita no se interbloquean (sin 500)', async () => {
+        for (let i = 0; i < 5; i++) {
+            const id = await mk({ barber: barberId });
+            const [checkInRes, editRes] = await Promise.all([
+                checkIn(receptionistToken, id),
+                request(app)
+                    .put(`/api/appointments/${id}`)
+                    .set('Authorization', `Bearer ${managerToken}`)
+                    .send({ notes: `nota ${i}` }),
+            ]);
+            expect([200, 409]).toContain(checkInRes.status);
+            expect([200, 409]).toContain(editRes.status);
+            await getPool().query(`DELETE FROM appointments WHERE id = $1`, [id]);
+        }
+    });
+
+    test('409 si una edición concurrente mueve la cita fuera de la ventana antes de que el check-in tome el candado', async () => {
+        const id = await mk({ start: minutesFromNow(5), status: 'scheduled' });
+
+        // Simula una edición en curso: retiene el candado de la cita y cambia horario/estado sin confirmar aún.
+        const editor = await getPool().connect();
+        try {
+            await editor.query('BEGIN');
+            await editor.query(`SELECT id FROM appointments WHERE id = $1 FOR UPDATE`, [id]);
+            const newStart = minutesFromNow(120);
+            const newEnd = new Date(newStart.getTime() + 30 * MS_PER_MINUTE);
+            await editor.query(
+                `UPDATE appointments SET scheduled_start = $2, scheduled_end = $3, status = 'rescheduled' WHERE id = $1`,
+                [id, newStart, newEnd]
+            );
+
+            const pending = checkIn(receptionistToken, id).then((res) => res);
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            await editor.query('COMMIT');
+
+            const res = await pending;
+            expect(res.status).toBe(409);
+            expect(res.body.message).toMatch(/too early/i);
+        } finally {
+            editor.release();
+        }
+
+        const row = await getPool().query(`SELECT status, checked_in_at FROM appointments WHERE id = $1`, [id]);
+        expect(row.rows[0].status).toBe('rescheduled');
+        expect(row.rows[0].checked_in_at).toBeNull();
+    });
+
     test('200 en check-in anticipado cuando el slot previo del barbero está libre o termina en <= scheduled_start - 15 min', async () => {
         const start = minutesFromNow(8);
         // Cita que termina exactamente en scheduled_start - 15 min (no traslapa [start - 15, start))
