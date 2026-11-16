@@ -4,6 +4,8 @@ import router from '../router';
 import type { AuthContextValue, LoginResponse, User } from '../types/auth';
 import { isStoredTokenValid, isStoredUserValid } from '../utils/userValidation';
 import { setUnauthorizedHandler } from '../services/apiClient';
+import { getClientProfile } from '../services/clientService';
+import { ApiError } from '../types/api';
 import { Modal } from '../components/common/ModalComponent';
 import { Button } from '../components/common/ButtonComponent';
 import { ShieldAlert } from 'lucide-react';
@@ -58,9 +60,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const tokenValid = storedToken ? await isStoredTokenValid(storedToken) : false;
       const sessionValid = tokenValid && isStoredUserValid(parsedUser);
 
-      if (sessionValid) {
+      if (sessionValid && parsedUser && storedToken) {
         setToken(storedToken); // asignar token
-        setUser(parsedUser); // asignar user
+
+        let restoredUser = parsedUser;
+        if (parsedUser.role === 'client') {
+          try {
+            restoredUser = await getClientProfile(parsedUser.id, storedToken);
+            localStorage.setItem('user', JSON.stringify(restoredUser));
+          } catch (error) {
+            if (
+              error instanceof ApiError &&
+              (error.status === 401 || error.status === 403 || error.status === 404)
+            ) {
+              localStorage.removeItem('token');
+              localStorage.removeItem('user');
+              setToken(null);
+              setUser(null);
+              setIsSessionInvalid(false);
+              void router.navigate('/login');
+              setIsLoading(false);
+              return;
+            }
+
+            if (!(error instanceof ApiError && (error.status === 0 || error.status >= 500))) {
+              console.error('No se pudo restaurar el perfil del cliente.', error);
+            }
+          }
+        }
+
+        setUser(restoredUser); // asignar user
       } else {
         /* Solo es una sesión inválida si existía algo guardado */
         setIsSessionInvalid(!!storedToken || !!storedUser);
@@ -115,6 +144,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsSessionInvalid(false);
   };
 
+  /* Cambiar el user del localStorage */
+  const updateUser = (updatedUser: User) => {
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+    setUser(updatedUser);
+  };
+  const clientId = user?.role === 'client' ? user.id : null;
+
+  /* Actualizar al user */
+  const refreshUser = async () => {
+    if (!token || !clientId) return;
+
+    try {
+      updateUser(await getClientProfile(clientId, token));
+    } catch (error) {
+      if (error instanceof ApiError) {
+        if (error.status === 401 || error.status === 403 || error.status === 404) {
+          logout();
+          void router.navigate('/login');
+          return;
+        }
+
+        if (error.status === 0 || error.status >= 500) return;
+      }
+
+      throw error;
+    }
+  };
+
   /* Está autenticado si hay token */
   const isAuthenticated = !!token;
 
@@ -125,6 +182,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAuthenticated,
     isLoading,
     login,
+    updateUser,
+    refreshUser,
     logout
   };
 

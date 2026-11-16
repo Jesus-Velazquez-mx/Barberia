@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { EditUserModalContainer } from '../../containers/EditUserModalContainer';
 import { ChangePasswordModalContainer } from '../../containers/ChangePasswordModalContainer';
@@ -9,18 +9,34 @@ import type { User } from '../../types/auth';
 import { useAuth } from '../../context/AuthContext';
 
 function EditUserPage() {
-  const { user: authUser, login: loginContext, logout, token } = useAuth();
+  const { user: authUser, updateUser, refreshUser, logout } = useAuth();
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const hasRequestedRefresh = useRef(false);
+
+  useEffect(() => {
+    if (hasRequestedRefresh.current) return;
+    hasRequestedRefresh.current = true;
+
+    const loadFreshProfile = async () => {
+      try {
+        await refreshUser();
+      } catch (error: unknown) {
+        console.error('Could not update the profile.', error);
+      }
+    };
+
+    void loadFreshProfile();
+  }, [refreshUser]);
 
   if (!authUser) return null;
 
   const handleUpdated = (updatedUser: User) => {
     // Mantiene sincronizado el AuthContext con los datos que acaban de guardarse
-    if (token) loginContext({ user: updatedUser, token });
+    updateUser(updatedUser);
   };
 
   const handleConfirmLogout = () => {
