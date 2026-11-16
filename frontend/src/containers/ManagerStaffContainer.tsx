@@ -12,7 +12,7 @@ import { Toast } from '../components/common/ToastComponent';
 import { useAuth } from '../context/AuthContext';
 import { getShifts } from '../services/shiftService';
 import { getShops } from '../services/shopService';
-import { createStaff, deleteStaff, getStaff, reactivateStaff, reassignStaff, updateStaff } from '../services/staffService';
+import { createStaff, deleteStaff, getStaff, reactivateStaff, reassignBarber, reassignReceptionist, updateStaff } from '../services/staffService';
 import { ApiError } from '../types/api';
 import type { Shift } from '../types/shiftType';
 import type { Shop } from '../types/shop';
@@ -378,14 +378,13 @@ export function ManagerStaffContainer() {
 
       let saved: StaffMember = original;
 
-      // Si cambió la sucursal o el turno, llamamos a la función de reasignación
+      // Si cambió la sucursal o el turno, llamamos a la función de reasignación según corresponda
       if (assignmentChanged) {
-        saved = await reassignStaff(
-          original.id,
-          memberRole,
-          { shopId: payload.shopId, shiftId: payload.shiftId },
-          token
-        );
+        const assignment = { shopId: payload.shopId, shiftId: payload.shiftId };
+        saved =
+          original.role === 'barber'
+            ? await reassignBarber(original.id, assignment, token)
+            : await reassignReceptionist(original.id, assignment, token);
       }
 
       // Si cambiaron los datos personales, llamamos a la función de actualización

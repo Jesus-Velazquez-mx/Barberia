@@ -167,17 +167,20 @@ export interface StaffAssignmentPayload {
     shiftId: string;
 }
 
-export const reassignStaff = async (
+export const reassignBarber = async (
     id: string,
-    role: 'barber' | 'receptionist',
     assignment: StaffAssignmentPayload,
     token: string
 ): Promise<StaffMember> => {
-    if (role === 'barber') {
-        const { data } = await apiClient.put<BarberApi>(`/barbers/${id}/assignment`, assignment, authHeaders(token));
-        return toBarberMember(data);
-    }
+    const { data } = await apiClient.put<BarberApi>(`/barbers/${id}/assignment`, assignment, authHeaders(token));
+    return toBarberMember(data);
+};
 
+export const reassignReceptionist = async (
+    id: string,
+    assignment: StaffAssignmentPayload,
+    token: string
+): Promise<StaffMember> => {
     const { data } = await apiClient.put<ReceptionistApi>(
         `/receptionists/${id}/assignment`,
         assignment,
