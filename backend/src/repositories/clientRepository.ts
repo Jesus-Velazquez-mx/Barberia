@@ -43,12 +43,13 @@ export interface ClientWithUser {
     completed_services_count: number;
     created_at: Date;
     updated_at: Date;
+    client_telegram_id: string | null;
 }
 
 const CLIENT_COLUMNS = `
     u.id, u.role, u.email, u.phone, u.password_hash, u.first_name, u.last_name,
     u.birth_date, u.gender, u.created_at, u.updated_at,
-    c.facial_structure_type, c.completed_services_count
+    c.facial_structure_type, c.completed_services_count, c.client_telegram_id
 `;
 
 /**
@@ -378,4 +379,21 @@ export const deleteClientById = async (id: string): Promise<void> => {
     } finally {
         client.release();
     }
+};
+
+/* Para poner el chat_id de Telegram */
+export const updateClientTelegramId = async (
+    clientId: string,
+    telegramChatId: string
+): Promise<boolean> => {
+    const pool = db.getPool();
+
+    const query = `
+        UPDATE clients
+        SET client_telegram_id = $1
+        WHERE user_id = $2
+        RETURNING user_id;
+    `;
+    const result = await pool.query(query, [telegramChatId, clientId]);
+    return (result.rowCount ?? 0) > 0;
 };

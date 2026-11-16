@@ -10,12 +10,14 @@ import {
     getAllClients,
     updateClientById,
     deleteClientById,
+    updateClientTelegramId
 } from '../repositories/clientRepository.js';
 import type { FacialStructureType } from '../types/entities/client.interface.js';
 import type { ClientDetailResponse } from '../types/dto/clientResponse.interface.js';
 import { toClientDetailResponse } from '../utils/userMapper.js';
 import { isUserSessionValid } from '../utils/userSession.js';
 import { canCreateClient } from './userPermissions.js';
+import type { ClientWithUser } from '../repositories/clientRepository.js';
 
 export interface CreateClientDTO {
     firstName: string;
@@ -204,4 +206,23 @@ export const deleteClient = async (id: string, token: string): Promise<void> => 
     }
 
     await deleteClientById(id);
+};
+
+
+/**
+ * Vincula el chat_id de Telegram con la cuenta del cliente.
+ * Invocado internamente por el listener del bot al recibir /start <clientId>.
+ */
+export const linkClientTelegram = async (clientId: string, telegramChatId: string): Promise<ClientWithUser> => {
+    const client = await getClientById(clientId);
+    if (!client) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Client not found');
+    }
+
+    const updated = await updateClientTelegramId(clientId, telegramChatId);
+    if (!updated) {
+        throw new ApiError(ApiErrorCode.INTERNAL_SERVER_ERROR, 'Could not link Telegram account');
+    }
+
+    return client;
 };

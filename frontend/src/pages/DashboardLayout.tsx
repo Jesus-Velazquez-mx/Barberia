@@ -5,7 +5,7 @@ import { LogoutConfirmModal } from '../components/auth/LogoutConfirmModalCompone
 import { Toast } from '../components/common/ToastComponent';
 import { useAuth } from '../context/AuthContext';
 import type { UserRole } from '../types/auth';
-import { Users, UserRound, Package, Settings, CalendarPlus, Calendar, Sparkles, Scissors } from 'lucide-react';
+import { Users, UserRound, Package, Settings, CalendarPlus, Calendar, Sparkles, Scissors, Bell, BellRing } from 'lucide-react';
 
 const NAV_ITEMS = {
   manager: [
@@ -14,13 +14,17 @@ const NAV_ITEMS = {
     { to: '/manager/appointments', label: 'Citas', icon: <Calendar size={20} aria-hidden="true" /> },
     { to: '/manager/booking', label: 'Agendar Cita', icon: <CalendarPlus size={20} aria-hidden="true" /> },
     { to: '/manager/inventory', label: 'Inventario', icon: <Package size={20} aria-hidden="true" /> },
-    { to: '/manager/management', label: 'Gestión', icon: <Settings size={20} aria-hidden="true" /> }
+    { to: '/manager/management', label: 'Gestión', icon: <Settings size={20} aria-hidden="true" /> },
+    { to: '/manager/reminders', label: 'Envío Manual de Recordatorios', icon: <BellRing size={20} aria-hidden="true" /> }
+
   ],
   client: [
     { to: '/client/booking', label: 'Agendar Cita', icon: <CalendarPlus size={20} aria-hidden="true" /> },
     { to: '/client/appointments', label: 'Mis Citas', icon: <Calendar size={20} aria-hidden="true" /> },
     { to: '/client/recommend-haircut', label: 'Recomendación de corte', icon: <Sparkles aria-hidden="true" /> },
-    { to: '/client/profile', label: 'Mi Perfil', icon: <UserRound size={20} aria-hidden="true" /> }
+    { to: '/client/profile', label: 'Mi Perfil', icon: <UserRound size={20} aria-hidden="true" /> },
+    { to: '/client/reminders', label: 'Recordatorios', icon: <Bell size={20} aria-hidden="true" /> }
+
   ],
   receptionist: [
     { to: '/receptionist/appointments', label: 'Citas', icon: <Calendar size={20} aria-hidden="true" /> },
