@@ -156,6 +156,27 @@ export const canEditAppointment = (
 };
 
 /**
+ * PUT /appointments/:id/check-in:
+ * - client: nunca puede registrar el check-in.
+ * - receptionist: citas de la sucursal donde trabaja.
+ * - manager: citas de las sucursales que administra.
+ */
+export const canCheckInAppointment = (
+    performer: UserIdentity,
+    appointment: { clientId?: string | null; shopId: string; shopManagerId: string },
+    receptionistShopId: string | null = null
+): boolean => {
+    switch (performer.role) {
+        case 'client':
+            return false;
+        case 'receptionist':
+            return receptionistShopId === appointment.shopId;
+        case 'manager':
+            return appointment.shopManagerId === performer.id;
+    }
+};
+
+/**
  * GET /appointments/:id: ver una cita tiene el mismo alcance por rol que editarla
  * (client: las propias; receptionist: su sucursal; manager: sus sucursales).
  */
