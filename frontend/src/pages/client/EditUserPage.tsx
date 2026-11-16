@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { EditUserModalContainer } from '../../containers/EditUserModalContainer';
 import { ChangePasswordModalContainer } from '../../containers/ChangePasswordModalContainer';
 import { DeleteAccountModalContainer } from '../../containers/DeleteAccountModalContainer';
-import { LogoutConfirmModal } from '../../components/LogoutConfirmModalComponent';
-import { UserProfile } from '../../components/UserProfileComponent';
+import { LogoutConfirmModal } from '../../components/auth/LogoutConfirmModalComponent';
+import { UserProfile } from '../../components/profile/UserProfileComponent';
 import type { User } from '../../types/auth';
 import { useAuth } from '../../context/AuthContext';
 

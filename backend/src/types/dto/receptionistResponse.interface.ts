@@ -13,7 +13,7 @@ export interface ReceptionistDetailResponse extends ReceptionistResponse {
     lastName: string;
     email: string;
     phone: string | null;
-    birthDate: Date;
+    birthDate: string;
     gender: string;
     deletedAt: Date | null;
     createdAt: Date;

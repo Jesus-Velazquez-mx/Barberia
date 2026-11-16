@@ -11,8 +11,15 @@ const router = Router();
  *     tags: [OfferedServices]
  *     security:
  *       - bearerAuth: []
- *     description: Retorna la lista de todos los servicios ofrecidos por la barbería. Si el usuario es 'client', solo retorna los servicios activos. Si es 'manager' o 'receptionist', retorna todos (activos e inactivos).
+ *     description: Retorna la lista de servicios ofrecidos por la barbería. Por defecto solo retorna los servicios activos. Si el usuario es 'manager' o 'receptionist' y envía includeInactive=true, retorna también los inactivos. Para un 'client' includeInactive se ignora y siempre recibe solo los activos.
  *     parameters:
+ *       - in: query
+ *         name: includeInactive
+ *         required: false
+ *         schema:
+ *           type: boolean
+ *           default: false
+ *         description: Si es true, el personal (manager/receptionist) también recibe los servicios inactivos. Se ignora para clientes.
  *       - in: query
  *         name: categoryId
  *         required: false

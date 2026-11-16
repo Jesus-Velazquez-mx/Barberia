@@ -7,7 +7,19 @@ import { extractBearerFromHeader } from '../utils/headerHandling.js';
 import type { Supply } from '../types/entities/supply.interface.js';
 
 const paramIdSchema = z.object({ id: z.uuid('Invalid supply ID format') });
-const queryShopSchema = z.object({ shopId: z.uuid('Invalid shop ID').optional() });
+// Acepta ?shopIds=a&shopIds=b, ?shopIds[]=a y ?shopIds=a,b
+const queryShopSchema = z.object({
+    shopIds: z
+        .preprocess(
+            (value) => {
+                if (value === undefined) return undefined;
+                const items = Array.isArray(value) ? value : [value];
+                return items.flatMap((item) => (typeof item === 'string' ? item.split(',') : [item]));
+            },
+            z.array(z.uuid('Invalid shop ID')),
+        )
+        .optional(),
+});
 
 const createSupplySchema = z.object({
     shopId: z.uuid('Invalid shop ID'),
@@ -32,13 +44,13 @@ const updateSupplySchema = z
     });
 
 /**
- * Listar insumos. Opcionalmente acepta ?shopId=UUID
+ * Listar insumos. Opcionalmente acepta shopIds (arreglo de UUID); si se omite, se usan las sucursales asignadas al usuario.
  */
 export const list: ApiHandler<Supply[]> = async (req, res) => {
     try {
         const token = extractBearerFromHeader(req);
         const queryParams = queryShopSchema.parse(req.query);
-        const result = await listSupplies(queryParams.shopId, token);
+        const result = await listSupplies(queryParams.shopIds, token);
         sendSuccess({ res, data: result, message: 'Supplies retrieved successfully' });
     } catch (error: unknown) {
         if (error instanceof ZodError) {

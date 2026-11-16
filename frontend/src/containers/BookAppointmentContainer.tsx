@@ -1,13 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { Plus, X } from 'lucide-react';
-import { Button } from '../components/ButtonComponent';
-import { InputField } from '../components/InputFieldComponent';
-import { SelectField } from '../components/SelectFieldComponent';
-import { AvailabilityCalendar } from '../components/AvailabilityCalendarComponent';
-import { SlotPickerModal } from '../components/SlotPickerModalComponent';
-import { Toast } from '../components/ToastComponent';
+import { Button } from '../components/common/ButtonComponent';
+import { InputField } from '../components/common/InputFieldComponent';
+import { SelectField } from '../components/common/SelectFieldComponent';
+import { AvailabilityCalendar } from '../components/appointments/AvailabilityCalendarComponent';
+import { SlotPickerModal } from '../components/appointments/SlotPickerModalComponent';
+import { Toast } from '../components/common/ToastComponent';
 import { getShops, getActiveBarbersByShop, getOfferedServices } from '../services/shopService';
 import { getShopAvailability } from '../services/availabilityService';
 import { createAppointment } from '../services/appointmentService';
@@ -17,7 +17,10 @@ import { ApiError } from '../types/api';
 import type { AvailableSlot, DayAvailability } from '../types/availabilityType';
 import type { PublicBarber } from '../types/barber';
 import type { ClientRecord } from '../types/clientType';
+import type { OfferedService } from '../types/offeredService';
+import { formatPrice } from '../utils/appointmentUtils';
 import { formatSlotTime } from '../utils/availabilityUtils';
+import { formatDuration } from '../utils/offeredServiceUtils';
 import { joinFullName } from '../utils/personUtils';
 
 /* Para quién agenda el personal: un cliente con cuenta o un visitante sin cuenta. */
@@ -27,6 +30,16 @@ const CLIENT_MODE_OPTIONS: { value: ClientMode; label: string }[] = [
   { value: 'registered', label: 'Cliente registrado' },
   { value: 'guest', label: 'Visitante' }
 ];
+
+/* Casilla del resumen; mismo estilo que las del detalle de una cita. */
+function SummaryTile({ label, children, className = '' }: { label: string; children: ReactNode; className?: string }) {
+  return (
+    <div className={`rounded-lg border border-white/10 bg-black/20 px-3.5 py-2.5 ${className}`}>
+      <span className="block text-[0.7rem] font-semibold uppercase tracking-wide text-(--text)">{label}</span>
+      <div className="mt-0.5 text-sm font-semibold text-(--text-h)">{children}</div>
+    </div>
+  );
+}
 
 interface BookAppointmentFormValues {
   clientSearch: string;
@@ -99,7 +112,7 @@ export function BookAppointmentContainer() {
 
   /* Arreglos con datos reales del backend */
   const [shopOptions, setShopOptions] = useState<{ value: string; label: string }[]>([]);
-  const [serviceOptions, setServiceOptions] = useState<{ value: string; label: string }[]>([]);
+  const [offeredServices, setOfferedServices] = useState<OfferedService[]>([]);
   const [barbers, setBarbers] = useState<PublicBarber[]>([]);
   const [availabilityByDate, setAvailabilityByDate] = useState<Record<string, DayAvailability>>({});
   const [fetchedSlots, setFetchedSlots] = useState<AvailableSlot[]>([]);
@@ -127,10 +140,27 @@ export function BookAppointmentContainer() {
 
   const SHOP_OPTIONS = useMemo(() => [{ value: '', label: 'Selecciona una sucursal' }, ...shopOptions], [shopOptions]);
 
+  /* Cada opción del dropdown muestra la duración y el precio del servicio. */
+  const serviceOptions = useMemo(
+    () =>
+      offeredServices.map((service) => ({
+        value: service.id,
+        label: `${service.name} · ${formatDuration(service.durationMinutes)} · ${formatPrice(service.price)}`
+      })),
+    [offeredServices]
+  );
+
   // Servicios ya elegidos (sin filas vacías)
   const selectedServiceIds = services.map((s) => s.serviceId).filter(Boolean);
   const serviceKey = selectedServiceIds.join(',');
   const canAddService = services.length < serviceOptions.length && services.every((s) => s.serviceId);
+
+  /* Detalle de los servicios elegidos y totales de la cita. */
+  const selectedServices = selectedServiceIds
+    .map((id) => offeredServices.find((service) => service.id === id))
+    .filter((service): service is OfferedService => Boolean(service));
+  const totalDuration = selectedServices.reduce((sum, service) => sum + service.durationMinutes, 0);
+  const totalPrice = selectedServices.reduce((sum, service) => sum + service.price, 0);
 
   /* 0. Buscar clientes en cada pulsación; si llega otra, la respuesta anterior se descarta */
   useEffect(() => {
@@ -168,11 +198,11 @@ export function BookAppointmentContainer() {
     if (!token) return;
     let active = true;
 
-    Promise.all([getShops(), getOfferedServices(token)])
+    Promise.all([getShops(token), getOfferedServices(token)])
       .then(([shopsData, servicesData]) => {
         if (!active) return;
         setShopOptions(shopsData.map((shop) => ({ value: shop.id, label: shop.name })));
-        setServiceOptions(servicesData.map((service) => ({ value: service.id, label: service.name })));
+        setOfferedServices(servicesData);
       })
       .catch((error) => {
         console.error(formatApiError(error, 'Error al cargar sucursales o servicios.'));
@@ -404,10 +434,6 @@ export function BookAppointmentContainer() {
         : undefined;
 
   const shopLabel = shopOptions.find((s) => s.value === shopId)?.label;
-  const serviceLabels = selectedServiceIds
-    .map((id) => serviceOptions.find((s) => s.value === id)?.label)
-    .filter(Boolean)
-    .join(', ');
   const dateLabel = selectedDate
     ? new Date(`${selectedDate}T00:00:00`).toLocaleDateString('es-MX', {
         weekday: 'long',
@@ -419,214 +445,235 @@ export function BookAppointmentContainer() {
 
   return (
     <div className="flex w-full flex-col gap-6">
-      <div className="flex flex-col items-start gap-6 min-[110rem]:flex-row">
-        {/* Formulario */}
-        <div className="flex flex-col gap-6 min-w-fit w-full max-w-190">
-          <div className="flex flex-col gap-5 rounded-xl border border-[#2c2c2c] bg-[#1a1a1a] p-6">
-            <SelectField
-              id="booking-shop"
-              label="Sucursal"
-              options={SHOP_OPTIONS}
-              registerProps={register('shopId', { onChange: resetSelection })}
-            />
+      <div className="grid grid-cols-1 items-start gap-6 min-[110rem]:grid-cols-2">
+        {/* Selección de sucursal y servicios */}
+        <div className="flex flex-col gap-5 rounded-xl border border-[#2c2c2c] bg-[#1a1a1a] p-6 min-w-fit w-full max-w-190 min-[110rem]:col-start-1 min-[110rem]:row-start-1">
+          <SelectField
+            id="booking-shop"
+            label="Sucursal"
+            options={SHOP_OPTIONS}
+            registerProps={register('shopId', { onChange: resetSelection })}
+          />
 
-            <div className="flex flex-col gap-3">
-              {fields.map((field, index) => (
-                <div key={field.id} className="flex items-end gap-3">
-                  <div className="flex-1">
-                    <SelectField
-                      id={`booking-service-${index}`}
-                      label={fields.length > 1 ? `Servicio ${index + 1}` : 'Servicio'}
-                      options={getServiceOptions(index)}
-                      registerProps={register(`services.${index}.serviceId`, { onChange: resetSelection })}
-                    />
-                  </div>
-                  {index > 0 && (
-                    <button
-                      type="button"
-                      aria-label={`Quitar servicio ${index + 1}`}
-                      onClick={() => {
-                        remove(index);
-                        resetSelection();
-                      }}
-                      className="flex h-12.5 w-12.5 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-white/10 bg-transparent text-(--text) transition-colors hover:border-(--accent) hover:text-(--accent)"
-                    >
-                      <X size={18} />
-                    </button>
-                  )}
-                </div>
-              ))}
-
-              {services.length < serviceOptions.length && (
-                <button
-                  type="button"
-                  disabled={!canAddService}
-                  onClick={() => append({ serviceId: '' })}
-                  className="flex w-fit cursor-pointer items-center gap-2 rounded-lg border border-(--accent) bg-transparent px-4 py-2 text-sm font-semibold text-(--accent) transition-colors hover:bg-(--accent)/10 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
-                >
-                  <Plus size={16} />
-                  Añadir otro servicio
-                </button>
-              )}
-            </div>
-
-            {isStaff && (
-              <div className="flex flex-col gap-3">
-                <div className="flex flex-col gap-2">
-                  <span className="text-left text-[0.9rem] font-semibold text-(--labels)">Cliente</span>
-                  <div role="group" aria-label="Tipo de cliente" className="flex gap-3">
-                    {CLIENT_MODE_OPTIONS.map((option) => {
-                      const isActive = clientMode === option.value;
-                      return (
-                        <button
-                          key={option.value}
-                          type="button"
-                          aria-pressed={isActive}
-                          onClick={() => handleSelectClientMode(option.value)}
-                          className={`flex-1 cursor-pointer rounded-lg border px-4 py-2 text-sm font-semibold transition-colors ${
-                            isActive
-                              ? 'border-(--accent) bg-(--accent)/10 text-(--accent)'
-                              : 'border-white/10 bg-transparent text-(--text) hover:border-(--accent) hover:text-(--accent)'
-                          }`}
-                        >
-                          {option.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {clientMode === 'registered' && (
-                  <>
-                    <InputField
-                      id="booking-client-search"
-                      label="Buscar cliente"
-                      type="text"
-                      placeholder="Nombre, apellido o correo"
-                      autoComplete="off"
-                      registerProps={register('clientSearch')}
-                    />
-
-                    {clientSearchTerm && (
-                      <>
-                        {clientSearchError ? (
-                          <p className="m-0 text-sm text-[#ff4d4d]">{clientSearchError}</p>
-                        ) : clientResults.length > 0 ? (
-                          <ul className="m-0 flex max-h-60 list-none flex-col gap-2 overflow-y-auto p-0">
-                            {clientResults.map((client) => {
-                              const isSelected = selectedClient?.id === client.id;
-                              return (
-                                <li key={client.id}>
-                                  <button
-                                    type="button"
-                                    aria-pressed={isSelected}
-                                    onClick={() => setSelectedClient(client)}
-                                    className={`flex w-full cursor-pointer flex-col items-start rounded-lg border px-3 py-2 text-left transition-colors ${
-                                      isSelected
-                                        ? 'border-(--accent) bg-(--accent)/10'
-                                        : 'border-[#333333] bg-[#121212] hover:border-(--accent)'
-                                    }`}
-                                  >
-                                    <span className="text-sm font-semibold text-(--text-h)">
-                                      {joinFullName(client)}
-                                    </span>
-                                    <span className="text-xs text-(--text)">{client.email}</span>
-                                  </button>
-                                </li>
-                              );
-                            })}
-                          </ul>
-                        ) : (
-                          !isSearchingClients && (
-                            <p className="m-0 text-sm text-(--text)">No se encontraron clientes.</p>
-                          )
-                        )}
-                      </>
-                    )}
-                  </>
-                )}
-
-                {clientMode === 'guest' && (
-                  <InputField
-                    id="booking-guest-name"
-                    label="Nombre del visitante"
-                    type="text"
-                    placeholder="Nombre completo"
-                    autoComplete="off"
-                    maxLength={100}
-                    registerProps={register('guestClientName')}
+          <div className="flex flex-col gap-3">
+            {fields.map((field, index) => (
+              <div key={field.id} className="flex items-end gap-3">
+                <div className="flex-1">
+                  <SelectField
+                    id={`booking-service-${index}`}
+                    label={fields.length > 1 ? `Servicio ${index + 1}` : 'Servicio'}
+                    options={getServiceOptions(index)}
+                    registerProps={register(`services.${index}.serviceId`, { onChange: resetSelection })}
                   />
+                </div>
+                {index > 0 && (
+                  <button
+                    type="button"
+                    aria-label={`Quitar servicio ${index + 1}`}
+                    onClick={() => {
+                      remove(index);
+                      resetSelection();
+                    }}
+                    className="flex h-12.5 w-12.5 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-white/10 bg-transparent text-(--text) transition-colors hover:border-(--accent) hover:text-(--accent)"
+                  >
+                    <X size={18} />
+                  </button>
                 )}
               </div>
-            )}
-          </div>
-          {/* Resumen de la selección */}
-          <div className="rounded-xl border border-[#2c2c2c] bg-[#1a1a1a] p-6 text-sm text-(--text)">
-            <h2 className="mb-3 mt-0 font-sans text-lg font-bold tracking-normal text-(--text-h)">
-              Información de la cita
-            </h2>
-            {isStaff && (
-              <p className="m-0">
-                Cliente: <span className="text-(--text-h)">{clientLabel ?? '—'}</span>
-              </p>
-            )}
-            <p className="m-0">
-              Sucursal: <span className="text-(--text-h)">{shopLabel ?? '—'}</span>
-            </p>
-            <p className="m-0">
-              {selectedServiceIds.length > 1 ? 'Servicios' : 'Servicio'}:{' '}
-              <span className="text-(--text-h)">{serviceLabels || '—'}</span>
-            </p>
-            <p className="m-0">
-              Fecha: <span className="text-(--text-h)">{selectedDate ?? '—'}</span>
-            </p>
-            <p className="m-0">
-              Horario:{' '}
-              <span className="text-(--text-h)">
-                {confirmedSlot ? `${formatSlotTime(confirmedSlot.startTime)} · ${confirmedSlot.barberName}` : '—'}
-              </span>
-            </p>
+            ))}
 
-            <div className="mt-6 flex flex-wrap justify-end gap-3 border-t border-white/10 pt-5">
-              <Button
+            {services.length < serviceOptions.length && (
+              <button
                 type="button"
-                onClick={handleCancel}
-                className="h-12! border! border-solid! border-(--text)! bg-transparent! px-8! normal-case! text-(--text)!"
+                disabled={!canAddService}
+                onClick={() => append({ serviceId: '' })}
+                className="flex w-fit cursor-pointer items-center gap-2 rounded-lg border border-(--accent) bg-transparent px-4 py-2 text-sm font-semibold text-(--accent) transition-colors hover:bg-(--accent)/10 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
               >
-                Cancelar
-              </Button>
-              <Button
-                type="button"
-                onClick={() => void handleBook()}
-                disabled={!canBook || isBooking}
-                className="h-12! px-8! normal-case! disabled:cursor-not-allowed! disabled:opacity-50!"
-              >
-                Agendar Cita
-              </Button>
-            </div>
+                <Plus size={16} />
+                Añadir otro servicio
+              </button>
+            )}
           </div>
+
+          {isStaff && (
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-2">
+                <span className="text-left text-[0.9rem] font-semibold text-(--labels)">Cliente</span>
+                <div role="group" aria-label="Tipo de cliente" className="flex gap-3">
+                  {CLIENT_MODE_OPTIONS.map((option) => {
+                    const isActive = clientMode === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        aria-pressed={isActive}
+                        onClick={() => handleSelectClientMode(option.value)}
+                        className={`flex-1 cursor-pointer rounded-lg border px-4 py-2 text-sm font-semibold transition-colors ${
+                          isActive
+                            ? 'border-(--accent) bg-(--accent)/10 text-(--accent)'
+                            : 'border-white/10 bg-transparent text-(--text) hover:border-(--accent) hover:text-(--accent)'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {clientMode === 'registered' && (
+                <>
+                  <InputField
+                    id="booking-client-search"
+                    label="Buscar cliente"
+                    type="text"
+                    placeholder="Nombre, apellido o correo"
+                    autoComplete="off"
+                    registerProps={register('clientSearch')}
+                  />
+
+                  {clientSearchTerm && (
+                    <>
+                      {clientSearchError ? (
+                        <p className="m-0 text-sm text-[#ff4d4d]">{clientSearchError}</p>
+                      ) : clientResults.length > 0 ? (
+                        <ul className="m-0 flex max-h-60 list-none flex-col gap-2 overflow-y-auto p-0">
+                          {clientResults.map((client) => {
+                            const isSelected = selectedClient?.id === client.id;
+                            return (
+                              <li key={client.id}>
+                                <button
+                                  type="button"
+                                  aria-pressed={isSelected}
+                                  onClick={() => setSelectedClient(client)}
+                                  className={`flex w-full cursor-pointer flex-col items-start rounded-lg border px-3 py-2 text-left transition-colors ${
+                                    isSelected
+                                      ? 'border-(--accent) bg-(--accent)/10'
+                                      : 'border-[#333333] bg-[#121212] hover:border-(--accent)'
+                                  }`}
+                                >
+                                  <span className="text-sm font-semibold text-(--text-h)">{joinFullName(client)}</span>
+                                  <span className="text-xs text-(--text)">{client.email}</span>
+                                </button>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      ) : (
+                        !isSearchingClients && <p className="m-0 text-sm text-(--text)">No se encontraron clientes.</p>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
+
+              {clientMode === 'guest' && (
+                <InputField
+                  id="booking-guest-name"
+                  label="Nombre del visitante"
+                  type="text"
+                  placeholder="Nombre completo"
+                  autoComplete="off"
+                  maxLength={100}
+                  registerProps={register('guestClientName')}
+                />
+              )}
+            </div>
+          )}
         </div>
 
         {/* Calendario */}
-        {shopId && selectedServiceIds.length > 0 ? (
-          <AvailabilityCalendar
-            year={view.year}
-            month={view.month}
-            today={today}
-            maxDate={maxDate}
-            availabilityByDate={availabilityByDate}
-            selectedDate={selectedDate}
-            canGoPrev={viewIndex > currentMonthIndex}
-            canGoNext={viewIndex < maxMonthIndex}
-            onPrevMonth={() => handleMonthChange(-1)}
-            onNextMonth={() => handleMonthChange(1)}
-            onSelectDay={handleSelectDay}
-          />
-        ) : (
-          <p className="m-0 rounded-xl border border-dashed border-white/15 px-6 py-12 text-center text-(--text) min-w-fit w-full max-w-190">
-            Selecciona una sucursal y al menos un servicio para ver la disponibilidad.
-          </p>
-        )}
+        <div className="w-full max-w-190 min-[110rem]:col-start-2 min-[110rem]:row-span-2 min-[110rem]:row-start-1">
+          {shopId && selectedServiceIds.length > 0 ? (
+            <AvailabilityCalendar
+              year={view.year}
+              month={view.month}
+              today={today}
+              maxDate={maxDate}
+              availabilityByDate={availabilityByDate}
+              selectedDate={selectedDate}
+              canGoPrev={viewIndex > currentMonthIndex}
+              canGoNext={viewIndex < maxMonthIndex}
+              onPrevMonth={() => handleMonthChange(-1)}
+              onNextMonth={() => handleMonthChange(1)}
+              onSelectDay={handleSelectDay}
+            />
+          ) : (
+            <p className="m-0 rounded-xl border border-dashed border-white/15 px-6 py-12 text-center text-(--text)">
+              Selecciona una sucursal y al menos un servicio para ver la disponibilidad.
+            </p>
+          )}
+        </div>
+
+        {/* Resumen de la selección */}
+        <div className="rounded-xl border border-[#2c2c2c] bg-[#1a1a1a] p-6 min-w-fit w-full max-w-190 min-[110rem]:col-start-1 min-[110rem]:row-start-2">
+          <h2 className="mb-4 mt-0 text-2xl text-(--text-h)">Información de la cita</h2>
+
+          <div className="grid grid-cols-2 gap-3">
+            {isStaff && (
+              <SummaryTile label="Cliente" className="col-span-2">
+                {clientLabel ?? '—'}
+              </SummaryTile>
+            )}
+            <SummaryTile label="Sucursal">{shopLabel ?? '—'}</SummaryTile>
+            <SummaryTile label="Fecha">{selectedDate ?? '—'}</SummaryTile>
+            <SummaryTile label="Horario" className="col-span-2">
+              {confirmedSlot ? `${formatSlotTime(confirmedSlot.startTime)} · ${confirmedSlot.barberName}` : '—'}
+            </SummaryTile>
+          </div>
+
+          <section className="mt-6">
+            <h3 className="m-0 mb-3 font-sans text-xs font-bold uppercase tracking-wide text-(--accent)">
+              {selectedServices.length > 1 ? 'Servicios' : 'Servicio'}
+            </h3>
+            {selectedServices.length > 0 ? (
+              <ul className="m-0 list-none p-0">
+                {selectedServices.map((service) => (
+                  <li
+                    key={service.id}
+                    className="flex items-baseline justify-between gap-4 border-b border-white/5 py-2 text-sm first:pt-0"
+                  >
+                    <span className="text-(--text-h)">
+                      {service.name}
+                      <span className="ml-2 text-xs text-(--text)">{formatDuration(service.durationMinutes)}</span>
+                    </span>
+                    <span className="font-semibold text-(--text-h)">{formatPrice(service.price)}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="m-0 text-sm text-(--text)">—</p>
+            )}
+          </section>
+
+          <div className="mt-4 flex justify-between">
+            <h3 className="m-0 font-sans text-xs font-bold uppercase tracking-wide text-(--accent)">Total</h3>
+            <div className="flex flex-col items-end">
+              <span className={`text-(--accent) ${totalPrice > 0 ? 'text-2xl font-semibold' : null}`}>
+                {totalPrice > 0 ? formatPrice(totalPrice) : '—'}
+              </span>
+              <span>{totalDuration > 0 ? formatDuration(totalDuration) : null}</span>
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap justify-end gap-3 border-t border-white/10 pt-5">
+            <Button
+              type="button"
+              onClick={handleCancel}
+              className="h-12! border! border-solid! border-(--text)! bg-transparent! px-8! normal-case! text-(--text)!"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void handleBook()}
+              disabled={!canBook || isBooking}
+              className="h-12! px-8! normal-case! disabled:cursor-not-allowed! disabled:opacity-50!"
+            >
+              Agendar Cita
+            </Button>
+          </div>
+        </div>
       </div>
 
       <SlotPickerModal

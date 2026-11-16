@@ -1,3 +1,4 @@
+import { dateOnlySchema } from '../utils/dateOnly.js';
 import { z, ZodError } from 'zod';
 import type { ReceptionistDetailResponse } from '../types/dto/receptionistResponse.interface.js';
 import type { ApiHandler } from '../utils/apiResponse.js';
@@ -25,7 +26,7 @@ const createReceptionistSchema = z.object({
     lastName: z.string().trim().min(1, 'Last name is required').max(100),
     email: z.string().trim().email('Invalid email format').max(255),
     phone: z.string().trim().max(10).optional().nullable(),
-    birthDate: z.coerce.date(),
+    birthDate: dateOnlySchema,
     gender: z.string().max(10),
     password: z.string().min(6, 'Password must be at least 6 characters'),
     shopId: z.uuid('Invalid shop ID'),
@@ -39,7 +40,7 @@ const updateReceptionistSchema = z
         lastName: z.string().trim().min(1).max(100).optional(),
         email: z.string().trim().email('Invalid email format').max(255).optional(),
         phone: z.string().trim().max(10).optional(),
-        birthDate: z.coerce.date().optional(),
+        birthDate: dateOnlySchema.optional(),
         gender: z.string().max(10).optional(),
     })
     .refine(

@@ -19,7 +19,7 @@ export interface RegisterInput {
     phone?: string;
     email: string;
     password: string;
-    birthDate: Date;
+    birthDate: string;
     gender: string;
 }
 

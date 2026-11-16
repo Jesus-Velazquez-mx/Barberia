@@ -12,6 +12,11 @@ perder precisión. Los tipos de dominio (Service.price, etc.) lo declaran como n
 así que lo parseamos aquí para que el runtime coincida con esos tipos. */
 types.setTypeParser(types.builtins.NUMERIC, (value: string) => parseFloat(value));
 
+/* Por defecto, node-postgres convierte DATE (OID 1082) a un Date en hora local del servidor, y al
+   serializar a JSON se vuelve un instante UTC que puede caer en otro día. Una columna DATE es una
+   fecha de calendario sin zona, así que la dejamos como string 'YYYY-MM-DD'. */
+types.setTypeParser(types.builtins.DATE, (value: string) => value);
+
 /* Configuración de la conexión leyendo los secretos de GitHub */
 const dbConfig: PoolConfig = {
     host: process.env.DB_HOST,

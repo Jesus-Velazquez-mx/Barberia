@@ -1,5 +1,5 @@
-
-export const SHIFT_MIN_HOURS = 1;
+/* Duraciones permitidas por el backend, en horas. */
+export const ALLOWED_SHIFT_HOURS = [4, 6, 8];
 
 /* Nombres de la BD que tienen etiqueta en español; cualquier otro se muestra tal cual. */
 const SHIFT_NAME_LABELS: Record<string, string> = {
@@ -8,6 +8,15 @@ const SHIFT_NAME_LABELS: Record<string, string> = {
 };
 
 export const getShiftLabel = (name: string): string => SHIFT_NAME_LABELS[name.trim().toLowerCase()] ?? name;
+
+/* Inverso de getShiftLabel: 'Matutino' -> 'morning'. Cualquier otro nombre se envía tal cual. */
+export const toShiftName = (label: string): string => {
+  const clean = label.trim();
+  const match = Object.entries(SHIFT_NAME_LABELS).find(
+    ([, value]) => value.toLowerCase() === clean.toLowerCase()
+  );
+  return match ? match[0] : clean;
+};
 
 /* Postgres devuelve 'HH:MM:SS'; la interfaz usa 'HH:MM'. */
 export const normalizeTime = (time: string): string => time.slice(0, 5);
@@ -29,15 +38,14 @@ export const formatShiftDuration = (minutes: number): string => {
 export const formatShiftRange = (startTime: string, endTime: string): string =>
   `${normalizeTime(startTime)} - ${normalizeTime(endTime)}`;
 
-
-/* true si es válido; si no, el mensaje de error. */
+/* true si es válido; si no, el mensaje de error. Misma regla que el backend. */
 export const validateShiftTimes = (startTime: string, endTime: string): string | true => {
   if (!startTime || !endTime) return true;
 
   const minutes = getShiftDurationMinutes(startTime, endTime);
   if (minutes <= 0) return 'La hora de fin debe ser posterior a la de inicio.';
-  if (minutes < SHIFT_MIN_HOURS * 60) {
-    return `El turno debe durar al menos ${SHIFT_MIN_HOURS} hora.`;
+  if (!ALLOWED_SHIFT_HOURS.some((hours) => hours * 60 === minutes)) {
+    return `El turno debe durar ${ALLOWED_SHIFT_HOURS.join(', ')} horas.`;
   }
   return true;
 };

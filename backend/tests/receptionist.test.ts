@@ -7,6 +7,7 @@ import {
     insertUser,
     insertShop,
     insertReceptionist,
+    getSeededShiftId,
     cleanupFixtures,
     createdReceptionistIds,
     createdUserIds,
@@ -72,7 +73,6 @@ describe('Pruebas de endpoints de Recepcionistas (Receptionists)', () => {
 
     beforeAll(async () => {
         await connectDB();
-        const pool = getPool();
 
         manager = await insertManager();
         otherManager = await insertManager();
@@ -82,9 +82,8 @@ describe('Pruebas de endpoints de Recepcionistas (Receptionists)', () => {
         otherManagerToken = mintToken(otherManager.id, 'manager', otherManager.email);
         clientToken = mintToken(clientUser.id, 'client', clientUser.email);
 
-        const shifts = await pool.query(`SELECT id FROM shifts ORDER BY name LIMIT 2`);
-        shiftId = shifts.rows[0].id;
-        otherShiftId = shifts.rows[1]?.id ?? shiftId;
+        shiftId = await getSeededShiftId('afternoon');
+        otherShiftId = await getSeededShiftId('morning');
 
         shopId = await insertShop(manager.id);
         emptyShopId = await insertShop(manager.id);

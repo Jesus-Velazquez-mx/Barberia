@@ -7,6 +7,7 @@ import {
     createShop as repoCreateShop,
     updateShop as repoUpdateShop,
     softDeleteShop as repoSoftDeleteShop,
+    getShopsByManagerId,
 } from '../repositories/shopRepository.js';
 import { getManagerByUserId } from '../repositories/managerRepository.js';
 import { isUserActive } from '../repositories/userRepository.js';
@@ -15,16 +16,53 @@ import { canManageShops } from './userPermissions.js';
 import type { ShopResponse } from '../types/dto/shopResponse.interface.js';
 import type { CreateShopRequest, UpdateShopRequest } from '../types/dto/shopRequest.interface.js';
 import { toShopResponse } from '../utils/shopMapper.js';
+import { getReceptionistWithUserById } from '../repositories/receptionistRepository.js';
 
 export const listActiveShops = async (): Promise<ShopResponse[]> => {
     const shops = await getActiveShops();
     return shops.map(toShopResponse);
 };
 
-export const listShops = async (includeInactive = false): Promise<ShopResponse[]> => {
+export const listShops = async (includeInactive = false, token?: string): Promise<ShopResponse[]> => {
+    let performer;
+
+    if (token) {
+        performer = decodeToken(token);
+    }
+
+    if (performer && performer.role !== 'client') {
+        if (!(await isUserActive(performer.id))) {
+            throw new ApiError(ApiErrorCode.ACCOUNT_DEACTIVATED, 'Account is deactivated');
+        }
+
+        if (performer.role === 'receptionist') {
+            const receptionistShopId = (await getReceptionistWithUserById(performer.id))?.shop_id
+            if (receptionistShopId) {
+                const shop = await getShopById(receptionistShopId);
+                if (shop) {
+                    if (includeInactive) {
+                        return [toShopResponse(shop)];
+                    } else {
+                        return (shop && shop.is_active) ? [toShopResponse(shop)] : [];
+                    }
+                } else {
+                    return [];
+                }
+            }
+
+            return [];
+        } else if (performer.role === 'manager') {
+            return (await getShopsByManagerId(performer.id, includeInactive)).map(shop => toShopResponse(shop));
+        }
+    }
+
+    return await listAllShops();
+};
+
+const listAllShops = async (includeInactive = false): Promise<ShopResponse[]> => {
     const shops = includeInactive ? await getAllShops() : await getActiveShops();
     return shops.map(toShopResponse);
-};
+}
 
 export const getActiveShopById = async (id: string): Promise<ShopResponse> => {
     const shop = await getShopById(id);

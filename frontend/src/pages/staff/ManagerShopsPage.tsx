@@ -1,8 +1,13 @@
 
 import { ManagerShopsContainer } from '../../containers/ManagerShopsContainer';
-
-function ManagerShiftsPage() {
-  return <ManagerShopsContainer />;
+import { BackLink } from '../../components/common/BackLinkComponent';
+function ManagerShopsPage() {
+  return (
+      <>
+      <BackLink to="/manager/management" label="Volver a Gestión" />
+      <ManagerShopsContainer />
+      </>
+    )
 }
 
-export default ManagerShiftsPage;
+export default ManagerShopsPage;

@@ -1,4 +1,4 @@
-import { BackLink } from '../../components/BackLinkComponent';
+import { BackLink } from '../../components/common/BackLinkComponent';
 import { StaffSupplyCategoriesContainer } from '../../containers/StaffSupplyCategoriesContainer';
 
 interface StaffSupplyCategoriesPageProps {

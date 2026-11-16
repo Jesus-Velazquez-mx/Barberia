@@ -12,10 +12,12 @@ import { getBarberById } from '../repositories/barberRepository.js';
 import { getAppointmentClientsById, getClientByUserId } from '../repositories/clientRepository.js';
 import { getReceptionistByUserId } from '../repositories/receptionistRepository.js';
 import { getAllShifts } from '../repositories/shiftRepository.js';
-import { getAvailableSlots, getBookableServices } from './availabilityService.js';
+import { getAvailableSlots, getBookableServices, MAX_BOOKING_DAYS_AHEAD } from './availabilityService.js';
 import {
     canCreateAppointment,
     canEditAppointment,
+    canManageShopWalkIns,
+    canViewAppointment,
     canViewShopAppointments,
     isWithinClientEditCutoff,
 } from './userPermissions.js';
@@ -35,7 +37,8 @@ import type { AppointmentResponse, ClientAppointmentResponse } from '../types/dt
 
 const MS_PER_MINUTE = 60_000;
 const MS_PER_DAY = 24 * 60 * MS_PER_MINUTE;
-const DEFAULT_WINDOW_DAYS = 30;
+// Días que cubre la ventana por defecto, hoy incluido: hasta el último día que availabilityService deja agendar.
+const DEFAULT_WINDOW_DAYS = MAX_BOOKING_DAYS_AHEAD + 1;
 const MAX_WINDOW_DAYS = 366;
 
 /**
@@ -136,15 +139,18 @@ export const registerAppointment = async (
 /** Días después de la fecha en que se agendó dentro de los cuales se puede reprogramar una cita. */
 const RESCHEDULE_WINDOW_DAYS = 30;
 
+type SessionPerformer = Awaited<ReturnType<typeof isUserSessionValid>>;
+
 /**
- * Prólogo compartido por editar y cancelar: valida la sesión, que la cita exista, el alcance del rol, el estado
- * (scheduled / rescheduled), que no haya empezado y el límite de 8 horas (solo clientes).
+ * Valida la sesión, que la cita exista (404) y que el solicitante tenga alcance para editarla según su rol (403).
+ * Es la única fuente de las reglas de alcance de PUT /appointments/:id; la usan editar, cancelar y la disponibilidad
+ * con excludeAppointmentId, para que no se desincronicen.
  */
-const loadModifiableAppointment = async (
+const loadAppointmentInEditScope = async (
     appointmentId: string,
     token: string,
-    action: 'edit' | 'cancel'
-): Promise<{ performer: Awaited<ReturnType<typeof isUserSessionValid>>; appointment: Appointment }> => {
+    action: string
+): Promise<{ performer: SessionPerformer; appointment: Appointment }> => {
     const performer = await isUserSessionValid(token);
 
     const appointment = await getAppointmentById(appointmentId);
@@ -170,6 +176,59 @@ const loadModifiableAppointment = async (
     ) {
         throw new ApiError(ApiErrorCode.FORBIDDEN, `Not authorized to ${action} this appointment`);
     }
+
+    return { performer, appointment };
+};
+
+/**
+ * GET /shops/:id/availability con excludeAppointmentId: exige que el solicitante pueda editar la cita (mismas
+ * reglas de alcance que PUT /appointments/:id) y que la cita sea de la sucursal consultada. El alcance (403) se
+ * valida antes que la sucursal (422) para no revelar a qué sucursal pertenece una cita ajena.
+ */
+export const assertCanExcludeAppointmentFromAvailability = async (
+    appointmentId: string,
+    token: string,
+    shopId: string
+): Promise<void> => {
+    const { appointment } = await loadAppointmentInEditScope(appointmentId, token, 'exclude');
+    if (appointment.shop_id !== shopId) {
+        throw new ApiError(ApiErrorCode.INVALID_INPUT, 'The appointment does not belong to the requested shop');
+    }
+};
+
+/**
+ * GET /shops/:id/availability/next: valida la sesión (401) y que el solicitante sea personal de la sucursal (403).
+ * Los clientes se rechazan antes de consultar la sucursal; una sucursal inexistente responde 404.
+ */
+export const assertCanManageShopWalkIns = async (shopId: string, token: string): Promise<void> => {
+    const performer = await isUserSessionValid(token);
+    if (performer.role === 'client') {
+        throw new ApiError(ApiErrorCode.FORBIDDEN, 'Not authorized to manage walk-ins of this shop');
+    }
+
+    const shop = await getShopById(shopId);
+    if (!shop) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Shop not found');
+    }
+
+    const receptionistShopId =
+        performer.role === 'receptionist' ? ((await getReceptionistByUserId(performer.id))?.shop_id ?? null) : null;
+
+    if (!canManageShopWalkIns(performer, { shopId: shop.id, shopManagerId: shop.manager_id }, receptionistShopId)) {
+        throw new ApiError(ApiErrorCode.FORBIDDEN, 'Not authorized to manage walk-ins of this shop');
+    }
+};
+
+/**
+ * Prólogo compartido por editar y cancelar: además del alcance (loadAppointmentInEditScope), valida el estado
+ * (scheduled / rescheduled), que no haya empezado y el límite de 8 horas (solo clientes).
+ */
+const loadModifiableAppointment = async (
+    appointmentId: string,
+    token: string,
+    action: 'edit' | 'cancel'
+): Promise<{ performer: SessionPerformer; appointment: Appointment }> => {
+    const { performer, appointment } = await loadAppointmentInEditScope(appointmentId, token, action);
 
     if (appointment.status !== 'scheduled' && appointment.status !== 'rescheduled') {
         throw new ApiError(
@@ -339,8 +398,9 @@ export const cancelAppointment = async (
 };
 
 /**
- * Rango de búsqueda por inicio programado. Sin from ni to: hoy 00:00 hasta el día 30 a las 23:59:59.999
- * (hora del negocio). Si falta solo uno, se completa: from = hoy 00:00; to = from + 30 días.
+ * Rango de búsqueda por inicio programado. Sin from ni to: hoy 00:00 hasta el último día agendable
+ * (hoy + MAX_BOOKING_DAYS_AHEAD) a las 23:59:59.999 (hora del negocio). Si falta solo uno, se completa:
+ * from = hoy 00:00; to = from + 31 días (menos 1 ms).
  */
 const resolveWindow = (query: ListAppointmentsQuery): { from: Date; to: Date } => {
     const from = query.from ?? getBusinessDayStart(0);
@@ -356,7 +416,51 @@ const resolveWindow = (query: ListAppointmentsQuery): { from: Date; to: Date } =
     if (to.getTime() - from.getTime() > MAX_WINDOW_DAYS * MS_PER_DAY) {
         throw new ApiError(ApiErrorCode.BAD_REQUEST, `Date range must not exceed ${MAX_WINDOW_DAYS} days`);
     }
+
     return { from, to };
+};
+
+/**
+ * Consulta una cita por id, sin importar su fecha ni su estado. Mismo alcance por rol que editarla:
+ * client: las propias; receptionist: las de su sucursal; manager: las de las sucursales que administra.
+ */
+export const getAppointment = async (
+    appointmentId: string,
+    token: string
+): Promise<AppointmentResponse | ClientAppointmentResponse> => {
+    const performer = await isUserSessionValid(token);
+
+    const appointment = await getAppointmentById(appointmentId);
+    if (!appointment) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Appointment not found');
+    }
+
+    const shop = await getShopById(appointment.shop_id);
+    if (!shop) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Shop not found');
+    }
+
+    const receptionistShopId =
+        performer.role === 'receptionist' ? ((await getReceptionistByUserId(performer.id))?.shop_id ?? null) : null;
+
+    if (
+        !canViewAppointment(
+            performer,
+            { clientId: appointment.client_id, shopId: appointment.shop_id, shopManagerId: shop.manager_id },
+            receptionistShopId
+        )
+    ) {
+        throw new ApiError(ApiErrorCode.FORBIDDEN, 'Not authorized to view this appointment');
+    }
+
+    const services = await getServicesByAppointmentIds([appointment.id]);
+
+    if (performer.role === 'client') {
+        return toClientAppointmentResponse(appointment, services);
+    }
+
+    const [client] = await getAppointmentClientsById(appointment.client_id !== null ? [appointment.client_id] : []);
+    return toAppointmentResponse(appointment, services, client ?? null);
 };
 
 /**

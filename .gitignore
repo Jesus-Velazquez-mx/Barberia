@@ -8,6 +8,7 @@ postman/
 .claude
 CLAUDE.md
 graphify-out/
+.gitattributes
 venv/
 model_85_nn_.pth
 ai_service/ai_service.egg-info/

@@ -14,7 +14,7 @@ export interface CreateReceptionistInput {
     passwordHash: string;
     firstName: string;
     lastName: string;
-    birthDate: Date;
+    birthDate: string;
     gender: string;
     shopId: string;
     shiftId: string;

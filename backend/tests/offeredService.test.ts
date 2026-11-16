@@ -91,7 +91,7 @@ describe('Pruebas de endpoints de Catálogo de Servicios (OfferedServices)', () 
     });
 
     describe('Listar Servicios (GET /api/offeredServices)', () => {
-        test('Debe responder 200 y listar TODOS los servicios (activos e inactivos) para un manager', async () => {
+        test('Debe responder 200 y listar SOLO los servicios activos para un manager por defecto', async () => {
             const res = await request(app).get('/api/offeredServices').set('Authorization', `Bearer ${managerToken}`);
 
             expect(res.status).toBe(200);
@@ -100,7 +100,42 @@ describe('Pruebas de endpoints de Catálogo de Servicios (OfferedServices)', () 
             const ids = res.body.data.map((s: any) => s.id);
             expect(ids).toContain(activeServiceId1);
             expect(ids).toContain(activeServiceId2);
-            expect(ids).toContain(inactiveServiceId); // El manager sí ve el inactivo
+            expect(ids).not.toContain(inactiveServiceId); // includeInactive es false por defecto
+        });
+
+        test('Debe responder 200 y listar TODOS los servicios (activos e inactivos) para un manager con includeInactive=true', async () => {
+            const res = await request(app)
+                .get('/api/offeredServices?includeInactive=true')
+                .set('Authorization', `Bearer ${managerToken}`);
+
+            expect(res.status).toBe(200);
+            expect(Array.isArray(res.body.data)).toBe(true);
+
+            const ids = res.body.data.map((s: any) => s.id);
+            expect(ids).toContain(activeServiceId1);
+            expect(ids).toContain(activeServiceId2);
+            expect(ids).toContain(inactiveServiceId);
+        });
+
+        test('Debe ignorar includeInactive=true para un cliente y listar solo los servicios activos', async () => {
+            const res = await request(app)
+                .get('/api/offeredServices?includeInactive=true')
+                .set('Authorization', `Bearer ${clientToken}`);
+
+            expect(res.status).toBe(200);
+
+            const ids = res.body.data.map((s: any) => s.id);
+            expect(ids).toContain(activeServiceId1);
+            expect(ids).not.toContain(inactiveServiceId);
+        });
+
+        test('Debe responder 400 si includeInactive no es "true" ni "false"', async () => {
+            const res = await request(app)
+                .get('/api/offeredServices?includeInactive=banana')
+                .set('Authorization', `Bearer ${managerToken}`);
+
+            expect(res.status).toBe(400);
+            expect(res.body.message).toMatch(/Validation error/i);
         });
 
         test('Debe responder 200 y listar SOLO los servicios ACTIVOS para un cliente', async () => {
@@ -117,7 +152,7 @@ describe('Pruebas de endpoints de Catálogo de Servicios (OfferedServices)', () 
 
         test('Debe responder 200 y filtrar servicios por categoría', async () => {
             const res = await request(app)
-                .get(`/api/offeredServices?categoryId=${categoryId1}`)
+                .get(`/api/offeredServices?categoryId=${categoryId1}&includeInactive=true`)
                 .set('Authorization', `Bearer ${managerToken}`);
 
             expect(res.status).toBe(200);

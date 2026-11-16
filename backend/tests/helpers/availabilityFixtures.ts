@@ -66,6 +66,15 @@ export const insertShop = async (
 };
 
 /**
+ * Devuelve el id de un turno del catálogo fijo ('morning' o 'afternoon'). No usar `SELECT ... FROM shifts LIMIT n`
+ * en las pruebas: shift.test.ts crea y borra turnos temporales en paralelo y podrían devolverse por error.
+ */
+export const getSeededShiftId = async (name: 'morning' | 'afternoon' = 'morning'): Promise<string> => {
+    const result = await getPool().query(`SELECT id FROM shifts WHERE name = $1`, [name]);
+    return result.rows[0].id;
+};
+
+/**
  * Inserta un turno en la tabla 'shifts' o reutiliza uno existente si ya existe uno con ese nombre.
  */
 export const insertShift = async (name: string, startTime = '08:00', endTime = '16:00'): Promise<string> => {
@@ -98,8 +107,7 @@ export const insertBarber = async (
 ): Promise<{ id: string; email: string }> => {
     let shiftId = options?.shiftId;
     if (!shiftId) {
-        const shiftRes = await getPool().query(`SELECT id FROM shifts LIMIT 1`);
-        shiftId = shiftRes.rows[0].id;
+        shiftId = await getSeededShiftId();
     }
     const email = generateUniqueFixtureEmail('barber');
     const phone = generateUniqueFixturePhone();

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { cancel, create, list, update } from '../controllers/appointmentController.js';
+import { cancel, create, getById, list, update } from '../controllers/appointmentController.js';
 
 const router = Router();
 
@@ -105,8 +105,8 @@ router.post('/appointments', create);
  *     tags: [Appointments]
  *     description: |
  *       Lista las citas cuyo inicio programado (`scheduledStart`) cae dentro de [`from`, `to`] (ambos inclusivos), ordenadas por inicio.
- *       Sin `from` ni `to` se usan los próximos 30 días: de hoy 00:00 al día 30 a las 23:59:59.999, en la zona horaria del negocio.
- *       Si solo falta uno: `from` = hoy 00:00 y `to` = `from` + 30 días. El rango no puede ser negativo ni exceder 366 días. Requiere token JWT.
+ *       Sin `from` ni `to` se usa la ventana agendable: de hoy 00:00 al fin del día hoy + 30 (último día que permite agendar la disponibilidad), 23:59:59.999, en la zona horaria del negocio.
+ *       Si solo falta uno: `from` = hoy 00:00 y `to` = `from` + 31 días (menos 1 ms). El rango no puede ser negativo ni exceder 366 días. Requiere token JWT.
  *       Alcance por rol:
  *       - client: solo sus propias citas. Los filtros `clientId`, `shopId`, `clientType` y `barberId` se ignoran.
  *       - receptionist: las citas de la sucursal donde trabaja.
@@ -123,7 +123,7 @@ router.post('/appointments', create);
  *       - in: query
  *         name: to
  *         schema: { type: string, format: date-time }
- *         description: Fin del rango, inclusivo. Por defecto el día 30 a las 23:59:59.999 hora del negocio.
+ *         description: Fin del rango, inclusivo. Por defecto el fin del día hoy + 30 (23:59:59.999 hora del negocio).
  *         example: "2026-10-31T23:59:59-07:00"
  *       - in: query
  *         name: status
@@ -197,6 +197,43 @@ router.get('/appointments', list);
 /**
  * @swagger
  * /api/appointments/{id}:
+ *   get:
+ *     summary: Consulta una cita por id
+ *     tags: [Appointments]
+ *     description: |
+ *       Devuelve una cita sin importar su fecha ni su estado. Requiere token JWT.
+ *       Alcance por rol:
+ *       - client: solo sus propias citas.
+ *       - receptionist: las citas de la sucursal donde trabaja.
+ *       - manager: las citas de las sucursales que administra.
+ *       El cliente recibe la cita sin los datos del cliente; el personal los recibe.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *         description: Id de la cita.
+ *     responses:
+ *       200:
+ *         description: Cita encontrada. `data` tiene la misma forma que cada elemento de `GET /api/appointments`.
+ *       400:
+ *         description: Id con formato UUID inválido.
+ *       401:
+ *         description: Token ausente o inválido.
+ *       403:
+ *         description: Cuenta desactivada o la cita no está dentro del alcance del rol.
+ *       404:
+ *         description: Cita no encontrada.
+ *       500:
+ *         description: Error interno del servidor.
+ */
+router.get('/appointments/:id', getById);
+
+/**
+ * @swagger
+ * /api/appointments/{id}:
  *   put:
  *     summary: Edita una cita
  *     tags: [Appointments]
@@ -211,8 +248,8 @@ router.get('/appointments', list);
  *       Reglas:
  *       - Solo se editan citas futuras con estado `scheduled` o `rescheduled`; una cita en `checked_in` (o cualquier otro estado) ya no se puede editar.
  *       - Un nuevo `scheduledStart` debe ser uno de los `startTimes` de `GET /api/shops/{id}/availability` para el barbero y los servicios finales,
- *         sin contar la propia cita como ocupada, y caer dentro de los 30 días posteriores a la fecha en que se agendó. Puede ser un día anterior o
- *         posterior, o el mismo día a otra hora.
+ *         **enviando `excludeAppointmentId` con el id de esta cita** para que su horario actual no la bloquee, y caer dentro de los 30 días
+ *         posteriores a la fecha en que se agendó. Puede ser un día anterior o posterior, o el mismo día a otra hora.
  *       - `barberId` debe ser un barbero activo de la misma sucursal que la cita; se puede conservar el mismo.
  *       - La duración es la suma de las duraciones de los servicios; si crece, el barbero debe tener tiempo libre suficiente. Los servicios que se
  *         conservan mantienen su precio y duración originales; los nuevos usan los valores actuales del catálogo.

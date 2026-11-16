@@ -10,7 +10,7 @@ export interface CreateClientRepositoryInput {
     password_hash: string;
     first_name: string;
     last_name: string;
-    birth_date: Date;
+    birth_date: string;
     gender: string;
     facial_structure_type?: FacialStructureType | null;
     completed_services_count?: number;
@@ -23,7 +23,7 @@ export interface UpdateClientRepositoryInput {
     password?: string;
     firstName?: string;
     lastName?: string;
-    birthDate?: Date;
+    birthDate?: string;
     gender?: string;
     facialStructureType?: FacialStructureType | null;
     completedServicesCount?: number;
@@ -37,7 +37,7 @@ export interface ClientWithUser {
     password_hash: string;
     first_name: string;
     last_name: string;
-    birth_date: Date;
+    birth_date: string;
     gender: string;
     facial_structure_type: FacialStructureType | null;
     completed_services_count: number;

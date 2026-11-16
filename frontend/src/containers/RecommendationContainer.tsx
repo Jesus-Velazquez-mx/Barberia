@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { CirclePlus, LoaderCircle } from 'lucide-react';
-import { Button } from '../components/ButtonComponent';
-import { PhotoInput } from '../components/PhotoInputComponent';
-import { RecommendationHistory } from '../components/RecommendationHistoryComponent';
-import { RecommendationResult } from '../components/RecommendationResultComponent';
+import { Button } from '../components/common/ButtonComponent';
+import { PhotoInput } from '../components/recommendations/PhotoInputComponent';
+import { RecommendationHistory } from '../components/recommendations/RecommendationHistoryComponent';
+import { RecommendationResult } from '../components/recommendations/RecommendationResultComponent';
 import { useAuth } from '../context/AuthContext';
 import {
   getRecommendationHistory,

@@ -11,7 +11,7 @@ export interface CreateUserInput {
     password_hash: string;
     first_name: string;
     last_name: string;
-    birth_date: Date;
+    birth_date: string;
     gender: string;
 }
 
@@ -22,7 +22,7 @@ export interface UpdateUserInput {
     password?: string;
     firstName?: string;
     lastName?: string;
-    birthDate?: Date;
+    birthDate?: string;
     gender?: string;
 }
 

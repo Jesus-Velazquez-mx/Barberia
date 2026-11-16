@@ -17,21 +17,9 @@ import type { User } from '../types/entities/user.interface.js';
 import type { UserResponse } from '../types/dto/userResponse.interface.js';
 import type { ProfileResponse } from '../types/dto/authResponse.interface.js';
 import { toUserResponse, toManagerProfile, toReceptionistProfile, toClientProfile } from '../utils/userMapper.js';
+import { calculateAgeFromDateOnly as calculateAge } from '../utils/dateOnly.js';
 
 const MANAGER_HAS_SHOPS_ERROR_CODE = 'BM001';
-
-const calculateAge = (birthDate: Date, currentDate = new Date()): number => {
-    let age = currentDate.getFullYear() - birthDate.getFullYear();
-    const birthdayHasOccurred =
-        currentDate.getMonth() > birthDate.getMonth() ||
-        (currentDate.getMonth() === birthDate.getMonth() && currentDate.getDate() >= birthDate.getDate());
-
-    if (!birthdayHasOccurred) {
-        age -= 1;
-    }
-
-    return age;
-};
 
 /**
  * Actualiza los datos compartidos (tabla users) del usuario objetivo, siempre que

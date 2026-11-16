@@ -244,6 +244,8 @@ jobs:
                 -e AWS_REGION=${{ secrets.AWS_REGION }}\
                 -e AWS_BUCKET=${{ secrets.AWS_BUCKET }} \
                 -e AWS_BUCKET_KEY_PREFIX=${{ secrets.AWS_BUCKET_KEY_PREFIX }} \
+                -e EXTERNAL_ONLY_AI_SERVICE_URL=${{ secrets.EXTERNAL_ONLY_AI_SERVICE_URL }} \
+                -e ONLY_EXTERNAL_AI_PROVIDER=${{ vars.ONLY_EXTERNAL_AI_PROVIDER }} \
                 jesusvelazquezmx/barberia:latest
 
               # Limpiar imágenes no utilizadas

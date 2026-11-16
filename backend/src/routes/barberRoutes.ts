@@ -39,7 +39,7 @@ const router = Router();
  *                     bio: { type: string, nullable: true, example: "Especialista en cortes clásicos y barba." }
  *                     email: { type: string, format: email, nullable: true, example: "juan.perez@barberia.com", description: Solo personal }
  *                     phone: { type: string, nullable: true, example: "5551234567", description: Solo personal }
- *                     birthDate: { type: string, format: date-time, description: Solo personal }
+ *                     birthDate: { type: string, format: date, description: Solo personal }
  *                     gender: { type: string, example: "M", description: Solo personal }
  *                     isAcceptingBookings: { type: boolean, example: true, description: Solo personal }
  *                     deletedAt: { type: string, format: date-time, nullable: true, example: null, description: Solo personal }

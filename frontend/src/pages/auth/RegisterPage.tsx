@@ -8,7 +8,7 @@ function RegisterPage() {
     <div className="flex min-h-screen flex-col items-center justify-center py-10">
       <div className="relative w-full max-w-[26.5rem]">
         <Link
-          to="/"
+          to="/login"
           aria-label="Volver a la página principal"
           className="absolute left-0 top-0 text-white transition-colors duration-200 hover:text-[var(--accent)]"
         >

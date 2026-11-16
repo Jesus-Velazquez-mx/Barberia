@@ -7,6 +7,7 @@ import {
     insertUser,
     cleanupFixtures,
     generateUniqueFixtureName,
+    getSeededShiftId,
 } from './helpers/availabilityFixtures.js';
 import { signToken } from '../src/services/jwtTokenService.js';
 import type { User, UserRole } from '../src/types/entities/user.interface.js';
@@ -45,8 +46,7 @@ describe('Pruebas de endpoints de Barberos (Barbers)', () => {
         clientToken = mintToken(clientUser.id, 'client', clientUser.email);
 
         // 2. Obtener un turno (shift) existente en el catálogo fijo
-        const shiftRes = await pool.query(`SELECT id FROM shifts LIMIT 1`);
-        shiftId = shiftRes.rows[0].id;
+        shiftId = await getSeededShiftId();
 
         // 3. Crear una sucursal (shop) de prueba asignada al manager
         // Usamos un prefijo muy corto ('ShopB') para no pasarnos de 50 caracteres.

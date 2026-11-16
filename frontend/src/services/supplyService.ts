@@ -1,41 +1,85 @@
+import { apiClient } from './apiClient';
+import { getShops } from './shopService';
 import type { Supply, SupplyPayload, SupplyShop } from '../types/supplyType';
-import {
-    mockCreateSupply,
-    mockDeleteSupply,
-    mockListSupplies,
-    mockListSupplyShops,
-    mockUpdateSupply
-} from '../mocks/supplyMock';
 
-/*
- * Servicio de insumos.
- * Hoy responde con datos mock. Para integrar con el backend solo cambia el cuerpo de estas funciones
- * (usando apiClient y el token); los contenedores no se tocan:
- *
- *   getSupplies    -> GET    /supplies         (acepta ?shopId=; requiere token)
- *   createSupply   -> POST   /supplies
- *   updateSupply   -> PUT    /supplies/:id
- *   deleteSupply   -> DELETE /supplies/:id     (borrado físico: también elimina sus existencias y movimientos)
- *   getSupplyShops -> GET    /shops            (público)
- *
- * Detalles del backend a tener en cuenta:
- *   - Devuelve los insumos tal como salen de la BD (snake_case: shop_id, category_id, created_at...);
- *     hay que convertirlos a camelCase para que coincidan con el tipo Supply.
- *   - Hoy solo el rol manager tiene permiso en /supplies y /suppliesCategories (userPermissions.ts);
- *     el issue pide también recepcionista, así que el backend debe abrir ese permiso.
- *   - Los errores 409 llegan en inglés ('Supply name is already in use in this shop', 'SKU is already in use...');
- *     utils/supplyUtils.ts ya los traduce.
+interface SupplyApi {
+    id: string;
+    shop_id: string;
+    category_id: string;
+    name: string;
+    description: string | null;
+    unit: string;
+    sku: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+const authHeaders = (token: string): RequestInit => ({
+    headers: { Authorization: `Bearer ${token}` }
+});
+
+const toSupply = (item: SupplyApi): Supply => ({
+    id: item.id,
+    shopId: item.shop_id,
+    categoryId: item.category_id,
+    name: item.name,
+    description: item.description,
+    unit: item.unit,
+    sku: item.sku,
+    createdAt: item.created_at,
+    updatedAt: item.updated_at
+});
+
+/**
+ * Obtiene la lista de insumos. Opcionalmente filtrados por varias sucursales.
+ * Requiere token con rol manager.
  */
+export const getSupplies = async (token: string, shopIds: string[]): Promise<Supply[]> => {
+    const query = shopIds.length > 0 ? `?${shopIds.map((id) => `shopIds=${encodeURIComponent(id)}`).join('&')}` : '';
+    const response = await apiClient.get<SupplyApi[]>(`/supplies${query}`, authHeaders(token));
+    return response.data.map(toSupply);
+};
 
-export const getSupplies = async (_token: string): Promise<Supply[]> => mockListSupplies();
+/**
+ * Obtiene un insumo por su ID único.
+ */
+export const getSupplyById = async (id: string, token: string): Promise<Supply> => {
+    const response = await apiClient.get<SupplyApi>(`/supplies/${id}`, authHeaders(token));
+    return toSupply(response.data);
+};
 
-export const createSupply = async (payload: SupplyPayload, _token: string): Promise<Supply> =>
-    mockCreateSupply(payload);
+/**
+ * Registra un nuevo insumo. No gestiona stock ni existencias.
+ * El backend valida unicidad de nombre y SKU por sucursal (409).
+ */
+export const createSupply = async (payload: SupplyPayload, token: string): Promise<Supply> => {
+    const response = await apiClient.post<SupplyApi>('/supplies', payload, authHeaders(token));
+    return toSupply(response.data);
+};
 
-export const updateSupply = async (id: string, payload: SupplyPayload, _token: string): Promise<Supply> =>
-    mockUpdateSupply(id, payload);
+/**
+ * Actualiza los datos de un insumo existente.
+ */
+export const updateSupply = async (id: string, payload: Partial<SupplyPayload>, token: string): Promise<Supply> => {
+    const response = await apiClient.put<SupplyApi>(`/supplies/${id}`, payload, authHeaders(token));
+    return toSupply(response.data);
+};
 
-export const deleteSupply = async (id: string, _token: string): Promise<void> => mockDeleteSupply(id);
+/**
+ * Elimina físicamente un insumo existente.
+ */
+export const deleteSupply = async (id: string, token: string): Promise<void> => {
+    await apiClient.delete(`/supplies/${id}`, authHeaders(token));
+};
 
-/* Sucursales para el formulario y los filtros. */
-export const getSupplyShops = async (): Promise<SupplyShop[]> => mockListSupplyShops();
+/**
+ * Obtiene la lista de sucursales para los selectores y filtros de insumos.
+ * Consume el endpoint público de sucursales (/shops).
+ */
+export const getSupplyShops = async (): Promise<SupplyShop[]> => {
+    const shops = await getShops();
+    return shops.map((shop) => ({
+        id: shop.id,
+        name: shop.name
+    }));
+};

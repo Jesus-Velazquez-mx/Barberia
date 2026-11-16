@@ -1,39 +1,68 @@
+import { apiClient } from './apiClient';
 import type { SupplyCategory, SupplyCategoryPayload } from '../types/supplyCategoryType';
-import {
-    mockCreateSupplyCategory,
-    mockDeleteSupplyCategory,
-    mockListSupplyCategories,
-    mockUpdateSupplyCategory
-} from '../mocks/supplyMock';
 
-/*
- * Servicio de categorías de insumos.
- * Hoy responde con datos mock. Para integrar con el backend solo cambia el cuerpo de estas funciones
- * (usando apiClient y el token); los contenedores no se tocan:
- *
- *   getSupplyCategories    -> GET    /suppliesCategories
- *   createSupplyCategory   -> POST   /suppliesCategories
- *   updateSupplyCategory   -> PUT    /suppliesCategories/:id
- *   deleteSupplyCategory   -> DELETE /suppliesCategories/:id   (400 si la categoría tiene suministros asignados)
- *
- * Detalles del backend a tener en cuenta:
- *   - Devuelve las filas tal como salen de la BD (snake_case: created_at, updated_at); hay que convertirlas
- *     a camelCase para que coincidan con el tipo SupplyCategory.
- *   - Hoy solo el rol manager tiene permiso (userPermissions.ts); el issue pide también recepcionista,
- *     así que el backend debe abrir ese permiso.
- *   - Los errores llegan en inglés ('Category name is already in use', 'Cannot delete category because it has
- *     supplies assigned'); utils/supplyUtils.ts ya los traduce.
+interface SupplyCategoryApi {
+    id: string;
+    name: string;
+    description: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+const authHeaders = (token: string): RequestInit => ({
+    headers: { Authorization: `Bearer ${token}` }
+});
+
+const toSupplyCategory = (item: SupplyCategoryApi): SupplyCategory => ({
+    id: item.id,
+    name: item.name,
+    description: item.description,
+    createdAt: item.created_at,
+    updatedAt: item.updated_at
+});
+
+/**
+ * Obtiene el listado completo de categorías de insumos.
+ * Requiere token con rol manager.
  */
+export const getSupplyCategories = async (token: string): Promise<SupplyCategory[]> => {
+    const response = await apiClient.get<SupplyCategoryApi[]>('/suppliesCategories', authHeaders(token));
+    return response.data.map(toSupplyCategory);
+};
 
-export const getSupplyCategories = async (_token: string): Promise<SupplyCategory[]> => mockListSupplyCategories();
+/**
+ * Obtiene los detalles de una categoría específica por su ID.
+ */
+export const getSupplyCategoryById = async (id: string, token: string): Promise<SupplyCategory> => {
+    const response = await apiClient.get<SupplyCategoryApi>(`/suppliesCategories/${id}`, authHeaders(token));
+    return toSupplyCategory(response.data);
+};
 
-export const createSupplyCategory = async (payload: SupplyCategoryPayload, _token: string): Promise<SupplyCategory> =>
-    mockCreateSupplyCategory(payload);
+/**
+ * Registra una nueva categoría de insumos.
+ * Valida unicidad de nombre en backend (409 si colisiona).
+ */
+export const createSupplyCategory = async (payload: SupplyCategoryPayload, token: string): Promise<SupplyCategory> => {
+    const response = await apiClient.post<SupplyCategoryApi>('/suppliesCategories', payload, authHeaders(token));
+    return toSupplyCategory(response.data);
+};
 
+/**
+ * Actualiza los datos de una categoría existente.
+ */
 export const updateSupplyCategory = async (
     id: string,
-    payload: SupplyCategoryPayload,
-    _token: string
-): Promise<SupplyCategory> => mockUpdateSupplyCategory(id, payload);
+    payload: Partial<SupplyCategoryPayload>,
+    token: string
+): Promise<SupplyCategory> => {
+    const response = await apiClient.put<SupplyCategoryApi>(`/suppliesCategories/${id}`, payload, authHeaders(token));
+    return toSupplyCategory(response.data);
+};
 
-export const deleteSupplyCategory = async (id: string, _token: string): Promise<void> => mockDeleteSupplyCategory(id);
+/**
+ * Elimina físicamente una categoría de insumos.
+ * Devuelve error 400 si la categoría tiene suministros asignados.
+ */
+export const deleteSupplyCategory = async (id: string, token: string): Promise<void> => {
+    await apiClient.delete(`/suppliesCategories/${id}`, authHeaders(token));
+};

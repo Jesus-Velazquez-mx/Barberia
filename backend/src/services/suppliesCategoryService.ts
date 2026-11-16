@@ -13,7 +13,7 @@ import { canManageSuppliesCategories } from '../services/userPermissions.js';
 
 /**
  * Recupera la lista completa de categorías de insumos.
- * Requiere rol de manager y cuenta activa.
+ * Requiere rol de manager o receptionist y cuenta activa.
  */
 export const listCategories = async (token: string) => {
     const performer = decodeToken(token);
@@ -31,7 +31,7 @@ export const listCategories = async (token: string) => {
 
 /**
  * Obtiene los detalles de una categoría por su ID.
- * Requiere rol de manager y cuenta activa.
+ * Requiere rol de manager o receptionist y cuenta activa.
  * Lanza un error 404 si la categoría no existe.
  */
 export const getCategory = async (id: string, token: string) => {
@@ -54,7 +54,7 @@ export const getCategory = async (id: string, token: string) => {
 
 /**
  * Registra una nueva categoría de insumos.
- * Requiere rol de manager y cuenta activa.
+ * Requiere rol de manager o receptionist y cuenta activa.
  * Valida que el nombre de la categoría no esté en uso.
  */
 export const registerCategory = async (data: { name: string; description?: string | null }, token: string) => {
@@ -79,7 +79,7 @@ export const registerCategory = async (data: { name: string; description?: strin
 
 /**
  * Edita la información de una categoría existente.
- * Requiere rol de manager y cuenta activa.
+ * Requiere rol de manager o receptionist y cuenta activa.
  * Valida que el nuevo nombre no colisione con otra categoría.
  */
 export const editCategory = async (id: string, data: { name?: string; description?: string | null }, token: string) => {
@@ -111,7 +111,7 @@ export const editCategory = async (id: string, data: { name?: string; descriptio
 
 /**
  * Elimina físicamente una categoría de insumos.
- * Requiere rol de manager y cuenta activa.
+ * Requiere rol de manager o receptionist y cuenta activa.
  * Traduce el error de base de datos (ON DELETE RESTRICT) si la categoría está en uso por insumos.
  */
 export const removeCategory = async (id: string, token: string): Promise<void> => {

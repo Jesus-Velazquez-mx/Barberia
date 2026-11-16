@@ -2,7 +2,7 @@ import { z, ZodError } from 'zod';
 import type { ApiHandler } from '../utils/apiResponse.js';
 import { sendFail, sendInternalServerError, sendSuccess, sendValidationError } from '../utils/apiResponse.js';
 import { ApiError } from '../errors/ApiError.js';
-import { cancelAppointment, listAppointments, registerAppointment, updateAppointment } from '../services/appointmentService.js';
+import { cancelAppointment, getAppointment, listAppointments, registerAppointment, updateAppointment } from '../services/appointmentService.js';
 import type { AppointmentResponse, ClientAppointmentResponse } from '../types/dto/appointmentResponse.interface.js';
 import { extractBearerFromHeader } from '../utils/headerHandling.js';
 
@@ -134,6 +134,28 @@ export const cancel: ApiHandler<AppointmentResponse | ClientAppointmentResponse>
         const result = await cancelAppointment(id, validData, token);
 
         sendSuccess({ res, data: result, message: 'Appointment cancelled successfully' });
+    } catch (error: unknown) {
+        if (error instanceof ZodError) {
+            sendValidationError({ res, error });
+            return;
+        }
+        if (error instanceof ApiError) {
+            sendFail({ res, message: error.message, status: error.code });
+            return;
+        }
+        sendInternalServerError({ res, error: [String(error)] });
+    }
+};
+
+// Consultar una cita por id.
+export const getById: ApiHandler<AppointmentResponse | ClientAppointmentResponse> = async (req, res) => {
+    try {
+        const token = extractBearerFromHeader(req);
+        const { id } = appointmentIdParamSchema.parse(req.params);
+
+        const result = await getAppointment(id, token);
+
+        sendSuccess({ res, data: result, message: 'Appointment retrieved successfully' });
     } catch (error: unknown) {
         if (error instanceof ZodError) {
             sendValidationError({ res, error });

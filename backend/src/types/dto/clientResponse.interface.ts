@@ -14,7 +14,7 @@ export interface ClientDetailResponse {
     phone: string | null;
     firstName: string;
     lastName: string;
-    birthDate: Date;
+    birthDate: string;
     gender: string;
     facialStructureType: FacialStructureType | null;
     completedServicesCount: number;

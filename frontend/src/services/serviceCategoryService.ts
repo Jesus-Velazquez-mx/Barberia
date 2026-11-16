@@ -1,15 +1,8 @@
+import { apiClient } from './apiClient';
 import type { ServiceCategory, ServiceCategoryPayload } from '../types/serviceCategoryType';
-import {
-    mockCreateServiceCategory,
-    mockDeleteServiceCategory,
-    mockListServiceCategories,
-    mockUpdateServiceCategory
-} from '../mocks/offeredServiceMock';
 
 /*
  * Servicio de categorías de servicios.
- * Hoy responde con datos mock. Para integrar con el backend solo cambia el cuerpo de estas funciones
- * (usando apiClient y el token); los contenedores no se tocan:
  *
  *   getServiceCategories  -> GET    /servicesCategories          (manager y recepcionista ven activas e inactivas)
  *   createServiceCategory -> POST   /servicesCategories          (solo manager)
@@ -18,25 +11,59 @@ import {
  *   deleteServiceCategory -> DELETE /servicesCategories/:id      (solo manager; borrado lógico de la categoría
  *                                                                 y de todos sus servicios)
  *
- * Detalles del backend a tener en cuenta:
- *   - Devuelve las filas tal como salen de la BD (snake_case: is_active, created_at, updated_at);
- *     hay que convertirlas a camelCase para que coincidan con el tipo ServiceCategory.
- *   - Los errores llegan en inglés ('Category name is already in use', 'Category not found');
- *     utils/offeredServiceUtils.ts ya los traduce.
+ * Los errores llegan en inglés ('Category name is already in use', 'Category not found');
+ * utils/offeredServiceUtils.ts los traduce.
  */
 
-export const getServiceCategories = async (_token: string): Promise<ServiceCategory[]> => mockListServiceCategories();
+/* El backend devuelve las filas tal como salen de la BD (snake_case). */
+interface ServiceCategoryRow {
+    id: string;
+    name: string;
+    description: string | null;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
+const toServiceCategory = (row: ServiceCategoryRow): ServiceCategory => ({
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    isActive: row.is_active,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+});
+
+export const getServiceCategories = async (token: string): Promise<ServiceCategory[]> => {
+    const response = await apiClient.get<ServiceCategoryRow[]>('/servicesCategories', {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data.map(toServiceCategory);
+};
 
 export const createServiceCategory = async (
     payload: ServiceCategoryPayload,
-    _token: string
-): Promise<ServiceCategory> => mockCreateServiceCategory(payload);
+    token: string
+): Promise<ServiceCategory> => {
+    const response = await apiClient.post<ServiceCategoryRow>('/servicesCategories', payload, {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    return toServiceCategory(response.data);
+};
 
 export const updateServiceCategory = async (
     id: string,
     payload: ServiceCategoryPayload,
-    _token: string
-): Promise<ServiceCategory> => mockUpdateServiceCategory(id, payload);
+    token: string
+): Promise<ServiceCategory> => {
+    const response = await apiClient.put<ServiceCategoryRow>(`/servicesCategories/${id}`, payload, {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    return toServiceCategory(response.data);
+};
 
-export const deleteServiceCategory = async (id: string, _token: string): Promise<void> =>
-    mockDeleteServiceCategory(id);
+export const deleteServiceCategory = async (id: string, token: string): Promise<void> => {
+    await apiClient.delete(`/servicesCategories/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+};
