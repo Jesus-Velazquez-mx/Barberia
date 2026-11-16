@@ -1,5 +1,6 @@
 package com.mrbarber.cliente.features.notifications.presentation
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -25,11 +27,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.mrbarber.cliente.R
 import com.mrbarber.cliente.ui.components.BackButton
 import com.mrbarber.cliente.ui.components.SectionCard
 import com.mrbarber.cliente.ui.theme.Dorado
@@ -41,7 +45,6 @@ import com.mrbarber.cliente.ui.theme.TelegramAzul
 /**
  * Pantalla para vincular la cuenta con el bot de Telegram y recibir avisos de las citas.
  *
- * Por ahora solo es la parte visual: [onConnectClick] es quien debe abrir el enlace del bot.
  */
 @Composable
 fun TelegramNotificationsRoute(
@@ -84,9 +87,15 @@ fun TelegramNotifications(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("NOTIFICACIONES", fontSize = 26.sp, fontWeight = FontWeight.Bold)
+                Text("RECORDATORIOS", fontSize = 26.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(24.dp))
-                TelegramBadge()
+
+                Image(
+                    painter = painterResource(id = R.drawable.telegram_logo),
+                    contentDescription = "Logo de Telegram",
+                    modifier = Modifier.requiredSize(150.dp)
+                )
+
                 Spacer(Modifier.height(16.dp))
                 Text(
                     text = "Recibe tus avisos por Telegram",
@@ -97,7 +106,7 @@ fun TelegramNotifications(
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = "Te avisaremos cuando confirmes una cita y antes de que llegue la hora.",
+                    text = "Te avisaremos cuando queden 24 horas y 4 horas antes de cada cita.",
                     fontSize = 14.sp,
                     color = GrisClaro,
                     textAlign = TextAlign.Center
@@ -106,13 +115,15 @@ fun TelegramNotifications(
 
             Spacer(Modifier.height(24.dp))
 
-            SectionCard(title = "¿Cómo funciona?") {
-                Step(number = 1, text = "Toca el botón para abrir nuestro bot en Telegram.")
-                Step(number = 2, text = "En el chat del bot, pulsa \"Iniciar\".")
-                Step(number = 3, text = "Listo: tu cuenta queda vinculada y empezarás a recibir avisos.")
-            }
+            if (!isLinked) {
+                SectionCard(title = "¿Cómo funciona?") {
+                    Step(number = 1, text = "Toca el botón para abrir nuestro bot en Telegram.")
+                    Step(number = 2, text = "En el chat del bot, pulsa \"Iniciar\".")
+                    Step(number = 3, text = "Listo: tu cuenta queda vinculada y empezarás a recibir avisos.")
+                }
 
-            Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(24.dp))
+            }
 
             if (isLinked) {
                 LinkedStatus()
@@ -143,19 +154,6 @@ fun TelegramNotifications(
 
             Spacer(Modifier.height(24.dp))
         }
-    }
-}
-
-/** Círculo azul con un avión de papel, evocando el logo de Telegram sin depender de iconos. */
-@Composable
-private fun TelegramBadge() {
-    Box(
-        modifier = Modifier
-            .size(96.dp)
-            .background(TelegramAzul, CircleShape),
-        contentAlignment = Alignment.Center
-    ) {
-        Text("✈", fontSize = 44.sp, color = Color.White)
     }
 }
 
