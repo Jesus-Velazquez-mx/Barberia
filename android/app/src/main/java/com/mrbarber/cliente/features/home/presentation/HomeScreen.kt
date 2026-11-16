@@ -38,6 +38,7 @@ import com.mrbarber.cliente.ui.theme.MrBarberTheme
 fun HomeRoute(
     onBookAppointmentClick: () -> Unit,
     onMyAppointmentsClick: () -> Unit,
+    onRemindersClick: () -> Unit,
     onProfileClick: () -> Unit,
     onLoggedOut: () -> Unit,
     modifier: Modifier = Modifier,
@@ -53,6 +54,7 @@ fun HomeRoute(
         state = state,
         onBookAppointmentClick = onBookAppointmentClick,
         onMyAppointmentsClick = onMyAppointmentsClick,
+        onRemindersClick = onRemindersClick,
         onProfileClick = onProfileClick,
         modifier = modifier
     )
@@ -63,6 +65,7 @@ fun Home(
     state: HomeUiState,
     onBookAppointmentClick: () -> Unit,
     onMyAppointmentsClick: () -> Unit,
+    onRemindersClick: () -> Unit,
     onProfileClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -121,6 +124,17 @@ fun Home(
             Spacer(Modifier.height(12.dp))
 
             OutlinedButton(
+                onClick = onRemindersClick,
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Dorado),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("RECORDATORIOS", fontWeight = FontWeight.Bold)
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            OutlinedButton(
                 onClick = onProfileClick,
                 shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = Dorado),
@@ -140,6 +154,7 @@ fun HomePreview() {
             state = HomeUiState(isLoading = false, userName = "Asuka Langley Soryu"),
             onBookAppointmentClick = {},
             onMyAppointmentsClick = {},
+            onRemindersClick = {},
             onProfileClick = {}
         )
     }
