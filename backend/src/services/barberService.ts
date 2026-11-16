@@ -7,6 +7,7 @@ import {
     createBarber as repoCreateBarber,
     reactivateBarber,
     updateBarberProfileById,
+    updateBarberAssignmentById,
     softDeleteBarberById,
     getActiveBarbersByShop,
     getBarbersByShop,
@@ -14,7 +15,8 @@ import {
     type UpdateBarberInput,
 } from '../repositories/barberRepository.js';
 import { isUserActive } from '../repositories/userRepository.js';
-import { getShopById } from '../repositories/shopRepository.js';
+import { getShopById, getShopIdsByManagerId } from '../repositories/shopRepository.js';
+import { hasPendingAppointmentsByBarberId } from '../repositories/appointmentRepository.js';
 import type { BarberResponse, PublicBarberResponse } from '../types/dto/barberResponse.interface.js';
 import { toBarberResponse, toPublicBarberResponse } from '../utils/barberMapper.js';
 import { canViewFullBarberData } from './userPermissions.js';
@@ -215,4 +217,77 @@ export const deleteBarber = async (targetId: string, token: string): Promise<voi
         }
         throw error;
     }
+};
+
+export interface ReassignBarberInput {
+    shopId: string;
+    shiftId: string;
+}
+
+/**
+ * Reasigna la sucursal y el turno de un barbero.
+ * Solo un manager puede usarlo, y debe administrar tanto la sucursal actual como la nueva.
+ * Bloquea con 409 si el barbero está dado de baja o si tiene citas pendientes y cambia de sucursal o turno.
+ */
+export const reassignBarber = async (
+    targetId: string,
+    assignment: ReassignBarberInput,
+    token: string
+): Promise<BarberResponse> => {
+    const performer = decodeToken(token);
+
+    if (performer.role !== 'manager') {
+        throw new ApiError(ApiErrorCode.FORBIDDEN, 'Not authorized to reassign barbers');
+    }
+
+    if (!(await isUserActive(performer.id))) {
+        throw new ApiError(ApiErrorCode.ACCOUNT_DEACTIVATED, 'Account is deactivated');
+    }
+
+    const barber = await getBarberById(targetId);
+    if (!barber) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Barber not found');
+    }
+
+    const managedShopIds = await getShopIdsByManagerId(performer.id);
+
+    // Origen debe ser administrado por el manager
+    if (!managedShopIds.includes(barber.shop_id)) {
+        throw new ApiError(ApiErrorCode.FORBIDDEN, 'Not authorized to manage staff of this shop');
+    }
+
+    if (barber.deleted_at !== null) {
+        throw new ApiError(
+            ApiErrorCode.CONFLICT,
+            'Barber has been deleted. Reactivation is needed to modify barber data'
+        );
+    }
+
+    const destinationShop = await getShopById(assignment.shopId);
+    if (!destinationShop) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Shop not found');
+    }
+
+    const shift = await getShiftById(assignment.shiftId);
+    if (!shift) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Shift not found');
+    }
+
+    // Destino debe ser administrado por el manager
+    if (!managedShopIds.includes(assignment.shopId)) {
+        throw new ApiError(ApiErrorCode.FORBIDDEN, 'Not authorized to manage staff of this shop');
+    }
+
+    // Si cambia de sucursal o de turno, no puede tener citas pendientes
+    if (barber.shop_id !== assignment.shopId || barber.shift_id !== assignment.shiftId) {
+        if (await hasPendingAppointmentsByBarberId(targetId)) {
+            throw new ApiError(
+                ApiErrorCode.CONFLICT,
+                'Cannot reassign barber because they have scheduled, rescheduled or checked-in appointments'
+            );
+        }
+    }
+
+    const updated = await updateBarberAssignmentById(targetId, assignment.shopId, assignment.shiftId);
+    return toBarberResponse(updated);
 };

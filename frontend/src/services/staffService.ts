@@ -64,7 +64,7 @@ const toReceptionistMember = (receptionist: ReceptionistApi): StaffMember => ({
     isActive: receptionist.deletedAt === null
 });
 
-/* Campos comunes que se envían al backend al crear o actualizar (sin rol ni contraseña). */
+/* Campos comunes que se envían al backend al crear (sin rol ni contraseña). */
 const toStaffBody = ({ firstName, lastName, email, phone, birthDate, gender, shopId, shiftId }: StaffPayload) => ({
     firstName,
     lastName,
@@ -74,6 +74,16 @@ const toStaffBody = ({ firstName, lastName, email, phone, birthDate, gender, sho
     gender,
     shopId,
     shiftId
+});
+
+/* Datos personales que se envían al backend al actualizar (sin sucursal ni turno). */
+const toPersonalStaffBody = ({ firstName, lastName, email, phone, birthDate, gender }: StaffPayload) => ({
+    firstName,
+    lastName,
+    email,
+    phone,
+    birthDate,
+    gender
 });
 
 /* ---------- Consultas ---------- */
@@ -141,7 +151,7 @@ export const reactivateStaff = async (
     );
 
 export const updateStaff = async (id: string, payload: StaffPayload, token: string): Promise<StaffMember> => {
-    const body = toStaffBody(payload);
+    const body = toPersonalStaffBody(payload);
 
     if (payload.role === 'barber') {
         const { data } = await apiClient.put<BarberApi>(`/barbers/${id}`, body, authHeaders(token));
@@ -149,6 +159,30 @@ export const updateStaff = async (id: string, payload: StaffPayload, token: stri
     }
 
     const { data } = await apiClient.put<ReceptionistApi>(`/receptionists/${id}`, body, authHeaders(token));
+    return toReceptionistMember(data);
+};
+
+export interface StaffAssignmentPayload {
+    shopId: string;
+    shiftId: string;
+}
+
+export const reassignStaff = async (
+    id: string,
+    role: 'barber' | 'receptionist',
+    assignment: StaffAssignmentPayload,
+    token: string
+): Promise<StaffMember> => {
+    if (role === 'barber') {
+        const { data } = await apiClient.put<BarberApi>(`/barbers/${id}/assignment`, assignment, authHeaders(token));
+        return toBarberMember(data);
+    }
+
+    const { data } = await apiClient.put<ReceptionistApi>(
+        `/receptionists/${id}/assignment`,
+        assignment,
+        authHeaders(token)
+    );
     return toReceptionistMember(data);
 };
 

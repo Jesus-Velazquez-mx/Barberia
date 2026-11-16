@@ -5,8 +5,10 @@ import connection from '../src/connection/connection.js';
 import {
     insertManager,
     insertUser,
+    insertShop,
+    insertBarber,
+    insertAppointment,
     cleanupFixtures,
-    generateUniqueFixtureName,
     getSeededShiftId,
 } from './helpers/availabilityFixtures.js';
 import { signToken } from '../src/services/jwtTokenService.js';
@@ -24,49 +26,51 @@ const mintToken = (id: string, role: UserRole, email: string): string => signTok
 
 describe('Pruebas de endpoints de Barberos (Barbers)', () => {
     let dummyManager: { id: string; email: string };
+    let otherManager: { id: string; email: string };
     let clientUser: { id: string; email: string };
     let managerToken: string;
     let clientToken: string;
 
     let shopId: string;
+    let secondShopId: string;
+    let unmanagedShopId: string;
     let shiftId: string;
+    let otherShiftId: string;
 
     // IDs de barberos creados durante los tests para limpieza posterior
     const createdBarberIds: string[] = [];
 
     beforeAll(async () => {
         await connectDB();
-        const pool = getPool();
 
         // 1. Crear usuarios y tokens
         dummyManager = await insertManager();
+        otherManager = await insertManager();
         clientUser = await insertUser('client');
 
         managerToken = mintToken(dummyManager.id, 'manager', dummyManager.email);
         clientToken = mintToken(clientUser.id, 'client', clientUser.email);
 
-        // 2. Obtener un turno (shift) existente en el catálogo fijo
-        shiftId = await getSeededShiftId();
+        // 2. Obtener turnos existentes en el catálogo fijo
+        shiftId = await getSeededShiftId('morning');
+        otherShiftId = await getSeededShiftId('afternoon');
 
-        // 3. Crear una sucursal (shop) de prueba asignada al manager
-        // Usamos un prefijo muy corto ('ShopB') para no pasarnos de 50 caracteres.
-        const shopRes = await pool.query(`INSERT INTO shops (name, manager_id) VALUES ($1, $2) RETURNING id`, [
-            generateUniqueFixtureName('ShopB'),
-            dummyManager.id,
-        ]);
-        shopId = shopRes.rows[0].id;
+        // 3. Crear sucursales de prueba
+        shopId = await insertShop(dummyManager.id);
+        secondShopId = await insertShop(dummyManager.id);
+        unmanagedShopId = await insertShop(otherManager.id);
     });
 
     afterAll(async () => {
         const pool = getPool();
-        // Limpiar barberos y la sucursal de prueba
         if (createdBarberIds.length > 0) {
+            await pool.query('DELETE FROM appointments WHERE barber_id = ANY($1::uuid[])', [createdBarberIds]);
             await pool.query('DELETE FROM barbers WHERE id = ANY($1::uuid[])', [createdBarberIds]);
         }
+        await cleanupFixtures();
         if (shopId) {
             await pool.query('DELETE FROM shops WHERE id = $1', [shopId]);
         }
-        await cleanupFixtures();
         await closeDB();
     });
 
@@ -524,6 +528,180 @@ describe('Pruebas de endpoints de Barberos (Barbers)', () => {
                 .set('Authorization', `Bearer ${managerToken}`);
 
             expect(res.status).toBe(404);
+        });
+    });
+
+    describe('Reasignar Barbero (PUT /api/barbers/:id/assignment)', () => {
+        const UNKNOWN_UUID = '00000000-0000-4000-8000-000000000000';
+        let targetBarber: { id: string; email: string };
+
+        beforeEach(async () => {
+            targetBarber = await insertBarber(shopId, { shiftId });
+            createdBarberIds.push(targetBarber.id);
+        });
+
+        test('Debe responder 200 y reasignar sucursal y turno correctamente', async () => {
+            const res = await request(app)
+                .put(`/api/barbers/${targetBarber.id}/assignment`)
+                .set('Authorization', `Bearer ${managerToken}`)
+                .send({
+                    shopId: secondShopId,
+                    shiftId: otherShiftId,
+                });
+
+            expect(res.status).toBe(200);
+            expect(res.body.data.shopId).toBe(secondShopId);
+            expect(res.body.data.shiftId).toBe(otherShiftId);
+
+            const pool = getPool();
+            const check = await pool.query('SELECT shop_id, shift_id FROM barbers WHERE id = $1', [targetBarber.id]);
+            expect(check.rows[0].shop_id).toBe(secondShopId);
+            expect(check.rows[0].shift_id).toBe(otherShiftId);
+        });
+
+        test('Debe responder 200 al reasignar solo el turno manteniendo la sucursal', async () => {
+            const res = await request(app)
+                .put(`/api/barbers/${targetBarber.id}/assignment`)
+                .set('Authorization', `Bearer ${managerToken}`)
+                .send({
+                    shopId,
+                    shiftId: otherShiftId,
+                });
+
+            expect(res.status).toBe(200);
+            expect(res.body.data.shopId).toBe(shopId);
+            expect(res.body.data.shiftId).toBe(otherShiftId);
+        });
+
+        test('Debe responder 403 si un cliente intenta reasignar un barbero', async () => {
+            const res = await request(app)
+                .put(`/api/barbers/${targetBarber.id}/assignment`)
+                .set('Authorization', `Bearer ${clientToken}`)
+                .send({
+                    shopId: secondShopId,
+                    shiftId: otherShiftId,
+                });
+
+            expect(res.status).toBe(403);
+        });
+
+        test('Debe responder 403 si el manager no administra la sucursal de origen', async () => {
+            const unmanagedBarber = await insertBarber(unmanagedShopId, { shiftId });
+            createdBarberIds.push(unmanagedBarber.id);
+
+            const res = await request(app)
+                .put(`/api/barbers/${unmanagedBarber.id}/assignment`)
+                .set('Authorization', `Bearer ${managerToken}`)
+                .send({
+                    shopId: secondShopId,
+                    shiftId: otherShiftId,
+                });
+
+            expect(res.status).toBe(403);
+            expect(res.body.message).toMatch(/Not authorized to manage staff of this shop/i);
+        });
+
+        test('Debe responder 403 si el manager intenta mover al barbero a una sucursal que no administra', async () => {
+            const res = await request(app)
+                .put(`/api/barbers/${targetBarber.id}/assignment`)
+                .set('Authorization', `Bearer ${managerToken}`)
+                .send({
+                    shopId: unmanagedShopId,
+                    shiftId: otherShiftId,
+                });
+
+            expect(res.status).toBe(403);
+            expect(res.body.message).toMatch(/Not authorized to manage staff of this shop/i);
+        });
+
+        test('Debe responder 404 si el barbero no existe', async () => {
+            const res = await request(app)
+                .put(`/api/barbers/${UNKNOWN_UUID}/assignment`)
+                .set('Authorization', `Bearer ${managerToken}`)
+                .send({
+                    shopId: secondShopId,
+                    shiftId: otherShiftId,
+                });
+
+            expect(res.status).toBe(404);
+        });
+
+        test('Debe responder 404 si la sucursal de destino no existe', async () => {
+            const res = await request(app)
+                .put(`/api/barbers/${targetBarber.id}/assignment`)
+                .set('Authorization', `Bearer ${managerToken}`)
+                .send({
+                    shopId: UNKNOWN_UUID,
+                    shiftId: otherShiftId,
+                });
+
+            expect(res.status).toBe(404);
+            expect(res.body.message).toMatch(/Shop not found/i);
+        });
+
+        test('Debe responder 404 si el turno no existe', async () => {
+            const res = await request(app)
+                .put(`/api/barbers/${targetBarber.id}/assignment`)
+                .set('Authorization', `Bearer ${managerToken}`)
+                .send({
+                    shopId: secondShopId,
+                    shiftId: UNKNOWN_UUID,
+                });
+
+            expect(res.status).toBe(404);
+            expect(res.body.message).toMatch(/Shift not found/i);
+        });
+
+        test('Debe responder 409 si el barbero está dado de baja', async () => {
+            const deletedBarber = await insertBarber(shopId, { shiftId, isDeleted: true });
+            createdBarberIds.push(deletedBarber.id);
+
+            const res = await request(app)
+                .put(`/api/barbers/${deletedBarber.id}/assignment`)
+                .set('Authorization', `Bearer ${managerToken}`)
+                .send({
+                    shopId: secondShopId,
+                    shiftId: otherShiftId,
+                });
+
+            expect(res.status).toBe(409);
+            expect(res.body.message).toMatch(/deleted|Reactivation is needed/i);
+        });
+
+        test('Debe responder 409 si el barbero tiene citas pendientes (scheduled)', async () => {
+            // Crear una cita pendiente para este barbero
+            const scheduledStart = new Date(Date.now() + 24 * 60 * 60 * 1000);
+            const scheduledEnd = new Date(scheduledStart.getTime() + 30 * 60 * 1000);
+            await insertAppointment(shopId, targetBarber.id, scheduledStart, scheduledEnd, {
+                status: 'scheduled',
+            });
+
+            const res = await request(app)
+                .put(`/api/barbers/${targetBarber.id}/assignment`)
+                .set('Authorization', `Bearer ${managerToken}`)
+                .send({
+                    shopId: secondShopId,
+                    shiftId: otherShiftId,
+                });
+
+            expect(res.status).toBe(409);
+            expect(res.body.message).toMatch(/Cannot reassign barber because they have scheduled, rescheduled or checked-in appointments/i);
+        });
+
+        test('Debe responder 400 si faltan campos o el formato de UUID es inválido', async () => {
+            const resNoShift = await request(app)
+                .put(`/api/barbers/${targetBarber.id}/assignment`)
+                .set('Authorization', `Bearer ${managerToken}`)
+                .send({ shopId: secondShopId });
+
+            expect(resNoShift.status).toBe(400);
+
+            const resBadUuid = await request(app)
+                .put(`/api/barbers/${targetBarber.id}/assignment`)
+                .set('Authorization', `Bearer ${managerToken}`)
+                .send({ shopId: 'not-a-uuid', shiftId: otherShiftId });
+
+            expect(resBadUuid.status).toBe(400);
         });
     });
 });
