@@ -1,8 +1,5 @@
 import globalConfig from '../config/globalConfig.js';
 
-/** Zona horaria IANA en la que opera el negocio cuando BUSINESS_TIMEZONE no está definida. */
-export const DEFAULT_BUSINESS_TIMEZONE = 'America/Mazatlan';
-
 const formatters = new Map<string, Intl.DateTimeFormat>();
 
 const getFormatter = (timeZone: string): Intl.DateTimeFormat => {
@@ -25,7 +22,7 @@ const getFormatter = (timeZone: string): Intl.DateTimeFormat => {
 };
 
 /** Zona horaria del negocio (se lee en cada llamada para poder sobreescribirla en pruebas). */
-export const getBusinessTimezone = (): string => globalConfig.BUSINESS_TIMEZONE || DEFAULT_BUSINESS_TIMEZONE;
+export const getBusinessTimezone = (): string => globalConfig.BUSINESS_TIMEZONE;
 
 /**
  * Hora de pared del negocio expresada como ms "en UTC": el resultado, leído con los

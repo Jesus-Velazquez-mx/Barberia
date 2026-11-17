@@ -546,4 +546,155 @@ describe('Pruebas de endpoints de Recepcionistas (Receptionists)', () => {
             expect(badId.status).toBe(400);
         });
     });
+
+    describe('Reasignar Recepcionista (PUT /api/receptionists/:id/assignment)', () => {
+        test('Debe responder 200 y reasignar sucursal y turno correctamente', async () => {
+            const rec = await insertReceptionist(shopId, shiftId);
+            const res = await request(app)
+                .put(`/api/receptionists/${rec.id}/assignment`)
+                .set('Authorization', `Bearer ${managerToken}`)
+                .send({
+                    shopId: reassignShopId,
+                    shiftId: otherShiftId,
+                });
+
+            expect(res.status).toBe(200);
+            expect(res.body.data.shopId).toBe(reassignShopId);
+            expect(res.body.data.shiftId).toBe(otherShiftId);
+
+            const row = (
+                await getPool().query('SELECT shop_id, shift_id FROM receptionists WHERE user_id = $1', [rec.id])
+            ).rows[0];
+            expect(row.shop_id).toBe(reassignShopId);
+            expect(row.shift_id).toBe(otherShiftId);
+        });
+
+        test('Debe responder 200 al reasignar solo el turno manteniendo la sucursal', async () => {
+            const rec = await insertReceptionist(shopId, shiftId);
+            const res = await request(app)
+                .put(`/api/receptionists/${rec.id}/assignment`)
+                .set('Authorization', `Bearer ${managerToken}`)
+                .send({
+                    shopId,
+                    shiftId: otherShiftId,
+                });
+
+            expect(res.status).toBe(200);
+            expect(res.body.data.shopId).toBe(shopId);
+            expect(res.body.data.shiftId).toBe(otherShiftId);
+        });
+
+        test('Debe responder 403 si un cliente intenta reasignar un recepcionista', async () => {
+            const rec = await insertReceptionist(shopId, shiftId);
+            const res = await request(app)
+                .put(`/api/receptionists/${rec.id}/assignment`)
+                .set('Authorization', `Bearer ${clientToken}`)
+                .send({
+                    shopId: reassignShopId,
+                    shiftId: otherShiftId,
+                });
+
+            expect(res.status).toBe(403);
+        });
+
+        test('Debe responder 403 si el manager no administra la sucursal de origen', async () => {
+            const rec = await insertReceptionist(otherShopId, shiftId);
+            const res = await request(app)
+                .put(`/api/receptionists/${rec.id}/assignment`)
+                .set('Authorization', `Bearer ${managerToken}`)
+                .send({
+                    shopId: reassignShopId,
+                    shiftId: otherShiftId,
+                });
+
+            expect(res.status).toBe(403);
+            expect(res.body.message).toMatch(/Not authorized to manage receptionists of this shop/i);
+        });
+
+        test('Debe responder 403 si el manager intenta mover al recepcionista a una sucursal que no administra', async () => {
+            const rec = await insertReceptionist(shopId, shiftId);
+            const res = await request(app)
+                .put(`/api/receptionists/${rec.id}/assignment`)
+                .set('Authorization', `Bearer ${managerToken}`)
+                .send({
+                    shopId: otherShopId,
+                    shiftId: otherShiftId,
+                });
+
+            expect(res.status).toBe(403);
+            expect(res.body.message).toMatch(/Not authorized to manage receptionists of this shop/i);
+        });
+
+        test('Debe responder 404 si el recepcionista no existe', async () => {
+            const res = await request(app)
+                .put(`/api/receptionists/${UNKNOWN_UUID}/assignment`)
+                .set('Authorization', `Bearer ${managerToken}`)
+                .send({
+                    shopId: reassignShopId,
+                    shiftId: otherShiftId,
+                });
+
+            expect(res.status).toBe(404);
+        });
+
+        test('Debe responder 404 si la sucursal de destino no existe', async () => {
+            const rec = await insertReceptionist(shopId, shiftId);
+            const res = await request(app)
+                .put(`/api/receptionists/${rec.id}/assignment`)
+                .set('Authorization', `Bearer ${managerToken}`)
+                .send({
+                    shopId: UNKNOWN_UUID,
+                    shiftId: otherShiftId,
+                });
+
+            expect(res.status).toBe(404);
+            expect(res.body.message).toMatch(/Shop not found/i);
+        });
+
+        test('Debe responder 404 si el turno no existe', async () => {
+            const rec = await insertReceptionist(shopId, shiftId);
+            const res = await request(app)
+                .put(`/api/receptionists/${rec.id}/assignment`)
+                .set('Authorization', `Bearer ${managerToken}`)
+                .send({
+                    shopId: reassignShopId,
+                    shiftId: UNKNOWN_UUID,
+                });
+
+            expect(res.status).toBe(404);
+            expect(res.body.message).toMatch(/Shift not found/i);
+        });
+
+        test('Debe responder 409 si el recepcionista está dado de baja', async () => {
+            const rec = await insertReceptionist(shopId, shiftId, { isDeleted: true });
+            const res = await request(app)
+                .put(`/api/receptionists/${rec.id}/assignment`)
+                .set('Authorization', `Bearer ${managerToken}`)
+                .send({
+                    shopId: reassignShopId,
+                    shiftId: otherShiftId,
+                });
+
+            expect(res.status).toBe(409);
+            expect(res.body.message).toMatch(/deleted|Reactivation is needed/i);
+        });
+
+        test('Debe responder 400 si faltan campos o el formato de UUID es inválido', async () => {
+            const rec = await insertReceptionist(shopId, shiftId);
+
+            const resNoShift = await request(app)
+                .put(`/api/receptionists/${rec.id}/assignment`)
+                .set('Authorization', `Bearer ${managerToken}`)
+                .send({ shopId: reassignShopId });
+
+            expect(resNoShift.status).toBe(400);
+
+            const resBadUuid = await request(app)
+                .put(`/api/receptionists/${rec.id}/assignment`)
+                .set('Authorization', `Bearer ${managerToken}`)
+                .send({ shopId: 'bad-uuid', shiftId: otherShiftId });
+
+            expect(resBadUuid.status).toBe(400);
+        });
+    });
 });

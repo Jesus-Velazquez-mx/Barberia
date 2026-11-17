@@ -1,6 +1,7 @@
 import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 import {
     cancelAppointmentById,
+    checkInAppointmentById,
     createAppointmentWithServices,
     getAppointmentById,
     getAppointments,
@@ -12,10 +13,17 @@ import { getBarberById } from '../repositories/barberRepository.js';
 import { getAppointmentClientsById, getClientByUserId } from '../repositories/clientRepository.js';
 import { getReceptionistByUserId } from '../repositories/receptionistRepository.js';
 import { getAllShifts } from '../repositories/shiftRepository.js';
-import { getAvailableSlots, getBookableServices, MAX_BOOKING_DAYS_AHEAD } from './availabilityService.js';
 import {
+    getAvailableSlots,
+    getBookableServices,
+    MAX_BOOKING_DAYS_AHEAD,
+    SLOT_STEP_MINUTES,
+} from './availabilityService.js';
+import {
+    canCheckInAppointment,
     canCreateAppointment,
     canEditAppointment,
+    canManageShopWalkIns,
     canViewAppointment,
     canViewShopAppointments,
     isWithinClientEditCutoff,
@@ -36,6 +44,7 @@ import type { AppointmentResponse, ClientAppointmentResponse } from '../types/dt
 
 const MS_PER_MINUTE = 60_000;
 const MS_PER_DAY = 24 * 60 * MS_PER_MINUTE;
+export const NO_SHOW_GRACE_MINUTES = 10;
 // Días que cubre la ventana por defecto, hoy incluido: hasta el último día que availabilityService deja agendar.
 const DEFAULT_WINDOW_DAYS = MAX_BOOKING_DAYS_AHEAD + 1;
 const MAX_WINDOW_DAYS = 366;
@@ -192,6 +201,29 @@ export const assertCanExcludeAppointmentFromAvailability = async (
     const { appointment } = await loadAppointmentInEditScope(appointmentId, token, 'exclude');
     if (appointment.shop_id !== shopId) {
         throw new ApiError(ApiErrorCode.INVALID_INPUT, 'The appointment does not belong to the requested shop');
+    }
+};
+
+/**
+ * GET /shops/:id/availability/next: valida la sesión (401) y que el solicitante sea personal de la sucursal (403).
+ * Los clientes se rechazan antes de consultar la sucursal; una sucursal inexistente responde 404.
+ */
+export const assertCanManageShopWalkIns = async (shopId: string, token: string): Promise<void> => {
+    const performer = await isUserSessionValid(token);
+    if (performer.role === 'client') {
+        throw new ApiError(ApiErrorCode.FORBIDDEN, 'Not authorized to manage walk-ins of this shop');
+    }
+
+    const shop = await getShopById(shopId);
+    if (!shop) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Shop not found');
+    }
+
+    const receptionistShopId =
+        performer.role === 'receptionist' ? ((await getReceptionistByUserId(performer.id))?.shop_id ?? null) : null;
+
+    if (!canManageShopWalkIns(performer, { shopId: shop.id, shopManagerId: shop.manager_id }, receptionistShopId)) {
+        throw new ApiError(ApiErrorCode.FORBIDDEN, 'Not authorized to manage walk-ins of this shop');
     }
 };
 
@@ -371,6 +403,68 @@ export const cancelAppointment = async (
 
     const [client] = await getAppointmentClientsById(cancelled.client_id !== null ? [cancelled.client_id] : []);
     return toAppointmentResponse(cancelled, services, client ?? null);
+};
+
+/**
+ * Registra la llegada del cliente a su cita (check-in).
+ * Solo recepción (de la sucursal de la cita) y gerentes (de las sucursales que administran).
+ * Solo aplica para citas en estado `scheduled` o `rescheduled` dentro de la ventana
+ * `[scheduled_start - SLOT_STEP_MINUTES, scheduled_start + NO_SHOW_GRACE_MINUTES)`.
+ * Si se hace antes de `scheduled_start`, exige que el mismo barbero no tenga citas bloqueantes en el slot previo.
+ */
+export const checkInAppointment = async (appointmentId: string, token: string): Promise<AppointmentResponse> => {
+    const performer = await isUserSessionValid(token);
+
+    const appointment = await getAppointmentById(appointmentId);
+    if (!appointment) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Appointment not found');
+    }
+
+    const shop = await getShopById(appointment.shop_id);
+    if (!shop) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Shop not found');
+    }
+
+    const receptionistShopId =
+        performer.role === 'receptionist' ? ((await getReceptionistByUserId(performer.id))?.shop_id ?? null) : null;
+
+    if (
+        !canCheckInAppointment(
+            performer,
+            { shopId: appointment.shop_id, shopManagerId: shop.manager_id },
+            receptionistShopId
+        )
+    ) {
+        throw new ApiError(ApiErrorCode.FORBIDDEN, 'Not authorized to check in this appointment');
+    }
+
+    // La validación de estado y ventana se ejecuta dentro de la transacción, sobre la cita ya bloqueada,
+    // para no usar datos obsoletos si una edición concurrente cambia barbero u horario.
+    const { appointment: checkedIn, services } = await checkInAppointmentById(appointment.id, (locked) => {
+        if (locked.status !== 'scheduled' && locked.status !== 'rescheduled') {
+            throw new ApiError(ApiErrorCode.CONFLICT, 'Only scheduled or rescheduled appointments can be checked in');
+        }
+
+        const now = Date.now();
+        const startMs = locked.scheduled_start.getTime();
+        const earlyWindowStartMs = startMs - SLOT_STEP_MINUTES * MS_PER_MINUTE;
+        const lateCutoffMs = startMs + NO_SHOW_GRACE_MINUTES * MS_PER_MINUTE;
+
+        if (now < earlyWindowStartMs) {
+            throw new ApiError(
+                ApiErrorCode.CONFLICT,
+                'Too early to check in; check-in opens 15 minutes before the scheduled start'
+            );
+        }
+        if (now >= lateCutoffMs) {
+            throw new ApiError(ApiErrorCode.CONFLICT, 'Check-in window has expired (10 minutes after scheduled start)');
+        }
+
+        return now < startMs ? { from: new Date(earlyWindowStartMs), to: locked.scheduled_start } : null;
+    });
+
+    const [client] = await getAppointmentClientsById(checkedIn.client_id !== null ? [checkedIn.client_id] : []);
+    return toAppointmentResponse(checkedIn, services, client ?? null);
 };
 
 /**

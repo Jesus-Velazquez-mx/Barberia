@@ -1,3 +1,4 @@
+import type { PoolClient } from 'pg';
 import db from '../connection/connection.js';
 import type { Appointment, AppointmentStatus } from '../types/entities/appointment.interface.js';
 import type { AppointmentService } from '../types/entities/appointmentService.interface.js';
@@ -49,11 +50,12 @@ export const getBlockingAppointmentsByBarberIdsAndRange = async (
     barberIds: string[],
     from: Date,
     to: Date,
-    excludeAppointmentId?: string
+    excludeAppointmentId?: string,
+    queryable: Pick<PoolClient, 'query'> = db.getPool()
 ): Promise<Pick<Appointment, 'barber_id' | 'scheduled_start' | 'scheduled_end'>[]> => {
     if (barberIds.length === 0) return [];
 
-    const result = await db.getPool().query(
+    const result = await queryable.query(
         `SELECT barber_id, scheduled_start, scheduled_end FROM appointments
          WHERE barber_id = ANY($1::uuid[])
            AND status IN ('scheduled', 'rescheduled', 'checked_in')
@@ -118,6 +120,24 @@ export const hasPendingAppointmentsByClientId = async (clientId: string): Promis
              WHERE client_id = $1 AND status IN ('scheduled', 'rescheduled', 'checked_in')
          ) AS has_pending`,
         [clientId]
+    );
+    return result.rows[0].has_pending;
+};
+
+/**
+ * Indica si el barbero tiene alguna cita pendiente en cualquier sucursal: scheduled/rescheduled que aún no
+ * terminan, o checked_in (en curso). Las scheduled/rescheduled ya vencidas que nunca se cerraron se ignoran
+ * para que no bloqueen al barbero para siempre.
+ */
+export const hasPendingAppointmentsByBarberId = async (barberId: string): Promise<boolean> => {
+    const result = await db.getPool().query(
+        `SELECT EXISTS (
+             SELECT 1 FROM appointments
+             WHERE barber_id = $1
+               AND (status = 'checked_in'
+                    OR (status IN ('scheduled', 'rescheduled') AND scheduled_end > now()))
+         ) AS has_pending`,
+        [barberId]
     );
     return result.rows[0].has_pending;
 };
@@ -344,6 +364,79 @@ export const cancelAppointmentById = async (
              RETURNING ${APPOINTMENT_COLUMNS}`,
             [appointmentId, reason]
         );
+        const services = await client.query(
+            `SELECT id, appointment_id, service_id, price_at_booking, duration_minutes_at_booking, created_at
+             FROM appointment_services
+             WHERE appointment_id = $1
+             ORDER BY created_at ASC, id ASC`,
+            [appointmentId]
+        );
+
+        await client.query('COMMIT');
+        return { appointment: result.rows[0], services: services.rows };
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
+};
+
+/**
+ * Registra el check-in de una cita (status = checked_in, checked_in_at = now()) en una transacción.
+ * Respeta el mismo orden de candados que la edición (primero la cita, luego la fila del barbero), para
+ * evitar interbloqueos. La cita se vuelve a leer ya con candado y `resolvePreviousSlot` valida estado y
+ * ventana de check-in con esos valores vigentes (puede lanzar ApiError). Si devuelve un rango, se exige que
+ * el barbero actual de la cita no tenga citas bloqueantes en él. Así, una edición concurrente (otro barbero
+ * u horario) no puede dejar pasar un check-in validado con datos obsoletos, y la transición por estado
+ * no compite con el job de no-show ni con otro check-in/cancelación.
+ */
+export const checkInAppointmentById = async (
+    appointmentId: string,
+    resolvePreviousSlot: (appointment: Appointment) => { from: Date; to: Date } | null
+): Promise<{ appointment: Appointment; services: AppointmentService[] }> => {
+    const pool = db.getPool();
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        const locked = await client.query(`SELECT ${APPOINTMENT_COLUMNS} FROM appointments WHERE id = $1 FOR UPDATE`, [
+            appointmentId,
+        ]);
+        if (locked.rows.length === 0) {
+            throw new ApiError(ApiErrorCode.NOT_FOUND, 'Appointment not found');
+        }
+        const current: Appointment = locked.rows[0];
+
+        const previousSlotRange = resolvePreviousSlot(current);
+
+        await client.query(`SELECT id FROM barbers WHERE id = $1 FOR UPDATE`, [current.barber_id]);
+
+        if (previousSlotRange !== null) {
+            const blocking = await getBlockingAppointmentsByBarberIdsAndRange(
+                [current.barber_id],
+                previousSlotRange.from,
+                previousSlotRange.to,
+                appointmentId,
+                client
+            );
+            if (blocking.length > 0) {
+                throw new ApiError(ApiErrorCode.CONFLICT, 'Barber is busy during the previous slot');
+            }
+        }
+
+        const result = await client.query(
+            `UPDATE appointments
+             SET status = 'checked_in', checked_in_at = now()
+             WHERE id = $1 AND status IN ('scheduled', 'rescheduled')
+             RETURNING ${APPOINTMENT_COLUMNS}`,
+            [appointmentId]
+        );
+        if (result.rows.length === 0) {
+            throw new ApiError(ApiErrorCode.CONFLICT, 'Only scheduled or rescheduled appointments can be checked in');
+        }
+
         const services = await client.query(
             `SELECT id, appointment_id, service_id, price_at_booking, duration_minutes_at_booking, created_at
              FROM appointment_services

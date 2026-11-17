@@ -194,3 +194,32 @@ export const reactivateReceptionist = async (
         client.release();
     }
 };
+
+/**
+ * Actualiza la sucursal y el turno de un recepcionista activo.
+ */
+export const updateReceptionistAssignment = async (
+    userId: string,
+    shopId: string,
+    shiftId: string
+): Promise<ReceptionistWithUser> => {
+    const pool = db.getPool();
+    const result = await pool.query(
+        `UPDATE receptionists
+         SET shop_id = $1, shift_id = $2
+         WHERE user_id = $3 AND deleted_at IS NULL
+         RETURNING user_id, shop_id, shift_id, deleted_at`,
+        [shopId, shiftId, userId]
+    );
+
+    if (result.rows.length === 0) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Receptionist not found');
+    }
+
+    const receptionistWithUser = await getReceptionistWithUserById(userId);
+    if (!receptionistWithUser) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Receptionist not found');
+    }
+
+    return receptionistWithUser;
+};

@@ -73,6 +73,10 @@ INSERT INTO clients (user_id, facial_structure_type) VALUES
     ('a69aca94-e01a-436f-b54f-4ca8b068b2d0', NULL),
     ('76a1be5b-c058-4a10-929f-2b4aea92829a', 'triangle');
 
+UPDATE clients
+SET client_telegram_id = '1042727774'
+WHERE user_id = '9df92579-03de-47c4-aa1f-76658d361e2b';
+
 -- ---------- services catalog ----------
 
 INSERT INTO services_categories (id, name, description) VALUES
@@ -238,6 +242,44 @@ INSERT INTO appointments (
      date_trunc('day', now() + interval '5 days') + interval '15 hours 45 minutes',
      NULL, NULL, NULL, NULL,
      'Rescheduled from the original morning appointment at the client''s request.', false);
+
+INSERT INTO appointments (
+    id, shop_id, client_id, is_registered_client, guest_client_name, barber_id,
+    is_walk_in, status, scheduled_start, scheduled_end,
+    checked_in_at, completed_at, cancelled_at, cancellation_reason,
+    notes, is_reward_redemption
+) VALUES
+    -- A12: scheduled, entra en ventana reminder_24h (en 24 horas exactas)
+    ('b1c2d3e4-1234-4a5b-8c9d-0e1f2a3b4c12', '064e25fa-26c1-4ec8-9d49-78fc5f520519',
+     '9df92579-03de-47c4-aa1f-76658d361e2b', true, NULL, '60bdbfde-b471-4a48-a8dc-208a709793de',
+     false, 'scheduled',
+     now() + interval '24 hours', now() + interval '24 hours 45 minutes',
+     NULL, NULL, NULL, NULL,
+     'Mock 24h reminder test (scheduled).', false),
+
+    -- A13: scheduled, entra en ventana reminder_4h (en 4 horas exactas)
+    ('b1c2d3e4-1234-4a5b-8c9d-0e1f2a3b4c13', '064e25fa-26c1-4ec8-9d49-78fc5f520519',
+     '9df92579-03de-47c4-aa1f-76658d361e2b', true, NULL, '0d67c12d-3947-4ac2-8667-83410cfd5ce1',
+     false, 'scheduled',
+     now() + interval '4 hours', now() + interval '4 hours 30 minutes',
+     NULL, NULL, NULL, NULL,
+     'Mock 4h reminder test (scheduled).', false),
+
+    -- A14: rescheduled, entra en ventana reminder_24h (en 23h 50m)
+    ('b1c2d3e4-1234-4a5b-8c9d-0e1f2a3b4c14', '96c3c0e1-b183-446f-9d2d-d3f3fc9f9361',
+     '9df92579-03de-47c4-aa1f-76658d361e2b', true, NULL, 'cf28b56a-f463-4300-8743-e20979b0901e',
+     false, 'rescheduled',
+     now() + interval '23 hours 50 minutes', now() + interval '24 hours 35 minutes',
+     NULL, NULL, NULL, NULL,
+     'Mock 24h reminder test (rescheduled).', false),
+
+    -- A15: rescheduled, entra en ventana reminder_4h (en 3h 50m)
+    ('b1c2d3e4-1234-4a5b-8c9d-0e1f2a3b4c15', '96c3c0e1-b183-446f-9d2d-d3f3fc9f9361',
+     '9df92579-03de-47c4-aa1f-76658d361e2b', true, NULL, '347e8a2f-973c-4fab-97a2-144616b2ede0',
+     false, 'rescheduled',
+     now() + interval '3 hours 50 minutes', now() + interval '4 hours 20 minutes',
+     NULL, NULL, NULL, NULL,
+     'Mock 4h reminder test (rescheduled).', false);
 
 -- ---------- appointment_services ----------
 

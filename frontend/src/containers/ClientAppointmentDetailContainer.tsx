@@ -6,7 +6,8 @@ import { useAuth } from '../context/AuthContext';
 import { AppointmentDetailContent } from '../components/appointments/AppointmentDetailContentComponent';
 import { AppointmentStatusBadge } from '../components/appointments/AppointmentStatusBadgeComponent';
 import { RewardBadge } from '../components/appointments/RewardBadgeComponent';
-import { getAppointmentById } from '../services/appointmentService';
+import { getAppointmentById, type AppointmentClientInfo } from '../services/appointmentService';
+import { CancelAppointmentContainer, EditAppointmentContainer } from './AppointmentActionsContainer';
 
 export const CLIENT_APPOINTMENTS_PATH = '/client/appointments';
 
@@ -17,17 +18,22 @@ export function ClientAppointmentDetailContainer() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const load = async () => {
-    if (!user || !token || !appointmentId) return;
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isCancelOpen, setIsCancelOpen] = useState(false);
 
-    setIsLoading(true);
+  /* El backend no devuelve los datos del cliente en sus propias citas; se completan con la sesión. */
+  const client: AppointmentClientInfo | undefined = user
+    ? { id: user.id, name: `${user.firstName} ${user.lastName}`, email: user.email }
+    : undefined;
+
+  /* Con silent no se muestra el esqueleto, así el modal no se desmonta al refrescar tras guardar. */
+  const load = async ({ silent = false }: { silent?: boolean } = {}) => {
+    if (!client || !token || !appointmentId) return;
+
+    if (!silent) setIsLoading(true);
     setError('');
     try {
-      const found = await getAppointmentById(token, appointmentId, {
-        id: user.id,
-        name: `${user.firstName} ${user.lastName}`,
-        email: user.email
-      });
+      const found = await getAppointmentById(token, appointmentId, client);
 
       if (!found) {
         setAppointment(null);
@@ -38,7 +44,7 @@ export function ClientAppointmentDetailContainer() {
     } catch {
       setError('No se pudo cargar la cita.');
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   };
 
@@ -46,11 +52,12 @@ export function ClientAppointmentDetailContainer() {
     void load();
   }, [user?.id, token, appointmentId]);
 
-  // Solo se puede editar o cancelar una cita agendada o reagendada que aún no ha terminado.
+  /* Solo se puede editar o cancelar una cita agendada o reagendada que aún no ha empezado. Si faltan menos de
+     8 horas los botones se muestran igual y el modal explica por qué ya no se puede (regla exclusiva del cliente). */
   const canModify =
     appointment !== null &&
     (appointment.status === 'scheduled' || appointment.status === 'rescheduled') &&
-    new Date(appointment.scheduledEnd).getTime() > Date.now();
+    new Date(appointment.scheduledStart).getTime() > Date.now();
 
   return (
     <div className="rounded-xl border border-white/10 bg-[#1A1A1A] p-6">
@@ -97,9 +104,10 @@ export function ClientAppointmentDetailContainer() {
           <AppointmentDetailContent appointment={appointment} showClient={false} />
 
           {canModify && (
-            <div className="mt-6 flex flex-wrap justify-end gap-3 border-t border-white/10 pt-5">
+            <div className="mt-6 flex flex-wrap items-center justify-end gap-3 border-t border-white/10 pt-5">
               <button
                 type="button"
+                onClick={() => setIsEditOpen(true)}
                 className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-[#262626] px-5 text-sm font-semibold text-[var(--text-h)] transition-colors hover:border-[var(--accent)]/60"
               >
                 <Pencil size={16} aria-hidden="true" />
@@ -108,12 +116,35 @@ export function ClientAppointmentDetailContainer() {
 
               <button
                 type="button"
+                onClick={() => setIsCancelOpen(true)}
                 className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-lg border border-[#C4608F]/40 bg-[#C4608F]/10 px-5 text-sm font-semibold text-[#E58AB3] transition-colors hover:border-[#C4608F] hover:bg-[#C4608F]/20"
               >
                 <XCircle size={16} aria-hidden="true" />
                 Cancelar cita
               </button>
             </div>
+          )}
+
+          {/* Se montan solo al abrir para que el formulario arranque limpio cada vez. Tras guardar se recarga la
+              cita; al cancelarla el estado pasa a "Cancelada" y los botones desaparecen (canModify). */}
+          {isEditOpen && (
+            <EditAppointmentContainer
+              appointment={appointment}
+              role="client"
+              client={client}
+              onDone={() => load({ silent: true })}
+              onClose={() => setIsEditOpen(false)}
+            />
+          )}
+
+          {isCancelOpen && (
+            <CancelAppointmentContainer
+              appointment={appointment}
+              role="client"
+              client={client}
+              onDone={() => load({ silent: true })}
+              onClose={() => setIsCancelOpen(false)}
+            />
           )}
         </>
       )}

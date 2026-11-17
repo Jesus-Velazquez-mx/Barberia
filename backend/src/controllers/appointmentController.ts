@@ -2,7 +2,14 @@ import { z, ZodError } from 'zod';
 import type { ApiHandler } from '../utils/apiResponse.js';
 import { sendFail, sendInternalServerError, sendSuccess, sendValidationError } from '../utils/apiResponse.js';
 import { ApiError } from '../errors/ApiError.js';
-import { cancelAppointment, getAppointment, listAppointments, registerAppointment, updateAppointment } from '../services/appointmentService.js';
+import {
+    cancelAppointment,
+    checkInAppointment,
+    getAppointment,
+    listAppointments,
+    registerAppointment,
+    updateAppointment,
+} from '../services/appointmentService.js';
 import type { AppointmentResponse, ClientAppointmentResponse } from '../types/dto/appointmentResponse.interface.js';
 import { extractBearerFromHeader } from '../utils/headerHandling.js';
 
@@ -134,6 +141,28 @@ export const cancel: ApiHandler<AppointmentResponse | ClientAppointmentResponse>
         const result = await cancelAppointment(id, validData, token);
 
         sendSuccess({ res, data: result, message: 'Appointment cancelled successfully' });
+    } catch (error: unknown) {
+        if (error instanceof ZodError) {
+            sendValidationError({ res, error });
+            return;
+        }
+        if (error instanceof ApiError) {
+            sendFail({ res, message: error.message, status: error.code });
+            return;
+        }
+        sendInternalServerError({ res, error: [String(error)] });
+    }
+};
+
+// Registrar check-in de una cita.
+export const checkIn: ApiHandler<AppointmentResponse> = async (req, res) => {
+    try {
+        const token = extractBearerFromHeader(req);
+        const { id } = appointmentIdParamSchema.parse(req.params);
+
+        const result = await checkInAppointment(id, token);
+
+        sendSuccess({ res, data: result, message: 'Appointment checked in successfully' });
     } catch (error: unknown) {
         if (error instanceof ZodError) {
             sendValidationError({ res, error });
