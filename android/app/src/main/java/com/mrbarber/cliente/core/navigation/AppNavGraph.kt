@@ -67,6 +67,7 @@ fun AppNavGraph(
             HomeRoute(
                 onBookAppointmentClick = { navController.navigate(AppointmentDestination()) },
                 onMyAppointmentsClick = { navController.navigate(MyAppointmentsDestination) },
+                onRemindersClick = { navController.navigate(TelegramNotificationsDestination) },
                 onProfileClick = { navController.navigate(ProfileDestination) },
                 onLoggedOut = { navController.navigateToLoginClearingStack() }
             )
@@ -80,9 +81,7 @@ fun AppNavGraph(
         }
         composable<TelegramNotificationsDestination> {
             TelegramNotificationsRoute(
-                onBack = { navController.popBackStack() },
-                // TODO: abrir el enlace del bot (https://t.me/<bot>?start=<token>) cuando exista el backend.
-                onConnectClick = {}
+                onBack = { navController.popBackStack() }
             )
         }
         composable<AppointmentDestination> {

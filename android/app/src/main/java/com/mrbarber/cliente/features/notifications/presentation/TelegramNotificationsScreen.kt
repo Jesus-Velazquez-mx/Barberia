@@ -24,15 +24,21 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mrbarber.cliente.R
 import com.mrbarber.cliente.ui.components.BackButton
 import com.mrbarber.cliente.ui.components.SectionCard
@@ -44,19 +50,36 @@ import com.mrbarber.cliente.ui.theme.TelegramAzul
 
 /**
  * Pantalla para vincular la cuenta con el bot de Telegram y recibir avisos de las citas.
- *
  */
 @Composable
 fun TelegramNotificationsRoute(
     onBack: () -> Unit,
-    onConnectClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: TelegramNotificationsViewModel = hiltViewModel()
 ) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val uriHandler = LocalUriHandler.current
+
+    // Abre Telegram (o el navegador si no está instalado).
+    LaunchedEffect(state.linkUrl) {
+        state.linkUrl?.let {
+            runCatching { uriHandler.openUri(it) }
+            viewModel.onLinkOpened()
+        }
+    }
+
+    // Al abrir la pantalla y al volver de Telegram, revisa si la cuenta ya quedó vinculada.
+    LifecycleResumeEffect(Unit) {
+        viewModel.refreshStatus()
+        onPauseOrDispose { }
+    }
+
     TelegramNotifications(
-        isLinked = false,
-        isLoading = false,
+        isLinked = state.isLinked,
+        isLoading = state.isLoading,
+        error = state.error,
         onBack = onBack,
-        onConnectClick = onConnectClick,
+        onConnectClick = viewModel::onConnectClick,
         modifier = modifier
     )
 }
@@ -65,6 +88,7 @@ fun TelegramNotificationsRoute(
 fun TelegramNotifications(
     isLinked: Boolean,
     isLoading: Boolean,
+    error: String?,
     onBack: () -> Unit,
     onConnectClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -79,7 +103,7 @@ fun TelegramNotifications(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp, vertical = 8.dp)
         ) {
-            BackButton(onClick = onBack, enabled = !isLoading)
+            BackButton(onClick = onBack)
 
             Spacer(Modifier.height(8.dp))
 
@@ -123,6 +147,11 @@ fun TelegramNotifications(
                 }
 
                 Spacer(Modifier.height(24.dp))
+            }
+
+            error?.let {
+                Text(text = it, color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
+                Spacer(Modifier.height(12.dp))
             }
 
             if (isLinked) {
@@ -204,6 +233,7 @@ fun TelegramNotificationsPreview() {
         TelegramNotifications(
             isLinked = false,
             isLoading = false,
+            error = null,
             onBack = {},
             onConnectClick = {}
         )
@@ -217,6 +247,7 @@ fun TelegramNotificationsLinkedPreview() {
         TelegramNotifications(
             isLinked = true,
             isLoading = false,
+            error = null,
             onBack = {},
             onConnectClick = {}
         )
