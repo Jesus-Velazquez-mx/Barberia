@@ -2,13 +2,13 @@
 
 ## 1. Product Overview
 
-This project consists of building an app for a barber shop, available on web and mobile (Android). Its main focus is managing appointments. Other core functionalities are:
+This project consists of building an app for a barber shop, available on web and mobile (Android, clients only). Its main focus is managing appointments. Other core functionalities are:
 
 - Give clients haircut suggestions based on their facial structure and preferences
 - Implement a fidelity program for clients to get free haircuts
 - Send reminders for appointments through WhatsApp and/or email
 
-The experience should be consistent across web and mobile — clients, receptionists, and managers/assistants each get a view suited to their role, regardless of which platform they're on.
+The web app serves every role — clients, receptionists, and managers/assistants each get a view suited to their role. The mobile (Android) app is **client-facing only** (decided): receptionist and manager functionality, such as check-in and walk-in registration, is web-only and out of scope for mobile.
 
 ## 2. User Roles
 

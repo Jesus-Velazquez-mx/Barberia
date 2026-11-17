@@ -5,7 +5,7 @@ import { getActiveBarbersByShop } from '../repositories/barberRepository.js';
 import { getBlockingAppointmentsByBarberIdsAndRange } from '../repositories/appointmentRepository.js';
 import { getAllShifts } from '../repositories/shiftRepository.js';
 import type { OfferedService } from '../types/entities/offeredService.interface.js';
-import { timeToMinutes, toBusinessWallClockMs, businessWallClockToUtcMs } from '../utils/businessTime.js';
+import { timeToMinutes, toBusinessWallClockMs, businessWallClockToUtcMs, getBusinessToday } from '../utils/businessTime.js';
 
 /** Máximo de días de anticipación con los que se puede consultar/agendar. */
 export const MAX_BOOKING_DAYS_AHEAD = 30;
@@ -31,6 +31,8 @@ export interface GetAvailableSlotsInput {
 
 export interface AvailableSlotsByBarber {
     barberId: string;
+    firstName: string;
+    lastName: string;
     /** Horarios de inicio agendables en ISO 8601 UTC. */
     startTimes: string[];
 }
@@ -133,7 +135,7 @@ export const getAvailableSlots = async ({
 
     // Ninguna sucursal abre en domingo: ningún barbero tiene horarios ese día.
     if (!OPEN_DAYS_OF_WEEK.includes(dayOfWeek)) {
-        return barbers.map((barber: { id: string }) => ({ barberId: barber.id, startTimes: [] }));
+        return barbers.map((barber: { id: string; first_name: string; last_name: string }) => ({ barberId: barber.id, firstName: barber.first_name, lastName: barber.last_name, startTimes: [] }));
     }
 
     // El día de negocio [dayStart, dayStart + 1 día) en hora de pared corresponde a este rango
@@ -154,7 +156,7 @@ export const getAvailableSlots = async ({
     // Hoy no se ofrecen inicios que ya pasaron.
     const notBefore = dayStart === todayStart ? (now - dayStart) / MS_PER_MINUTE : -Infinity;
 
-    return barbers.map((barber: { id: string; shift_id: string }) => {
+    return barbers.map((barber: { id: string; first_name: string; last_name: string; shift_id: string }) => {
         const shift = shifts.find((s) => s.id === barber.shift_id);
         const windows: Interval[] = shift ? [[timeToMinutes(shift.start_time), timeToMinutes(shift.end_time)]] : [];
 
@@ -164,9 +166,51 @@ export const getAvailableSlots = async ({
 
         return {
             barberId: barber.id,
+            firstName: barber.first_name,
+            lastName: barber.last_name,
             startTimes: computeStartMinutes(windows, busy, duration, notBefore).map((m) =>
                 new Date(businessWallClockToUtcMs(dayStart + m * MS_PER_MINUTE)).toISOString()
             ),
         };
     });
+};
+
+export interface GetNextAvailableSlotsInput {
+    shopId: string;
+    /** Servicios de la cita; los horarios se calculan con la suma de sus duraciones. */
+    serviceIds: string[];
+}
+
+export interface NextAvailableSlot {
+    barberId: string;
+    firstName: string;
+    lastName: string;
+    /** Próximo horario de inicio agendable hoy, en ISO 8601 UTC. */
+    startTime: string;
+}
+
+/**
+ * Próximo slot disponible de cada barbero de la sucursal para un walk-in: el primer `startTime` que
+ * getAvailableSlots ofrece hoy (día de negocio en BUSINESS_TIMEZONE) a cada barbero, de modo que todo slot
+ * devuelto es aceptado por POST /appointments con los mismos servicios. Hereda sus reglas: turnos,
+ * is_accepting_bookings, días abiertos, citas que ocupan agenda y horas ya pasadas.
+ * Los barberos sin slot restante hoy se omiten; si ninguno tiene, la lista es vacía (p. ej. domingo).
+ * Ordenado por `startTime` ascendente; los empates se ordenan por nombre solo para que la respuesta sea estable.
+ */
+export const getNextAvailableSlots = async ({
+    shopId,
+    serviceIds,
+}: GetNextAvailableSlotsInput): Promise<NextAvailableSlot[]> => {
+    const availability = await getAvailableSlots({ shopId, date: getBusinessToday(), serviceIds });
+
+    const withSlot = availability.filter((b) => b.startTimes.length > 0);
+    if (withSlot.length === 0) return [];
+
+    // getAvailableSlots solo expone ids; los nombres salen de los mismos barberos elegibles de la sucursal.
+    // const barbers = await getActiveBarbersByShop(shopId);
+    // const nameById = new Map(barbers.map((b) => [b.id, `${b.first_name} ${b.last_name}`]));
+
+    return withSlot
+        .map((b) => ({ barberId: b.barberId, firstName: b.firstName, lastName: b.lastName, startTime: b.startTimes[0] }))
+        .sort((a, b) => a.startTime.localeCompare(b.startTime) || a.firstName.localeCompare(b.firstName));
 };

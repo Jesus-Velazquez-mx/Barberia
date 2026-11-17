@@ -8,6 +8,8 @@ import { SearchBar } from '../components/common/SearchBarComponent';
 import { useAuth } from '../context/AuthContext';
 import { getAppointments, type AppointmentQuery } from '../services/appointmentService';
 import type { AppointmentFilterValues, AppointmentRecord, SortDirection } from '../types/appointmentType';
+import type { UserRole } from '../components/appointments/EditAppointmentModalComponent';
+import { CancelAppointmentContainer, EditAppointmentContainer } from './AppointmentActionsContainer';
 import {
   MAX_RANGE_DAYS,
   STATUS_OPTIONS,
@@ -53,6 +55,8 @@ export function StaffAppointmentsContainer() {
   const [page, setPage] = useState(1);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<AppointmentRecord | null>(null);
+  const [editingAppointment, setEditingAppointment] = useState<AppointmentRecord | null>(null);
+  const [cancelingAppointment, setCancelingAppointment] = useState<AppointmentRecord | null>(null);
 
   const {
     register,
@@ -64,12 +68,17 @@ export function StaffAppointmentsContainer() {
 
   /* Los filtros se aplican al instante, sin botón "Aplicar". */
   const filters = watch();
+  /* El personal no tiene el límite de 8 horas: basta con que la cita siga agendada o reagendada y no haya empezado. */
+  const canModify = (a: AppointmentRecord) =>
+    (a.status === 'scheduled' || a.status === 'rescheduled') && new Date(a.scheduledStart).getTime() > Date.now();
 
   /* Fecha de servicio, sucursal y estado se piden al backend; null mientras una fecha está incompleta o
      el rango es inválido (en ese caso se conserva la última consulta válida). */
   const nextQuery = toAppointmentQuery(filters, canFilterByShop);
   const nextQueryKey = nextQuery ? JSON.stringify(nextQuery) : null;
-  const [query, setQuery] = useState<AppointmentQuery>(() => toAppointmentQuery(getDefaultFilters(), canFilterByShop) ?? {});
+  const [query, setQuery] = useState<AppointmentQuery>(
+    () => toAppointmentQuery(getDefaultFilters(), canFilterByShop) ?? {}
+  );
 
   useEffect(() => {
     // Si la consulta no cambió (p. ej. en el primer render) se conserva el objeto para no volver a consultar.
@@ -222,7 +231,45 @@ export function StaffAppointmentsContainer() {
         />
       </div>
 
-      <AppointmentDetailModal appointment={selectedAppointment} onClose={() => setSelectedAppointment(null)} />
+      <AppointmentDetailModal
+        appointment={selectedAppointment}
+        onClose={() => setSelectedAppointment(null)}
+        onEdit={
+          selectedAppointment && canModify(selectedAppointment)
+            ? () => {
+                // Se cierra el detalle antes de abrir la edición para no apilar dos modales.
+                setEditingAppointment(selectedAppointment);
+                setSelectedAppointment(null);
+              }
+            : undefined
+        }
+        onCancel={
+          selectedAppointment && canModify(selectedAppointment)
+            ? () => {
+                setCancelingAppointment(selectedAppointment);
+                setSelectedAppointment(null);
+              }
+            : undefined
+        }
+      />
+
+      {editingAppointment && (
+        <EditAppointmentContainer
+          appointment={editingAppointment}
+          role={role as UserRole}
+          onDone={loadAppointments}
+          onClose={() => setEditingAppointment(null)}
+        />
+      )}
+
+      {cancelingAppointment && (
+        <CancelAppointmentContainer
+          appointment={cancelingAppointment}
+          role={role as UserRole}
+          onDone={loadAppointments}
+          onClose={() => setCancelingAppointment(null)}
+        />
+      )}
     </>
   );
 }

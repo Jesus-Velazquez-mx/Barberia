@@ -6,12 +6,13 @@ import {
     type UpcomingReminderRow,
 } from '../repositories/notificationLogRepository.js';
 import { sendTelegramNotification } from './telegramBotService.js';
+import { getBusinessTimezone } from '../utils/businessTime.js';
 
 let isProcessing = false;
 
 const buildMessage = (item: UpcomingReminderRow): string => {
     const dateFormatted = new Date(item.scheduled_start).toLocaleString('es-MX', {
-        timeZone: 'America/Mazatlan',
+        timeZone: getBusinessTimezone(),
         weekday: 'long',
         day: '2-digit',
         month: 'long',
