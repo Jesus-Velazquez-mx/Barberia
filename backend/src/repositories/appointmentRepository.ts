@@ -125,14 +125,17 @@ export const hasPendingAppointmentsByClientId = async (clientId: string): Promis
 };
 
 /**
- * Indica si el barbero tiene alguna cita pendiente (scheduled, rescheduled o checked_in), en cualquier sucursal
- * y sin importar la fecha.
+ * Indica si el barbero tiene alguna cita pendiente en cualquier sucursal: scheduled/rescheduled que aún no
+ * terminan, o checked_in (en curso). Las scheduled/rescheduled ya vencidas que nunca se cerraron se ignoran
+ * para que no bloqueen al barbero para siempre.
  */
 export const hasPendingAppointmentsByBarberId = async (barberId: string): Promise<boolean> => {
     const result = await db.getPool().query(
         `SELECT EXISTS (
              SELECT 1 FROM appointments
-             WHERE barber_id = $1 AND status IN ('scheduled', 'rescheduled', 'checked_in')
+             WHERE barber_id = $1
+               AND (status = 'checked_in'
+                    OR (status IN ('scheduled', 'rescheduled') AND scheduled_end > now()))
          ) AS has_pending`,
         [barberId]
     );

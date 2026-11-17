@@ -688,6 +688,24 @@ describe('Pruebas de endpoints de Barberos (Barbers)', () => {
             expect(res.body.message).toMatch(/Cannot reassign barber because they have scheduled, rescheduled or checked-in appointments/i);
         });
 
+        test('Debe responder 200 si el barbero solo tiene citas scheduled ya vencidas', async () => {
+            const scheduledStart = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+            const scheduledEnd = new Date(scheduledStart.getTime() + 30 * 60 * 1000);
+            await insertAppointment(shopId, targetBarber.id, scheduledStart, scheduledEnd, {
+                status: 'scheduled',
+            });
+
+            const res = await request(app)
+                .put(`/api/barbers/${targetBarber.id}/assignment`)
+                .set('Authorization', `Bearer ${managerToken}`)
+                .send({
+                    shopId: secondShopId,
+                    shiftId: otherShiftId,
+                });
+
+            expect(res.status).toBe(200);
+        });
+
         test('Debe responder 400 si faltan campos o el formato de UUID es inválido', async () => {
             const resNoShift = await request(app)
                 .put(`/api/barbers/${targetBarber.id}/assignment`)

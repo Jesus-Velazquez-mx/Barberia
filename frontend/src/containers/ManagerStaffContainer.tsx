@@ -377,6 +377,15 @@ export function ManagerStaffContainer() {
       }
 
       let saved: StaffMember = original;
+      const commit = (member: StaffMember) =>
+        setStaff((current) => current.map((item) => (item.id === member.id ? member : item)));
+
+      // Primero los datos personales: es la llamada con más probabilidad de fallar (p. ej. email duplicado),
+      // así un fallo aquí no deja la reasignación aplicada a medias.
+      if (personalChanged) {
+        saved = await updateStaff(original.id, payload, token);
+        commit(saved);
+      }
 
       // Si cambió la sucursal o el turno, llamamos a la función de reasignación según corresponda
       if (assignmentChanged) {
@@ -385,19 +394,9 @@ export function ManagerStaffContainer() {
           original.role === 'barber'
             ? await reassignBarber(original.id, assignment, token)
             : await reassignReceptionist(original.id, assignment, token);
+        commit(saved);
       }
 
-      // Si cambiaron los datos personales, llamamos a la función de actualización
-      if (personalChanged) {
-        const personalSaved = await updateStaff(original.id, payload, token);
-        saved = {
-          ...personalSaved,
-          shopId: saved.shopId,
-          shiftId: saved.shiftId
-        };
-      }
-
-      setStaff((current) => current.map((member) => (member.id === saved.id ? saved : member)));
       closeForm();
       setToast({
         message: 'Personal actualizado correctamente.',
