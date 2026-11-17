@@ -7,6 +7,8 @@ import swaggerJsdoc from 'swagger-jsdoc';
 import cors from 'cors';
 import { sendFail } from './utils/apiResponse.js';
 import globalConfig from './config/globalConfig.js';
+import { initTelegramBot } from './services/telegramBotService.js';
+import { startReminderScheduler } from './jobs/reminderScheduler.js';
 
 const { connectDB } = connection;
 
@@ -74,6 +76,10 @@ app.use('/api', (req: Request, res: Response) => {
 
 app.listen(port, async () => {
     console.log(`La app está escuchando en el puerto ${port}`);
+    /* Iniciar la instancia del bot */
+    initTelegramBot();
+    /* Iniciar el scheduler de recordatorios */
+    startReminderScheduler();
     try {
         _pool = await connectDB();
         console.log('Base de datos conectada');

@@ -183,7 +183,8 @@ CREATE TRIGGER trg_barbers_updated_at BEFORE UPDATE ON barbers
 CREATE TABLE clients (
     user_id                    uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     facial_structure_type      facial_structure_type,
-    completed_services_count   integer NOT NULL DEFAULT 0 CHECK (completed_services_count >= 0) -- paid services since the last free reward; resets to 0 on redemption
+    completed_services_count   integer NOT NULL DEFAULT 0 CHECK (completed_services_count >= 0), -- paid services since the last free reward; resets to 0 on redemption
+    client_telegram_id          VARCHAR(64) NULL
 );
 
 CREATE TRIGGER trg_clients_check_role BEFORE INSERT OR UPDATE ON clients
@@ -549,7 +550,61 @@ CREATE TABLE notifications_log (
     updated_at           timestamptz NOT NULL DEFAULT now()
 );
 
+-- scheduled_for = hora prevista del envío (scheduled_start - 24h/4h). Al reprogramar la cita
+-- cambia scheduled_for, por lo que se genera un recordatorio nuevo y el anterior queda como historial.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_notifications_log_appointment_trigger
+    ON notifications_log (appointment_id, trigger_type, scheduled_for);
+
+-- Citas dentro de una ventana de recordatorio, sin considerar la bitácora (la usa también el envío de prueba)
+CREATE OR REPLACE VIEW vw_appointment_reminder_candidates AS
+SELECT
+    w.*,
+    -- Truncado a segundos: el valor viaja por un Date de JS (precisión de ms) y debe volver a coincidir exacto
+    date_trunc('second', w.scheduled_start - CASE w.trigger_type
+        WHEN 'reminder_24h' THEN INTERVAL '24 hours'
+        ELSE INTERVAL '4 hours'
+    END) AS scheduled_for
+FROM (
+    SELECT
+        a.id AS appointment_id,
+        a.scheduled_start,
+        c.user_id AS client_id,
+        u.first_name AS client_first_name,
+        u.last_name AS client_last_name,
+        c.client_telegram_id,
+        CASE
+            WHEN a.scheduled_start BETWEEN (NOW() + INTERVAL '23 hours 30 minutes')
+                                       AND (NOW() + INTERVAL '24 hours 15 minutes')
+                THEN 'reminder_24h'
+            WHEN a.scheduled_start BETWEEN (NOW() + INTERVAL '3 hours 30 minutes')
+                                       AND (NOW() + INTERVAL '4 hours 15 minutes')
+                THEN 'reminder_4h'
+        END AS trigger_type
+    FROM appointments a
+    JOIN clients c ON c.user_id = a.client_id
+    JOIN users u ON u.id = c.user_id
+    WHERE a.is_registered_client = true
+      AND a.is_walk_in = false
+      AND a.status IN ('scheduled', 'rescheduled')
+) w
+WHERE w.trigger_type IS NOT NULL;
+
+-- Recordatorios pendientes: solo excluye los ya enviados ('sent'); los 'failed' se reintentan
+-- en cada ejecución del cron mientras la cita siga dentro de su ventana.
+CREATE OR REPLACE VIEW vw_upcoming_appointment_reminders AS
+SELECT ca.*
+FROM vw_appointment_reminder_candidates ca
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM notifications_log nl
+    WHERE nl.appointment_id = ca.appointment_id
+      AND nl.trigger_type = ca.trigger_type
+      AND nl.scheduled_for = ca.scheduled_for
+      AND nl.status = 'sent'
+);
+
 CREATE INDEX idx_notifications_log_appointment      ON notifications_log (appointment_id);
 CREATE INDEX idx_notifications_log_status_scheduled ON notifications_log (status, scheduled_for);
 CREATE TRIGGER trg_notifications_log_updated_at BEFORE UPDATE ON notifications_log
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+

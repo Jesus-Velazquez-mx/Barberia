@@ -8,6 +8,7 @@ export interface ClientRecord {
     birthDate: string;
     gender: string;
     completedServicesCount: number;
+    clientTelegramId: string | null;
 }
 
 /* Valores del formulario de alta/edición de clientes. */

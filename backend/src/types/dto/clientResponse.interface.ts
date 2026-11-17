@@ -20,4 +20,5 @@ export interface ClientDetailResponse {
     completedServicesCount: number;
     createdAt: Date;
     updatedAt: Date;
+    clientTelegramId: string | null;
 }
