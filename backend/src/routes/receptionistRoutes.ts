@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getById, create, update, remove } from '../controllers/receptionistController.js';
+import { getById, create, update, reassign, remove } from '../controllers/receptionistController.js';
 
 const router = Router();
 
@@ -191,6 +191,59 @@ router.post('/receptionists', create);
  *         description: Error interno del servidor.
  */
 router.put('/receptionists/:id', update);
+
+/**
+ * @swagger
+ * /api/receptionists/{id}/assignment:
+ *   put:
+ *     summary: Reasigna la sucursal y el turno de un recepcionista
+ *     tags: [Receptionists]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Reasigna la sucursal y el turno de un recepcionista. Solo un manager puede ejecutarlo, y debe administrar tanto la sucursal de origen como la de destino. Falla con 409 si el recepcionista está dado de baja. Falla con 404 si la sucursal, el turno o el recepcionista no existen. Falla con 403 si el manager no administra alguna de las sucursales involucradas.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID único de usuario del recepcionista a reasignar.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - shopId
+ *               - shiftId
+ *             properties:
+ *               shopId:
+ *                 type: string
+ *                 format: uuid
+ *                 example: "660e8400-e29b-41d4-a716-446655440111"
+ *               shiftId:
+ *                 type: string
+ *                 format: uuid
+ *                 example: "770e8400-e29b-41d4-a716-446655440222"
+ *     responses:
+ *       200:
+ *         description: Recepcionista reasignado exitosamente.
+ *       400:
+ *         description: Error de validación en los identificadores de sucursal o turno.
+ *       401:
+ *         description: No autorizado.
+ *       403:
+ *         description: Prohibido. Solo un manager puede reasignar recepcionistas y debe administrar ambas sucursales.
+ *       404:
+ *         description: No se encontró el recepcionista, la sucursal o el turno.
+ *       409:
+ *         description: Conflicto. El recepcionista está dado de baja.
+ *       500:
+ *         description: Error interno del servidor.
+ */
+router.put('/receptionists/:id/assignment', reassign);
 
 /**
  * @swagger

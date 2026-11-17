@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getById, create, update, remove } from '../controllers/barberController.js';
+import { getById, create, update, reassign, remove } from '../controllers/barberController.js';
 
 const router = Router();
 
@@ -198,6 +198,59 @@ router.post('/barbers', create);
  *         description: Error interno del servidor.
  */
 router.put('/barbers/:id', update);
+
+/**
+ * @swagger
+ * /api/barbers/{id}/assignment:
+ *   put:
+ *     summary: Reasigna la sucursal y el turno de un barbero
+ *     tags: [Barbers]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Reasigna la sucursal y el turno de un barbero. Solo un manager puede ejecutarlo, y debe administrar tanto la sucursal de origen como la de destino. Falla con 409 si el barbero está dado de baja o si tiene citas pendientes (scheduled, rescheduled, checked-in). Falla con 404 si la sucursal, el turno o el barbero no existen. Falla con 403 si el manager no administra alguna de las sucursales involucradas.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID único del barbero a reasignar.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - shopId
+ *               - shiftId
+ *             properties:
+ *               shopId:
+ *                 type: string
+ *                 format: uuid
+ *                 example: "660e8400-e29b-41d4-a716-446655440111"
+ *               shiftId:
+ *                 type: string
+ *                 format: uuid
+ *                 example: "770e8400-e29b-41d4-a716-446655440222"
+ *     responses:
+ *       200:
+ *         description: Barbero reasignado exitosamente.
+ *       400:
+ *         description: Error de validación en los identificadores de sucursal o turno.
+ *       401:
+ *         description: No autorizado.
+ *       403:
+ *         description: Prohibido. Solo un manager puede reasignar barberos y debe administrar ambas sucursales.
+ *       404:
+ *         description: No se encontró el barbero, la sucursal o el turno.
+ *       409:
+ *         description: Conflicto. El barbero está dado de baja o tiene citas pendientes agendadas.
+ *       500:
+ *         description: Error interno del servidor.
+ */
+router.put('/barbers/:id/assignment', reassign);
 
 /**
  * @swagger

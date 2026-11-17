@@ -179,6 +179,30 @@ export const updateBarberProfileById = async (fields: UpdateBarberInput): Promis
 };
 
 /**
+ * Actualiza la sucursal y el turno de un barbero activo.
+ */
+export const updateBarberAssignmentById = async (
+    id: string,
+    shopId: string,
+    shiftId: string
+): Promise<Barber> => {
+    const pool = db.getPool();
+    const result = await pool.query(
+        `UPDATE barbers
+         SET shop_id = $1, shift_id = $2, updated_at = NOW()
+         WHERE id = $3 AND deleted_at IS NULL
+         RETURNING ${BARBER_COLUMNS}`,
+        [shopId, shiftId, id]
+    );
+
+    if (result.rows.length === 0) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Barber not found');
+    }
+
+    return result.rows[0];
+};
+
+/**
  * Da de baja lógicamente a un barbero (deleted_at = NOW()).
  */
 export const softDeleteBarberById = async (id: string): Promise<void> => {

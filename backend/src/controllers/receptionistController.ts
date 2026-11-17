@@ -9,6 +9,7 @@ import {
     getReceptionistDetails,
     listReceptionistsByShop,
     updateReceptionist,
+    reassignReceptionist,
     deleteReceptionist,
 } from '../services/receptionistService.js';
 import { extractBearerFromHeader } from '../utils/headerHandling.js';
@@ -54,6 +55,11 @@ const updateReceptionistSchema = z
             message: 'At least one field must be provided',
         }
     );
+
+const reassignReceptionistSchema = z.object({
+    shopId: z.uuid('Invalid shop ID format'),
+    shiftId: z.uuid('Invalid shift ID format'),
+});
 
 export const getById: ApiHandler<ReceptionistDetailResponse> = async (req, res) => {
     try {
@@ -124,6 +130,27 @@ export const update: ApiHandler<ReceptionistDetailResponse> = async (req, res) =
 
         const result = await updateReceptionist({ id: validParams.id, ...validData }, token);
         sendSuccess({ res, data: result, message: 'Receptionist updated successfully' });
+    } catch (error: unknown) {
+        if (error instanceof ZodError) {
+            sendValidationError({ res, error });
+            return;
+        }
+        if (error instanceof ApiError) {
+            sendFail({ res, message: error.message, status: error.code });
+            return;
+        }
+        sendInternalServerError({ res, error: [String(error)] });
+    }
+};
+
+export const reassign: ApiHandler<ReceptionistDetailResponse> = async (req, res) => {
+    try {
+        const token = extractBearerFromHeader(req);
+        const validParams = receptionistIdParamSchema.parse({ id: req.params.id });
+        const validData = reassignReceptionistSchema.parse(req.body);
+
+        const result = await reassignReceptionist(validParams.id, validData, token);
+        sendSuccess({ res, data: result, message: 'Receptionist reassigned successfully' });
     } catch (error: unknown) {
         if (error instanceof ZodError) {
             sendValidationError({ res, error });
