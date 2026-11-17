@@ -246,7 +246,7 @@ jobs:
                 -e AWS_BUCKET_KEY_PREFIX=${{ secrets.AWS_BUCKET_KEY_PREFIX }} \
                 -e EXTERNAL_ONLY_AI_SERVICE_URL=${{ secrets.EXTERNAL_ONLY_AI_SERVICE_URL }} \
                 -e ONLY_EXTERNAL_AI_PROVIDER=${{ vars.ONLY_EXTERNAL_AI_PROVIDER }} \
-                -e TELEGRAM_API_TOKEN=${{ secrets.TELEGRAM_API_TOKEN }}
+                -e TELEGRAM_API_TOKEN=${{ secrets.TELEGRAM_API_TOKEN }} \
                 jesusvelazquezmx/barberia:latest
 
               # Limpiar imágenes no utilizadas

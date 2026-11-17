@@ -57,31 +57,16 @@ export const processReminders = async (): Promise<void> => {
                     /* Cuando manda la notificación, regisra el id del mensaje */
                     const messageId = await sendTelegramNotification(telegramChatId, message);
 
-                    await logReminderSent(
-                        item.appointment_id,
-                        item.client_id,
-                        item.trigger_type,
-                        messageId
-                    );
+                    await logReminderSent(item, messageId);
                 } catch (err: unknown) {
                     const reason =
                         err instanceof Error ? err.message : 'Error desconocido al enviar por Telegram';
                     console.error(`There was an error sending reminder for appointment ${item.appointment_id}:`, reason);
 
-                    await logReminderFailed(
-                        item.appointment_id,
-                        item.client_id,
-                        item.trigger_type,
-                        reason
-                    );
+                    await logReminderFailed(item, reason);
                 }
             } else {
-                await logReminderFailed(
-                    item.appointment_id,
-                    item.client_id,
-                    item.trigger_type,
-                    'Client without a linked client_telegram_id'
-                );
+                await logReminderFailed(item, 'Client without a linked client_telegram_id');
             }
         }
     } catch (error) {

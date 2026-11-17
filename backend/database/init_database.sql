@@ -550,12 +550,20 @@ CREATE TABLE notifications_log (
     updated_at           timestamptz NOT NULL DEFAULT now()
 );
 
+-- scheduled_for = hora prevista del envío (scheduled_start - 24h/4h). Al reprogramar la cita
+-- cambia scheduled_for, por lo que se genera un recordatorio nuevo y el anterior queda como historial.
 CREATE UNIQUE INDEX IF NOT EXISTS uq_notifications_log_appointment_trigger
-    ON notifications_log (appointment_id, trigger_type);
+    ON notifications_log (appointment_id, trigger_type, scheduled_for);
 
--- Vista utilizada para el envío de recordatorios
-CREATE OR REPLACE VIEW vw_upcoming_appointment_reminders AS
-WITH candidate_appointments AS (
+-- Citas dentro de una ventana de recordatorio, sin considerar la bitácora (la usa también el envío de prueba)
+CREATE OR REPLACE VIEW vw_appointment_reminder_candidates AS
+SELECT
+    w.*,
+    w.scheduled_start - CASE w.trigger_type
+        WHEN 'reminder_24h' THEN INTERVAL '24 hours'
+        ELSE INTERVAL '4 hours'
+    END AS scheduled_for
+FROM (
     SELECT
         a.id AS appointment_id,
         a.scheduled_start,
@@ -570,7 +578,6 @@ WITH candidate_appointments AS (
             WHEN a.scheduled_start BETWEEN (NOW() + INTERVAL '3 hours 30 minutes')
                                        AND (NOW() + INTERVAL '4 hours 15 minutes')
                 THEN 'reminder_4h'
-            ELSE NULL
         END AS trigger_type
     FROM appointments a
     JOIN clients c ON c.user_id = a.client_id
@@ -578,32 +585,22 @@ WITH candidate_appointments AS (
     WHERE a.is_registered_client = true
       AND a.is_walk_in = false
       AND a.status IN ('scheduled', 'rescheduled')
-)
-SELECT
-    ca.appointment_id,
-    ca.scheduled_start,
-    ca.client_id,
-    ca.client_first_name,
-    ca.client_last_name,
-    ca.client_telegram_id,
-    ca.trigger_type,
-    COALESCE(
-        (
-            SELECT STRING_AGG(srv.name, ', ' ORDER BY srv.name)
-            FROM appointment_services aps
-            JOIN services srv ON srv.id = aps.service_id
-            WHERE aps.appointment_id = ca.appointment_id
-        ),
-        'Servicio agendado'
-    ) AS services_summary
-FROM candidate_appointments ca
-WHERE ca.trigger_type IS NOT NULL
-  AND NOT EXISTS (
-      SELECT 1
-      FROM notifications_log nl
-      WHERE nl.appointment_id = ca.appointment_id
-        AND nl.trigger_type = ca.trigger_type
-  );
+) w
+WHERE w.trigger_type IS NOT NULL;
+
+-- Recordatorios pendientes: solo excluye los ya enviados ('sent'); los 'failed' se reintentan
+-- en cada ejecución del cron mientras la cita siga dentro de su ventana.
+CREATE OR REPLACE VIEW vw_upcoming_appointment_reminders AS
+SELECT ca.*
+FROM vw_appointment_reminder_candidates ca
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM notifications_log nl
+    WHERE nl.appointment_id = ca.appointment_id
+      AND nl.trigger_type = ca.trigger_type
+      AND nl.scheduled_for = ca.scheduled_for
+      AND nl.status = 'sent'
+);
 
 CREATE INDEX idx_notifications_log_appointment      ON notifications_log (appointment_id);
 CREATE INDEX idx_notifications_log_status_scheduled ON notifications_log (status, scheduled_for);
