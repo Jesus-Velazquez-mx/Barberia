@@ -257,7 +257,8 @@ describe('Recordatorios de Citas CU-43 (/api/notifications/reminders)', () => {
                 .set('Authorization', `Bearer ${managerToken}`);
 
             expect(response.status).toBe(200);
-            expect(response.body.data.sent).toBe(1);
+            /* >= 1: otras citas en ventana (p. ej. mock_data.sql) también cuentan */
+            expect(response.body.data.sent).toBeGreaterThanOrEqual(1);
             expect(mockedSendTelegram).toHaveBeenCalledWith(
                 '333222111',
                 expect.stringContaining('[MENSAJE DE PRUEBA]')
@@ -368,8 +369,15 @@ describe('Recordatorios de Citas CU-43 (/api/notifications/reminders)', () => {
             const client = await insertClient('121212121', 'Reintento');
             const apptId = await insertAppointmentInOffset({ shopId, barberId, clientId: client.id, hoursFromNow: 24 });
 
-            /* 1er intento: Telegram falla -> failed */
-            mockedSendTelegram.mockRejectedValueOnce(new Error('Telegram caído'));
+            /* 1er intento: Telegram falla solo para este chat (independiente de otras citas en ventana) -> failed */
+            let failNext = true;
+            mockedSendTelegram.mockImplementation(async (chatId: string) => {
+                if (chatId === '121212121' && failNext) {
+                    failNext = false;
+                    throw new Error('Telegram caído');
+                }
+                return 'msg_telegram_12345';
+            });
             await processReminders();
             let log = await pool.query('SELECT * FROM notifications_log WHERE appointment_id = $1', [apptId]);
             expect(log.rows).toHaveLength(1);

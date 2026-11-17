@@ -559,10 +559,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_notifications_log_appointment_trigger
 CREATE OR REPLACE VIEW vw_appointment_reminder_candidates AS
 SELECT
     w.*,
-    w.scheduled_start - CASE w.trigger_type
+    -- Truncado a segundos: el valor viaja por un Date de JS (precisión de ms) y debe volver a coincidir exacto
+    date_trunc('second', w.scheduled_start - CASE w.trigger_type
         WHEN 'reminder_24h' THEN INTERVAL '24 hours'
         ELSE INTERVAL '4 hours'
-    END AS scheduled_for
+    END) AS scheduled_for
 FROM (
     SELECT
         a.id AS appointment_id,
