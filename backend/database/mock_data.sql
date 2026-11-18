@@ -14,12 +14,12 @@ BEGIN;
 INSERT INTO users (id, role, email, phone, password_hash, first_name, last_name, birth_date, gender) VALUES
     ('b27c93cf-2282-4b40-81ea-efb5f7bec219', 'manager', 'gendo.ikari@nerv-barbershop.test',     '5550000001', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Gendo',  'Ikari', '1976-10-01', 'male'),
     ('ca85606b-6af7-4583-82e6-89bcb6a8d4c6', 'manager', 'kozo.fuyutsuki@nerv-barbershop.test',  '5550000002', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Kozo',   'Fuyutsuki', '1976-10-01', 'male'),
-    ('63bc8b10-4ea0-4247-bf38-c527e5940368', 'manager', 'keel.lorenz@nerv-barbershop.test',  '5650000002', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Keel',   'Lorenz', '1976-10-01', 'male');
+    ('63bc8b10-4ea0-4247-bf38-c527e5940368', 'manager', 'alejandra.manager@barbershop.test',  '5650000002', '$2b$10$YtXR954w3ctSLIHysqgg1ebETZPsH8ElQ2az5WKrPcpJnm0sGWPXq', 'Alejandra',   'Maestra', '1976-10-01', 'female'); -- Password: 'Password123'
 
 INSERT INTO managers (user_id, title, deleted_at) VALUES
     ('b27c93cf-2282-4b40-81ea-efb5f7bec219', 'Regional Director', null),
     ('ca85606b-6af7-4583-82e6-89bcb6a8d4c6', 'Sub-Director', null),
-    ('63bc8b10-4ea0-4247-bf38-c527e5940368', 'CEO', NOW());
+    ('63bc8b10-4ea0-4247-bf38-c527e5940368', 'CEO', null);
 
 -- ---------- shops ----------
 
@@ -41,7 +41,7 @@ INSERT INTO barbers (id, first_name, last_name, email, phone, shop_id, shift_id,
 
 INSERT INTO users (id, role, email, phone, password_hash, first_name, last_name, birth_date, gender) VALUES
     ('5204b553-fe01-4c42-a624-7d566e006147', 'receptionist', 'misato.katsuragi@nerv-barbershop.test', '5550000008', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Misato',  'Katsuragi', '1994-05-02', 'female'),
-    ('01bd0371-7afc-4756-a7de-26bcb37a163e', 'receptionist', 'ritsuko.akagi@nerv-barbershop.test',    '5550000009', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Ritsuko', 'Akagi', '1994-05-02', 'female');
+    ('01bd0371-7afc-4756-a7de-26bcb37a163e', 'receptionist', 'alejandra.recepcionista@barbershop.test',    '5550000009', '$2b$10$YtXR954w3ctSLIHysqgg1ebETZPsH8ElQ2az5WKrPcpJnm0sGWPXq', 'Alejandra', 'Maestra', '1994-05-02', 'female'); -- Password: 'Password123'
 
 INSERT INTO receptionists (user_id, shop_id, shift_id) VALUES
     ('5204b553-fe01-4c42-a624-7d566e006147', '064e25fa-26c1-4ec8-9d49-78fc5f520519', (SELECT id FROM shifts WHERE name = 'morning')),
@@ -57,7 +57,7 @@ INSERT INTO users (id, role, email, phone, password_hash, first_name, last_name,
     ('25cb4434-8409-4473-bfce-82ba2f9084c2', 'client', 'maya.ibuki@nerv-barbershop.test',     '5550000014', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Maya',   'Ibuki', '2004-10-01', 'female'),
     ('cc458df9-eea1-43ce-a33a-7bb4cefb7ef5', 'client', 'shigeru.aoba@nerv-barbershop.test',   '5550000015', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Shigeru','Aoba', '2004-10-01', 'female'),
     ('fb9cd491-e105-4e20-b7be-008b91290f9f', 'client', 'makoto.hyuga@nerv-barbershop.test',   '5550000016', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Makoto', 'Hyuga', '2004-10-01', 'female'),
-    ('f2406620-80c1-44d4-a2f6-a102e74d87a9', 'client', 'yui.ikari@nerv-barbershop.test',      '5550000017', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Yui',    'Ikari', '2004-10-01', 'female'),
+    ('f2406620-80c1-44d4-a2f6-a102e74d87a9', 'client', 'alejandra.cliente@barbershop.test',      '5550000017', '$2b$10$YtXR954w3ctSLIHysqgg1ebETZPsH8ElQ2az5WKrPcpJnm0sGWPXq', 'Alejandra',    'Maestra', '2004-10-01', 'female'), -- Password: 'Password123'
     ('a69aca94-e01a-436f-b54f-4ca8b068b2d0', 'client', 'naoko.akagi@nerv-barbershop.test',    '5550000018', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Naoko',  'Akagi', '2004-10-01', 'female'),
     ('76a1be5b-c058-4a10-929f-2b4aea92829a', 'client', 'sakura.suzuhara@nerv-barbershop.test','5550000019', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Sakura', 'Suzuhara', '2004-10-01', 'female');
 
