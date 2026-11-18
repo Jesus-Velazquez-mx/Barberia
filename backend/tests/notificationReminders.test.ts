@@ -186,7 +186,6 @@ describe('Recordatorios de Citas CU-43 (/api/notifications/reminders)', () => {
         receptionistToken = mintToken(receptionistUser.id, 'receptionist', receptionistUser.email);
     });
 
-
     describe('Vinculación de cuenta Telegram', () => {
         test('Debe guardar client_telegram_id cuando el cliente vincula su cuenta', async () => {
             const client = await insertClient(null, 'Mateo');
@@ -258,7 +257,8 @@ describe('Recordatorios de Citas CU-43 (/api/notifications/reminders)', () => {
                 .set('Authorization', `Bearer ${managerToken}`);
 
             expect(response.status).toBe(200);
-            expect(response.body.data.sent).toBe(1);
+            /* >= 1: otras citas en ventana (p. ej. mock_data.sql) también cuentan */
+            expect(response.body.data.sent).toBeGreaterThanOrEqual(1);
             expect(mockedSendTelegram).toHaveBeenCalledWith(
                 '333222111',
                 expect.stringContaining('[MENSAJE DE PRUEBA]')
@@ -362,6 +362,52 @@ describe('Recordatorios de Citas CU-43 (/api/notifications/reminders)', () => {
 
             expect(mockedSendTelegram).not.toHaveBeenCalledWith('444555666', expect.any(String));
             expect(mockedSendTelegram).not.toHaveBeenCalledWith('777888999', expect.any(String));
+        });
+
+        test('Reintenta un fallo dentro de la ventana y envía de nuevo si la cita se reprograma', async () => {
+            const pool = getPool();
+            const client = await insertClient('121212121', 'Reintento');
+            const apptId = await insertAppointmentInOffset({ shopId, barberId, clientId: client.id, hoursFromNow: 24 });
+
+            /* 1er intento: Telegram falla solo para este chat (independiente de otras citas en ventana) -> failed */
+            let failNext = true;
+            mockedSendTelegram.mockImplementation(async (chatId: string) => {
+                if (chatId === '121212121' && failNext) {
+                    failNext = false;
+                    throw new Error('Telegram caído');
+                }
+                return 'msg_telegram_12345';
+            });
+            await processReminders();
+            let log = await pool.query('SELECT * FROM notifications_log WHERE appointment_id = $1', [apptId]);
+            expect(log.rows).toHaveLength(1);
+            expect(log.rows[0].status).toBe('failed');
+
+            /* 2do intento (siguiente cron): se reintenta y la misma fila pasa a sent */
+            await processReminders();
+            log = await pool.query('SELECT * FROM notifications_log WHERE appointment_id = $1', [apptId]);
+            expect(log.rows).toHaveLength(1);
+            expect(log.rows[0].status).toBe('sent');
+            expect(log.rows[0].retry_count).toBe(0);
+            expect(log.rows[0].failure_reason).toBeNull();
+
+            /* Reprogramación a otra hora dentro de la ventana: nuevo recordatorio, historial previo intacto */
+            await pool.query(
+                `UPDATE appointments SET status = 'rescheduled',
+                        scheduled_start = scheduled_start - INTERVAL '20 minutes',
+                        scheduled_end = scheduled_end - INTERVAL '20 minutes'
+                 WHERE id = $1`,
+                [apptId]
+            );
+            mockedSendTelegram.mockClear();
+            await processReminders();
+            expect(mockedSendTelegram).toHaveBeenCalledWith('121212121', expect.any(String));
+            log = await pool.query(
+                `SELECT status FROM notifications_log WHERE appointment_id = $1 AND trigger_type = 'reminder_24h'`,
+                [apptId]
+            );
+            expect(log.rows).toHaveLength(2);
+            expect(log.rows.every((r: { status: string }) => r.status === 'sent')).toBe(true);
         });
     });
 });

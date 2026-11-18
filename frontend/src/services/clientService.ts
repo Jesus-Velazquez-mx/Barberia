@@ -1,4 +1,5 @@
 import type { ClientPayload, ClientRecord } from '../types/clientType';
+import type { User } from '../types/auth';
 import { apiClient } from './apiClient';
 
 interface ClientApi {
@@ -11,6 +12,15 @@ interface ClientApi {
     gender: string;
     completedServicesCount: number;
     clientTelegramId: string | null;
+}
+
+type FacialStructureType = 'oval' | 'triangle' | 'heart' | 'round' | 'diamond' | 'square' | 'rectangle';
+
+interface ClientDetailApi extends ClientApi {
+    role: 'client';
+    facialStructureType: FacialStructureType | null;
+    createdAt: string;
+    updatedAt: string;
 }
 
 const authHeaders = (token: string): RequestInit => ({ headers: { Authorization: `Bearer ${token}` } });
@@ -80,11 +90,29 @@ export const deleteClient = async (id: string, token: string): Promise<void> => 
     await apiClient.delete(`/clients/${id}`, authHeaders(token));
 };
 
-/* Muestra los datos de un solo cliente. */
+/* Datos de un solo cliente como ClientRecord (incluye clientTelegramId; lo usa el QR de recordatorios). */
 export const getClientById = async (id: string, token: string): Promise<ClientRecord> => {
-    const { data } = await apiClient.get<ClientApi>(
-        `/clients/${id}`,
-        authHeaders(token)
-    );
+    const { data } = await apiClient.get<ClientApi>(`/clients/${id}`, authHeaders(token));
     return toClientRecord(data);
+};
+
+/* Perfil completo de un cliente. Un cliente solo puede consultar el suyo. */
+export const getClientProfile = async (id: string, token: string): Promise<User> => {
+    const { data } = await apiClient.get<ClientDetailApi>(`/clients/${id}`, authHeaders(token));
+    return {
+        id: data.id,
+        role: data.role,
+        email: data.email,
+        phone: data.phone,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        birthDate: data.birthDate ? data.birthDate.slice(0, 10) : '',
+        gender: data.gender,
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt,
+        profile: {
+            facialStructureType: data.facialStructureType,
+            completedServicesCount: data.completedServicesCount
+        }
+    };
 };

@@ -12,7 +12,7 @@ import { Toast } from '../components/common/ToastComponent';
 import { useAuth } from '../context/AuthContext';
 import { getShifts } from '../services/shiftService';
 import { getShops } from '../services/shopService';
-import { createStaff, deleteStaff, getStaff, reactivateStaff, updateStaff } from '../services/staffService';
+import { createStaff, deleteStaff, getStaff, reactivateStaff, reassignBarber, reassignReceptionist, updateStaff } from '../services/staffService';
 import { ApiError } from '../types/api';
 import type { Shift } from '../types/shiftType';
 import type { Shop } from '../types/shop';
@@ -57,7 +57,9 @@ const getStaffErrorMessage = (error: unknown, fallback: string): string => {
     const msg = error.message;
     if (error.status === 409) {
       if (/scheduled|rescheduled|checked-in|appointments/i.test(msg)) {
-        return 'No se puede dar de baja al barbero porque tiene citas pendientes o en curso.';
+        return /reassign/i.test(msg)
+          ? 'No se puede reasignar al barbero porque tiene citas pendientes o en curso.'
+          : 'No se puede dar de baja al barbero porque tiene citas pendientes o en curso.';
       }
       if (/deleted|reactivation/i.test(msg)) {
         return 'Este integrante está dado de baja. Puedes reactivarlo desde Nuevo Personal escribiendo su correo.';
@@ -348,16 +350,56 @@ export function ManagerStaffContainer() {
     };
 
     try {
-      const saved = isEdit ? await updateStaff(formState.member.id, payload, token) : await createStaff(payload, token);
+      if (!isEdit) {
+        const saved = await createStaff(payload, token);
+        setStaff((current) => [saved, ...current]);
+        closeForm();
+        setToast({
+          message: 'Personal registrado correctamente.',
+          type: 'success'
+        });
+        return;
+      }
 
-      setStaff((current) =>
-        isEdit || current.some((member) => member.id === saved.id)
-          ? current.map((member) => (member.id === saved.id ? saved : member))
-          : [saved, ...current]
-      );
+      const original = formState.member;
+      const assignmentChanged = original.shopId !== payload.shopId || original.shiftId !== payload.shiftId;
+      const personalChanged =
+        original.firstName !== payload.firstName ||
+        original.lastName !== payload.lastName ||
+        (original.email ?? '') !== payload.email ||
+        (original.phone ?? '') !== (payload.phone ?? '') ||
+        original.birthDate !== payload.birthDate ||
+        original.gender !== payload.gender;
+
+      if (!assignmentChanged && !personalChanged) {
+        closeForm();
+        return;
+      }
+
+      let saved: StaffMember = original;
+      const commit = (member: StaffMember) =>
+        setStaff((current) => current.map((item) => (item.id === member.id ? member : item)));
+
+      // Primero los datos personales: es la llamada con más probabilidad de fallar (p. ej. email duplicado),
+      // así un fallo aquí no deja la reasignación aplicada a medias.
+      if (personalChanged) {
+        saved = await updateStaff(original.id, payload, token);
+        commit(saved);
+      }
+
+      // Si cambió la sucursal o el turno, llamamos a la función de reasignación según corresponda
+      if (assignmentChanged) {
+        const assignment = { shopId: payload.shopId, shiftId: payload.shiftId };
+        saved =
+          original.role === 'barber'
+            ? await reassignBarber(original.id, assignment, token)
+            : await reassignReceptionist(original.id, assignment, token);
+        commit(saved);
+      }
+
       closeForm();
       setToast({
-        message: isEdit ? 'Personal actualizado correctamente.' : 'Personal registrado correctamente.',
+        message: 'Personal actualizado correctamente.',
         type: 'success'
       });
     } catch (error) {

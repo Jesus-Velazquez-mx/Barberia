@@ -6,6 +6,7 @@ import {
     getReceptionistsByShop,
     createReceptionist,
     reactivateReceptionist,
+    updateReceptionistAssignment,
     type CreateReceptionistInput,
 } from '../repositories/receptionistRepository.js';
 import { getUserByEmail, isUserActive, softDeleteStaff, updateUserById } from '../repositories/userRepository.js';
@@ -35,6 +36,11 @@ export interface UpdateReceptionistInput {
     phone?: string;
     birthDate?: string;
     gender?: string;
+}
+
+export interface ReassignReceptionistInput {
+    shopId: string;
+    shiftId: string;
 }
 
 /**
@@ -203,4 +209,48 @@ export const deleteReceptionist = async (targetId: string, token: string): Promi
     if (receptionist.deleted_at !== null) return;
 
     await softDeleteStaff(targetId, 'receptionist');
+};
+
+/**
+ * Reasigna la sucursal y el turno de un recepcionista.
+ * Solo un manager puede usarlo, y debe administrar tanto la sucursal actual como la nueva.
+ * Responder 404 si la sucursal o el turno no existen, y 409 si el integrante está dado de baja.
+ */
+export const reassignReceptionist = async (
+    targetId: string,
+    assignment: ReassignReceptionistInput,
+    token: string
+): Promise<ReceptionistDetailResponse> => {
+    const managedShopIds = await authorizeManager(token, 'Not authorized to reassign receptionists');
+
+    const receptionist = await getReceptionistWithUserById(targetId);
+    if (!receptionist) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Receptionist not found');
+    }
+
+    // Origen debe ser administrado por el manager
+    assertShopManaged(receptionist.shop_id, managedShopIds);
+
+    if (receptionist.deleted_at !== null) {
+        throw new ApiError(
+            ApiErrorCode.CONFLICT,
+            'Receptionist has been deleted. Reactivation is needed to modify receptionist data'
+        );
+    }
+
+    const destinationShop = await getShopById(assignment.shopId);
+    if (!destinationShop) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Shop not found');
+    }
+
+    const shift = await getShiftById(assignment.shiftId);
+    if (!shift) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Shift not found');
+    }
+
+    // Destino debe ser administrado por el manager
+    assertShopManaged(assignment.shopId, managedShopIds);
+
+    const updated = await updateReceptionistAssignment(targetId, assignment.shopId, assignment.shiftId);
+    return toReceptionistDetailResponse(updated);
 };

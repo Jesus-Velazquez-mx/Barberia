@@ -5,6 +5,7 @@ import { sendFail, sendInternalServerError, sendSuccess, sendValidationError } f
 import { ApiError } from '../errors/ApiError.js';
 import {
     updateBarber,
+    reassignBarber,
     deleteBarber,
     listBarbersByShop,
     registerBarber,
@@ -58,6 +59,11 @@ const updateBarberSchema = z
             message: 'At least one field must be provided',
         }
     );
+
+const reassignBarberSchema = z.object({
+    shopId: z.uuid('Invalid shop ID format'),
+    shiftId: z.uuid('Invalid shift ID format'),
+});
 
 export const getById: ApiHandler<BarberResponse | PublicBarberResponse> = async (req, res) => {
     try {
@@ -128,6 +134,27 @@ export const update: ApiHandler<BarberResponse> = async (req, res) => {
 
         const result = await updateBarber({ id: validParams.id, ...validData }, token);
         sendSuccess({ res, data: result, message: 'Barber updated successfully' });
+    } catch (error: unknown) {
+        if (error instanceof ZodError) {
+            sendValidationError({ res, error });
+            return;
+        }
+        if (error instanceof ApiError) {
+            sendFail({ res, message: error.message, status: error.code });
+            return;
+        }
+        sendInternalServerError({ res, error: [String(error)] });
+    }
+};
+
+export const reassign: ApiHandler<BarberResponse> = async (req, res) => {
+    try {
+        const token = extractBearerFromHeader(req);
+        const validParams = barberIdParamSchema.parse({ id: req.params.id });
+        const validData = reassignBarberSchema.parse(req.body);
+
+        const result = await reassignBarber(validParams.id, validData, token);
+        sendSuccess({ res, data: result, message: 'Barber reassigned successfully' });
     } catch (error: unknown) {
         if (error instanceof ZodError) {
             sendValidationError({ res, error });
