@@ -520,8 +520,7 @@ CREATE TABLE recommendation_history (
     client_id       uuid NOT NULL REFERENCES clients(user_id) ON DELETE CASCADE,
     suggestion_text text,
     confidence      numeric(5,2),
-    reasoning       text, -- LLM explanation: why the haircut was chosen, or why no haircut fits
-    recommended_haircut_style_id uuid REFERENCES haircut_styles(id) ON DELETE SET NULL, -- first haircut of the recommendation
+    reasoning       text, -- LLM explanation: why the haircuts were chosen, or why no haircut fits
     error_message   text,
     requested_at    timestamptz NOT NULL DEFAULT now(),
     completed_at    timestamptz,
@@ -532,6 +531,20 @@ CREATE TABLE recommendation_history (
 CREATE INDEX idx_recommendation_history_client ON recommendation_history (client_id, requested_at DESC);
 CREATE TRIGGER trg_recommendation_history_updated_at BEFORE UPDATE ON recommendation_history
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- A recommendation can suggest several haircuts, hence a join table (same pattern as
+-- haircut_style_facial_structures). position keeps the order the AI returned them in
+-- (0 = first/best match). Deleting a haircut style removes only its link, so the history
+-- entry survives with the remaining haircuts (previously the single FK was SET NULL).
+CREATE TABLE recommendation_history_haircut_styles (
+    recommendation_history_id  uuid NOT NULL REFERENCES recommendation_history(id) ON DELETE CASCADE,
+    haircut_style_id           uuid NOT NULL REFERENCES haircut_styles(id) ON DELETE CASCADE,
+    position                   smallint NOT NULL CHECK (position >= 0),
+    PRIMARY KEY (recommendation_history_id, haircut_style_id),
+    UNIQUE (recommendation_history_id, position)
+);
+
+CREATE INDEX idx_recommendation_history_haircut_styles_style ON recommendation_history_haircut_styles (haircut_style_id);
 
 -- ---------- notifications ----------
 

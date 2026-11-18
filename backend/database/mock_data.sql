@@ -12,7 +12,7 @@ BEGIN;
 -- ---------- managers ----------
 
 INSERT INTO users (id, role, email, phone, password_hash, first_name, last_name, birth_date, gender) VALUES
-    ('b27c93cf-2282-4b40-81ea-efb5f7bec219', 'manager', 'gendo.ikari@nerv-barbershop.test',     '5550000001', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Gendo',  'Ikari', '1976-10-01', 'male'),
+    ('b27c93cf-2282-4b40-81ea-efb5f7bec219', 'manager', 'alejandra.manager@barbershop.test',     '5550000001', '$2b$10$YtXR954w3ctSLIHysqgg1ebETZPsH8ElQ2az5WKrPcpJnm0sGWPXq', 'Alejandra',  'Garcia Sandoval', '1976-10-01', 'female'), -- Password: 'Password123'
     ('ca85606b-6af7-4583-82e6-89bcb6a8d4c6', 'manager', 'kozo.fuyutsuki@nerv-barbershop.test',  '5550000002', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Kozo',   'Fuyutsuki', '1976-10-01', 'male'),
     ('63bc8b10-4ea0-4247-bf38-c527e5940368', 'manager', 'keel.lorenz@nerv-barbershop.test',  '5650000002', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Keel',   'Lorenz', '1976-10-01', 'male');
 
@@ -40,7 +40,7 @@ INSERT INTO barbers (id, first_name, last_name, email, phone, shop_id, shift_id,
 -- ---------- receptionists ----------
 
 INSERT INTO users (id, role, email, phone, password_hash, first_name, last_name, birth_date, gender) VALUES
-    ('5204b553-fe01-4c42-a624-7d566e006147', 'receptionist', 'misato.katsuragi@nerv-barbershop.test', '5550000008', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Misato',  'Katsuragi', '1994-05-02', 'female'),
+    ('5204b553-fe01-4c42-a624-7d566e006147', 'receptionist', 'alejandra.recepcionista@barbershop.test', '5550000008', '$2b$10$YtXR954w3ctSLIHysqgg1ebETZPsH8ElQ2az5WKrPcpJnm0sGWPXq', 'Alejandra',  'Garcia Sandoval', '1994-05-02', 'female'), -- Password: 'Password123'
     ('01bd0371-7afc-4756-a7de-26bcb37a163e', 'receptionist', 'ritsuko.akagi@nerv-barbershop.test',    '5550000009', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Ritsuko', 'Akagi', '1994-05-02', 'female');
 
 INSERT INTO receptionists (user_id, shop_id, shift_id) VALUES
@@ -50,7 +50,7 @@ INSERT INTO receptionists (user_id, shop_id, shift_id) VALUES
 -- ---------- clients ----------
 
 INSERT INTO users (id, role, email, phone, password_hash, first_name, last_name, birth_date, gender) VALUES
-    ('9df92579-03de-47c4-aa1f-76658d361e2b', 'client', 'asuka.soryu@nerv-barbershop.test',    '5550000010', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Asuka',  'Langley Soryu', '2004-10-01', 'female'),
+    ('9df92579-03de-47c4-aa1f-76658d361e2b', 'client', 'alejandra.cliente@barbershop.test',    '5550000010', '$2b$10$YtXR954w3ctSLIHysqgg1ebETZPsH8ElQ2az5WKrPcpJnm0sGWPXq', 'Alejandra',  'Garcia Sandoval', '2004-10-01', 'female'), -- Password: 'Password123'
     ('7a3be44f-9740-437b-86d2-c0a0463a0ea2', 'client', 'rei.ayanami@nerv-barbershop.test',    '5550000011', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Rei',    'Ayanami', '2004-10-01', 'female'),
     ('c8d0e26f-6adb-4d84-91ca-4d8fe6e7da97', 'client', 'mari.illustrious@nerv-barbershop.test','5550000012', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Mari',   'Makinami Illustrious', '2004-10-01', 'female'),
     ('df0942b0-7ce1-4edd-8583-01483bcf4cf4', 'client', 'hikari.horaki@nerv-barbershop.test',  '5550000013', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Hikari', 'Horaki', '2004-10-01', 'female'),
@@ -127,7 +127,42 @@ INSERT INTO haircut_styles (id, name, description) VALUES
     ('09fecd6b-d3c8-4453-8d01-1c9d833bbd37', 'EVA Pilot Crop',         'Short, low-maintenance crop with tapered sides.'),
     ('0b18355b-f649-4ee9-a2eb-7c379be103fc', 'Classic Ikari Side Part','Traditional side part with a clean fade.'),
     ('829a128a-61f4-49e3-b2ae-1b4c88862750', 'Rei Bob',                'Straight, blunt bob with even bangs.'),
-    ('df283b6c-dc95-41b1-9336-5bd32ceda854', 'Commander Slickback',    'Slicked-back style for a formal look.');
+    ('df283b6c-dc95-41b1-9336-5bd32ceda854', 'Commander Slickback',    'Slicked-back style for a formal look.'),
+    ('10000000-0000-4000-8000-000000000001', 'Textured Crop',          'Choppy, textured top with a softly tapered fringe.'),
+    ('10000000-0000-4000-8000-000000000002', 'French Crop',            'Short crop with a blunt fringe and tapered sides.'),
+    ('10000000-0000-4000-8000-000000000003', 'Taper Fade',             'Graduated taper that blends neatly into the sides.'),
+    ('10000000-0000-4000-8000-000000000004', 'Low Fade',               'Fade kept low around the ears and neckline.'),
+    ('10000000-0000-4000-8000-000000000005', 'Mid Fade',               'Balanced fade beginning around the temple area.'),
+    ('10000000-0000-4000-8000-000000000006', 'High Fade',              'Bold fade that starts high on the sides.'),
+    ('10000000-0000-4000-8000-000000000007', 'Skin Fade',              'Fade that blends down to bare skin.'),
+    ('10000000-0000-4000-8000-000000000008', 'Buzz Cut',               'Evenly clipped short cut with minimal styling.'),
+    ('10000000-0000-4000-8000-000000000009', 'Crew Cut',               'Short tapered cut with slightly more length on top.'),
+    ('10000000-0000-4000-8000-00000000000a', 'Ivy League',             'Classic short top with a neat, tapered side.'),
+    ('10000000-0000-4000-8000-00000000000b', 'Disconnected Undercut',  'Strong contrast between a long top and closely cut sides.'),
+    ('10000000-0000-4000-8000-00000000000c', 'Pompadour',              'Volume-heavy top swept upward and backward.'),
+    ('10000000-0000-4000-8000-00000000000d', 'Modern Pompadour',       'Textured pompadour with tapered or faded sides.'),
+    ('10000000-0000-4000-8000-00000000000e', 'Quiff',                  'Raised front section brushed forward and upward.'),
+    ('10000000-0000-4000-8000-00000000000f', 'Comb Over',              'Longer top styled to one side over a taper.'),
+    ('10000000-0000-4000-8000-000000000010', 'Deep Side Part',         'Defined side part with a polished, structured top.'),
+    ('10000000-0000-4000-8000-000000000011', 'Faux Hawk',              'Central lift with shorter, styled sides.'),
+    ('10000000-0000-4000-8000-000000000012', 'Spiky Hair',             'Short top styled into defined spikes.'),
+    ('10000000-0000-4000-8000-000000000013', 'Messy Fringe',           'Relaxed forward fringe with texture and movement.'),
+    ('10000000-0000-4000-8000-000000000014', 'Curtain Haircut',        'Medium-length hair split naturally down the middle.'),
+    ('10000000-0000-4000-8000-000000000015', 'Wavy Shag',              'Layered, textured cut designed to enhance waves.'),
+    ('10000000-0000-4000-8000-000000000016', 'Modern Mullet',          'Shorter crown and sides with a flowing back.'),
+    ('10000000-0000-4000-8000-000000000017', 'Mohawk',                 'Narrow raised strip of hair with closely cut sides.'),
+    ('10000000-0000-4000-8000-000000000018', 'Tapered Afro',           'Rounded natural afro with tapered sides.'),
+    ('10000000-0000-4000-8000-000000000019', 'Temple Fade',            'Clean fade concentrated around the temples.'),
+    ('10000000-0000-4000-8000-00000000001a', 'Caesar Cut',             'Short, horizontal fringe with even overall length.'),
+    ('10000000-0000-4000-8000-00000000001b', 'High Top Fade',          'Full volume on top with sharply faded sides.'),
+    ('10000000-0000-4000-8000-00000000001c', 'Burst Fade',             'Rounded fade that curves around the ears.'),
+    ('10000000-0000-4000-8000-00000000001d', 'Braids',                 'Protective braided style with a variety of patterns.'),
+    ('10000000-0000-4000-8000-00000000001e', 'Cornrows',               'Hair braided tightly in straight or curved rows.'),
+    ('10000000-0000-4000-8000-00000000001f', 'Dreadlocks',             'Naturally mature or maintained lock style.'),
+    ('10000000-0000-4000-8000-000000000020', 'Bantu Knots',            'Small coiled knots distributed across the head.'),
+    ('10000000-0000-4000-8000-000000000021', 'Wolf Cut',               'Heavily layered cut with a full, shaggy shape.'),
+    ('10000000-0000-4000-8000-000000000022', 'Classic Taper',          'Timeless short cut with a gradual, clean taper.'),
+    ('10000000-0000-4000-8000-000000000023', 'Slicked Back Crop',      'Textured crop brushed smoothly backward.');
 
 INSERT INTO haircut_style_facial_structures (haircut_style_id, facial_structure_type) VALUES
     ('4dd02f15-8665-4c28-ad3d-b789847c462f', 'oval'),
@@ -139,7 +174,42 @@ INSERT INTO haircut_style_facial_structures (haircut_style_id, facial_structure_
     ('829a128a-61f4-49e3-b2ae-1b4c88862750', 'round'),
     ('829a128a-61f4-49e3-b2ae-1b4c88862750', 'heart'),
     ('df283b6c-dc95-41b1-9336-5bd32ceda854', 'triangle'),
-    ('df283b6c-dc95-41b1-9336-5bd32ceda854', 'square');
+    ('df283b6c-dc95-41b1-9336-5bd32ceda854', 'square'),
+    ('10000000-0000-4000-8000-000000000001', 'oval'), ('10000000-0000-4000-8000-000000000001', 'diamond'),
+    ('10000000-0000-4000-8000-000000000002', 'oval'), ('10000000-0000-4000-8000-000000000002', 'heart'),
+    ('10000000-0000-4000-8000-000000000003', 'oval'), ('10000000-0000-4000-8000-000000000003', 'rectangle'),
+    ('10000000-0000-4000-8000-000000000004', 'round'), ('10000000-0000-4000-8000-000000000004', 'oval'),
+    ('10000000-0000-4000-8000-000000000005', 'square'), ('10000000-0000-4000-8000-000000000005', 'oval'),
+    ('10000000-0000-4000-8000-000000000006', 'diamond'), ('10000000-0000-4000-8000-000000000006', 'triangle'),
+    ('10000000-0000-4000-8000-000000000007', 'oval'), ('10000000-0000-4000-8000-000000000007', 'square'),
+    ('10000000-0000-4000-8000-000000000008', 'oval'), ('10000000-0000-4000-8000-000000000008', 'heart'),
+    ('10000000-0000-4000-8000-000000000009', 'diamond'), ('10000000-0000-4000-8000-000000000009', 'rectangle'),
+    ('10000000-0000-4000-8000-00000000000a', 'oval'), ('10000000-0000-4000-8000-00000000000a', 'triangle'),
+    ('10000000-0000-4000-8000-00000000000b', 'square'), ('10000000-0000-4000-8000-00000000000b', 'rectangle'),
+    ('10000000-0000-4000-8000-00000000000c', 'triangle'), ('10000000-0000-4000-8000-00000000000c', 'oval'),
+    ('10000000-0000-4000-8000-00000000000d', 'oval'), ('10000000-0000-4000-8000-00000000000d', 'diamond'),
+    ('10000000-0000-4000-8000-00000000000e', 'oval'), ('10000000-0000-4000-8000-00000000000e', 'square'),
+    ('10000000-0000-4000-8000-00000000000f', 'rectangle'), ('10000000-0000-4000-8000-00000000000f', 'oval'),
+    ('10000000-0000-4000-8000-000000000010', 'oval'), ('10000000-0000-4000-8000-000000000010', 'square'),
+    ('10000000-0000-4000-8000-000000000011', 'diamond'), ('10000000-0000-4000-8000-000000000011', 'oval'),
+    ('10000000-0000-4000-8000-000000000012', 'heart'), ('10000000-0000-4000-8000-000000000012', 'oval'),
+    ('10000000-0000-4000-8000-000000000013', 'round'), ('10000000-0000-4000-8000-000000000013', 'heart'),
+    ('10000000-0000-4000-8000-000000000014', 'oval'), ('10000000-0000-4000-8000-000000000014', 'heart'),
+    ('10000000-0000-4000-8000-000000000015', 'round'), ('10000000-0000-4000-8000-000000000015', 'oval'),
+    ('10000000-0000-4000-8000-000000000016', 'oval'), ('10000000-0000-4000-8000-000000000016', 'diamond'),
+    ('10000000-0000-4000-8000-000000000017', 'oval'), ('10000000-0000-4000-8000-000000000017', 'square'),
+    ('10000000-0000-4000-8000-000000000018', 'round'), ('10000000-0000-4000-8000-000000000018', 'diamond'),
+    ('10000000-0000-4000-8000-000000000019', 'oval'), ('10000000-0000-4000-8000-000000000019', 'heart'),
+    ('10000000-0000-4000-8000-00000000001a', 'square'), ('10000000-0000-4000-8000-00000000001a', 'round'),
+    ('10000000-0000-4000-8000-00000000001b', 'oval'), ('10000000-0000-4000-8000-00000000001b', 'diamond'),
+    ('10000000-0000-4000-8000-00000000001c', 'oval'), ('10000000-0000-4000-8000-00000000001c', 'round'),
+    ('10000000-0000-4000-8000-00000000001d', 'oval'), ('10000000-0000-4000-8000-00000000001d', 'square'),
+    ('10000000-0000-4000-8000-00000000001e', 'diamond'), ('10000000-0000-4000-8000-00000000001e', 'oval'),
+    ('10000000-0000-4000-8000-00000000001f', 'oval'), ('10000000-0000-4000-8000-00000000001f', 'rectangle'),
+    ('10000000-0000-4000-8000-000000000020', 'round'), ('10000000-0000-4000-8000-000000000020', 'heart'),
+    ('10000000-0000-4000-8000-000000000021', 'oval'), ('10000000-0000-4000-8000-000000000021', 'triangle'),
+    ('10000000-0000-4000-8000-000000000022', 'square'), ('10000000-0000-4000-8000-000000000022', 'oval'),
+    ('10000000-0000-4000-8000-000000000023', 'oval'), ('10000000-0000-4000-8000-000000000023', 'rectangle');
 
 -- ---------- appointments ----------
 
@@ -300,25 +370,27 @@ INSERT INTO appointment_services (appointment_id, service_id, price_at_booking, 
 
 -- ---------- AI recommendation history ----------
 
-INSERT INTO recommendation_history (client_id, suggestion_text, confidence, reasoning, recommended_haircut_style_id, error_message, requested_at, completed_at) VALUES
-    ('9df92579-03de-47c4-aa1f-76658d361e2b',
+INSERT INTO recommendation_history (id, client_id, suggestion_text, confidence, reasoning, error_message, requested_at, completed_at) VALUES
+    ('b1a5c0de-0001-4000-8000-000000000001', '9df92579-03de-47c4-aa1f-76658d361e2b',
      'Based on your oval face shape, the Classic Ikari Side Part would suit you well.', 92.50,
-     'Oval faces balance well with a clean side part, and it fits the formal look requested.',
-     '0b18355b-f649-4ee9-a2eb-7c379be103fc', NULL,
+     'Oval faces balance well with a clean side part, and it fits the formal look requested.', NULL,
      now() - interval '10 days', now() - interval '10 days' + interval '2 minutes'),
-    ('7a3be44f-9740-437b-86d2-c0a0463a0ea2',
-     'Your round facial structure pairs well with a longer top and tapered sides — try the EVA Pilot Crop.', 88.00,
-     'Tapered sides add length to a round face, and the crop is low-maintenance as requested.',
-     '09fecd6b-d3c8-4453-8d01-1c9d833bbd37', NULL,
+    ('b1a5c0de-0001-4000-8000-000000000002', '7a3be44f-9740-437b-86d2-c0a0463a0ea2',
+     'Your round facial structure pairs well with a longer top and tapered sides — try the EVA Pilot Crop or the Taper Fade.', 88.00,
+     'Tapered sides add length to a round face, and both cuts are low-maintenance as requested.', NULL,
      now() - interval '9 days', now() - interval '9 days' + interval '1 minute'),
-    ('9df92579-03de-47c4-aa1f-76658d361e2b',
+    ('b1a5c0de-0001-4000-8000-000000000003', '9df92579-03de-47c4-aa1f-76658d361e2b',
      NULL, NULL,
-     'None of the available haircuts keep the requested length while matching the client''s facial structure.',
-     NULL, NULL,
+     'None of the available haircuts keep the requested length while matching the client''s facial structure.', NULL,
      now() - interval '7 days', now() - interval '7 days' + interval '1 minute'),
-    ('c8d0e26f-6adb-4d84-91ca-4d8fe6e7da97',
-     NULL, NULL, NULL, NULL, 'Face not detected in the uploaded photo. Please try again with a clearer, front-facing image.',
+    ('b1a5c0de-0001-4000-8000-000000000004', 'c8d0e26f-6adb-4d84-91ca-4d8fe6e7da97',
+     NULL, NULL, NULL, 'Face not detected in the uploaded photo. Please try again with a clearer, front-facing image.',
      now() - interval '6 days', now() - interval '6 days' + interval '30 seconds');
+
+INSERT INTO recommendation_history_haircut_styles (recommendation_history_id, haircut_style_id, position) VALUES
+    ('b1a5c0de-0001-4000-8000-000000000001', '0b18355b-f649-4ee9-a2eb-7c379be103fc', 0), -- Classic Ikari Side Part
+    ('b1a5c0de-0001-4000-8000-000000000002', '09fecd6b-d3c8-4453-8d01-1c9d833bbd37', 0), -- EVA Pilot Crop
+    ('b1a5c0de-0001-4000-8000-000000000002', '10000000-0000-4000-8000-000000000003', 1); -- Taper Fade
 
 -- ---------- notifications ----------
 

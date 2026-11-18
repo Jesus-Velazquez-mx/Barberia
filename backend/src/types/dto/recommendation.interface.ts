@@ -45,8 +45,8 @@ interface RecommendationHistoryEntryDTO {
     /** Porcentaje (0-100). */
     confidence: number | null;
     reasoning: string | null;
-    /** Primer corte de la recomendación; `null` si no hubo recomendación o el corte fue eliminado. */
-    recommendedHaircut: { id: string; name: string } | null;
+    /** Cortes recomendados, en el orden de la IA; vacío si no hubo recomendación o los cortes fueron eliminados. */
+    recommendedHaircuts: { id: string; name: string }[];
     requestedAt: Date;
     completedAt: Date | null;
 }

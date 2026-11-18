@@ -30,7 +30,11 @@ function HistoryItem({ item }: { item: HaircutRecommendation }) {
         <span className="min-w-0 flex-1">
           <span className="block text-sm font-semibold text-(--text-h)">{formatDate(item.requestedAt)}</span>
           <span className="block truncate text-sm text-(--text)">
-            {isRecommended ? (item.recommendedHaircut?.name ?? 'Recomendación') : 'Sin corte adecuado'}
+            {isRecommended
+              ? item.recommendedHaircuts.length > 0
+                ? item.recommendedHaircuts.map((haircut) => haircut.name).join(', ')
+                : 'Recomendación'
+              : 'Sin corte adecuado'}
           </span>
         </span>
 
