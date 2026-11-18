@@ -12,7 +12,7 @@ BEGIN;
 -- ---------- managers ----------
 
 INSERT INTO users (id, role, email, phone, password_hash, first_name, last_name, birth_date, gender) VALUES
-    ('b27c93cf-2282-4b40-81ea-efb5f7bec219', 'manager', 'gendo.ikari@nerv-barbershop.test',     '5550000001', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Gendo',  'Ikari', '1976-10-01', 'male'),
+    ('b27c93cf-2282-4b40-81ea-efb5f7bec219', 'manager', 'alejandra.manager@barbershop.test',     '5550000001', '$2b$10$YtXR954w3ctSLIHysqgg1ebETZPsH8ElQ2az5WKrPcpJnm0sGWPXq', 'Alejandra',  'Garcia Sandoval', '1976-10-01', 'female'), -- Password: 'Password123'
     ('ca85606b-6af7-4583-82e6-89bcb6a8d4c6', 'manager', 'kozo.fuyutsuki@nerv-barbershop.test',  '5550000002', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Kozo',   'Fuyutsuki', '1976-10-01', 'male'),
     ('63bc8b10-4ea0-4247-bf38-c527e5940368', 'manager', 'keel.lorenz@nerv-barbershop.test',  '5650000002', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Keel',   'Lorenz', '1976-10-01', 'male');
 
@@ -40,7 +40,7 @@ INSERT INTO barbers (id, first_name, last_name, email, phone, shop_id, shift_id,
 -- ---------- receptionists ----------
 
 INSERT INTO users (id, role, email, phone, password_hash, first_name, last_name, birth_date, gender) VALUES
-    ('5204b553-fe01-4c42-a624-7d566e006147', 'receptionist', 'misato.katsuragi@nerv-barbershop.test', '5550000008', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Misato',  'Katsuragi', '1994-05-02', 'female'),
+    ('5204b553-fe01-4c42-a624-7d566e006147', 'receptionist', 'alejandra.recepcionista@barbershop.test', '5550000008', '$2b$10$YtXR954w3ctSLIHysqgg1ebETZPsH8ElQ2az5WKrPcpJnm0sGWPXq', 'Alejandra',  'Garcia Sandoval', '1994-05-02', 'female'), -- Password: 'Password123'
     ('01bd0371-7afc-4756-a7de-26bcb37a163e', 'receptionist', 'ritsuko.akagi@nerv-barbershop.test',    '5550000009', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Ritsuko', 'Akagi', '1994-05-02', 'female');
 
 INSERT INTO receptionists (user_id, shop_id, shift_id) VALUES
@@ -50,7 +50,7 @@ INSERT INTO receptionists (user_id, shop_id, shift_id) VALUES
 -- ---------- clients ----------
 
 INSERT INTO users (id, role, email, phone, password_hash, first_name, last_name, birth_date, gender) VALUES
-    ('9df92579-03de-47c4-aa1f-76658d361e2b', 'client', 'asuka.soryu@nerv-barbershop.test',    '5550000010', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Asuka',  'Langley Soryu', '2004-10-01', 'female'),
+    ('9df92579-03de-47c4-aa1f-76658d361e2b', 'client', 'alejandra.cliente@barbershop.test',    '5550000010', '$2b$10$YtXR954w3ctSLIHysqgg1ebETZPsH8ElQ2az5WKrPcpJnm0sGWPXq', 'Alejandra',  'Garcia Sandoval', '2004-10-01', 'female'), -- Password: 'Password123'
     ('7a3be44f-9740-437b-86d2-c0a0463a0ea2', 'client', 'rei.ayanami@nerv-barbershop.test',    '5550000011', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Rei',    'Ayanami', '2004-10-01', 'female'),
     ('c8d0e26f-6adb-4d84-91ca-4d8fe6e7da97', 'client', 'mari.illustrious@nerv-barbershop.test','5550000012', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Mari',   'Makinami Illustrious', '2004-10-01', 'female'),
     ('df0942b0-7ce1-4edd-8583-01483bcf4cf4', 'client', 'hikari.horaki@nerv-barbershop.test',  '5550000013', '$2b$10$Qsyyw2A9nY41jcwqGvOSL..ymmVpMw.IqpaFUEQkBZcXW.SNZIxoS', 'Hikari', 'Horaki', '2004-10-01', 'female'),
