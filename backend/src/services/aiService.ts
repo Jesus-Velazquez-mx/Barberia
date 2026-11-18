@@ -212,7 +212,7 @@ const requestRecommendation = async (
 
 type HistoryResultFields = Pick<
     CreateRecommendationHistoryParams,
-    'suggestionText' | 'confidence' | 'reasoning' | 'recommendedHaircutStyleId'
+    'suggestionText' | 'confidence' | 'reasoning' | 'recommendedHaircutStyleIds'
 >;
 
 /** Campos del historial que corresponden a un resultado de la IA (recomendación o "ningún corte aplica"). */
@@ -226,8 +226,7 @@ const toHistoryFields = ({ data }: HaircutRecommendationResult): HistoryResultFi
         // La IA reporta la confianza entre 0 y 1, pero la tabla la guarda como porcentaje.
         confidence: Math.round(data.confidence * 10000) / 100,
         reasoning: data.reasoning,
-        // Si la IA sugiere varios cortes, el historial solo conserva el primero.
-        recommendedHaircutStyleId: data.haircuts[0]?.id ?? null,
+        recommendedHaircutStyleIds: data.haircuts.map((haircut) => haircut.id),
     };
 };
 

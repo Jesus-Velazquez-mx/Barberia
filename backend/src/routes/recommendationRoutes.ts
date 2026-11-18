@@ -184,13 +184,16 @@ router.post('/recommendations/generate', getHaircutRecommendation);
  *                       suggestionText: { type: string, nullable: true }
  *                       confidence: { type: number, nullable: true, minimum: 0, maximum: 100, example: 92.5 }
  *                       reasoning: { type: string, nullable: true }
- *                       recommendedHaircut:
- *                         type: object
- *                         nullable: true
- *                         description: Primer corte de la recomendación.
- *                         properties:
- *                           id: { type: string, format: uuid }
- *                           name: { type: string, example: EVA Pilot Crop }
+ *                       recommendedHaircuts:
+ *                         type: array
+ *                         description: >-
+ *                           Cortes recomendados, en el orden de la IA (el primero es el mejor). Vacío si ningún corte
+ *                           aplicó o los cortes recomendados fueron eliminados.
+ *                         items:
+ *                           type: object
+ *                           properties:
+ *                             id: { type: string, format: uuid }
+ *                             name: { type: string, example: EVA Pilot Crop }
  *                       requestedAt: { type: string, format: date-time }
  *                       completedAt: { type: string, format: date-time, nullable: true }
  *                 message: { type: string, example: Recommendation history retrieved successfully }
