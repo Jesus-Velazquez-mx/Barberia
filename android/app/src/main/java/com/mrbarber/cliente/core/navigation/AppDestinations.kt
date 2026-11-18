@@ -24,3 +24,6 @@ data object MyAppointmentsDestination
 
 @Serializable
 data object TelegramNotificationsDestination
+
+@Serializable
+data object RecommendationDestination
