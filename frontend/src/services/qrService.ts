@@ -1,9 +1,12 @@
 import QRCode from 'qrcode';
 
-const bot_name = 'MrBarberNotificationBot';
+const bot_name = import.meta.env.VITE_TELEGRAM_BOT_NAME;
 
 
 const buildTelegramLink = (clientId: string): string => {
+    if (!bot_name) {
+        throw new Error('VITE_TELEGRAM_BOT_NAME is not configured.');
+    }
     return `https://t.me/${bot_name}?start=${encodeURIComponent(clientId)}`;
 }
 
