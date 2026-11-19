@@ -174,6 +174,7 @@ router.post('/appointments', create);
  *                       id: { type: string, format: uuid }
  *                       shopId: { type: string, format: uuid }
  *                       barberId: { type: string, format: uuid }
+ *                       isWalkIn: { type: boolean }
  *                       clientId: { type: string, format: uuid, nullable: true }
  *                       isRegisteredClient: { type: boolean }
  *                       guestClientName: { type: string, nullable: true }
