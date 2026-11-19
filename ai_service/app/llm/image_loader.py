@@ -69,16 +69,16 @@ def _validate_key(key: str) -> None:
     """
     La key llega de fuera, y las credenciales de S3 pueden leer todo el
     prefijo (o el bucket entero, según la política), así que solo se aceptan
-    keys dentro de AWS_BUCKET_KEY_PREFIX con una forma razonable.
+    keys dentro de AWS_BUCKET_KEY_PREFIX_USER con una forma razonable.
     """
     settings = get_settings()
-    prefix = settings.AWS_BUCKET_KEY_PREFIX
+    prefix = settings.AWS_BUCKET_KEY_PREFIX_USER
 
     if not (settings.AWS_BUCKET and settings.AWS_REGION and prefix):
         raise ImageLoadError(
             LLMClientErrorCategory.UNKNOWN,
             "Photo downloads are not enabled: AWS_BUCKET, AWS_REGION and "
-            "AWS_BUCKET_KEY_PREFIX must be configured",
+            "AWS_BUCKET_KEY_PREFIX_USER must be configured",
         )
 
     if (

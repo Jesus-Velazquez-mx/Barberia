@@ -162,7 +162,8 @@ INSERT INTO haircut_styles (id, name, description) VALUES
     ('10000000-0000-4000-8000-000000000020', 'Bantu Knots',            'Small coiled knots distributed across the head.'),
     ('10000000-0000-4000-8000-000000000021', 'Wolf Cut',               'Heavily layered cut with a full, shaggy shape.'),
     ('10000000-0000-4000-8000-000000000022', 'Classic Taper',          'Timeless short cut with a gradual, clean taper.'),
-    ('10000000-0000-4000-8000-000000000023', 'Slicked Back Crop',      'Textured crop brushed smoothly backward.');
+    ('10000000-0000-4000-8000-000000000023', 'Slicked Back Crop',      'Textured crop brushed smoothly backward.'),
+    ('10000000-0000-4000-8000-000000000024', 'Kim Jong Un',            'Classic haircut for good looking leaders.');
 
 INSERT INTO haircut_style_facial_structures (haircut_style_id, facial_structure_type) VALUES
     ('4dd02f15-8665-4c28-ad3d-b789847c462f', 'oval'),
@@ -209,7 +210,11 @@ INSERT INTO haircut_style_facial_structures (haircut_style_id, facial_structure_
     ('10000000-0000-4000-8000-000000000020', 'round'), ('10000000-0000-4000-8000-000000000020', 'heart'),
     ('10000000-0000-4000-8000-000000000021', 'oval'), ('10000000-0000-4000-8000-000000000021', 'triangle'),
     ('10000000-0000-4000-8000-000000000022', 'square'), ('10000000-0000-4000-8000-000000000022', 'oval'),
-    ('10000000-0000-4000-8000-000000000023', 'oval'), ('10000000-0000-4000-8000-000000000023', 'rectangle');
+    ('10000000-0000-4000-8000-000000000023', 'oval'), ('10000000-0000-4000-8000-000000000023', 'rectangle'),
+    ('10000000-0000-4000-8000-000000000024', 'oval'), ('10000000-0000-4000-8000-000000000024', 'rectangle'),
+    ('10000000-0000-4000-8000-000000000024', 'square'), ('10000000-0000-4000-8000-000000000024', 'round'),
+    ('10000000-0000-4000-8000-000000000024', 'triangle'), ('10000000-0000-4000-8000-000000000024', 'diamond'),
+    ('10000000-0000-4000-8000-000000000024', 'heart');
 
 -- ---------- appointments ----------
 

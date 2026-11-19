@@ -73,7 +73,7 @@ def _s3_settings(**overrides) -> Settings:
     values = {
         "AWS_BUCKET": "private-bucket",
         "AWS_REGION": "us-east-1",
-        "AWS_BUCKET_KEY_PREFIX": PREFIX,
+        "AWS_BUCKET_KEY_PREFIX_USER": PREFIX,
         **overrides,
     }
     return _settings(**values)
@@ -144,7 +144,7 @@ def test_s3_rejects_keys_outside_the_prefix_without_requesting(s3, key) -> None:
 
 @pytest.mark.parametrize(
     "overrides",
-    [{"AWS_BUCKET": ""}, {"AWS_REGION": ""}, {"AWS_BUCKET_KEY_PREFIX": ""}],
+    [{"AWS_BUCKET": ""}, {"AWS_REGION": ""}, {"AWS_BUCKET_KEY_PREFIX_USER": ""}],
 )
 def test_s3_fails_closed_when_not_configured(s3, monkeypatch, overrides) -> None:
     fake = s3(_image_bytes())

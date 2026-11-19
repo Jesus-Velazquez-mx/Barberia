@@ -7,7 +7,7 @@ internos y se protege mediante la cabecera (HTTP header) `X-Internal-Api-Key`, e
 
 ## Estado actual
 
-Contiene el endpoint `/haircut/recommend` y `/face/detect-structure`, que clasifica la estructura facial de una foto con un modelo local de PyTorch. La foto se identifica con su key en el bucket privado de S3 (`photoKey`): el cliente web la sube con la URL prefirmada que genera el backend, el backend envía la key a este servicio y el servicio la descarga con sus propias credenciales de AWS (solo lectura). La key debe estar dentro de `AWS_BUCKET_KEY_PREFIX`. El modelo se descarga y verifica (SHA256) al iniciar el servicio.
+Contiene el endpoint `/haircut/recommend` y `/face/detect-structure`, que clasifica la estructura facial de una foto con un modelo local de PyTorch. La foto se identifica con su key en el bucket privado de S3 (`photoKey`): el cliente web la sube con la URL prefirmada que genera el backend, el backend envía la key a este servicio y el servicio la descarga con sus propias credenciales de AWS (solo lectura). La key debe estar dentro de `AWS_BUCKET_KEY_PREFIX_USER`. El modelo se descarga y verifica (SHA256) al iniciar el servicio.
 
 ## Arquitectura
 
@@ -98,11 +98,11 @@ OLLAMA_MODEL=gemma4:e4b
 | `OLLAMA_THINK` | `false` | Activa el razonamiento (*thinking*) de los modelos que lo soportan. Está desactivado porque consume tokens y contexto, y aquí la salida ya está restringida a un JSON. |
 | `OLLAMA_TEMPERATURE` | `0.0` | Temperatura de generación. |
 | `OLLAMA_KEEP_ALIVE` | `10m` | Tiempo que el modelo permanece cargado en memoria tras una petición. |
-| `AWS_ACCESS_KEY_ID` | *(ninguno)* | Credenciales del usuario IAM con permiso `s3:GetObject` sobre `<AWS_BUCKET>/<AWS_BUCKET_KEY_PREFIX>*`. Si no se definen, boto3 usa su cadena por defecto (p. ej. un rol de instancia). |
+| `AWS_ACCESS_KEY_ID` | *(ninguno)* | Credenciales del usuario IAM con permiso `s3:GetObject` sobre `<AWS_BUCKET>/<AWS_BUCKET_KEY_PREFIX_USER>*`. Si no se definen, boto3 usa su cadena por defecto (p. ej. un rol de instancia). |
 | `AWS_SECRET_ACCESS_KEY` | *(ninguno)* | Secreto del usuario IAM anterior. |
 | `AWS_REGION` | *(vacío, obligatoria para `photoKey`)* | Región del bucket. |
 | `AWS_BUCKET` | *(vacío, obligatoria para `photoKey`)* | Nombre del bucket (no la URL). |
-| `AWS_BUCKET_KEY_PREFIX` | *(vacío, obligatoria para `photoKey`)* | Prefijo de las keys de las fotos; el mismo que usa el backend. Las keys que no empiecen con él se rechazan. |
+| `AWS_BUCKET_KEY_PREFIX_USER` | *(vacío, obligatoria para `photoKey`)* | Prefijo de las keys de las fotos; el mismo que usa el backend. Las keys que no empiecen con él se rechazan. |
 | `IMAGE_MAX_BYTES` | `10485760` | Tamaño máximo del archivo descargado. |
 | `IMAGE_MAX_PIXELS` | `40000000` | Ancho × alto máximo (protege contra *decompression bombs*). |
 | `IMAGE_MAX_SIDE` | `1024` | Lado mayor (px) al que se reduce la imagen antes de enviarla al modelo. |
