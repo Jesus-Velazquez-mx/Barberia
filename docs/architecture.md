@@ -159,9 +159,20 @@ Client photos are stored in a private S3 bucket, not in Postgres. There is one p
 - The key is never taken from the client. This means a user cannot ask for another user's photo to be analyzed.
 - Other static assets (mainly images) are intended for the same bucket, but nothing else uses it yet.
 
+### 1.5.1 Periodic jobs (`backend/src/jobs/`)
+
+An in-process runner executes periodic jobs. It is started by `server.ts` only after the database connects, and stopped on `SIGTERM`/`SIGINT` as part of a graceful shutdown (it waits for in-flight runs, then the Telegram bot, the HTTP server and the pool are closed).
+
+- **Groups**: jobs are registered in ordered groups (`buildJobGroups` in `jobs/index.ts`). Each group runs once immediately when the runner starts and then on its own interval; it runs its jobs sequentially, in order, sharing one `now` captured at the start of the run. A failing job is logged and the next jobs still run. Scheduling is a fixed-delay `setTimeout` chain, so a group never overlaps itself.
+  - `appointment-status` (every `JOBS_INTERVAL_MS`, default 60 s): the required order is 1) walk-in auto check-in (#258) → 2) complete (#253) → 3) no-show (#254). The slots are reserved; the jobs are added by those issues.
+  - `appointment-reminders` (every `REMINDERS_JOB_INTERVAL_MS`, default 15 min): Telegram reminders (`processReminders`).
+- **Multi-instance safety**: every group run is wrapped in `pg_try_advisory_lock(lockKey)` on a dedicated connection; if another instance holds it, the run is skipped. An advisory lock was chosen over `FOR UPDATE SKIP LOCKED` because it also protects jobs with external side effects (Telegram messages), which a row-level `SKIP LOCKED` update cannot. Status jobs must additionally be idempotent `UPDATE ... WHERE status IN (...)` statements.
+- **Writing a job**: implement `Job` (`jobs/types.ts`): `run({ now })` returns `{ affected }` for the per-run log. Use `now` as a query parameter instead of SQL `now()` so the job can be tested deterministically; tests call the job function (or `runner.runGroupOnce(name, now)`) directly.
+- **Configuration** (all optional): `JOBS_ENABLED` (`false` disables the runner; `tests/setup.ts` sets it by default), `JOBS_INTERVAL_MS`, `REMINDERS_JOB_INTERVAL_MS` (positive integers, validated in `globalConfig.ts`).
+
 ### 1.6 Notifications (WhatsApp / email)
 
-Not implemented. The backend has no scheduler dependency and no WhatsApp or SES SDK. `notifications_log` exists in the schema, but its controller and repository are empty placeholders (see §1.2). Confirmations and notifications for appointment operations (booking, editing, cancelling) are pending. Once reminders exist, a reschedule must re-time the appointment's reminder jobs and a cancellation must remove them. Design considerations, unchanged from the original plan:
+Not implemented. Telegram reminders run on the periodic job runner (§1.5.1); the backend has no WhatsApp or SES SDK. `notifications_log` exists in the schema, but its controller and repository are empty placeholders (see §1.2). Confirmations and notifications for appointment operations (booking, editing, cancelling) are pending. Once reminders exist, a reschedule must re-time the appointment's reminder jobs and a cancellation must remove them. Design considerations, unchanged from the original plan:
 
 - **WhatsApp**: requires the WhatsApp Business Platform (via Meta directly or a BSP such as Twilio, MessageBird or 360dialog). Messages outside a 24-hour user-initiated session window need pre-approved templates, so appointment reminders will need one.
 - **Email**: AWS SES is the natural fit given we are already on AWS.
@@ -268,7 +279,7 @@ The AI microservice is not reached through Apache. It is called directly over th
 
 - **Auth**: a JWT session with role claims (manager, receptionist, client) is implemented for login and registration (§1.2): 24-hour expiry, no refresh flow, token and user persisted to `localStorage` on the web and to DataStore on Android. Still open: a refresh-token strategy, or whether "log in again after 24h" is acceptable long-term.
 - **Authorization**: role and scope checks live in services, through `services/userPermissions.ts`. There is no route-level middleware. Each protected controller extracts the bearer token itself (`extractBearerFromHeader`), and each service enforces the role. A gap remains: `PUT /api/users` and `DELETE /api/users/:id` let a manager act on any non-manager user, including receptionists of other shops (see §1.4).
-- **Background jobs**: reminders, and possibly AI processing if recommendations stop being instant, still need a decision and are unbuilt (see §1.6).
+- **Background jobs**: an in-process periodic runner exists (§1.5.1). AI processing, if recommendations stop being instant, is still undecided.
 - **Image handling**: presigned uploads, the 5 MB and `image/*` limits, key derivation, and in-memory processing in the AI service are implemented (§1.5). Still open: retention rules, consent and disclosure, and whether photos sent to Anthropic under `AI_PROVIDER=anthropic` are acceptable (§5).
 - **Rate limiting and abuse prevention**: especially around booking (slot spam) and the recommendation endpoint (LLM cost). Nothing is implemented yet.
 - **CORS**: the `cors` middleware allows a single origin, `FRONTEND_URL` (`http://localhost:5173` when `ENV=local`; otherwise the env var, set from a GitHub variable), with methods `GET`, `POST`, `PUT` and `DELETE`. Because only one origin is allowed, the staging frontend cannot call the production backend unless `FRONTEND_URL` points to it.

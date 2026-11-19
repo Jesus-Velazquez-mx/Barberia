@@ -153,7 +153,7 @@ Los permisos se implementan en `services/userPermissions.ts`, no en middleware, 
 
 ## 11. Requisitos técnicos derivados de las reglas
 
-- No existe ningún mecanismo de tareas programadas en el backend: debe introducirse un runner periódico en proceso (cada 1 minuto, configurable) que no solape ejecuciones, registre errores sin detener el servidor, apague ordenadamente, esté deshabilitado por defecto en tests y sea seguro con varias instancias (advisory lock o `FOR UPDATE SKIP LOCKED`). Los jobs reciben `now` como parámetro.
+- **[Hecho en #252: `backend/src/jobs/`, con `pg_try_advisory_lock` por grupo]** No existía ningún mecanismo de tareas programadas en el backend: se introduce un runner periódico en proceso (cada 1 minuto, configurable) que no solape ejecuciones, registre errores sin detener el servidor, apague ordenadamente, esté deshabilitado por defecto en tests y sea seguro con varias instancias (advisory lock o `FOR UPDATE SKIP LOCKED`). Los jobs reciben `now` como parámetro.
 - Esquema (`backend/database/init_database.sql`, sin herramienta de migraciones): trigger de reinicio por `no_show` con recompensa (R-LO-3), `CHECK` de R-GEN-6, e índices parciales para los jobs, p. ej. `(scheduled_start) WHERE status IN ('scheduled','rescheduled')` y `(scheduled_end) WHERE status = 'checked_in'`. Actualizar `mock_data.sql` si algún dato deja de ser válido.
 - La creación de citas (`POST /api/appointments`) debe aceptar `isWalkIn` (opcional, `false` por defecto) y exponerlo en la respuesta.
 - Respuestas de la API en el envelope `{ data, message, error }`; los errores de negocio se lanzan como `ApiError`. Actualizar la documentación Swagger de cada ruta nueva o modificada.
@@ -166,7 +166,7 @@ Los permisos se implementan en `services/userPermissions.ts`, no en middleware, 
 | D2 | Check-in desde `scheduled` y `rescheduled` | Aprobada |
 | D3 | Check-in desde 15 min antes del inicio, condicionado al slot previo libre del barbero | Aprobada |
 | D4 | Completado cuando `now >= scheduled_end`, `completed_at = scheduled_end` | Aprobada |
-| D5 | Jobs periódicos en proceso; orden: auto check-in → completar → no-show | Propuesta (técnica) |
+| D5 | Jobs periódicos en proceso; orden: auto check-in → completar → no-show | Implementada la infraestructura (#252, `backend/src/jobs/`, advisory lock por grupo) |
 | D6 | Walk-ins como cita agendada por staff que pasa sola a `checked_in` en `scheduled_start` (`checked_in_at = scheduled_start`); nunca `no_show` | Aprobada |
 | D6b | Walk-ins solo del día actual | Aprobada |
 | D6c | Próximo slot por barbero; el cliente elige | Aprobada |

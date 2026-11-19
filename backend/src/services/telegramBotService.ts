@@ -5,6 +5,7 @@ import { linkClientTelegram } from './clientService.js';
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 let botInstance: Bot | null = null;
+let pollingPromise: Promise<void> | null = null;
 
 export const initTelegramBot = () => {
     if (botInstance) return botInstance;
@@ -68,9 +69,20 @@ export const initTelegramBot = () => {
         console.error('[TelegramBotService] Error en el bot:', err);
     });
 
-    void botInstance.startPolling();
+    pollingPromise = botInstance.startPolling().catch((err: unknown) => {
+        console.error('[TelegramBotService] Polling stopped with error:', err);
+    });
     console.log('Listener is active');
     return botInstance;
+};
+
+/* Detiene el long polling (apagado ordenado del servidor). */
+export const stopTelegramBot = async (): Promise<void> => {
+    if (!botInstance) return;
+    botInstance.stop();
+    await pollingPromise;
+    botInstance = null;
+    pollingPromise = null;
 };
 
 export const sendTelegramNotification = async (chatId: string, message: string): Promise<string> => {
