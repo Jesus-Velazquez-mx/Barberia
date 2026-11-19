@@ -23,6 +23,16 @@ const resolveAIService = (env?: string) => {
     return { AI_SERVICE_URL, AI_PROVIDER };
 }
 
+const parsePositiveInt = (name: string, fallback: number): number => {
+    const raw = process.env[name];
+    if (raw === undefined || raw.trim() === '') return fallback;
+    const value = Number(raw);
+    if (!Number.isInteger(value) || value <= 0) {
+        throw new Error(`Environment variable ${name} must be a positive integer (got "${raw}")`);
+    }
+    return value;
+};
+
 const loadConfig = () => {
     const ENV = process.env.ENV;
     const JWT_SECRET = process.env.JWT_SECRET;
@@ -37,6 +47,11 @@ const loadConfig = () => {
     const AWS_BUCKET_KEY_PREFIX_HAIRCUTS = process.env.AWS_BUCKET_KEY_PREFIX_HAIRCUTS;
 
     const BUSINESS_TIMEZONE = process.env.BUSINESS_TIMEZONE ?? 'America/Mazatlan';
+
+    /* Jobs periódicos (src/jobs). JOBS_ENABLED=false los desactiva (tests/setup.ts lo hace por defecto). */
+    const JOBS_ENABLED = process.env.JOBS_ENABLED?.trim().toLowerCase() !== 'false';
+    const JOBS_INTERVAL_MS = parsePositiveInt('JOBS_INTERVAL_MS', 60_000);
+    const REMINDERS_JOB_INTERVAL_MS = parsePositiveInt('REMINDERS_JOB_INTERVAL_MS', 15 * 60_000);
 
     const required: Record<string, string | undefined> = {
         JWT_SECRET,
@@ -72,6 +87,9 @@ const loadConfig = () => {
         AWS_BUCKET_KEY_PREFIX_USER: AWS_BUCKET_KEY_PREFIX_USER!,
         AWS_BUCKET_KEY_PREFIX_HAIRCUTS: AWS_BUCKET_KEY_PREFIX_HAIRCUTS!,
         BUSINESS_TIMEZONE,
+        JOBS_ENABLED,
+        JOBS_INTERVAL_MS,
+        REMINDERS_JOB_INTERVAL_MS,
     };
 };
 

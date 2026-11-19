@@ -7,10 +7,11 @@ import swaggerJsdoc from 'swagger-jsdoc';
 import cors from 'cors';
 import { sendFail } from './utils/apiResponse.js';
 import globalConfig from './config/globalConfig.js';
-import { initTelegramBot } from './services/telegramBotService.js';
-import { startReminderScheduler } from './jobs/reminderScheduler.js';
+import { initTelegramBot, stopTelegramBot } from './services/telegramBotService.js';
+import { createAppJobRunner } from './jobs/index.js';
+import type { JobRunner } from './jobs/jobRunner.js';
 
-const { connectDB } = connection;
+const { connectDB, closeDB } = connection;
 
 const app = express();
 const port = 3000;
@@ -74,16 +75,47 @@ app.use('/api', (req: Request, res: Response) => {
     sendFail({ res, message: 'Ruta de la API no encontrada.', status: 404 });
 });
 
-app.listen(port, async () => {
+/* Runner de jobs periódicos (src/jobs); se crea solo tras conectar la BD */
+let jobRunner: JobRunner | undefined;
+
+const server = app.listen(port, async () => {
     console.log(`La app está escuchando en el puerto ${port}`);
     /* Iniciar la instancia del bot */
     initTelegramBot();
-    /* Iniciar el scheduler de recordatorios */
-    startReminderScheduler();
     try {
         _pool = await connectDB();
         console.log('Base de datos conectada');
     } catch (error) {
         console.log(`Deteniendo el servidor por fallo en BD. ERROR: ${error}`);
+        return;
+    }
+
+    /* Iniciar los jobs periódicos (recordatorios, transiciones de estado de citas) */
+    if (globalConfig.JOBS_ENABLED) {
+        jobRunner = createAppJobRunner(globalConfig);
+        jobRunner.start();
+    } else {
+        console.log('[jobs] Jobs periódicos deshabilitados (JOBS_ENABLED=false)');
     }
 });
+
+/* Apagado ordenado: Docker envía SIGTERM al reiniciar/desplegar el contenedor */
+let shuttingDown = false;
+const shutdown = async (signal: NodeJS.Signals) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log(`Recibido ${signal}, apagando el servidor...`);
+    try {
+        await jobRunner?.stop();
+        await stopTelegramBot();
+        await new Promise<void>((resolve) => server.close(() => resolve()));
+        await closeDB();
+        process.exit(0);
+    } catch (error) {
+        console.error('Error durante el apagado del servidor:', error);
+        process.exit(1);
+    }
+};
+
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
