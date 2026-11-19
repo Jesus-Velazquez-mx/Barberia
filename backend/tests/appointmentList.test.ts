@@ -299,6 +299,11 @@ describe('GET /api/appointments', () => {
             expectIds(await get(managerToken, `?barberId=${barber2}`), ['shop2Cancelled']);
         });
 
+        test('filtra por isWalkIn', async () => {
+            expectIds(await get(managerToken, '?isWalkIn=true'), ['day2Guest']);
+            expectIds(await get(managerToken, '?isWalkIn=false'), ['today', 'shop2Cancelled', 'lastDay']);
+        });
+
         test('combina filtros', async () => {
             const res = await get(managerToken, `?shopId=${shop1}&clientType=registered&status=scheduled`);
             expectIds(res, ['today']);
