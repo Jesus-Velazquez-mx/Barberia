@@ -5,16 +5,19 @@ import type { PresignedPost } from '@aws-sdk/s3-presigned-post';
 import { ApiError, ApiErrorCode } from '../src/errors/ApiError.js';
 
 const generatePresignedURL = jest.fn<(token: string) => Promise<PresignedPost>>();
+const generateHaircutImageURL = jest.fn<(haircutId: string) => Promise<{ url: string; expiresIn: number }>>();
 
 jest.unstable_mockModule('../src/services/bucketService.js', () => ({
     generatePresignedURL,
+    generateHaircutImageURL,
 }));
 
-const { getBucketPresignedURL } = await import('../src/controllers/bucketController.js');
+const { getBucketPresignedURL, getHaircutImageURL } = await import('../src/controllers/bucketController.js');
 
 const app = express();
 app.use(express.json());
 app.get('/api/presigned-url', getBucketPresignedURL);
+app.get('/api/haircuts/:haircutId/image-url', getHaircutImageURL);
 
 const presignedPost: PresignedPost = {
     url: 'https://s3.example.com',
@@ -75,5 +78,55 @@ describe('GET /api/presigned-url', () => {
             message: 'An unexpected error ocurred',
             error: ['Error: S3 unavailable'],
         });
+    });
+});
+
+describe('GET /api/haircuts/:haircutId/image-url', () => {
+    const haircutId = '10000000-0000-4000-8000-000000000021';
+    const imageURL = { url: 'https://signed.example.com/wolf_cut.jpg', expiresIn: 300 };
+
+    beforeEach(() => {
+        jest.clearAllMocks();
+        generateHaircutImageURL.mockResolvedValue(imageURL);
+    });
+
+    test('returns the presigned URL without requiring a token', async () => {
+        const response = await request(app).get(`/api/haircuts/${haircutId}/image-url`);
+
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({
+            data: imageURL,
+            message: 'Haircut image URL generated successfully',
+        });
+        expect(generateHaircutImageURL).toHaveBeenCalledWith(haircutId);
+    });
+
+    test('returns 400 when the haircut id is not a uuid', async () => {
+        const response = await request(app).get('/api/haircuts/not-a-uuid/image-url');
+
+        expect(response.status).toBe(400);
+        expect(response.body).toMatchObject({
+            message: 'Validation error',
+            error: [{ field: 'haircutId', detail: 'Invalid haircut ID format' }],
+        });
+        expect(generateHaircutImageURL).not.toHaveBeenCalled();
+    });
+
+    test('returns the service ApiError status and message', async () => {
+        generateHaircutImageURL.mockRejectedValue(new ApiError(ApiErrorCode.NOT_FOUND, 'Haircut image not found'));
+
+        const response = await request(app).get(`/api/haircuts/${haircutId}/image-url`);
+
+        expect(response.status).toBe(ApiErrorCode.NOT_FOUND);
+        expect(response.body).toMatchObject({ message: 'Haircut image not found' });
+    });
+
+    test('returns 500 for unexpected service errors', async () => {
+        generateHaircutImageURL.mockRejectedValue(new Error('S3 unavailable'));
+
+        const response = await request(app).get(`/api/haircuts/${haircutId}/image-url`);
+
+        expect(response.status).toBe(ApiErrorCode.INTERNAL_SERVER_ERROR);
+        expect(response.body).toMatchObject({ error: ['Error: S3 unavailable'] });
     });
 });

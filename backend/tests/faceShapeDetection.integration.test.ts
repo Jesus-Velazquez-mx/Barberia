@@ -1,7 +1,7 @@
 /*
  * Integración contra el microservicio de IA REAL. No se ejecuta en CI: requiere
  * el servicio corriendo, AI_SERVICE_URL / AI_SERVICE_API_KEY válidos y una foto
- * ya subida al bucket cuya key empiece con AWS_BUCKET_KEY_PREFIX.
+ * ya subida al bucket cuya key empiece con AWS_BUCKET_KEY_PREFIX_USER.
  *
  *   RUN_AI_INTEGRATION=1 AI_INTEGRATION_PHOTO_KEY=user/images/<id>  *     npm test -- faceShapeDetection.integration
  *

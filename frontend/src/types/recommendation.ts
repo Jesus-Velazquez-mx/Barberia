@@ -46,3 +46,10 @@ export interface HaircutRecommendation {
     requestedAt: string;
     completedAt: string | null;
 }
+
+/* Respuesta de GET /haircuts/:haircutId/image-url: URL presignada de la foto de catálogo de un corte. */
+export interface HaircutImageUrl {
+    url: string;
+    /* Segundos de vigencia de la URL. */
+    expiresIn: number;
+}

@@ -1,11 +1,20 @@
-import { S3Client } from '@aws-sdk/client-s3';
+import { GetObjectCommand, HeadObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import globalConfig from '../config/globalConfig.js';
 import { createPresignedPost } from '@aws-sdk/s3-presigned-post';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 import { isUserSessionValid } from '../utils/userSession.js';
-import { getUserPhotoKey } from '../utils/photoKey.js';
+import { getHaircutPhotoKey, getUserPhotoKey, HAIRCUT_IMAGE_EXTENSIONS } from '../utils/photoKey.js';
 import { fromEnv } from '@aws-sdk/credential-providers';
 import { clearClientFacialStructure } from '../repositories/clientRepository.js';
+import { getHaircutStyleById } from '../repositories/haircutRepository.js';
+
+const HAIRCUT_IMAGE_URL_EXPIRES_IN = 300;
+
+const isS3NotFound = (error: unknown): boolean => {
+    const e = error as { name?: string; $metadata?: { httpStatusCode?: number } };
+    return e?.name === 'NotFound' || e?.name === 'NoSuchKey' || e?.$metadata?.httpStatusCode === 404;
+};
 
 const client = new S3Client({
     region: globalConfig.AWS_REGION,
@@ -34,4 +43,40 @@ export const generatePresignedURL = async (token: string) => {
     await clearClientFacialStructure(performer.id);
 
     return presignedPost;
+};
+
+export interface HaircutImageURL {
+    url: string;
+    expiresIn: number;
+}
+
+/**
+ * URL prefirmada (GET) de la foto de catálogo de un corte. Es pública: no requiere sesión.
+ * La extensión real (jpg, png o webp) se descubre consultando el bucket con HeadObject.
+ */
+export const generateHaircutImageURL = async (haircutId: string): Promise<HaircutImageURL> => {
+    const haircut = await getHaircutStyleById(haircutId);
+
+    if (!haircut) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Haircut not found');
+    }
+
+    for (const extension of HAIRCUT_IMAGE_EXTENSIONS) {
+        const key = getHaircutPhotoKey(haircut.name, extension);
+
+        try {
+            await client.send(new HeadObjectCommand({ Bucket: globalConfig.AWS_BUCKET, Key: key }));
+        } catch (error) {
+            if (isS3NotFound(error)) continue;
+            throw error;
+        }
+
+        const url = await getSignedUrl(client, new GetObjectCommand({ Bucket: globalConfig.AWS_BUCKET, Key: key }), {
+            expiresIn: HAIRCUT_IMAGE_URL_EXPIRES_IN,
+        });
+
+        return { url, expiresIn: HAIRCUT_IMAGE_URL_EXPIRES_IN };
+    }
+
+    throw new ApiError(ApiErrorCode.NOT_FOUND, 'Haircut image not found');
 };

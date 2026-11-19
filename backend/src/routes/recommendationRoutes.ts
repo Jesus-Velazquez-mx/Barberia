@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { testAiService, getHaircutRecommendation } from '../controllers/recommendationController.js';
 import { getClientRecommendationHistory } from '../controllers/recommendationHistoryController.js';
-import { getBucketPresignedURL } from '../controllers/bucketController.js';
+import { getBucketPresignedURL, getHaircutImageURL } from '../controllers/bucketController.js';
 
 const router = Router();
 
@@ -250,5 +250,48 @@ router.get('/recommendations', getClientRecommendationHistory);
  *         description: Error inesperado al generar el formulario presignado.
  */
 router.get('/presigned-url', getBucketPresignedURL);
+
+/**
+ * @swagger
+ * /api/haircuts/{haircutId}/image-url:
+ *   get:
+ *     summary: Genera una URL presignada para ver la foto de un corte de cabello
+ *     tags: [Storage]
+ *     description: >-
+ *       Devuelve una URL presignada (GET) de corta duración para mostrar la foto de catálogo de un corte.
+ *       Es pública: no requiere token. La foto se busca en el bucket por el nombre del corte en snake_case
+ *       (por ejemplo, "Wolf Cut" -> `wolf_cut`) con extensión jpg, png o webp.
+ *     parameters:
+ *       - in: path
+ *         name: haircutId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *         description: ID del estilo de corte.
+ *     responses:
+ *       200:
+ *         description: URL generada exitosamente.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [data, message]
+ *               properties:
+ *                 data:
+ *                   type: object
+ *                   required: [url, expiresIn]
+ *                   properties:
+ *                     url: { type: string, format: uri, description: URL presignada de la imagen. }
+ *                     expiresIn: { type: integer, description: Segundos de vigencia de la URL., example: 300 }
+ *                 message: { type: string, example: Haircut image URL generated successfully }
+ *       400:
+ *         description: haircutId no es un UUID válido.
+ *       404:
+ *         description: No existe el corte o no hay una imagen para él en el bucket.
+ *       502:
+ *         description: No se pudieron resolver las credenciales de AWS.
+ *       500:
+ *         description: Error inesperado al generar la URL.
+ */
+router.get('/haircuts/:haircutId/image-url', getHaircutImageURL);
 
 export default router;

@@ -33,7 +33,8 @@ const loadConfig = () => {
 
     const AWS_REGION = process.env.AWS_REGION;
     const AWS_BUCKET = process.env.AWS_BUCKET;
-    const AWS_BUCKET_KEY_PREFIX = process.env.AWS_BUCKET_KEY_PREFIX;
+    const AWS_BUCKET_KEY_PREFIX_USER = process.env.AWS_BUCKET_KEY_PREFIX_USER;
+    const AWS_BUCKET_KEY_PREFIX_HAIRCUTS = process.env.AWS_BUCKET_KEY_PREFIX_HAIRCUTS;
 
     const BUSINESS_TIMEZONE = process.env.BUSINESS_TIMEZONE ?? 'America/Mazatlan';
 
@@ -44,7 +45,8 @@ const loadConfig = () => {
         AI_SERVICE_API_KEY: process.env.AI_SERVICE_API_KEY,
         AWS_REGION,
         AWS_BUCKET,
-        AWS_BUCKET_KEY_PREFIX,
+        AWS_BUCKET_KEY_PREFIX_USER,
+        AWS_BUCKET_KEY_PREFIX_HAIRCUTS,
         BUSINESS_TIMEZONE
     };
 
@@ -67,7 +69,8 @@ const loadConfig = () => {
         AI_PROVIDER,
         AWS_REGION: AWS_REGION!,
         AWS_BUCKET: AWS_BUCKET!,
-        AWS_BUCKET_KEY_PREFIX: AWS_BUCKET_KEY_PREFIX!,
+        AWS_BUCKET_KEY_PREFIX_USER: AWS_BUCKET_KEY_PREFIX_USER!,
+        AWS_BUCKET_KEY_PREFIX_HAIRCUTS: AWS_BUCKET_KEY_PREFIX_HAIRCUTS!,
         BUSINESS_TIMEZONE,
     };
 };

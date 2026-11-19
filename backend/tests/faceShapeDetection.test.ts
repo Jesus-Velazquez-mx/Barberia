@@ -31,7 +31,7 @@ jest.unstable_mockModule('../src/config/globalConfig.js', () => ({
         AI_PROVIDER,
         JWT_SECRET: 'x',
         FRONTEND_URL: 'http://localhost',
-        AWS_BUCKET_KEY_PREFIX: KEY_PREFIX,
+        AWS_BUCKET_KEY_PREFIX_USER: KEY_PREFIX,
     },
 }));
 jest.unstable_mockModule('../src/repositories/userRepository.js', () => ({ getUserById }));

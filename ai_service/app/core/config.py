@@ -46,14 +46,14 @@ class Settings(BaseSettings):
 
     # S3 bucket holding the user photos (same bucket and prefix the backend
     # uses for its presigned POST). The service only needs s3:GetObject on
-    # "<AWS_BUCKET>/<AWS_BUCKET_KEY_PREFIX>*". Empty bucket/region/prefix =
+    # "<AWS_BUCKET>/<AWS_BUCKET_KEY_PREFIX_USER>*". Empty bucket/region/prefix =
     # photo downloads are rejected. If the credentials are not set, boto3 falls
     # back to its default chain (e.g. an instance role).
     AWS_ACCESS_KEY_ID: str | None = None
     AWS_SECRET_ACCESS_KEY: SecretStr | None = None
     AWS_REGION: str = ""
     AWS_BUCKET: str = ""
-    AWS_BUCKET_KEY_PREFIX: str = ""
+    AWS_BUCKET_KEY_PREFIX_USER: str = ""
 
     # Face shape classifier params. The weights are a pickled PyTorch model, so
     # the URL must be pinned to a commit (never "main") and the file is only
