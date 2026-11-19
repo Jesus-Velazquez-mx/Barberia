@@ -7,6 +7,7 @@ export interface CreateAppointmentRequest {
     clientId?: string;
     guestClientName?: string;
     notes?: string;
+    isWalkIn?: boolean;
 }
 
 // Todos los campos son opcionales (al menos uno); el cliente, el invitado y la sucursal no se pueden editar.
@@ -33,4 +34,5 @@ export interface ListAppointmentsQuery {
     shopId?: string;
     clientType?: AppointmentClientType;
     barberId?: string;
+    isWalkIn?: boolean;
 }

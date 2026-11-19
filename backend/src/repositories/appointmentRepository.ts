@@ -17,6 +17,7 @@ export interface AppointmentListFilters {
     statuses?: AppointmentStatus[];
     isRegisteredClient?: boolean;
     barberId?: string;
+    isWalkIn?: boolean;
 }
 
 export interface CreateAppointmentInput {
@@ -27,6 +28,7 @@ export interface CreateAppointmentInput {
     scheduledStart: Date;
     scheduledEnd: Date;
     notes: string | null;
+    isWalkIn?: boolean;
     services: { serviceId: string; priceAtBooking: number; durationMinutesAtBooking: number }[];
 }
 
@@ -99,6 +101,7 @@ export const getAppointments = async (filters: AppointmentListFilters): Promise<
     if (filters.isRegisteredClient !== undefined)
         addClause((p) => `is_registered_client = ${p}`, filters.isRegisteredClient);
     if (filters.barberId !== undefined) addClause((p) => `barber_id = ${p}`, filters.barberId);
+    if (filters.isWalkIn !== undefined) addClause((p) => `is_walk_in = ${p}`, filters.isWalkIn);
 
     const result = await db.getPool().query(
         `SELECT ${APPOINTMENT_COLUMNS} FROM appointments
@@ -200,10 +203,10 @@ export const createAppointmentWithServices = async (
 
         const result = await client.query(
             `INSERT INTO appointments (shop_id, client_id, is_registered_client, guest_client_name, barber_id,
-                                       scheduled_start, scheduled_end, notes)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                                       scheduled_start, scheduled_end, notes, is_walk_in)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
              RETURNING id, shop_id, client_id, is_registered_client, guest_client_name, barber_id, is_walk_in,
-                       status, scheduled_start, scheduled_end, checked_in_at, completed_at, cancelled_at,
+                       status, original_scheduled_start, scheduled_start, scheduled_end, checked_in_at, completed_at, cancelled_at,
                        cancellation_reason, notes, is_reward_redemption, created_at, updated_at`,
             [
                 data.shopId,
@@ -214,6 +217,7 @@ export const createAppointmentWithServices = async (
                 data.scheduledStart,
                 data.scheduledEnd,
                 data.notes,
+                data.isWalkIn ?? false,
             ]
         );
         const appointment: Appointment = result.rows[0];
