@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { ChevronDown, History, Scissors } from 'lucide-react';
 import type { HaircutRecommendation } from '../../types/recommendation';
+import { Modal } from '../common/ModalComponent';
+import { useHaircutImageUrls } from '../../hooks/useHaircutImageUrls';
+import { HaircutChip } from './HaircutChipComponent';
 
 interface RecommendationHistoryProps {
   recommendations: HaircutRecommendation[];
@@ -13,7 +16,13 @@ const formatDate = (iso: string) =>
 
 function HistoryItem({ item }: { item: HaircutRecommendation }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const isRecommended = item.status === 'recommended';
+  // Las fotos se precargan al expandir el item, que es cuando se muestran los cortes
+  const imageUrls = useHaircutImageUrls(item.recommendedHaircuts, isOpen);
+
+  const selectedHaircut = item.recommendedHaircuts.find((haircut) => haircut.id === selectedId);
+  const selectedImageUrl = selectedHaircut ? imageUrls[selectedHaircut.id] : undefined;
 
   return (
     <li className="rounded-lg border border-white/10 bg-[#121212]">
@@ -30,7 +39,11 @@ function HistoryItem({ item }: { item: HaircutRecommendation }) {
         <span className="min-w-0 flex-1">
           <span className="block text-sm font-semibold text-(--text-h)">{formatDate(item.requestedAt)}</span>
           <span className="block truncate text-sm text-(--text)">
-            {isRecommended ? (item.recommendedHaircut?.name ?? 'Recomendación') : 'Sin corte adecuado'}
+            {isRecommended
+              ? item.recommendedHaircuts.length > 0
+                ? item.recommendedHaircuts.map((haircut) => haircut.name).join(', ')
+                : 'Recomendación'
+              : 'Sin corte adecuado'}
           </span>
         </span>
 
@@ -43,6 +56,19 @@ function HistoryItem({ item }: { item: HaircutRecommendation }) {
 
       {isOpen && (
         <div className="flex flex-col gap-3 border-t border-white/10 p-4">
+          {item.recommendedHaircuts.length > 0 && (
+            <ul className="m-0 flex list-none flex-wrap gap-2 p-0">
+              {item.recommendedHaircuts.map((haircut) => (
+                <HaircutChip
+                  key={haircut.id}
+                  name={haircut.name}
+                  hasImage={haircut.id in imageUrls}
+                  isSelected={haircut.id === selectedId}
+                  onSelect={() => setSelectedId(haircut.id)}
+                />
+              ))}
+            </ul>
+          )}
           {item.suggestionText && (
             <div>
               <span className="text-xs font-semibold uppercase text-(--accent)">Recomendación</span>
@@ -62,6 +88,18 @@ function HistoryItem({ item }: { item: HaircutRecommendation }) {
           )}
         </div>
       )}
+
+      {/* Clic fuera del modal (o Escape) lo cierra */}
+      <Modal isOpen={!!selectedHaircut && !!selectedImageUrl} onClose={() => setSelectedId(null)} className="pb-8">
+        <figure className="m-0 flex flex-col items-center gap-3">
+          <img
+            src={selectedImageUrl}
+            alt={`Foto del corte ${selectedHaircut?.name ?? ''}`}
+            className="max-h-[70vh] w-full rounded-lg object-contain"
+          />
+          <figcaption className="text-sm font-semibold text-(--text-h)">{selectedHaircut?.name}</figcaption>
+        </figure>
+      </Modal>
     </li>
   );
 }

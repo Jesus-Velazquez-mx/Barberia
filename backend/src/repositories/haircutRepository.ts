@@ -11,6 +11,13 @@ export const getActiveHaircutStyles = async (): Promise<HaircutStyle[] | null> =
     return result.rows.length ? (result.rows as HaircutStyle[]) : null;
 };
 
+export const getHaircutStyleById = async (id: string): Promise<HaircutStyle | null> => {
+    const pool = db.getPool();
+
+    const result = await pool.query('SELECT * FROM haircut_styles WHERE id = $1', [id]);
+    return result.rows.length ? (result.rows[0] as HaircutStyle) : null;
+};
+
 export const getActiveHaircutStylesByFacialStructure = async (facialStructure: FacialStructureType) => {
     const pool = db.getPool();
 

@@ -1,6 +1,11 @@
 import { apiClient, type ApiClientResponse } from './apiClient';
 import { ApiError } from '../types/api';
-import type { GeneratedRecommendation, HaircutRecommendation, PresignedUploadForm } from '../types/recommendation';
+import type {
+    GeneratedRecommendation,
+    HaircutImageUrl,
+    HaircutRecommendation,
+    PresignedUploadForm
+} from '../types/recommendation';
 
 const authHeaders = (token: string) => ({ Authorization: `Bearer ${token}` });
 
@@ -10,6 +15,16 @@ export const getRecommendationHistory = async (clientId: string, token: string):
         `/recommendations?clientId=${encodeURIComponent(clientId)}`,
         { headers: authHeaders(token) }
     );
+
+    return response.data;
+};
+
+/*
+ * GET /haircuts/:haircutId/image-url => URL presignada (pública, sin token) de la foto de catálogo de un corte.
+ * Responde 404 si el corte no tiene foto en el bucket. La URL caduca en 5 minutos.
+ */
+export const getHaircutImageUrl = async (haircutId: string): Promise<HaircutImageUrl> => {
+    const response = await apiClient.get<HaircutImageUrl>(`/haircuts/${encodeURIComponent(haircutId)}/image-url`);
 
     return response.data;
 };

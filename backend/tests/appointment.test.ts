@@ -1,10 +1,11 @@
 import request from 'supertest';
 import express from 'express';
+import { jest } from '@jest/globals';
 import router from '../src/routes/routes.js';
 import connection from '../src/connection/connection.js';
 import { getBusinessToday, businessWallClockToUtcMs } from '../src/utils/businessTime.js';
 import { signToken } from '../src/services/jwtTokenService.js';
-import { canCreateAppointment } from '../src/services/userPermissions.js';
+import { canCreateAppointment, canManageShopWalkIns } from '../src/services/userPermissions.js';
 import type { User, UserRole } from '../src/types/entities/user.interface.js';
 import {
     insertManager,
@@ -51,6 +52,22 @@ describe('canCreateAppointment', () => {
     });
 });
 
+describe('canManageShopWalkIns', () => {
+    test('client nunca puede gestionar walk-ins', () => {
+        expect(canManageShopWalkIns({ id: A, role: 'client' }, { shopId: SHOP, shopManagerId: B }, SHOP)).toBe(false);
+    });
+
+    test('receptionist solo puede gestionar walk-ins en su sucursal', () => {
+        expect(canManageShopWalkIns({ id: A, role: 'receptionist' }, { shopId: SHOP, shopManagerId: B }, SHOP)).toBe(true);
+        expect(canManageShopWalkIns({ id: A, role: 'receptionist' }, { shopId: SHOP, shopManagerId: B }, 'other-shop')).toBe(false);
+    });
+
+    test('manager solo puede gestionar walk-ins en las sucursales que administra', () => {
+        expect(canManageShopWalkIns({ id: A, role: 'manager' }, { shopId: SHOP, shopManagerId: A })).toBe(true);
+        expect(canManageShopWalkIns({ id: A, role: 'manager' }, { shopId: SHOP, shopManagerId: B })).toBe(false);
+    });
+});
+
 describe('POST /api/appointments', () => {
     let shopId: string;
     let barberId: string;
@@ -58,8 +75,13 @@ describe('POST /api/appointments', () => {
     let shortServiceId: string;
     let dateStr: string;
     let managerToken: string;
+    let otherManagerToken: string;
     let foreignReceptionistToken: string;
     let receptionistId: string;
+    let localReceptionistId: string;
+    let managerUser: User;
+    let localReceptionistUser: User;
+    const clientIds: string[] = [];
     const clientTokens: string[] = [];
 
     // Hora de pared de la sucursal (dígitos literales) -> instante UTC real, igual que hace el servicio.
@@ -74,10 +96,13 @@ describe('POST /api/appointments', () => {
     beforeAll(async () => {
         await connectDB();
 
-        const manager = await insertManager();
-        managerToken = mintToken(manager.id, 'manager', manager.email);
-        shopId = await insertShop(manager.id);
-        const otherShopId = await insertShop(manager.id);
+        managerUser = (await insertManager()) as unknown as User;
+        managerToken = mintToken(managerUser.id, 'manager', managerUser.email);
+        shopId = await insertShop(managerUser.id);
+        const otherShopId = await insertShop(managerUser.id);
+
+        const otherManager = await insertManager();
+        otherManagerToken = mintToken(otherManager.id, 'manager', otherManager.email);
 
         // Recepcionista de otra sucursal
         const receptionist = await insertUser('receptionist');
@@ -90,9 +115,19 @@ describe('POST /api/appointments', () => {
         ]);
         foreignReceptionistToken = mintToken(receptionist.id, 'receptionist', receptionist.email);
 
+        // Recepcionista de la misma sucursal
+        localReceptionistUser = (await insertUser('receptionist')) as unknown as User;
+        localReceptionistId = localReceptionistUser.id;
+        await getPool().query(`INSERT INTO receptionists (user_id, shop_id, shift_id) VALUES ($1, $2, $3)`, [
+            localReceptionistUser.id,
+            shopId,
+            shiftId,
+        ]);
+
         for (let i = 0; i < 2; i++) {
             const client = await insertUser('client');
             await getPool().query(`INSERT INTO clients (user_id) VALUES ($1)`, [client.id]);
+            clientIds.push(client.id);
             clientTokens.push(mintToken(client.id, 'client', client.email));
         }
 
@@ -115,7 +150,9 @@ describe('POST /api/appointments', () => {
 
     afterAll(async () => {
         // receptionists.shop_id es RESTRICT: se borra antes de que cleanupFixtures elimine las sucursales
-        await getPool().query(`DELETE FROM receptionists WHERE user_id = $1`, [receptionistId]);
+        await getPool().query(`DELETE FROM receptionists WHERE user_id = ANY($1::uuid[])`, [
+            [receptionistId, localReceptionistId],
+        ]);
         await cleanupFixtures();
         await closeDB();
     });
@@ -215,5 +252,143 @@ describe('POST /api/appointments', () => {
         expect((await book(clientTokens[0], { scheduledStart: at('12:30'), serviceIds: [] })).status).toBe(400);
         const dup = await book(clientTokens[0], { scheduledStart: at('12:30'), serviceIds: [serviceId, serviceId] });
         expect(dup.status).toBe(400);
+    });
+
+    describe('Walk-ins (isWalkIn: true)', () => {
+        const DAY_MS = 86_400_000;
+        const addDays = (d: string, days: number) =>
+            new Date(Date.parse(`${d}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
+        const nextDayOfWeek = (d: string, dayOfWeek: number) => {
+            let cur = d;
+            while (new Date(`${cur}T00:00:00Z`).getUTCDay() !== dayOfWeek) cur = addDays(cur, 1);
+            return cur;
+        };
+        const WEDNESDAY = nextDayOfWeek(addDays(getBusinessToday(), 1), 3);
+        const atToday = (time: string) =>
+            new Date(businessWallClockToUtcMs(Date.parse(`${WEDNESDAY}T${time}:00.000Z`))).toISOString();
+
+        test('403 si un client intenta agendar con isWalkIn = true', async () => {
+            const res = await book(clientTokens[0], { scheduledStart: at('12:30'), isWalkIn: true });
+            expect(res.status).toBe(403);
+        });
+
+        test('403 si un receptionist de otra sucursal intenta agendar un walk-in', async () => {
+            const res = await book(foreignReceptionistToken, {
+                scheduledStart: at('12:30'),
+                isWalkIn: true,
+                guestClientName: 'Invitado',
+            });
+            expect(res.status).toBe(403);
+        });
+
+        test('403 si un manager de otra sucursal intenta agendar un walk-in', async () => {
+            const res = await book(otherManagerToken, {
+                scheduledStart: at('12:30'),
+                isWalkIn: true,
+                guestClientName: 'Invitado',
+            });
+            expect(res.status).toBe(403);
+        });
+
+        test('400 si un walk-in se agenda para otro día que no sea hoy', async () => {
+            // dateStr está configurado a 2 días después de hoy
+            const res = await book(managerToken, {
+                scheduledStart: at('12:30'),
+                isWalkIn: true,
+                guestClientName: 'Invitado',
+            });
+            expect(res.status).toBe(400);
+            expect(res.body.message).toMatch(/current business day/i);
+        });
+
+        describe('Walk-ins del día actual', () => {
+            const curManagerToken = () => mintToken(managerUser.id, 'manager', managerUser.email);
+            const curLocalReceptionistToken = () =>
+                mintToken(localReceptionistUser.id, 'receptionist', localReceptionistUser.email);
+
+            beforeEach(() => {
+                jest.spyOn(Date, 'now').mockReturnValue(
+                    new Date(businessWallClockToUtcMs(Date.parse(`${WEDNESDAY}T09:00:00.000Z`))).getTime()
+                );
+            });
+
+            afterEach(() => {
+                jest.restoreAllMocks();
+            });
+
+            test('manager crea un walk-in hoy para un invitado', async () => {
+                const res = await book(curManagerToken(), {
+                    scheduledStart: atToday('10:00'),
+                    isWalkIn: true,
+                    guestClientName: 'Walk-in Invitado',
+                });
+
+                expect(res.status).toBe(201);
+                expect(res.body.data.isWalkIn).toBe(true);
+                expect(res.body.data.status).toBe('scheduled');
+                expect(res.body.data.isRegisteredClient).toBe(false);
+                expect(res.body.data.guestClientName).toBe('Walk-in Invitado');
+            });
+
+            test('receptionist de la sucursal crea un walk-in hoy para un cliente registrado', async () => {
+                const res = await book(curLocalReceptionistToken(), {
+                    scheduledStart: atToday('10:30'),
+                    isWalkIn: true,
+                    clientId: clientIds[0],
+                });
+
+                expect(res.status).toBe(201);
+                expect(res.body.data.isWalkIn).toBe(true);
+                expect(res.body.data.status).toBe('scheduled');
+                expect(res.body.data.isRegisteredClient).toBe(true);
+                expect(res.body.data.client.id).toBe(clientIds[0]);
+            });
+
+            test('409 si el horario del walk-in ya está ocupado', async () => {
+                // 10:00 ya fue reservado en el test anterior
+                const res = await book(curManagerToken(), {
+                    scheduledStart: atToday('10:00'),
+                    isWalkIn: true,
+                    guestClientName: 'Segundo Invitado',
+                });
+                expect(res.status).toBe(409);
+            });
+
+            test('409 si el horario del walk-in no es un slot válido', async () => {
+                const res = await book(curManagerToken(), {
+                    scheduledStart: atToday('10:05'),
+                    isWalkIn: true,
+                    guestClientName: 'Desalineado',
+                });
+                expect(res.status).toBe(409);
+            });
+
+            test('dos walk-ins simultáneos del mismo horario: solo uno se crea', async () => {
+                const responses = await Promise.all([
+                    book(curManagerToken(), {
+                        scheduledStart: atToday('11:00'),
+                        isWalkIn: true,
+                        guestClientName: 'Primero',
+                    }),
+                    book(curLocalReceptionistToken(), {
+                        scheduledStart: atToday('11:00'),
+                        isWalkIn: true,
+                        guestClientName: 'Segundo',
+                    }),
+                ]);
+
+                expect(responses.map((r) => r.status).sort()).toEqual([201, 409]);
+            });
+
+            test('sin isWalkIn se crea como cita normal (isWalkIn = false)', async () => {
+                const res = await book(curManagerToken(), {
+                    scheduledStart: atToday('11:30'),
+                    guestClientName: 'Cita Normal',
+                });
+
+                expect(res.status).toBe(201);
+                expect(res.body.data.isWalkIn).toBe(false);
+            });
+        });
     });
 });

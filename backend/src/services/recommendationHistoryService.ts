@@ -2,7 +2,7 @@ import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 import { getClientByUserId } from '../repositories/clientRepository.js';
 import {
     getRecommendationHistoryByClientId,
-    type RecommendationHistoryWithHaircut,
+    type RecommendationHistoryWithHaircuts,
 } from '../repositories/recommendationHistoryRepository.js';
 import type {
     RecommendationHistoryEntryDTO,
@@ -34,20 +34,17 @@ export const getRecommendationHistory = async (
 };
 
 /** Las filas fallidas ya vienen excluidas, así que la ausencia de sugerencia significa que ningún corte aplicó. */
-const toStatus = (row: RecommendationHistoryWithHaircut): RecommendationHistoryStatus =>
+const toStatus = (row: RecommendationHistoryWithHaircuts): RecommendationHistoryStatus =>
     row.suggestion_text !== null ? 'recommended' : 'no_suitable_haircut';
 
-const toHistoryEntryDTO = (row: RecommendationHistoryWithHaircut): RecommendationHistoryEntryDTO => ({
+const toHistoryEntryDTO = (row: RecommendationHistoryWithHaircuts): RecommendationHistoryEntryDTO => ({
     id: row.id,
     status: toStatus(row),
     suggestionText: row.suggestion_text,
     // pg devuelve las columnas numeric como string.
     confidence: row.confidence === null ? null : Number(row.confidence),
     reasoning: row.reasoning,
-    recommendedHaircut:
-        row.recommended_haircut_style_id !== null && row.recommended_haircut_style_name !== null
-            ? { id: row.recommended_haircut_style_id, name: row.recommended_haircut_style_name }
-            : null,
+    recommendedHaircuts: row.recommended_haircuts,
     requestedAt: row.requested_at,
     completedAt: row.completed_at,
 });

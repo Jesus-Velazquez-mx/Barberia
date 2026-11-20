@@ -8,8 +8,6 @@ import {
 import { sendTelegramNotification } from './telegramBotService.js';
 import { getBusinessTimezone } from '../utils/businessTime.js';
 
-let isProcessing = false;
-
 const buildMessage = (item: UpcomingReminderRow): string => {
     const dateFormatted = new Date(item.scheduled_start).toLocaleString('es-MX', {
         timeZone: getBusinessTimezone(),
@@ -33,48 +31,37 @@ const buildMessage = (item: UpcomingReminderRow): string => {
 /**
  * Ejecuta la lógica de negocio de CU-43:
  * Recupera citas próximas y envía recordatorios o registra falta de contacto.
+ * Devuelve cuántos recordatorios se procesaron. El runner de jobs (src/jobs) garantiza que no haya
+ * ejecuciones solapadas, ni en esta instancia ni entre instancias (advisory lock).
  */
-export const processReminders = async (): Promise<void> => {
-    if (isProcessing) {
-        console.warn('There is a reminder process running. Skipping...');
-        return;
-    }
+export const processReminders = async (): Promise<number> => {
+    /* Obtener las citas que necesitan un recordatorio */
+    const reminders = await getUpcomingAppointmentReminders();
 
-    isProcessing = true;
+    for (const item of reminders) {
+        /* Sacar el telegramId */
+        const telegramChatId = item.client_telegram_id?.trim();
 
-    try {
-        /* Obtener las citas que necesitan un recordatorio */
-        const reminders = await getUpcomingAppointmentReminders();
-        if (reminders.length === 0) return;
+        if (telegramChatId) {
+            /* Construir el mensaje */
+            try {
+                const message = buildMessage(item);
+                /* Cuando manda la notificación, regisra el id del mensaje */
+                const messageId = await sendTelegramNotification(telegramChatId, message);
 
-        for (const item of reminders) {
-            /* Sacar el telegramId */
-            const telegramChatId = item.client_telegram_id?.trim();
+                await logReminderSent(item, messageId);
+            } catch (err: unknown) {
+                const reason = err instanceof Error ? err.message : 'Error desconocido al enviar por Telegram';
+                console.error(`There was an error sending reminder for appointment ${item.appointment_id}:`, reason);
 
-            if (telegramChatId) {
-                /* Construir el mensaje */
-                try {
-                    const message = buildMessage(item);
-                    /* Cuando manda la notificación, regisra el id del mensaje */
-                    const messageId = await sendTelegramNotification(telegramChatId, message);
-
-                    await logReminderSent(item, messageId);
-                } catch (err: unknown) {
-                    const reason =
-                        err instanceof Error ? err.message : 'Error desconocido al enviar por Telegram';
-                    console.error(`There was an error sending reminder for appointment ${item.appointment_id}:`, reason);
-
-                    await logReminderFailed(item, reason);
-                }
-            } else {
-                await logReminderFailed(item, 'Client without a linked client_telegram_id');
+                await logReminderFailed(item, reason);
             }
+        } else {
+            await logReminderFailed(item, 'Client without a linked client_telegram_id');
         }
-    } catch (error) {
-        console.error('There was an error while processing reminders: ', error);
-    } finally {
-        isProcessing = false;
     }
+
+    return reminders.length;
 };
 
 export interface TestReminderResult {
