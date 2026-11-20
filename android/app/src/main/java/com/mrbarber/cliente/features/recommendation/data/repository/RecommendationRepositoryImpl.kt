@@ -37,6 +37,9 @@ class RecommendationRepositoryImpl @Inject constructor(
             api.generate(GenerateRecommendationRequestDto(RecommendationParamsDto(userPreferences = preferences)))
         }.mapCatching { it.toDomain() }
 
+    override suspend fun getHaircutImageUrl(haircutId: String): Result<String> =
+        safeApiCall(json) { api.getHaircutImageUrl(haircutId) }.map { it.url }
+
     override suspend fun getHistory(): Result<List<RecommendationHistoryEntry>> {
         val userId = sessionStorage.session.first()?.user?.id
             ?: return Result.failure(AppException.Http(401, "No hay una sesión activa"))

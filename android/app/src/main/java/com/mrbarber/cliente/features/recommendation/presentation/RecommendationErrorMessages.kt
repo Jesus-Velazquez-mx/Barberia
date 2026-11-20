@@ -17,3 +17,8 @@ fun Throwable.toRecommendationMessage(): String = when {
         "El servicio de recomendaciones no está disponible en este momento. Intenta más tarde."
     else -> toUserMessage()
 }
+
+fun Throwable.toHaircutPhotoMessage(): String = when {
+    this is AppException.Http && code == 404 -> "Este corte todavía no tiene foto."
+    else -> toUserMessage()
+}

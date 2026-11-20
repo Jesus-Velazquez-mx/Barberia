@@ -26,6 +26,9 @@ data class RecommendationResultDto(
 data class HaircutDto(val id: String, val name: String, val description: String? = null)
 
 @Serializable
+data class HaircutImageUrlDto(val url: String, val expiresIn: Int)
+
+@Serializable
 data class RecommendationHistoryEntryDto(
     val id: String,
     val status: String,

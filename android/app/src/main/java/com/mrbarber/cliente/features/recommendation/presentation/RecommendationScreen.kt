@@ -4,6 +4,7 @@ import android.content.ActivityNotFoundException
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -22,6 +24,7 @@ import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -56,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.compose.SubcomposeAsyncImage
 import com.mrbarber.cliente.features.recommendation.domain.model.Haircut
 import com.mrbarber.cliente.features.recommendation.domain.model.RecommendationHistoryEntry
 import com.mrbarber.cliente.features.recommendation.domain.model.RecommendationResult
@@ -122,6 +126,8 @@ fun RecommendationRoute(
         onGenerateClick = viewModel::onGenerateClick,
         onRetryHistoryClick = viewModel::loadHistory,
         onBookAppointmentClick = onBookAppointmentClick,
+        onViewHaircutPhoto = viewModel::onViewHaircutPhoto,
+        onDismissHaircutPhoto = viewModel::onDismissHaircutPhoto,
         modifier = modifier
     )
 }
@@ -136,8 +142,12 @@ fun Recommendation(
     onGenerateClick: () -> Unit,
     onRetryHistoryClick: () -> Unit,
     onBookAppointmentClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onViewHaircutPhoto: (Haircut) -> Unit = {},
+    onDismissHaircutPhoto: () -> Unit = {}
 ) {
+    state.haircutPhoto?.let { HaircutPhotoDialog(photo = it, onDismiss = onDismissHaircutPhoto) }
+
     // Al llegar el resultado se desplaza hasta él: suele quedar debajo del botón, fuera de la pantalla.
     val resultRequester = remember { BringIntoViewRequester() }
     LaunchedEffect(state.result) {
@@ -268,7 +278,12 @@ fun Recommendation(
                 Box(Modifier.bringIntoViewRequester(resultRequester)) {
                     when (result) {
                         is RecommendationResult.Recommended ->
-                            RecommendedCard(result = result, onBookAppointmentClick = onBookAppointmentClick)
+                            RecommendedCard(
+                                result = result,
+                                haircutsWithPhoto = state.haircutsWithPhoto,
+                                onViewPhotoClick = onViewHaircutPhoto,
+                                onBookAppointmentClick = onBookAppointmentClick
+                            )
                         is RecommendationResult.NoSuitableHaircut ->
                             NoSuitableHaircutCard(reason = result.reason, onBookAppointmentClick = onBookAppointmentClick)
                     }
@@ -352,12 +367,25 @@ private fun PlaceholderText(text: String) {
 @Composable
 private fun RecommendedCard(
     result: RecommendationResult.Recommended,
+    haircutsWithPhoto: Set<String>,
+    onViewPhotoClick: (Haircut) -> Unit,
     onBookAppointmentClick: () -> Unit
 ) {
     SectionCard(title = "TU CORTE IDEAL") {
         result.haircuts.forEach { haircut ->
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(haircut.name, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Dorado)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        haircut.name,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Dorado,
+                        modifier = Modifier.weight(1f)
+                    )
+                    if (haircut.id in haircutsWithPhoto) {
+                        PillButton(text = "Ver corte", onClick = { onViewPhotoClick(haircut) })
+                    }
+                }
                 haircut.description?.takeIf { it.isNotBlank() }?.let {
                     Text(it, fontSize = 14.sp, color = GrisClaro)
                 }
@@ -379,6 +407,71 @@ private fun RecommendedCard(
 
         LoadingButton(text = "AGENDAR CITA", onClick = onBookAppointmentClick)
     }
+}
+
+@Composable
+private fun PillButton(text: String, onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(percent = 50),
+        color = Dorado.copy(alpha = 0.15f),
+        border = BorderStroke(1.dp, Dorado)
+    ) {
+        Text(
+            text = text,
+            color = Dorado,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+        )
+    }
+}
+
+@Composable
+private fun HaircutPhotoDialog(photo: HaircutPhotoState, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Cerrar", color = Dorado, fontWeight = FontWeight.Bold) }
+        },
+        title = { Text(photo.haircutName, color = Dorado, fontWeight = FontWeight.Bold) },
+        text = {
+            when (photo) {
+                is HaircutPhotoState.Loaded -> HaircutPhoto(url = photo.url, haircutName = photo.haircutName)
+                is HaircutPhotoState.Loading -> Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.fillMaxWidth().aspectRatio(4f / 3f)
+                ) {
+                    CircularProgressIndicator(color = Dorado, strokeWidth = 2.dp, modifier = Modifier.size(24.dp))
+                }
+                is HaircutPhotoState.Failed -> Text(photo.message, color = GrisClaro)
+            }
+        }
+    )
+}
+
+@Composable
+private fun HaircutPhoto(url: String, haircutName: String) {
+    val shape = RoundedCornerShape(16.dp)
+    SubcomposeAsyncImage(
+        model = url,
+        contentDescription = "Foto del corte $haircutName",
+        contentScale = ContentScale.Crop,
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(4f / 3f)
+            .clip(shape)
+            .background(Negro)
+            .border(1.dp, Dorado.copy(alpha = 0.5f), shape),
+        loading = {
+            Box(contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = Dorado, strokeWidth = 2.dp, modifier = Modifier.size(24.dp))
+            }
+        },
+        error = {
+            Box(contentAlignment = Alignment.Center) { PlaceholderText("No se pudo mostrar la foto del corte") }
+        }
+    )
 }
 
 @Composable
