@@ -65,6 +65,25 @@ function buildTimeline(appointment: AppointmentRecord): TimelineEvent[] {
     });
   }
 
+  if (appointment.checkedInAt || appointment.status === 'checkedIn') {
+    events.push({
+      key: 'checkedIn',
+      title: 'Check-in registrado',
+      at: appointment.checkedInAt ?? appointment.scheduledStart,
+      status: 'checkedIn'
+    });
+  }
+
+  if (appointment.status === 'noShow') {
+    events.push({
+      key: 'noShow',
+      title: 'Cliente ausente',
+      at: appointment.scheduledStart,
+      detail: 'El cliente no se presentó',
+      status: 'noShow'
+    });
+  }
+
   if (appointment.status === 'cancelled') {
     events.push({
       key: 'cancelled',
@@ -72,6 +91,15 @@ function buildTimeline(appointment: AppointmentRecord): TimelineEvent[] {
       at: appointment.cancelledAt ?? appointment.updatedAt,
       detail: appointment.cancellationReason ?? undefined,
       status: 'cancelled'
+    });
+  }
+
+  if (appointment.status === 'completed') {
+    events.push({
+      key: 'completed',
+      title: 'Cita completada',
+      at: appointment.completedAt ?? appointment.scheduledEnd,
+      status: 'completed'
     });
   }
 

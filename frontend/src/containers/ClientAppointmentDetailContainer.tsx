@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { AppointmentDetailContent } from '../components/appointments/AppointmentDetailContentComponent';
 import { AppointmentStatusBadge } from '../components/appointments/AppointmentStatusBadgeComponent';
 import { RewardBadge } from '../components/appointments/RewardBadgeComponent';
+import { WalkInBadge } from '../components/appointments/WalkInBadgeComponent';
 import { getAppointmentById, type AppointmentClientInfo } from '../services/appointmentService';
 import { CancelAppointmentContainer, EditAppointmentContainer } from './AppointmentActionsContainer';
 
@@ -96,6 +97,7 @@ export function ClientAppointmentDetailContainer() {
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
             <span className="text-sm text-[var(--text)]">ID: {appointment.id.slice(0, 8)}</span>
             <div className="flex flex-wrap items-center gap-2">
+              {appointment.isWalkIn && <WalkInBadge />}
               {appointment.isRewardRedemption && <RewardBadge />}
               <AppointmentStatusBadge status={appointment.status} />
             </div>

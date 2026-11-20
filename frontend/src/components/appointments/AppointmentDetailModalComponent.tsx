@@ -11,12 +11,19 @@ import {
 import { AppointmentStatusBadge } from './AppointmentStatusBadgeComponent';
 import { Modal } from '../common/ModalComponent';
 import { RewardBadge } from './RewardBadgeComponent';
-import { Trash, Pencil, X } from 'lucide-react';
+import { WalkInBadge } from './WalkInBadgeComponent';
+import { AlertCircle, Loader2, Pencil, Trash, UserCheck, X } from 'lucide-react';
 
 interface AppointmentDetailModalProps {
   /* null = modal cerrado. */
   appointment: AppointmentRecord | null;
   onClose: () => void;
+  /* Si se pasa, se muestra "Check-in". El contenedor decide cuándo está habilitado. */
+  onCheckIn?: () => void;
+  /* Muestra el estado de carga del check-in y bloquea acciones mientras termina. */
+  isCheckingIn?: boolean;
+  /* Mensaje legible si falló el check-in desde el modal. */
+  checkInError?: string;
   /* Si se pasa, se muestra "Editar cita". El contenedor decide cuándo se puede editar. */
   onEdit?: () => void;
   /* Si se pasa, se muestra "Cancelar cita". El contenedor decide cuándo se puede cancelar. */
@@ -67,7 +74,7 @@ function buildTimeline(appointment: AppointmentRecord): TimelineEvent[] {
   const events: TimelineEvent[] = [
     {
       key: 'scheduled',
-      title: 'Cita agendada',
+      title: appointment.isWalkIn ? 'Walk-in registrado' : 'Cita agendada',
       at: appointment.createdAt,
       status: 'scheduled'
     }
@@ -83,11 +90,12 @@ function buildTimeline(appointment: AppointmentRecord): TimelineEvent[] {
     });
   }
 
-  if (appointment.status === 'checkedIn') {
+  if (appointment.checkedInAt || appointment.status === 'checkedIn') {
     events.push({
       key: 'checkedIn',
-      title: 'Cita iniciada',
-      at: appointment.scheduledStart,
+      title: 'Check-in registrado',
+      at: appointment.checkedInAt ?? appointment.scheduledStart,
+      detail: appointment.isWalkIn ? 'Check-in automático (Walk-in)' : undefined,
       status: 'checkedIn'
     });
   }
@@ -116,7 +124,7 @@ function buildTimeline(appointment: AppointmentRecord): TimelineEvent[] {
     events.push({
       key: 'completed',
       title: 'Cita completada',
-      at: appointment.scheduledEnd,
+      at: appointment.completedAt ?? appointment.scheduledEnd,
       status: 'completed'
     });
   }
@@ -157,9 +165,22 @@ function Timeline({ appointment }: { appointment: AppointmentRecord }) {
 
 /* ---------- Modal ---------- */
 
-export function AppointmentDetailModal({ appointment, onClose, onEdit, onCancel }: AppointmentDetailModalProps) {
+export function AppointmentDetailModal({
+  appointment,
+  onClose,
+  onCheckIn,
+  isCheckingIn = false,
+  checkInError = '',
+  onEdit,
+  onCancel
+}: AppointmentDetailModalProps) {
   return (
-    <Modal isOpen={appointment !== null} onClose={onClose} className="!max-w-4xl pb-8">
+    <Modal
+      isOpen={appointment !== null}
+      onClose={onClose}
+      closeOnOutsideClick={!isCheckingIn}
+      className="!max-w-4xl pb-8"
+    >
       {appointment && (
         <>
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -168,13 +189,15 @@ export function AppointmentDetailModal({ appointment, onClose, onEdit, onCancel 
               <span className="mt-0.5 block text-sm text-[var(--text)]">ID: {appointment.id.slice(0, 8)}</span>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              {appointment.isWalkIn && <WalkInBadge />}
               {appointment.isRewardRedemption && <RewardBadge />}
               <AppointmentStatusBadge status={appointment.status} />
               <button
                 type="button"
                 onClick={onClose}
+                disabled={isCheckingIn}
                 aria-label="Cerrar"
-                className="ml-1 cursor-pointer text-[var(--text)] transition-colors hover:text-[var(--text-h)]"
+                className="ml-1 cursor-pointer text-[var(--text)] transition-colors hover:text-[var(--text-h)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <X size={20} />
               </button>
@@ -244,14 +267,53 @@ export function AppointmentDetailModal({ appointment, onClose, onEdit, onCancel 
             </section>
           )}
 
+          {appointment.isWalkIn && (appointment.status === 'scheduled' || appointment.status === 'rescheduled') && (
+            <div className="mt-6 rounded-lg border border-[#9B7EDE]/40 bg-[#9B7EDE]/10 px-3.5 py-2.5 text-sm text-[#DDD0F7]">
+              Servicio sin cita previa (walk-in): no requiere check-in manual, pasará automáticamente a{' '}
+              <span className="font-semibold">Iniciada</span> al llegar su hora programada.
+            </div>
+          )}
+
+          {checkInError && (
+            <div
+              role="alert"
+              className="mt-6 flex items-start gap-2.5 rounded-lg border border-[#ff4d4d]/40 bg-[#ff4d4d]/10 px-3.5 py-2.5 text-sm font-medium text-[#ffb3b3]"
+            >
+              <AlertCircle size={18} className="mt-0.5 shrink-0 text-[#ff4d4d]" aria-hidden="true" />
+              <span>{checkInError}</span>
+            </div>
+          )}
+
           {/* Sin acciones (p. ej. cita ya cancelada) no se dibuja la barra, para no dejar un hueco vacío. */}
-          {(onEdit || onCancel) && (
+          {(onCheckIn || onEdit || onCancel) && (
             <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
+              {onCheckIn && (
+                <button
+                  type="button"
+                  onClick={onCheckIn}
+                  disabled={isCheckingIn}
+                  className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-lg border-none bg-[var(--accent)] px-5 text-sm font-bold text-[#111] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isCheckingIn ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+                      Registrando check-in...
+                    </>
+                  ) : (
+                    <>
+                      <UserCheck size={16} aria-hidden="true" />
+                      Check-in
+                    </>
+                  )}
+                </button>
+              )}
+
               {onEdit && (
                 <button
                   type="button"
                   onClick={onEdit}
-                  className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-[#262626] px-5 text-sm font-semibold text-[var(--text-h)] transition-colors hover:border-[var(--accent)]/60"
+                  disabled={isCheckingIn}
+                  className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-[#262626] px-5 text-sm font-semibold text-[var(--text-h)] transition-colors hover:border-[var(--accent)]/60 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Pencil size={16} aria-hidden="true" />
                   Editar cita
@@ -262,7 +324,8 @@ export function AppointmentDetailModal({ appointment, onClose, onEdit, onCancel 
                 <button
                   type="button"
                   onClick={onCancel}
-                  className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-lg border border-[#C4608F]/40 bg-[#C4608F]/10 px-5 text-sm font-semibold text-[#E58AB3] transition-colors hover:border-[#C4608F] hover:bg-[#C4608F]/20"
+                  disabled={isCheckingIn}
+                  className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-lg border border-[#C4608F]/40 bg-[#C4608F]/10 px-5 text-sm font-semibold text-[#E58AB3] transition-colors hover:border-[#C4608F] hover:bg-[#C4608F]/20 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Trash size={16} aria-hidden="true" />
                   Cancelar cita

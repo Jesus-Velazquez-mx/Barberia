@@ -17,6 +17,8 @@ export interface AppointmentRecord {
     shopName: string;
     barberId: string;
     barberName: string;
+    /* true para citas sin reserva previa (walk-in); pasan automáticamente a checked_in al llegar su hora. */
+    isWalkIn: boolean;
     /* null para invitados o para clientes cuya cuenta fue eliminada. */
     clientId: string | null;
     isRegisteredClient: boolean;
@@ -71,4 +73,3 @@ export interface UpdateAppointmentPayload {
 export interface CancelAppointmentPayload {
     reason?: string | null;
 }
-
