@@ -272,11 +272,7 @@ export const updateAppointment = async (
     payload: UpdateAppointmentPayload,
     client?: AppointmentClientInfo
 ): Promise<AppointmentRecord> => {
-    const { data } = await apiClient.put<AppointmentApi>(
-        `/appointments/${appointmentId}`,
-        payload,
-        authHeaders(token)
-    );
+    const { data } = await apiClient.put<AppointmentApi>(`/appointments/${appointmentId}`, payload, authHeaders(token));
     const catalogs = await loadCatalogs(token, [data.shopId]);
     return toRecord(data, catalogs, client);
 };

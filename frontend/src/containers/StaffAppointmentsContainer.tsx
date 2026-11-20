@@ -108,6 +108,8 @@ export function StaffAppointmentsContainer() {
     const requestId = ++latestRequest.current;
     setIsLoading(true);
     setLoadError('');
+    // Un error de check-in previo deja de ser relevante cuando la lista se vuelve a consultar.
+    setCheckInError('');
 
     try {
       const data = await getAppointments(token, role, query);
@@ -128,9 +130,12 @@ export function StaffAppointmentsContainer() {
     void loadAppointments();
   }, [loadAppointments]);
 
-  /* Al cambiar cualquier filtro se vuelve a la primera página. */
+  /* Al cambiar cualquier filtro se vuelve a la primera página y se descarta el error de check-in. */
   useEffect(() => {
-    const subscription = watch(() => setPage(1));
+    const subscription = watch(() => {
+      setPage(1);
+      setCheckInError('');
+    });
     return () => subscription.unsubscribe();
   }, [watch]);
 
@@ -146,6 +151,7 @@ export function StaffAppointmentsContainer() {
   const handleSearchChange = (value: string) => {
     setSearch(value);
     setPage(1);
+    setCheckInError('');
   };
 
   const handleToggleSort = () => {
@@ -157,6 +163,7 @@ export function StaffAppointmentsContainer() {
     reset(getDefaultFilters());
     setSearch('');
     setPage(1);
+    setCheckInError('');
   };
 
   const handleCheckIn = async (appointment: AppointmentRecord, source: 'table' | 'modal') => {
@@ -314,18 +321,18 @@ export function StaffAppointmentsContainer() {
         onEdit={
           selectedAppointment && canModify(selectedAppointment)
             ? () => {
-              // Se cierra el detalle antes de abrir la edición para no apilar dos modales.
-              setEditingAppointment(selectedAppointment);
-              setSelectedAppointment(null);
-            }
+                // Se cierra el detalle antes de abrir la edición para no apilar dos modales.
+                setEditingAppointment(selectedAppointment);
+                setSelectedAppointment(null);
+              }
             : undefined
         }
         onCancel={
           selectedAppointment && canModify(selectedAppointment)
             ? () => {
-              setCancelingAppointment(selectedAppointment);
-              setSelectedAppointment(null);
-            }
+                setCancelingAppointment(selectedAppointment);
+                setSelectedAppointment(null);
+              }
             : undefined
         }
       />
