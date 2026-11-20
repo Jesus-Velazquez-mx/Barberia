@@ -173,13 +173,13 @@ function toRecord(a: AppointmentApi, catalogs: Catalogs, client?: AppointmentCli
         shopName: catalogs.shops.get(a.shopId) ?? 'Sucursal',
         barberId: a.barberId,
         barberName: catalogs.barbers.get(a.barberId) ?? 'Barbero',
+        isWalkIn: Boolean(a.isWalkIn),
         ...resolveClient(a, client),
         status: STATUS_MAP[a.status] ?? 'scheduled',
         scheduledStart: a.scheduledStart,
         scheduledEnd: a.scheduledEnd,
         checkedInAt: a.checkedInAt,
         completedAt: a.completedAt,
-        // El backend no tiene "reagendada" ni estos datos todavía.
         originalScheduledStart: a.originalScheduledStart,
         cancelledAt: a.cancelledAt,
         cancellationReason: a.cancellationReason,
@@ -272,11 +272,7 @@ export const updateAppointment = async (
     payload: UpdateAppointmentPayload,
     client?: AppointmentClientInfo
 ): Promise<AppointmentRecord> => {
-    const { data } = await apiClient.put<AppointmentApi>(
-        `/appointments/${appointmentId}`,
-        payload,
-        authHeaders(token)
-    );
+    const { data } = await apiClient.put<AppointmentApi>(`/appointments/${appointmentId}`, payload, authHeaders(token));
     const catalogs = await loadCatalogs(token, [data.shopId]);
     return toRecord(data, catalogs, client);
 };
@@ -302,4 +298,19 @@ export const cancelAppointment = async (
     );
     const catalogs = await loadCatalogs(token, [data.shopId]);
     return toRecord(data, catalogs, client);
+};
+
+/**
+ * Registra el check-in de una cita (status 'checked_in').
+ * Requiere token JWT (solo receptionist de la sucursal o manager de la sucursal).
+ * Retorna el AppointmentRecord actualizado con catálogos resueltos.
+ */
+export const checkInAppointment = async (token: string, appointmentId: string): Promise<AppointmentRecord> => {
+    const { data } = await apiClient.put<AppointmentApi>(
+        `/appointments/${appointmentId}/check-in`,
+        {},
+        authHeaders(token)
+    );
+    const catalogs = await loadCatalogs(token, [data.shopId]);
+    return toRecord(data, catalogs);
 };
