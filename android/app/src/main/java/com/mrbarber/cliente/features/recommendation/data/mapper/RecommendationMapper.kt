@@ -37,6 +37,6 @@ fun RecommendationHistoryEntryDto.toDomain(): RecommendationHistoryEntry = Recom
     suggestionText = suggestionText,
     confidencePercent = confidence?.roundToInt()?.coerceIn(0, 100),
     reasoning = reasoning,
-    haircutName = recommendedHaircut?.name,
+    haircutNames = recommendedHaircuts.map { it.name },
     requestedAt = requestedAt?.let { runCatching { Instant.parse(it) }.getOrNull() }
 )

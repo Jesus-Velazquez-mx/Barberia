@@ -21,6 +21,7 @@ data class RecommendationHistoryEntry(
     val suggestionText: String?,
     val confidencePercent: Int?,
     val reasoning: String?,
-    val haircutName: String?,
+    /** Nombres de los cortes recomendados, del mejor al peor; vacío si no hubo corte o se eliminaron. */
+    val haircutNames: List<String>,
     val requestedAt: java.time.Instant?
 )

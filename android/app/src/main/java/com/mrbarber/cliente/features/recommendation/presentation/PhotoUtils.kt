@@ -13,18 +13,24 @@ import kotlin.math.max
 private const val CAMERA_DIR = "camera_photos"
 
 /**
- * Crea un archivo vacío en caché para que la app de cámara guarde ahí la foto y devuelve su Uri
- * compartible. Borra las fotos anteriores: solo hace falta la última.
+ * Devuelve un Uri compartible de un archivo nuevo en caché para que la app de cámara guarde ahí la foto.
+ * No borra las fotos anteriores: si el usuario cancela la cámara, la foto que ya tenía elegida debe
+ * seguir existiendo. La limpieza la hace [deleteOtherCameraPhotos] cuando la captura sale bien.
  * El authority debe coincidir con el `<provider>` del AndroidManifest.
  */
 fun createCameraPhotoUri(context: Context): Uri {
-    val dir = File(context.cacheDir, CAMERA_DIR).apply {
-        mkdirs()
-        listFiles()?.forEach { it.delete() }
-    }
+    val dir = File(context.cacheDir, CAMERA_DIR).apply { mkdirs() }
     // Nombre único: si se repitiera, la vista previa no se refrescaría al tomar otra foto.
     val file = File(dir, "face_${System.currentTimeMillis()}.jpg")
     return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+}
+
+/** Borra las fotos de cámara anteriores (y las vacías de capturas canceladas); conserva solo [keepUri]. */
+fun deleteOtherCameraPhotos(context: Context, keepUri: String) {
+    val keepName = Uri.parse(keepUri).lastPathSegment ?: return
+    File(context.cacheDir, CAMERA_DIR).listFiles()
+        ?.filter { it.name != keepName }
+        ?.forEach { it.delete() }
 }
 
 /** Miniatura para la vista previa (no la que se sube). Devuelve null si no se puede leer. */

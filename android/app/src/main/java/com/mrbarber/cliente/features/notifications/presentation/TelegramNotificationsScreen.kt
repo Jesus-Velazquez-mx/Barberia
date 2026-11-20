@@ -23,6 +23,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -60,11 +61,12 @@ fun TelegramNotificationsRoute(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val uriHandler = LocalUriHandler.current
 
-    // Abre Telegram (o el navegador si no está instalado).
+    // Abre Telegram (o el navegador si no está instalado). Si no hay app que lo abra, openUri lanza.
     LaunchedEffect(state.linkUrl) {
         state.linkUrl?.let {
             runCatching { uriHandler.openUri(it) }
-            viewModel.onLinkOpened()
+                .onSuccess { viewModel.onLinkOpened() }
+                .onFailure { viewModel.onLinkOpenFailed() }
         }
     }
 
@@ -80,10 +82,16 @@ fun TelegramNotificationsRoute(
         error = state.error,
         onBack = onBack,
         onConnectClick = viewModel::onConnectClick,
+        onDismissError = viewModel::dismissError,
+        onRetryClick = if (state.canRetryStatus) viewModel::retryStatus else null,
         modifier = modifier
     )
 }
 
+/**
+ * @param onRetryClick si no es null, el error muestra "Reintentar" (solo para fallos al consultar el estado;
+ * para los del enlace, el propio botón de conectar sirve para reintentar).
+ */
 @Composable
 fun TelegramNotifications(
     isLinked: Boolean,
@@ -91,7 +99,9 @@ fun TelegramNotifications(
     error: String?,
     onBack: () -> Unit,
     onConnectClick: () -> Unit,
-    modifier: Modifier = Modifier
+    onDismissError: () -> Unit,
+    modifier: Modifier = Modifier,
+    onRetryClick: (() -> Unit)? = null
 ) {
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -150,7 +160,7 @@ fun TelegramNotifications(
             }
 
             error?.let {
-                Text(text = it, color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
+                ErrorMessage(message = it, onDismiss = onDismissError, onRetry = onRetryClick)
                 Spacer(Modifier.height(12.dp))
             }
 
@@ -210,6 +220,22 @@ private fun Step(number: Int, text: String) {
 }
 
 @Composable
+private fun ErrorMessage(message: String, onDismiss: () -> Unit, onRetry: (() -> Unit)?) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(text = message, color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End
+        ) {
+            onRetry?.let {
+                TextButton(onClick = it) { Text("Reintentar", color = Dorado) }
+            }
+            TextButton(onClick = onDismiss) { Text("Cerrar", color = GrisClaro) }
+        }
+    }
+}
+
+@Composable
 private fun LinkedStatus() {
     Box(
         modifier = Modifier
@@ -235,7 +261,8 @@ fun TelegramNotificationsPreview() {
             isLoading = false,
             error = null,
             onBack = {},
-            onConnectClick = {}
+            onConnectClick = {},
+            onDismissError = {}
         )
     }
 }
@@ -249,7 +276,24 @@ fun TelegramNotificationsLinkedPreview() {
             isLoading = false,
             error = null,
             onBack = {},
-            onConnectClick = {}
+            onConnectClick = {},
+            onDismissError = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun TelegramNotificationsErrorPreview() {
+    MrBarberTheme {
+        TelegramNotifications(
+            isLinked = false,
+            isLoading = false,
+            error = "No se pudo conectar con el servidor. Revisa tu conexión.",
+            onBack = {},
+            onConnectClick = {},
+            onDismissError = {},
+            onRetryClick = {}
         )
     }
 }

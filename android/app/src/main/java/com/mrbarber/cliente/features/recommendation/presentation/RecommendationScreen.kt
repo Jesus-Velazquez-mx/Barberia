@@ -102,7 +102,11 @@ fun RecommendationRoute(
     var pendingCameraUri by rememberSaveable { mutableStateOf<String?>(null) }
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { saved ->
         val uri = pendingCameraUri
-        if (saved && uri != null) viewModel.onPhotoSelected(uri)
+        if (saved && uri != null) {
+            viewModel.onPhotoSelected(uri)
+            // Solo ahora se puede soltar la foto anterior: ya hay una nueva que la reemplaza.
+            deleteOtherCameraPhotos(context, keepUri = uri)
+        }
         pendingCameraUri = null
     }
 
@@ -554,7 +558,7 @@ private fun HistoryItem(entry: RecommendationHistoryEntry) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(
-                        text = if (entry.wasRecommended) entry.haircutName ?: "Corte recomendado" else "Sin corte ideal",
+                        text = if (entry.wasRecommended) entry.haircutNames.joinToString(" · ").ifEmpty { "Corte recomendado" } else "Sin corte ideal",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = if (entry.wasRecommended) Dorado else GrisClaro
@@ -608,7 +612,7 @@ private val previewHistory = listOf(
         suggestionText = "Este estilo resalta tus pómulos y es fácil de mantener.",
         confidencePercent = 92,
         reasoning = null,
-        haircutName = "Fade clásico",
+        haircutNames = listOf("Fade clásico"),
         requestedAt = Instant.parse("2026-11-10T18:30:00Z")
     ),
     RecommendationHistoryEntry(
@@ -617,7 +621,7 @@ private val previewHistory = listOf(
         suggestionText = null,
         confidencePercent = null,
         reasoning = "Buscas el cabello largo y los cortes disponibles son todos cortos.",
-        haircutName = null,
+        haircutNames = emptyList(),
         requestedAt = Instant.parse("2026-11-02T16:00:00Z")
     )
 )

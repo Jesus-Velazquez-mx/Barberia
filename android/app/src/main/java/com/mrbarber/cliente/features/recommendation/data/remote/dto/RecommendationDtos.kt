@@ -35,7 +35,8 @@ data class RecommendationHistoryEntryDto(
     val suggestionText: String? = null,
     val confidence: Double? = null,   // 0..100
     val reasoning: String? = null,
-    val recommendedHaircut: HistoryHaircutDto? = null,
+    /** En el orden de la IA (el primero es el mejor). Vacío si ningún corte aplicó o se eliminaron. */
+    val recommendedHaircuts: List<HistoryHaircutDto> = emptyList(),
     val requestedAt: String? = null
 )
 
