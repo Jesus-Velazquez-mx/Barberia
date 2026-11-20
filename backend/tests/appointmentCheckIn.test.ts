@@ -537,7 +537,7 @@ describe('appointment check-in and no-show', () => {
             const now = new Date();
             const overdueStart = new Date(now.getTime() - 11 * MS_PER_MINUTE);
             const rewardAppointment = await mk({ start: overdueStart, clientId: clients[0].id });
-            const regularAppointment = await mk({ start: overdueStart, clientId: clients[1].id });
+            await mk({ start: overdueStart, clientId: clients[1].id });
 
             const loyaltyCounts = await withNoShowTransaction(async (client) => {
                 await client.query(
