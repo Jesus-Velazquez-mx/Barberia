@@ -20,6 +20,7 @@ import com.mrbarber.cliente.features.profile.presentation.ProfileRoute
 import com.mrbarber.cliente.features.register.presentation.RegisterRoute
 import com.mrbarber.cliente.features.appointment.presentation.AppointmentRoute
 import com.mrbarber.cliente.features.appointment.presentation.myappointments.MyAppointmentsRoute
+import com.mrbarber.cliente.features.recommendation.presentation.RecommendationRoute
 
 
 @Composable
@@ -68,6 +69,7 @@ fun AppNavGraph(
                 onBookAppointmentClick = { navController.navigate(AppointmentDestination()) },
                 onMyAppointmentsClick = { navController.navigate(MyAppointmentsDestination) },
                 onRemindersClick = { navController.navigate(TelegramNotificationsDestination) },
+                onRecommendationClick = { navController.navigate(RecommendationDestination) },
                 onProfileClick = { navController.navigate(ProfileDestination) },
                 onLoggedOut = { navController.navigateToLoginClearingStack() }
             )
@@ -88,6 +90,12 @@ fun AppNavGraph(
             AppointmentRoute(
                 onBack = { navController.popBackStack() },
                 onAppointmentCreated = { navController.popBackStack() }
+            )
+        }
+        composable<RecommendationDestination> {
+            RecommendationRoute(
+                onBack = { navController.popBackStack() },
+                onBookAppointmentClick = { navController.navigate(AppointmentDestination()) }
             )
         }
         composable<MyAppointmentsDestination> {

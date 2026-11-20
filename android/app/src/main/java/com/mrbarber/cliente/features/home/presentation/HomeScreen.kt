@@ -39,6 +39,7 @@ fun HomeRoute(
     onBookAppointmentClick: () -> Unit,
     onMyAppointmentsClick: () -> Unit,
     onRemindersClick: () -> Unit,
+    onRecommendationClick: () -> Unit,
     onProfileClick: () -> Unit,
     onLoggedOut: () -> Unit,
     modifier: Modifier = Modifier,
@@ -55,6 +56,7 @@ fun HomeRoute(
         onBookAppointmentClick = onBookAppointmentClick,
         onMyAppointmentsClick = onMyAppointmentsClick,
         onRemindersClick = onRemindersClick,
+        onRecommendationClick = onRecommendationClick,
         onProfileClick = onProfileClick,
         modifier = modifier
     )
@@ -66,6 +68,7 @@ fun Home(
     onBookAppointmentClick: () -> Unit,
     onMyAppointmentsClick: () -> Unit,
     onRemindersClick: () -> Unit,
+    onRecommendationClick: () -> Unit,
     onProfileClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -124,6 +127,17 @@ fun Home(
             Spacer(Modifier.height(12.dp))
 
             OutlinedButton(
+                onClick = onRecommendationClick,
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Dorado),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("RECOMIENDA MI CORTE", fontWeight = FontWeight.Bold)
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            OutlinedButton(
                 onClick = onRemindersClick,
                 shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = Dorado),
@@ -155,6 +169,7 @@ fun HomePreview() {
             onBookAppointmentClick = {},
             onMyAppointmentsClick = {},
             onRemindersClick = {},
+            onRecommendationClick = {},
             onProfileClick = {}
         )
     }

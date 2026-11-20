@@ -39,8 +39,8 @@ android {
             buildConfigField("String", "BASE_URL", "\"${localProperty("api.baseUrl") ?: "http://localhost:3000/"}\"")
         }
         release {
-            // TODO: reemplazar por la URL del backend en producción
-            buildConfigField("String", "BASE_URL", "\"http://10.0.2.2:3000/\"")
+            // Backend de producción (EC2 detrás de Apache + Cloudflare), ver docs/architecture.md
+            buildConfigField("String", "BASE_URL", "\"https://barberia-api.erickdh.com/\"")
             optimization {
                 enable = false
             }
@@ -79,6 +79,8 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
