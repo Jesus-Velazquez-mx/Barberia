@@ -13,9 +13,10 @@ const router = Router();
  *       Agenda una cita para un barbero, uno o más servicios y un horario. La sucursal se deriva del barbero (`barberId`), ya que cada barbero trabaja en una sola sucursal. `scheduledStart` debe ser uno de los `startTimes`
  *       devueltos por `GET /api/shops/{id}/availability` para ese barbero y esos mismos servicios. La duración de la cita es la suma de las duraciones de los servicios. Requiere token JWT.
  *       Permisos por rol:
- *       - client: solo para sí mismo (`clientId` se puede omitir); no puede agendar para invitados.
+ *       - client: solo para sí mismo (`clientId` se puede omitir); no puede agendar para invitados ni crear citas walk-in (403).
  *       - receptionist: para un cliente registrado (`clientId`) o un invitado (`guestClientName`), solo en su sucursal.
  *       - manager: para un cliente registrado (`clientId`) o un invitado (`guestClientName`), solo en las sucursales que administra.
+ *       Walk-ins: al enviar `isWalkIn: true`, solo receptionist (su sucursal) o manager (sus sucursales) pueden registrarlo, y `scheduledStart` debe ser del día actual en la zona horaria del negocio (400 si es de otro día).
  *       Si dos personas intentan reservar el mismo horario al mismo tiempo, solo una lo obtiene; la otra recibe 409.
  *     security:
  *       - bearerAuth: []
@@ -48,6 +49,9 @@ const router = Router();
  *               notes:
  *                 type: string
  *                 maxLength: 500
+ *               isWalkIn:
+ *                 type: boolean
+ *                 description: Opcional. Marca la cita como un walk-in (cliente sin cita previa registrado por staff). Requiere rol manager o receptionist en su sucursal y fecha en el día actual del negocio.
  *     responses:
  *       201:
  *         description: Cita creada. `data` contiene la cita con `barberId` y la lista `services` agendados.
@@ -62,6 +66,7 @@ const router = Router();
  *                     id: { type: string, format: uuid }
  *                     shopId: { type: string, format: uuid }
  *                     barberId: { type: string, format: uuid }
+ *                     isWalkIn: { type: boolean }
  *                     clientId: { type: string, format: uuid, nullable: true }
  *                     isRegisteredClient: { type: boolean }
  *                     guestClientName: { type: string, nullable: true }
@@ -81,11 +86,11 @@ const router = Router();
  *                     updatedAt: { type: string, format: date-time }
  *                 message: { type: string, example: Appointment created successfully }
  *       400:
- *         description: Error de validación en los campos proporcionados (p. ej. serviceIds vacío o con repetidos).
+ *         description: Error de validación en los campos proporcionados o walk-in programado fuera del día actual.
  *       401:
  *         description: Token ausente o inválido.
  *       403:
- *         description: Cuenta desactivada o el rol no tiene permiso para agendar esta cita.
+ *         description: Cuenta desactivada, el rol no tiene permiso para agendar esta cita o cliente intentando crear walk-in.
  *       404:
  *         description: Sucursal, barbero, servicio o cliente no encontrado / inactivo.
  *       409:
@@ -149,6 +154,10 @@ router.post('/appointments', create);
  *         name: barberId
  *         schema: { type: string, format: uuid }
  *         description: Solo recepción y gerentes. Citas de un barbero.
+ *       - in: query
+ *         name: isWalkIn
+ *         schema: { type: boolean }
+ *         description: Solo recepción y gerentes. Filtra por citas walk-in (true) o normales (false).
  *     responses:
  *       200:
  *         description: Lista de citas (puede estar vacía). Cada cita incluye su lista `services`.
@@ -165,6 +174,7 @@ router.post('/appointments', create);
  *                       id: { type: string, format: uuid }
  *                       shopId: { type: string, format: uuid }
  *                       barberId: { type: string, format: uuid }
+ *                       isWalkIn: { type: boolean }
  *                       clientId: { type: string, format: uuid, nullable: true }
  *                       isRegisteredClient: { type: boolean }
  *                       guestClientName: { type: string, nullable: true }

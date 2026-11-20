@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import { X } from 'lucide-react';
 import { Modal } from '../common/ModalComponent';
-import type { GeneratedRecommendation } from '../../types/recommendation';
+import { HaircutChip } from './HaircutChipComponent';
+import { useHaircutImageUrls } from '../../hooks/useHaircutImageUrls';
+import type { GeneratedRecommendation, HaircutStyle } from '../../types/recommendation';
 
 interface RecommendationResultProps {
   isOpen: boolean;
@@ -10,7 +13,18 @@ interface RecommendationResultProps {
   result: GeneratedRecommendation;
 }
 
+/* Referencia estable para el caso sin cortes recomendados (el hook depende de la identidad del arreglo). */
+const NO_HAIRCUTS: HaircutStyle[] = [];
+
 export function RecommendationResult({ isOpen, onClose, message, result }: RecommendationResultProps) {
+  const haircuts = result.status === 'recommended' ? result.haircuts : NO_HAIRCUTS;
+  // Precarga las fotos al mostrarse el resultado; solo trae las URLs de los cortes que sí tienen foto
+  const imageUrls = useHaircutImageUrls(haircuts, isOpen);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const selectedHaircut = haircuts.find((haircut) => haircut.id === selectedId);
+  const selectedImageUrl = selectedHaircut ? imageUrls[selectedHaircut.id] : undefined;
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} className="pb-8">
       <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-4">
@@ -32,14 +46,25 @@ export function RecommendationResult({ isOpen, onClose, message, result }: Recom
           <>
             <ul className="m-0 flex list-none flex-wrap gap-2 p-0 justify-center my-6">
               {result.haircuts.map((haircut) => (
-                <li
+                <HaircutChip
                   key={haircut.id}
-                  className="rounded-full border border-(--accent-border) bg-(--accent-bg) px-3 py-1 font-semibold text-(--accent)"
-                >
-                  {haircut.name}
-                </li>
+                  name={haircut.name}
+                  hasImage={haircut.id in imageUrls}
+                  isSelected={haircut.id === selectedId}
+                  onSelect={() => setSelectedId((current) => (current === haircut.id ? null : haircut.id))}
+                />
               ))}
             </ul>
+            {selectedHaircut && selectedImageUrl && (
+              <figure className="m-0 flex flex-col items-center gap-2">
+                <img
+                  src={selectedImageUrl}
+                  alt={`Foto del corte ${selectedHaircut.name}`}
+                  className="max-h-80 w-full rounded-lg border border-white/10 object-contain"
+                />
+                <figcaption className="text-xs text-(--text)">{selectedHaircut.name}</figcaption>
+              </figure>
+            )}
             <p className="m-0 text-(--text-h)">{result.suggestionText}</p>
             <div>
               <span className="text-xs font-semibold uppercase text-(--text)">Por qué</span>

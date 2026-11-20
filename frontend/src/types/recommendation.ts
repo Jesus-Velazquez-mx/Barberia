@@ -40,9 +40,16 @@ export interface HaircutRecommendation {
     confidence: number | null;
     /* Razonamiento de la IA (o el motivo por el que ningún corte aplicó). */
     reasoning: string | null;
-    /* Primer corte recomendado; null si no hubo recomendación o el corte fue eliminado. */
-    recommendedHaircut: { id: string; name: string } | null;
+    /* Cortes recomendados, en el orden de la IA; vacío si no hubo recomendación o los cortes fueron eliminados. */
+    recommendedHaircuts: { id: string; name: string }[];
     /* Fechas en ISO. */
     requestedAt: string;
     completedAt: string | null;
+}
+
+/* Respuesta de GET /haircuts/:haircutId/image-url: URL presignada de la foto de catálogo de un corte. */
+export interface HaircutImageUrl {
+    url: string;
+    /* Segundos de vigencia de la URL. */
+    expiresIn: number;
 }

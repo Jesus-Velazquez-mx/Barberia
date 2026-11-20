@@ -60,6 +60,11 @@ export const registerAppointment = async (
 ): Promise<AppointmentResponse | ClientAppointmentResponse> => {
     const performer = await isUserSessionValid(token);
 
+    const isWalkIn = data.isWalkIn ?? false;
+    if (isWalkIn && performer.role === 'client') {
+        throw new ApiError(ApiErrorCode.FORBIDDEN, 'Clients cannot create walk-in appointments');
+    }
+
     // Un cliente que no indica a quién agenda, agenda para sí mismo.
     const clientId = data.guestClientName
         ? null
@@ -93,16 +98,29 @@ export const registerAppointment = async (
         throw new ApiError(ApiErrorCode.FORBIDDEN, 'Not authorized to create this appointment');
     }
 
+    if (
+        isWalkIn &&
+        !canManageShopWalkIns(performer, { shopId: shop.id, shopManagerId: shop.manager_id }, receptionistShopId)
+    ) {
+        throw new ApiError(ApiErrorCode.FORBIDDEN, 'Not authorized to manage walk-ins of this shop');
+    }
+
     if (clientId !== null && !(await getClientByUserId(clientId))) {
         throw new ApiError(ApiErrorCode.NOT_FOUND, 'Client not found');
     }
 
-    // Reutiliza el cálculo de disponibilidad: valida fecha (no pasada, máx. días de anticipación),
-    // servicios, barbero elegible, turno (día abierto) y citas existentes.
-    // scheduledStart es un instante UTC real; el día de negocio al que pertenece se calcula en
-    // BUSINESS_TIMEZONE (no recortando el ISO en UTC: cerca de medianoche el día de calendario
-    // del negocio puede no coincidir con el día de calendario en UTC).
     const scheduledStart = new Date(data.scheduledStart);
+
+    if (isWalkIn) {
+        const appointmentDay = getBusinessToday(scheduledStart.getTime());
+        const today = getBusinessToday();
+        if (appointmentDay !== today) {
+            throw new ApiError(
+                ApiErrorCode.BAD_REQUEST,
+                'Walk-in appointments must be scheduled for the current business day'
+            );
+        }
+    }
     const startIso = scheduledStart.toISOString();
     const availability = await getAvailableSlots({
         shopId: shop.id,
@@ -129,6 +147,7 @@ export const registerAppointment = async (
         scheduledStart,
         scheduledEnd: new Date(scheduledStart.getTime() + durationMinutes * MS_PER_MINUTE),
         notes: data.notes ?? null,
+        isWalkIn,
         services: services.map((s) => ({
             serviceId: s.id,
             priceAtBooking: s.price,
@@ -575,6 +594,9 @@ export const listAppointments = async (
         filters.barberId = query.barberId;
         if (query.clientType !== undefined) {
             filters.isRegisteredClient = query.clientType === 'registered';
+        }
+        if (query.isWalkIn !== undefined) {
+            filters.isWalkIn = query.isWalkIn;
         }
     }
 

@@ -35,6 +35,7 @@ const createAppointmentSchema = z
             .max(100, 'Guest client name must be at most 100 characters')
             .optional(),
         notes: notesField.optional(),
+        isWalkIn: z.boolean().optional(),
     })
     .refine((data) => !(data.clientId && data.guestClientName), {
         message: 'Provide either clientId or guestClientName, not both',
@@ -84,6 +85,10 @@ const listAppointmentsQuerySchema = z.object({
     shopId: z.uuid('Invalid shop ID format').optional(),
     clientType: z.enum(['registered', 'visitor'], 'Invalid clientType, expected registered or visitor').optional(),
     barberId: z.uuid('Invalid barber ID format').optional(),
+    isWalkIn: z
+        .enum(['true', 'false'])
+        .transform((val) => val === 'true')
+        .optional(),
 });
 
 // Agendar cita.
