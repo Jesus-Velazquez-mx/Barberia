@@ -173,6 +173,7 @@ function toRecord(a: AppointmentApi, catalogs: Catalogs, client?: AppointmentCli
         shopName: catalogs.shops.get(a.shopId) ?? 'Sucursal',
         barberId: a.barberId,
         barberName: catalogs.barbers.get(a.barberId) ?? 'Barbero',
+        isWalkIn: a.isWalkIn,
         ...resolveClient(a, client),
         status: STATUS_MAP[a.status] ?? 'scheduled',
         scheduledStart: a.scheduledStart,
@@ -302,4 +303,8 @@ export const cancelAppointment = async (
     );
     const catalogs = await loadCatalogs(token, [data.shopId]);
     return toRecord(data, catalogs, client);
+};
+
+export const markAppointmentNoShow = async (token: string, appointmentId: string): Promise<void> => {
+    await apiClient.put<AppointmentApi>(`/appointments/${appointmentId}/no-show`, {}, authHeaders(token));
 };

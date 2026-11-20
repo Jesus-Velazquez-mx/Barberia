@@ -1,12 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { AppointmentDetailModal } from '../components/appointments/AppointmentDetailModalComponent';
+import { MarkNoShowModal } from '../components/appointments/MarkNoShowModalComponent';
 import { AppointmentFilters, FilterToggleButton } from '../components/appointments/AppointmentFiltersComponent';
 import { AppointmentTable } from '../components/appointments/AppointmentTableComponent';
 import { ManagerPageHeader } from '../components/dashboard/ManagerPageHeaderComponent';
 import { SearchBar } from '../components/common/SearchBarComponent';
 import { useAuth } from '../context/AuthContext';
-import { getAppointments, type AppointmentQuery } from '../services/appointmentService';
+import {
+  getAppointmentById,
+  getAppointments,
+  markAppointmentNoShow,
+  type AppointmentQuery
+} from '../services/appointmentService';
 import type { AppointmentFilterValues, AppointmentRecord, SortDirection } from '../types/appointmentType';
 import type { UserRole } from '../components/appointments/EditAppointmentModalComponent';
 import { CancelAppointmentContainer, EditAppointmentContainer } from './AppointmentActionsContainer';
@@ -55,8 +61,10 @@ export function StaffAppointmentsContainer() {
   const [page, setPage] = useState(1);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<AppointmentRecord | null>(null);
+  const [noShowAppointment, setNoShowAppointment] = useState<AppointmentRecord | null>(null);
   const [editingAppointment, setEditingAppointment] = useState<AppointmentRecord | null>(null);
   const [cancelingAppointment, setCancelingAppointment] = useState<AppointmentRecord | null>(null);
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
 
   const {
     register,
@@ -112,6 +120,20 @@ export function StaffAppointmentsContainer() {
     void loadAppointments();
   }, [loadAppointments]);
 
+  useEffect(() => {
+    if (!selectedAppointment || role !== 'receptionist') return;
+
+    const noShowAt = Date.parse(selectedAppointment.scheduledStart);
+    const remaining = noShowAt - currentTime;
+    if (remaining <= 0) return;
+
+    const timer = window.setTimeout(
+      () => setCurrentTime(Date.now()),
+      Math.min(remaining, 2_147_000_000)
+    );
+    return () => window.clearTimeout(timer);
+  }, [currentTime, role, selectedAppointment?.id, selectedAppointment?.scheduledStart]);
+
   /* Al cambiar cualquier filtro se vuelve a la primera página. */
   useEffect(() => {
     const subscription = watch(() => setPage(1));
@@ -141,6 +163,35 @@ export function StaffAppointmentsContainer() {
     reset(getDefaultFilters());
     setSearch('');
     setPage(1);
+  };
+
+  const handleMarkNoShow = async (appointmentId: string) => {
+    if (!token) throw new Error('Tu sesión expiró. Vuelve a iniciar sesión.');
+
+    try {
+      await markAppointmentNoShow(token, appointmentId);
+      setNoShowAppointment(null);
+      await loadAppointments();
+    } catch (error) {
+      const message = getApiErrorMessage(error, 'No se pudo marcar la cita como inasistencia.');
+      try {
+        const freshAppointment = await getAppointmentById(token, appointmentId);
+        if (freshAppointment) setNoShowAppointment(freshAppointment);
+      } catch {
+        await loadAppointments();
+      }
+      throw new Error(message);
+    }
+  };
+
+  const getNoShowDisabledReason = (appointment: AppointmentRecord): string | undefined => {
+    if (appointment.status === 'noShow') return 'Esta cita ya está marcada como inasistencia.';
+    if (appointment.isWalkIn) return 'Los walk-ins no se marcan como inasistencia.';
+    if (appointment.status !== 'scheduled' && appointment.status !== 'rescheduled') {
+      return 'Solo se pueden marcar citas agendadas o reagendadas.';
+    }
+    if (currentTime < Date.parse(appointment.scheduledStart)) return 'Se habilita a partir de la hora programada de inicio.';
+    return undefined;
   };
 
   /* ---------- Reglas de validación de fechas ---------- */
@@ -216,7 +267,10 @@ export function StaffAppointmentsContainer() {
             isFiltered ? 'No se encontraron citas con los filtros aplicados.' : 'No hay citas en este periodo.'
           }
           onRetry={() => void loadAppointments()}
-          onSelect={setSelectedAppointment}
+          onSelect={(appointment) => {
+            setCurrentTime(Date.now());
+            setSelectedAppointment(appointment);
+          }}
           sortDirection={sortDirection}
           onToggleSort={handleToggleSort}
           pagination={{
@@ -233,22 +287,38 @@ export function StaffAppointmentsContainer() {
 
       <AppointmentDetailModal
         appointment={selectedAppointment}
-        onClose={() => setSelectedAppointment(null)}
+        onClose={() => {
+          setSelectedAppointment(null);
+        }}
+        onMarkNoShow={
+          selectedAppointment && role === 'receptionist'
+            ? () => {
+              setNoShowAppointment(selectedAppointment);
+              setSelectedAppointment(null);
+            }
+            : undefined
+        }
+        canMarkNoShow={
+          selectedAppointment !== null &&
+          role === 'receptionist' &&
+          getNoShowDisabledReason(selectedAppointment) === undefined
+        }
+        noShowDisabledReason={selectedAppointment ? getNoShowDisabledReason(selectedAppointment) : undefined}
         onEdit={
           selectedAppointment && canModify(selectedAppointment)
             ? () => {
-                // Se cierra el detalle antes de abrir la edición para no apilar dos modales.
-                setEditingAppointment(selectedAppointment);
-                setSelectedAppointment(null);
-              }
+              // Se cierra el detalle antes de abrir la edición para no apilar dos modales.
+              setEditingAppointment(selectedAppointment);
+              setSelectedAppointment(null);
+            }
             : undefined
         }
         onCancel={
           selectedAppointment && canModify(selectedAppointment)
             ? () => {
-                setCancelingAppointment(selectedAppointment);
-                setSelectedAppointment(null);
-              }
+              setCancelingAppointment(selectedAppointment);
+              setSelectedAppointment(null);
+            }
             : undefined
         }
       />
@@ -268,6 +338,17 @@ export function StaffAppointmentsContainer() {
           role={role as UserRole}
           onDone={loadAppointments}
           onClose={() => setCancelingAppointment(null)}
+        />
+      )}
+      {noShowAppointment && (
+        <MarkNoShowModal
+          appointment={noShowAppointment}
+          onConfirm={handleMarkNoShow}
+          onBack={() => {
+            setSelectedAppointment(noShowAppointment);
+            setNoShowAppointment(null);
+          }}
+          onClose={() => setNoShowAppointment(null)}
         />
       )}
     </>

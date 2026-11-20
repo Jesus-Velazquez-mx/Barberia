@@ -177,6 +177,16 @@ export const canCheckInAppointment = (
 };
 
 /**
+ * PUT /appointments/:id/no-show:
+ * - Solo la recepción puede marcar no-show, únicamente para citas de su sucursal.
+ */
+export const canMarkAppointmentNoShow = (
+    performer: UserIdentity,
+    appointment: { shopId: string },
+    receptionistShopId: string | null = null
+): boolean => performer.role === 'receptionist' && receptionistShopId === appointment.shopId;
+
+/**
  * GET /appointments/:id: ver una cita tiene el mismo alcance por rol que editarla
  * (client: las propias; receptionist: su sucursal; manager: sus sucursales).
  */

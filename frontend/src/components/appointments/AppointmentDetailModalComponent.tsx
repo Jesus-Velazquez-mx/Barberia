@@ -11,7 +11,7 @@ import {
 import { AppointmentStatusBadge } from './AppointmentStatusBadgeComponent';
 import { Modal } from '../common/ModalComponent';
 import { RewardBadge } from './RewardBadgeComponent';
-import { Trash, Pencil, X } from 'lucide-react';
+import { Trash, Pencil, UserX, X } from 'lucide-react';
 
 interface AppointmentDetailModalProps {
   /* null = modal cerrado. */
@@ -21,6 +21,9 @@ interface AppointmentDetailModalProps {
   onEdit?: () => void;
   /* Si se pasa, se muestra "Cancelar cita". El contenedor decide cuándo se puede cancelar. */
   onCancel?: () => void;
+  onMarkNoShow?: () => void;
+  canMarkNoShow?: boolean;
+  noShowDisabledReason?: string;
 }
 
 /* ---------- Piezas ---------- */
@@ -139,9 +142,8 @@ function Timeline({ appointment }: { appointment: AppointmentRecord }) {
             {!isLast && <span aria-hidden="true" className="absolute left-[5px] top-4 bottom-0 w-px bg-white/15" />}
             <span
               aria-hidden="true"
-              className={`relative mt-1 h-[11px] w-[11px] shrink-0 rounded-full ${dotColor} ${
-                isLast && event.status ? 'ring-4 ring-white/10' : ''
-              }`}
+              className={`relative mt-1 h-[11px] w-[11px] shrink-0 rounded-full ${dotColor} ${isLast && event.status ? 'ring-4 ring-white/10' : ''
+                }`}
             />
             <div className="min-w-0">
               <span className="block text-sm font-semibold text-[var(--text-h)]">{event.title}</span>
@@ -157,7 +159,15 @@ function Timeline({ appointment }: { appointment: AppointmentRecord }) {
 
 /* ---------- Modal ---------- */
 
-export function AppointmentDetailModal({ appointment, onClose, onEdit, onCancel }: AppointmentDetailModalProps) {
+export function AppointmentDetailModal({
+  appointment,
+  onClose,
+  onEdit,
+  onCancel,
+  onMarkNoShow,
+  canMarkNoShow = false,
+  noShowDisabledReason
+}: AppointmentDetailModalProps) {
   return (
     <Modal isOpen={appointment !== null} onClose={onClose} className="!max-w-4xl pb-8">
       {appointment && (
@@ -245,29 +255,43 @@ export function AppointmentDetailModal({ appointment, onClose, onEdit, onCancel 
           )}
 
           {/* Sin acciones (p. ej. cita ya cancelada) no se dibuja la barra, para no dejar un hueco vacío. */}
-          {(onEdit || onCancel) && (
-            <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
-              {onEdit && (
-                <button
-                  type="button"
-                  onClick={onEdit}
-                  className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-[#262626] px-5 text-sm font-semibold text-[var(--text-h)] transition-colors hover:border-[var(--accent)]/60"
-                >
-                  <Pencil size={16} aria-hidden="true" />
-                  Editar cita
-                </button>
-              )}
+          {(onEdit || onCancel || onMarkNoShow) && (
+            <div className="mt-6">
+              <div className="flex flex-wrap items-center justify-end gap-3">
+                {onMarkNoShow && (
+                  <button
+                    type="button"
+                    onClick={onMarkNoShow}
+                    disabled={!canMarkNoShow}
+                    title={noShowDisabledReason}
+                    className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-lg border border-[#B86B5E]/40 bg-[#B86B5E]/10 px-5 text-sm font-semibold text-[#E5B1A8] transition-colors hover:border-[#B86B5E] hover:bg-[#B86B5E]/20 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <UserX size={16} aria-hidden="true" />
+                    {appointment.status === 'noShow' ? 'Inasistencia registrada' : 'Marcar inasistencia'}
+                  </button>
+                )}
+                {onEdit && (
+                  <button
+                    type="button"
+                    onClick={onEdit}
+                    className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-[#262626] px-5 text-sm font-semibold text-[var(--text-h)] transition-colors hover:border-[var(--accent)]/60"
+                  >
+                    <Pencil size={16} aria-hidden="true" />
+                    Editar cita
+                  </button>
+                )}
 
-              {onCancel && (
-                <button
-                  type="button"
-                  onClick={onCancel}
-                  className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-lg border border-[#C4608F]/40 bg-[#C4608F]/10 px-5 text-sm font-semibold text-[#E58AB3] transition-colors hover:border-[#C4608F] hover:bg-[#C4608F]/20"
-                >
-                  <Trash size={16} aria-hidden="true" />
-                  Cancelar cita
-                </button>
-              )}
+                {onCancel && (
+                  <button
+                    type="button"
+                    onClick={onCancel}
+                    className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-lg border border-[#C4608F]/40 bg-[#C4608F]/10 px-5 text-sm font-semibold text-[#E58AB3] transition-colors hover:border-[#C4608F] hover:bg-[#C4608F]/20"
+                  >
+                    <Trash size={16} aria-hidden="true" />
+                    Cancelar cita
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </>

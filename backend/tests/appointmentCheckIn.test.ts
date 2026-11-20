@@ -1,9 +1,12 @@
 import request from 'supertest';
 import express from 'express';
+import { jest } from '@jest/globals';
 import router from '../src/routes/routes.js';
 import connection from '../src/connection/connection.js';
 import { signToken } from '../src/services/jwtTokenService.js';
-import { canCheckInAppointment } from '../src/services/userPermissions.js';
+import { markNoShow as markOverdueAppointments } from '../src/services/appointmentService.js';
+import { canCheckInAppointment, canMarkAppointmentNoShow } from '../src/services/userPermissions.js';
+import type { PoolClient } from 'pg';
 import type { User, UserRole } from '../src/types/entities/user.interface.js';
 import {
     insertManager,
@@ -51,7 +54,18 @@ describe('canCheckInAppointment', () => {
     });
 });
 
-describe('PUT /api/appointments/:id/check-in', () => {
+describe('canMarkAppointmentNoShow', () => {
+    const appointment = { shopId: SHOP };
+
+    test('solo recepción de la misma sucursal puede marcar no-show', () => {
+        expect(canMarkAppointmentNoShow({ id: A, role: 'receptionist' }, appointment, SHOP)).toBe(true);
+        expect(canMarkAppointmentNoShow({ id: A, role: 'receptionist' }, appointment, B)).toBe(false);
+        expect(canMarkAppointmentNoShow({ id: B, role: 'manager' }, appointment, null)).toBe(false);
+        expect(canMarkAppointmentNoShow({ id: A, role: 'client' }, appointment, null)).toBe(false);
+    });
+});
+
+describe('appointment check-in and no-show', () => {
     let shopId: string;
     let otherShopId: string;
     let managerToken: string;
@@ -65,6 +79,8 @@ describe('PUT /api/appointments/:id/check-in', () => {
 
     const checkIn = (token: string, id: string) =>
         request(app).put(`/api/appointments/${id}/check-in`).set('Authorization', `Bearer ${token}`);
+    const markNoShow = (token: string, id: string) =>
+        request(app).put(`/api/appointments/${id}/no-show`).set('Authorization', `Bearer ${token}`);
 
     const minutesFromNow = (minutes: number) => new Date(Date.now() + minutes * MS_PER_MINUTE);
 
@@ -75,6 +91,7 @@ describe('PUT /api/appointments/:id/check-in', () => {
         clientId?: string | null;
         barber?: string;
         withService?: boolean;
+        isWalkIn?: boolean;
     }) => {
         const start = options?.start ?? minutesFromNow(5);
         const end = options?.end ?? new Date(start.getTime() + 30 * MS_PER_MINUTE);
@@ -83,6 +100,7 @@ describe('PUT /api/appointments/:id/check-in', () => {
         const id = await insertAppointment(shopId, targetBarber, start, end, {
             ...(clientId ? { clientId } : {}),
             status: options?.status ?? 'scheduled',
+            ...(options?.isWalkIn !== undefined ? { isWalkIn: options.isWalkIn } : {}),
         });
         if (options?.withService) {
             await getPool().query(
@@ -92,6 +110,28 @@ describe('PUT /api/appointments/:id/check-in', () => {
             );
         }
         return id;
+    };
+
+    const withNoShowTransaction = async <T>(run: (client: PoolClient) => Promise<T>): Promise<T> => {
+        const pool = getPool();
+        const client = await pool.connect();
+        await client.query('BEGIN');
+
+        const transactionalPool = new Proxy(pool, {
+            get(target, property, receiver) {
+                if (property === 'query') return client.query.bind(client);
+                return Reflect.get(target, property, receiver);
+            },
+        });
+        const getPoolSpy = jest.spyOn(connection, 'getPool').mockReturnValue(transactionalPool);
+
+        try {
+            return await run(client);
+        } finally {
+            getPoolSpy.mockRestore();
+            await client.query('ROLLBACK');
+            client.release();
+        }
     };
 
     beforeAll(async () => {
@@ -371,5 +411,158 @@ describe('PUT /api/appointments/:id/check-in', () => {
 
         const pastCutoff = await mk({ status: 'rescheduled', start: minutesFromNow(-15) });
         expect((await checkIn(managerToken, pastCutoff)).status).toBe(409);
+    });
+
+    describe('PUT /api/appointments/:id/no-show', () => {
+        test('staff marca como no-show una cita vencida y la recompensa reinicia el contador', async () => {
+            const id = await mk({ start: minutesFromNow(-11) });
+            await getPool().query(`UPDATE clients SET completed_services_count = 4 WHERE user_id = $1`, [clients[0].id]);
+            await getPool().query(`UPDATE appointments SET is_reward_redemption = true WHERE id = $1`, [id]);
+
+            const res = await markNoShow(receptionistToken, id);
+
+            expect(res.status).toBe(200);
+            expect(res.body.data.status).toBe('no_show');
+            const client = await getPool().query(
+                `SELECT completed_services_count FROM clients WHERE user_id = $1`,
+                [clients[0].id]
+            );
+            expect(client.rows[0].completed_services_count).toBe(0);
+        });
+
+        test('recepción puede marcar desde el inicio; gerencia no tiene permiso', async () => {
+            const receptionistEligible = await mk({ start: minutesFromNow(-1) });
+            expect((await markNoShow(receptionistToken, receptionistEligible)).status).toBe(200);
+
+            const managerDenied = await mk({ start: minutesFromNow(-15) });
+            expect((await markNoShow(managerToken, managerDenied)).status).toBe(403);
+        });
+
+        test('409 antes del inicio, para walk-ins y para estados no elegibles', async () => {
+            const future = await mk({ start: minutesFromNow(5) });
+            expect((await markNoShow(receptionistToken, future)).status).toBe(409);
+
+            const walkIn = await mk({ start: minutesFromNow(-15), isWalkIn: true });
+            expect((await markNoShow(receptionistToken, walkIn)).status).toBe(409);
+
+            const alreadyNoShow = await mk({ start: minutesFromNow(-15), status: 'no_show' });
+            expect((await markNoShow(receptionistToken, alreadyNoShow)).status).toBe(409);
+        });
+
+        test('403 para clientes y personal fuera del ámbito de la cita', async () => {
+            const id = await mk({ start: minutesFromNow(-15) });
+            expect((await markNoShow(clients[0].token, id)).status).toBe(403);
+            expect((await markNoShow(foreignReceptionistToken, id)).status).toBe(403);
+        });
+    });
+
+    describe('automatic no-show job', () => {
+        test('marks appointments at the exact 10-minute cutoff and uses the current start after rescheduling', async () => {
+            const now = new Date();
+            const exactCutoffStart = new Date(now.getTime() - 10 * MS_PER_MINUTE);
+            const justBeforeCutoffStart = new Date(exactCutoffStart.getTime() + 1_000);
+            const oldOriginalStart = new Date(now.getTime() - 60 * MS_PER_MINUTE);
+
+            const scheduledAtCutoff = await mk({ start: exactCutoffStart });
+            const rescheduledAtCutoff = await mk({ start: exactCutoffStart, status: 'rescheduled' });
+            const rescheduledBeforeCutoff = await mk({ start: justBeforeCutoffStart, status: 'rescheduled' });
+
+            const statuses = await withNoShowTransaction(async (client) => {
+                await client.query(
+                    `UPDATE appointments SET original_scheduled_start = $2 WHERE id = ANY($1::uuid[])`,
+                    [[rescheduledAtCutoff, rescheduledBeforeCutoff], oldOriginalStart]
+                );
+                await markOverdueAppointments(now);
+
+                const result = await client.query(
+                    `SELECT id, status FROM appointments WHERE id = ANY($1::uuid[])`,
+                    [[scheduledAtCutoff, rescheduledAtCutoff, rescheduledBeforeCutoff]]
+                );
+                return Object.fromEntries(result.rows.map((row) => [row.id, row.status]));
+            });
+            expect(statuses).toEqual({
+                [scheduledAtCutoff]: 'no_show',
+                [rescheduledAtCutoff]: 'no_show',
+                [rescheduledBeforeCutoff]: 'rescheduled',
+            });
+        });
+
+        test('does not mark checked-in, cancelled, completed, or walk-in appointments', async () => {
+            const now = new Date();
+            const overdueStart = new Date(now.getTime() - 11 * MS_PER_MINUTE);
+            const eligible = await mk({ start: overdueStart });
+            const checkedIn = await mk({ start: overdueStart, status: 'checked_in' });
+            const cancelled = await mk({ start: overdueStart, status: 'cancelled' });
+            const completed = await mk({ start: overdueStart, status: 'completed' });
+            const walkIn = await mk({ start: overdueStart, isWalkIn: true });
+
+            const statuses = await withNoShowTransaction(async (client) => {
+                await markOverdueAppointments(now);
+                const result = await client.query(
+                    `SELECT id, status FROM appointments WHERE id = ANY($1::uuid[])`,
+                    [[eligible, checkedIn, cancelled, completed, walkIn]]
+                );
+                return Object.fromEntries(result.rows.map((row) => [row.id, row.status]));
+            });
+            expect(statuses).toEqual({
+                [eligible]: 'no_show',
+                [checkedIn]: 'checked_in',
+                [cancelled]: 'cancelled',
+                [completed]: 'completed',
+                [walkIn]: 'scheduled',
+            });
+        });
+
+        test('a check-in one millisecond before the cutoff prevents the automatic no-show', async () => {
+            const checkInAt = Date.now();
+            const start = new Date(checkInAt - 10 * MS_PER_MINUTE + 1);
+            const id = await mk({ start });
+            const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(checkInAt);
+
+            try {
+                expect((await checkIn(receptionistToken, id)).status).toBe(200);
+            } finally {
+                nowSpy.mockRestore();
+            }
+
+            const status = await withNoShowTransaction(async (client) => {
+                await markOverdueAppointments(new Date(start.getTime() + 10 * MS_PER_MINUTE));
+                const result = await client.query(`SELECT status FROM appointments WHERE id = $1`, [id]);
+                return result.rows[0].status;
+            });
+            expect(status).toBe('checked_in');
+        });
+
+        test('resets loyalty only for reward redemptions', async () => {
+            const now = new Date();
+            const overdueStart = new Date(now.getTime() - 11 * MS_PER_MINUTE);
+            const rewardAppointment = await mk({ start: overdueStart, clientId: clients[0].id });
+            const regularAppointment = await mk({ start: overdueStart, clientId: clients[1].id });
+
+            const loyaltyCounts = await withNoShowTransaction(async (client) => {
+                await client.query(
+                    `UPDATE clients SET completed_services_count = CASE user_id
+                        WHEN $1 THEN 4
+                        WHEN $2 THEN 7
+                    END
+                    WHERE user_id = ANY($3::uuid[])`,
+                    [clients[0].id, clients[1].id, [clients[0].id, clients[1].id]]
+                );
+                await client.query(`UPDATE appointments SET is_reward_redemption = true WHERE id = $1`, [
+                    rewardAppointment,
+                ]);
+                await markOverdueAppointments(now);
+
+                const result = await client.query(
+                    `SELECT user_id, completed_services_count FROM clients WHERE user_id = ANY($1::uuid[])`,
+                    [[clients[0].id, clients[1].id]]
+                );
+                return Object.fromEntries(result.rows.map((row) => [row.user_id, row.completed_services_count]));
+            });
+            expect(loyaltyCounts).toEqual({
+                [clients[0].id]: 0,
+                [clients[1].id]: 7,
+            });
+        });
     });
 });

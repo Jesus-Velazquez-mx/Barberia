@@ -17,6 +17,7 @@ export interface AppointmentRecord {
     shopName: string;
     barberId: string;
     barberName: string;
+    isWalkIn: boolean;
     /* null para invitados o para clientes cuya cuenta fue eliminada. */
     clientId: string | null;
     isRegisteredClient: boolean;

@@ -7,6 +7,8 @@ import {
     getAppointments,
     getServicesByAppointmentIds,
     updateAppointmentWithServices,
+    markAppointmentAsNoShow,
+    markAppointmentAsNoShowById
 } from '../repositories/appointmentRepository.js';
 import { getShopById, getShopIdsByManagerId } from '../repositories/shopRepository.js';
 import { getBarberById } from '../repositories/barberRepository.js';
@@ -21,6 +23,7 @@ import {
 } from './availabilityService.js';
 import {
     canCheckInAppointment,
+    canMarkAppointmentNoShow,
     canCreateAppointment,
     canEditAppointment,
     canManageShopWalkIns,
@@ -625,4 +628,53 @@ export const listAppointments = async (
             a.client_id !== null ? (clientsById.get(a.client_id) ?? null) : null
         )
     );
+};
+
+
+/* No hay errores en la api aquí */
+export const markNoShow = (now: Date): Promise<number> =>
+    markAppointmentAsNoShow(now, NO_SHOW_GRACE_MINUTES);
+
+/* Esto es para hacerlo manual */
+export const markAppointmentNoShow = async (appointmentId: string, token: string): Promise<AppointmentResponse> => {
+    const performer = await isUserSessionValid(token);
+    const appointment = await getAppointmentById(appointmentId);
+    if (!appointment) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Appointment not found');
+    }
+
+    const shop = await getShopById(appointment.shop_id);
+    if (!shop) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Shop not found');
+    }
+
+    const receptionistShopId =
+        performer.role === 'receptionist' ? ((await getReceptionistByUserId(performer.id))?.shop_id ?? null) : null;
+
+    if (!canMarkAppointmentNoShow(performer, { shopId: appointment.shop_id }, receptionistShopId)) {
+        throw new ApiError(ApiErrorCode.FORBIDDEN, 'Not authorized to mark this appointment as no-show');
+    }
+
+    if (appointment.is_walk_in) {
+        throw new ApiError(ApiErrorCode.CONFLICT, 'Walk-in appointments cannot be marked as no-show');
+    }
+    if (appointment.status !== 'scheduled' && appointment.status !== 'rescheduled') {
+        throw new ApiError(ApiErrorCode.CONFLICT, 'Only scheduled or rescheduled appointments can be marked as no-show');
+    }
+
+    const now = new Date();
+    const graceMinutes = 0;
+    const noShowAt = appointment.scheduled_start.getTime();
+    if (now.getTime() < noShowAt) {
+        throw new ApiError(ApiErrorCode.CONFLICT, 'Appointment cannot be marked as no-show before its scheduled start');
+    }
+
+    const marked = await markAppointmentAsNoShowById(appointment.id, now, graceMinutes);
+    if (!marked) {
+        throw new ApiError(ApiErrorCode.CONFLICT, 'Appointment can no longer be marked as no-show');
+    }
+
+    const services = await getServicesByAppointmentIds([marked.id]);
+    const [client] = await getAppointmentClientsById(marked.client_id !== null ? [marked.client_id] : []);
+    return toAppointmentResponse(marked, services, client ?? null);
 };
