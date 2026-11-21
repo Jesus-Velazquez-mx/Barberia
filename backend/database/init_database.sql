@@ -428,6 +428,23 @@ CREATE TRIGGER trg_appointments_loyalty_count_update AFTER UPDATE ON appointment
     FOR EACH ROW WHEN (NEW.status = 'completed' AND OLD.status IS DISTINCT FROM 'completed' AND NEW.client_id IS NOT NULL)
     EXECUTE FUNCTION update_client_loyalty_count();
 
+-- A registered client loses a redeemed reward when the appointment becomes a no-show.
+CREATE FUNCTION reset_client_loyalty_count_on_no_show() RETURNS trigger AS $$
+BEGIN
+    UPDATE clients SET completed_services_count = 0 WHERE user_id = NEW.client_id;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_appointments_reward_no_show AFTER UPDATE ON appointments
+    FOR EACH ROW WHEN (
+        NEW.status = 'no_show'
+        AND OLD.status IS DISTINCT FROM 'no_show'
+        AND NEW.is_reward_redemption
+        AND NEW.client_id IS NOT NULL
+    )
+    EXECUTE FUNCTION reset_client_loyalty_count_on_no_show();
+
 -- ---------- staff soft-delete guards ----------
 -- Barbers/managers/receptionists are soft-deleted (deleted_at set) instead of
 -- removed, so appointments.barber_id / shops.manager_id keep pointing at a real,

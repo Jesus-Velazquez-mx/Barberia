@@ -7,6 +7,7 @@ import {
     checkInAppointment,
     getAppointment,
     listAppointments,
+    markAppointmentNoShow,
     registerAppointment,
     updateAppointment,
 } from '../services/appointmentService.js';
@@ -168,6 +169,26 @@ export const checkIn: ApiHandler<AppointmentResponse> = async (req, res) => {
         const result = await checkInAppointment(id, token);
 
         sendSuccess({ res, data: result, message: 'Appointment checked in successfully' });
+    } catch (error: unknown) {
+        if (error instanceof ZodError) {
+            sendValidationError({ res, error });
+            return;
+        }
+        if (error instanceof ApiError) {
+            sendFail({ res, message: error.message, status: error.code });
+            return;
+        }
+        sendInternalServerError({ res, error: [String(error)] });
+    }
+};
+
+export const markNoShow: ApiHandler<AppointmentResponse> = async (req, res) => {
+    try {
+        const token = extractBearerFromHeader(req);
+        const { id } = appointmentIdParamSchema.parse(req.params);
+        const result = await markAppointmentNoShow(id, token);
+
+        sendSuccess({ res, data: result, message: 'Appointment marked as no-show successfully' });
     } catch (error: unknown) {
         if (error instanceof ZodError) {
             sendValidationError({ res, error });

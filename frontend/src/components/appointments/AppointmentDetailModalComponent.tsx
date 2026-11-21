@@ -12,7 +12,7 @@ import { AppointmentStatusBadge } from './AppointmentStatusBadgeComponent';
 import { Modal } from '../common/ModalComponent';
 import { RewardBadge } from './RewardBadgeComponent';
 import { WalkInBadge } from './WalkInBadgeComponent';
-import { AlertCircle, Loader2, Pencil, Trash, UserCheck, X } from 'lucide-react';
+import { AlertCircle, Loader2, Pencil, Trash, UserCheck, UserX, X } from 'lucide-react';
 
 interface AppointmentDetailModalProps {
   /* null = modal cerrado. */
@@ -28,6 +28,9 @@ interface AppointmentDetailModalProps {
   onEdit?: () => void;
   /* Si se pasa, se muestra "Cancelar cita". El contenedor decide cuándo se puede cancelar. */
   onCancel?: () => void;
+  onMarkNoShow?: () => void;
+  canMarkNoShow?: boolean;
+  noShowDisabledReason?: string;
 }
 
 /* ---------- Piezas ---------- */
@@ -53,6 +56,9 @@ function SectionTitle({ children }: { children: ReactNode }) {
 export function AppointmentDetailModal({
   appointment,
   onClose,
+  onMarkNoShow,
+  canMarkNoShow = false,
+  noShowDisabledReason,
   onCheckIn,
   isCheckingIn = false,
   checkInError = '',
@@ -170,7 +176,7 @@ export function AppointmentDetailModal({
           )}
 
           {/* Sin acciones (p. ej. cita ya cancelada) no se dibuja la barra, para no dejar un hueco vacío. */}
-          {(onCheckIn || onEdit || onCancel) && (
+          {(onCheckIn || onMarkNoShow || onEdit || onCancel) && (
             <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
               {onCheckIn && (
                 <button
@@ -190,6 +196,19 @@ export function AppointmentDetailModal({
                       Check-in
                     </>
                   )}
+                </button>
+              )}
+
+              {onMarkNoShow && (
+                <button
+                  type="button"
+                  onClick={onMarkNoShow}
+                  disabled={!canMarkNoShow || isCheckingIn}
+                  title={noShowDisabledReason}
+                  className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-lg border border-[#B86B5E]/40 bg-[#B86B5E]/10 px-5 text-sm font-semibold text-[#E5B1A8] transition-colors hover:border-[#B86B5E] hover:bg-[#B86B5E]/20 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <UserX size={16} aria-hidden="true" />
+                  {appointment.status === 'noShow' ? 'Inasistencia registrada' : 'Marcar inasistencia'}
                 </button>
               )}
 

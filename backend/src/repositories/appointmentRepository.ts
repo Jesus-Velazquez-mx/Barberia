@@ -458,3 +458,35 @@ export const checkInAppointmentById = async (
         client.release();
     }
 };
+
+export const markAppointmentAsNoShow = async (now: Date, graceMinutes: number): Promise<number> => {
+    const result = await db.getPool().query(
+        `UPDATE appointments
+         SET status = 'no_show'
+         WHERE status IN ('scheduled', 'rescheduled')
+           AND is_walk_in = false
+           AND scheduled_start + ($2 * INTERVAL '1 minute') <= $1`,
+        [now, graceMinutes]
+    );
+
+    return result.rowCount ?? 0;
+};
+
+export const markAppointmentAsNoShowById = async (
+    appointmentId: string,
+    now: Date,
+    graceMinutes: number
+): Promise<Appointment | null> => {
+    const result = await db.getPool().query(
+        `UPDATE appointments
+         SET status = 'no_show'
+         WHERE id = $1
+           AND status IN ('scheduled', 'rescheduled')
+           AND is_walk_in = false
+           AND scheduled_start + ($3 * INTERVAL '1 minute') <= $2
+         RETURNING ${APPOINTMENT_COLUMNS}`,
+        [appointmentId, now, graceMinutes]
+    );
+
+    return result.rows[0] ?? null;
+};

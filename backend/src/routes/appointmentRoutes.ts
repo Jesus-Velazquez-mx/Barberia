@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { cancel, checkIn, create, getById, list, update } from '../controllers/appointmentController.js';
+import { cancel, checkIn, create, getById, list, markNoShow, update } from '../controllers/appointmentController.js';
 
 const router = Router();
 
@@ -419,5 +419,43 @@ router.put('/appointments/:id/cancel', cancel);
  *         description: Error interno del servidor.
  */
 router.put('/appointments/:id/check-in', checkIn);
+
+/**
+ * @swagger
+ * /api/appointments/{id}/no-show:
+ *   put:
+ *     summary: Marca una cita como no-show
+ *     tags: [Appointments]
+ *     description: |
+ *       Permite únicamente a la recepción de la sucursal marcar como no-show desde `scheduledStart`.
+ *       Solo aplica a citas `scheduled` o `rescheduled` que no sean walk-ins. El job automático conserva su
+ *       tolerancia de 10 minutos. La transición es atómica; si la cita ya cambió de estado, responde 409.
+ *       Si la cita canjeaba recompensa, el trigger de base de datos reinicia el contador de lealtad del cliente.
+ *       Requiere token JWT.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *         description: Id de la cita.
+ *     responses:
+ *       200:
+ *         description: Cita actualizada con estado `no_show`.
+ *       400:
+ *         description: Id con formato UUID inválido.
+ *       401:
+ *         description: Token ausente o inválido.
+ *       403:
+ *         description: El usuario no es recepcionista de la sucursal de la cita.
+ *       404:
+ *         description: Cita no encontrada.
+ *       409:
+ *         description: La cita no es elegible, es un walk-in o ya cambió de estado.
+ *       500:
+ *         description: Error interno del servidor.
+ */
+router.put('/appointments/:id/no-show', markNoShow);
 
 export default router;

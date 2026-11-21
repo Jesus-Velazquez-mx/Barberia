@@ -1,7 +1,8 @@
 import connection from '../connection/connection.js';
 import { createJobRunner, type JobRunner } from './jobRunner.js';
+import { noShowJob } from './noShowJob.js';
 import { reminderJob } from './reminderJob.js';
-import type { JobGroup } from './types.js';
+import type { JobGroup } from './types.ts';
 
 /** Claves de `pg_try_advisory_lock`, una por grupo. No reutilizar ni cambiar sin coordinar despliegues. */
 export const JOB_LOCK_KEYS = {
@@ -27,7 +28,8 @@ export const buildJobGroups = (config: JobsConfig): JobGroup[] => [
          *   3) marcar no-show             (#254)
          * Cada job debe ser un UPDATE atómico e idempotente que use `ctx.now` (no `now()` de SQL).
          */
-        jobs: [],
+        // Aquí se pondrán los jobs que faltan.
+        jobs: [noShowJob],
     },
     {
         name: 'appointment-reminders',
