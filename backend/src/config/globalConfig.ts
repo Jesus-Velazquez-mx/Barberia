@@ -2,7 +2,7 @@ const resolveAIService = (env?: string) => {
     let AI_SERVICE_URL;
     let AI_PROVIDER = process.env.AI_PROVIDER ?? 'ollama';
 
-    // Local environment: URL points to localhost and AI_PROVIDER is through env variables
+    // Local environment: URL points to localhost and AI_PROVIDER is defined through env variables
     if (env === 'local') {
         AI_SERVICE_URL = 'http://localhost:8000/internal/v1';
     } 

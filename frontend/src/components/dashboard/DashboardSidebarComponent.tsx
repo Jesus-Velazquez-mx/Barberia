@@ -50,18 +50,18 @@ export function DashboardSidebar({ firstName, gender, items, onLogout }: Dashboa
           no empuja el contenido). En desktop (lg:): vuelve a ser un sidebar sticky,
           siempre visible y fijo al hacer scroll, parte del layout en flex. */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-57.5 flex-col border-r border-white/10 bg-[#1A1A1A] transition-transform duration-500 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-57.5 pt-15 flex-col border-r border-white/10 bg-[#1A1A1A] transition-transform duration-500 lg:pt-0 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         <div className="flex xl:flex-col items-center justify-start gap-5 border-b border-white/10 px-4 py-4 xl:py-8 transition-all duration-500">
           <img src={mrBarberLogo} alt="Mr. Barber" className="h-14 w-14 xl:h-24 xl:w-24" />
-          <p className="text-center text-base text-(--text-h) font-bold text-[16px] 2xl:text-[18px]">
+          <p className="text-center text-base text-(--text-h) font-bold text-[16px] xl:text-[18px]">
             {gender === 'female' ? `Bienvenida, ${firstName}` : `Bienvenido, ${firstName}`}
           </p>
         </div>
 
-        <nav className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto py-4 text-sm font-semibold text-(--text-h) transition-all duration-500 2xl:py-9">
+        <nav className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto py-3 text-sm font-semibold text-(--text-h) transition-all duration-500 xl:py-6">
           {items.map((item) => (
             <NavLink key={item.to} to={item.to} onClick={() => setIsOpen(false)} className={NAV_LINK_CLASSES}>
               {item.icon}
