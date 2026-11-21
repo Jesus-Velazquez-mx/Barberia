@@ -1,7 +1,7 @@
-/* Zona horaria del negocio: los horarios de las citas siempre se muestran en la hora local
-   de la sucursal, sin importar la del dispositivo. Debe coincidir con BUSINESS_TIMEZONE (o su
-   valor por defecto) en el backend; ver backend/src/utils/businessTime.ts. */
-const BUSINESS_TIMEZONE = 'America/Mazatlan';
+import { getBusinessTimezone } from '../services/timezoneService';
+
+/* Los horarios de las citas siempre se muestran en la hora local de la sucursal (zona horaria
+   del negocio que entrega el backend), sin importar la del dispositivo. */
 
 /* "2026-10-23T17:15:00.000Z" (instante UTC real) -> "10:15" en hora de la sucursal */
 export const formatSlotTime = (startTime: string): string =>
@@ -9,5 +9,5 @@ export const formatSlotTime = (startTime: string): string =>
         hour: '2-digit',
         minute: '2-digit',
         hour12: false,
-        timeZone: BUSINESS_TIMEZONE
+        timeZone: getBusinessTimezone()
     });

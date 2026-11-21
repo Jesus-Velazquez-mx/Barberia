@@ -10,10 +10,7 @@ import type { AppointmentQuery } from '../services/appointmentService';
 import { getApiErrorMessage } from './apiErrorUtils';
 import { displayToIsoDate, isValidDisplayDate } from './dateFormat';
 import { matchesQuery } from './listUtils';
-
-/* Zona horaria del negocio (la misma que usa el backend). Las fechas y horas de las citas se
-   muestran y se comparan siempre en esta zona, sin importar la del navegador. */
-export const BUSINESS_TIMEZONE = 'America/Mazatlan';
+import { getBusinessTimezone } from '../services/timezoneService';
 
 export const STATUS_LABELS: Record<AppointmentStatus, string> = {
     scheduled: 'Agendada',
@@ -59,12 +56,12 @@ export const getDefaultFilters = (): AppointmentFilterValues => ({
 
 /* Instante ISO -> fecha YYYY-MM-DD en la zona del negocio. */
 export const toBusinessDate = (isoDateTime: string): string =>
-    new Date(isoDateTime).toLocaleDateString('en-CA', { timeZone: BUSINESS_TIMEZONE });
+    new Date(isoDateTime).toLocaleDateString('en-CA', { timeZone: getBusinessTimezone() });
 
 /* "2026-10-21T16:00:00.000Z" -> "21 oct 2026" */
 export const formatAppointmentDate = (isoDateTime: string): string =>
     new Date(isoDateTime)
-        .toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric', timeZone: BUSINESS_TIMEZONE })
+        .toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric', timeZone: getBusinessTimezone() })
         .replace(/\./g, '');
 
 /* "2026-10-21T16:00:00.000Z" -> "09:00" */
@@ -73,7 +70,7 @@ export const formatAppointmentTime = (isoDateTime: string): string =>
         hour: '2-digit',
         minute: '2-digit',
         hour12: false,
-        timeZone: BUSINESS_TIMEZONE
+        timeZone: getBusinessTimezone()
     });
 
 export const formatAppointmentDateTime = (isoDateTime: string): string =>
@@ -90,7 +87,7 @@ export const MAX_RANGE_DAYS = 366;
 /* Desfase (ms) de la zona del negocio respecto a UTC en un instante dado (negativo al oeste de UTC). */
 const businessOffsetMs = (utcMs: number): number => {
     const parts = new Intl.DateTimeFormat('en-US', {
-        timeZone: BUSINESS_TIMEZONE,
+        timeZone: getBusinessTimezone(),
         hourCycle: 'h23',
         year: 'numeric',
         month: 'numeric',

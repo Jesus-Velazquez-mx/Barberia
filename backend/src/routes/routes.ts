@@ -16,6 +16,7 @@ import serviceCategoryRoutes from './serviceCategoryRoutes.js';
 import shiftRoutes from './shiftRoutes.js';
 import clientRoutes from './clientRoutes.js';
 import notificationLogRoutes from './notificationLogRoutes.js';
+import businessTimezoneRoutes from './businessTimezoneRoutes.js';
 
 const router = Router();
 
@@ -34,7 +35,8 @@ router.use(suppliesRoutes);
 router.use(appointmentRoutes);
 router.use(shiftRoutes);
 router.use(serviceCategoryRoutes);
-router.use(notificationLogRoutes)
+router.use(notificationLogRoutes);
+router.use(businessTimezoneRoutes);
 
 router.get('/health', health);
 

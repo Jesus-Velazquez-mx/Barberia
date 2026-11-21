@@ -4,6 +4,9 @@ import { RouterProvider } from 'react-router-dom';
 import './index.css';
 import router from './router.tsx';
 import { AuthProvider } from './context/AuthContext.tsx';
+import { initBusinessTimezone } from './services/timezoneService.ts';
+
+await initBusinessTimezone();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

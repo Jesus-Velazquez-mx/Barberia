@@ -95,7 +95,7 @@ export function EditAppointmentContainer({ appointment, role, client, onDone, on
 
   if (!options) {
     return (
-      <Modal isOpen onClose={onClose} className="!max-w-lg">
+      <Modal isOpen onClose={onClose} className="max-w-lg!">
         <h2 className="m-0 mb-4 text-xl font-semibold text-(--text-h)">Editar cita</h2>
         {loadError ? (
           <p className="text-sm font-semibold text-[#ff4d4d]" role="alert">
