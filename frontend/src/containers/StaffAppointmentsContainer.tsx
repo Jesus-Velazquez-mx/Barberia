@@ -10,12 +10,12 @@ import { SearchBar } from '../components/common/SearchBarComponent';
 import { Toast } from '../components/common/ToastComponent';
 import { useAuth } from '../context/AuthContext';
 import {
+  checkInAppointment,
   getAppointmentById,
   getAppointments,
   markAppointmentNoShow,
   type AppointmentQuery
 } from '../services/appointmentService';
-import { checkInAppointment, getAppointments, type AppointmentQuery } from '../services/appointmentService';
 import type { AppointmentFilterValues, AppointmentRecord, SortDirection } from '../types/appointmentType';
 import type { UserRole } from '../components/appointments/EditAppointmentModalComponent';
 import { CancelAppointmentContainer, EditAppointmentContainer } from './AppointmentActionsContainer';
@@ -153,7 +153,6 @@ export function StaffAppointmentsContainer() {
     return () => window.clearTimeout(timer);
   }, [currentTime, role, selectedAppointment?.id, selectedAppointment?.scheduledStart]);
 
-  /* Al cambiar cualquier filtro se vuelve a la primera página. */
   /* Al cambiar cualquier filtro se vuelve a la primera página y se descarta el error de check-in. */
   useEffect(() => {
     const subscription = watch(() => {
@@ -199,7 +198,11 @@ export function StaffAppointmentsContainer() {
 
     try {
       const updated = await checkInAppointment(token, appointment.id);
-      setSelectedAppointment((current) => (current?.id === updated.id ? updated : current));
+      if (source === 'modal') {
+        setSelectedAppointment(null);
+      } else {
+        setSelectedAppointment((current) => (current?.id === updated.id ? updated : current));
+      }
       setToast({ message: `Check-in registrado para ${appointment.clientName}.`, type: 'success' });
       await loadAppointments();
     } catch (error) {
@@ -220,6 +223,7 @@ export function StaffAppointmentsContainer() {
     try {
       await markAppointmentNoShow(token, appointmentId);
       setNoShowAppointment(null);
+      setToast({ message: 'Cita marcada como inasistencia.', type: 'success' });
       await loadAppointments();
     } catch (error) {
       const message = getApiErrorMessage(error, 'No se pudo marcar la cita como inasistencia.');
@@ -239,7 +243,9 @@ export function StaffAppointmentsContainer() {
     if (appointment.status !== 'scheduled' && appointment.status !== 'rescheduled') {
       return 'Solo se pueden marcar citas agendadas o reagendadas.';
     }
-    if (currentTime < Date.parse(appointment.scheduledStart)) return 'Se habilita a partir de la hora programada de inicio.';
+    if (currentTime < Date.parse(appointment.scheduledStart)) {
+      return 'Se habilita a partir de la hora programada de inicio.';
+    }
     return undefined;
   };
 
@@ -338,8 +344,6 @@ export function StaffAppointmentsContainer() {
           onRetry={() => void loadAppointments()}
           onSelect={(appointment) => {
             setCurrentTime(Date.now());
-            setSelectedAppointment(appointment);
-          }}
             setModalCheckInError('');
             setSelectedAppointment(appointment);
           }}
@@ -363,11 +367,14 @@ export function StaffAppointmentsContainer() {
       <AppointmentDetailModal
         appointment={selectedAppointment}
         onClose={() => {
+          if (checkingInId === selectedAppointment?.id) return;
+          setModalCheckInError('');
           setSelectedAppointment(null);
         }}
         onMarkNoShow={
           selectedAppointment && role === 'receptionist'
             ? () => {
+              setModalCheckInError('');
               setNoShowAppointment(selectedAppointment);
               setSelectedAppointment(null);
             }
@@ -379,10 +386,6 @@ export function StaffAppointmentsContainer() {
           getNoShowDisabledReason(selectedAppointment) === undefined
         }
         noShowDisabledReason={selectedAppointment ? getNoShowDisabledReason(selectedAppointment) : undefined}
-          if (checkingInId === selectedAppointment?.id) return;
-          setModalCheckInError('');
-          setSelectedAppointment(null);
-        }}
         onCheckIn={
           selectedAppointment && canCheckIn(selectedAppointment, now)
             ? () => void handleCheckIn(selectedAppointment, 'modal')
@@ -394,6 +397,7 @@ export function StaffAppointmentsContainer() {
           selectedAppointment && canModify(selectedAppointment)
             ? () => {
               // Se cierra el detalle antes de abrir la edición para no apilar dos modales.
+              setModalCheckInError('');
               setEditingAppointment(selectedAppointment);
               setSelectedAppointment(null);
             }
@@ -402,6 +406,7 @@ export function StaffAppointmentsContainer() {
         onCancel={
           selectedAppointment && canModify(selectedAppointment)
             ? () => {
+              setModalCheckInError('');
               setCancelingAppointment(selectedAppointment);
               setSelectedAppointment(null);
             }
@@ -426,6 +431,7 @@ export function StaffAppointmentsContainer() {
           onClose={() => setCancelingAppointment(null)}
         />
       )}
+
       {noShowAppointment && (
         <MarkNoShowModal
           appointment={noShowAppointment}
