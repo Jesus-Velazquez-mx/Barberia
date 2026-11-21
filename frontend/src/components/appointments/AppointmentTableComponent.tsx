@@ -1,7 +1,8 @@
-import { ArrowDown, ArrowUp, RotateCw, Star } from 'lucide-react';
+import { ArrowDown, ArrowUp, Loader2, RotateCw, Star, UserCheck } from 'lucide-react';
 import type { AppointmentRecord, SortDirection } from '../../types/appointmentType';
 import { formatAppointmentDate, formatAppointmentTime } from '../../utils/appointmentUtils';
 import { AppointmentStatusBadge } from './AppointmentStatusBadgeComponent';
+import { WalkInBadge } from './WalkInBadgeComponent';
 import { TablePagination, type TablePaginationProps } from '../common/TablePaginationComponent';
 
 interface AppointmentTableProps {
@@ -20,6 +21,12 @@ interface AppointmentTableProps {
   pagination: TablePaginationProps;
   /* false en la vista del cliente: todas las citas son suyas. */
   showClientColumn?: boolean;
+  /* Si se pasa, muestra la columna de acciones para registrar el check-in desde la tabla. */
+  onCheckIn?: (appointment: AppointmentRecord) => void;
+  /* Determina en qué filas se muestra el botón de check-in. */
+  canCheckInRow?: (appointment: AppointmentRecord) => boolean;
+  /* Id de la cita cuyo check-in está en curso (deshabilita acciones y muestra indicador de carga). */
+  checkingInId?: string | null;
 }
 
 //const COLUMN_COUNT = 7;
@@ -37,16 +44,22 @@ export function AppointmentTable({
   sortDirection,
   onToggleSort,
   pagination,
-  showClientColumn = true
+  showClientColumn = true,
+  onCheckIn,
+  canCheckInRow,
+  checkingInId = null
 }: AppointmentTableProps) {
-  const columnCount = showClientColumn ? 7 : 6;
+  const showActionsColumn = Boolean(onCheckIn);
+  const columnCount = 6 + (showClientColumn ? 1 : 0) + (showActionsColumn ? 1 : 0);
   const hasRows = !isLoading && !error && rows.length > 0;
   const SortIcon = sortDirection === 'desc' ? ArrowDown : ArrowUp;
 
   return (
     <div className="overflow-hidden rounded-xl border border-white/10 bg-[#1A1A1A]">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[900px] border-collapse text-left text-sm">
+        <table
+          className={`w-full ${showActionsColumn ? 'min-w-[980px]' : 'min-w-[900px]'} border-collapse text-left text-sm`}
+        >
           <thead className="bg-[#222222]">
             <tr>
               <th scope="col" className={HEADER_CELL}>
@@ -80,6 +93,11 @@ export function AppointmentTable({
               <th scope="col" className={HEADER_CELL}>
                 Estado
               </th>
+              {showActionsColumn && (
+                <th scope="col" className={HEADER_CELL}>
+                  Acciones
+                </th>
+              )}
             </tr>
           </thead>
 
@@ -127,6 +145,7 @@ export function AppointmentTable({
                   key={appointment.id}
                   onClick={() => onSelect(appointment)}
                   onKeyDown={(event) => {
+                    if (event.target !== event.currentTarget) return;
                     if (event.key === 'Enter' || event.key === ' ') {
                       event.preventDefault();
                       onSelect(appointment);
@@ -187,8 +206,53 @@ export function AppointmentTable({
                   </td>
 
                   <td className="px-5 py-3">
-                    <AppointmentStatusBadge status={appointment.status} />
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <AppointmentStatusBadge status={appointment.status} />
+                      {appointment.isWalkIn && <WalkInBadge compact />}
+                    </div>
                   </td>
+
+                  {showActionsColumn && (
+                    <td className="whitespace-nowrap px-5 py-3">
+                      {canCheckInRow?.(appointment) ? (
+                        <button
+                          type="button"
+                          disabled={checkingInId !== null}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onCheckIn?.(appointment);
+                          }}
+                          onKeyDown={(event) => event.stopPropagation()}
+                          aria-label={`Registrar check-in de ${appointment.clientName}`}
+                          className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-[var(--accent)]/60 bg-[var(--accent)]/15 px-3 text-xs font-semibold text-[var(--accent)] transition-colors hover:bg-[var(--accent)] hover:text-[#111] disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {checkingInId === appointment.id ? (
+                            <>
+                              <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+                              Registrando...
+                            </>
+                          ) : (
+                            <>
+                              <UserCheck size={14} aria-hidden="true" />
+                              Check-in
+                            </>
+                          )}
+                        </button>
+                      ) : appointment.isWalkIn &&
+                        (appointment.status === 'scheduled' || appointment.status === 'rescheduled') ? (
+                        <span
+                          title="Los walk-ins pasan automáticamente a check-in al llegar su hora"
+                          className="text-xs text-[var(--text)]"
+                        >
+                          Automático
+                        </span>
+                      ) : (
+                        <span className="text-xs text-[var(--text)]/50" aria-hidden="true">
+                          —
+                        </span>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
           </tbody>

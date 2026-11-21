@@ -4,6 +4,7 @@ import { Calendar, Check, ChevronDown, Lock, Plus, X } from 'lucide-react';
 import type { AppointmentRecord } from '../../types/appointmentType';
 import { formatAppointmentTime, formatPrice } from '../../utils/appointmentUtils';
 import { isoToDisplayDate } from '../../utils/dateFormat';
+import { getBusinessTimezone } from '../../services/timezoneService';
 import { Button } from '../common/ButtonComponent';
 import { Modal } from '../common/ModalComponent';
 import { AppointmentStatusBadge } from './AppointmentStatusBadgeComponent';
@@ -12,8 +13,6 @@ import { AppointmentStatusBadge } from './AppointmentStatusBadgeComponent';
 /* Constantes (deben coincidir con el backend)                        */
 /* ------------------------------------------------------------------ */
 
-// Misma zona que BUSINESS_TIMEZONE del backend.
-const BUSINESS_TZ = 'America/Mazatlan';
 const RESCHEDULE_WINDOW_DAYS = 30; // desde la fecha en que se agendó
 const CLIENT_CUTOFF_HOURS = 8; // solo aplica al rol client
 const NOTES_MAX_LENGTH = 500; // mismo límite que valida PUT /appointments/:id
@@ -77,7 +76,7 @@ interface EditAppointmentModalProps {
 
 const dateKey = (value: string | number | Date): string =>
   new Intl.DateTimeFormat('en-CA', {
-    timeZone: BUSINESS_TZ,
+    timeZone: getBusinessTimezone(),
     year: 'numeric',
     month: '2-digit',
     day: '2-digit'

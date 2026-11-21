@@ -2,15 +2,14 @@
    forzar. Por eso los campos de fecha son texto con formato dd/mm/aaaa y la API sigue usando
    YYYY-MM-DD; estas utilidades convierten entre ambos. */
 
+import { getBusinessTimezone } from '../services/timezoneService';
+
 const DISPLAY_DATE_REGEX = /^(\d{2})\/(\d{2})\/(\d{4})$/;
 
-/* Fecha local de hoy en YYYY-MM-DD. No usar toISOString() directo: devuelve la
-   fecha UTC y por la noche (hora de México) ya marcaría "mañana". */
-export const getTodayIso = (): string => {
-    const now = new Date();
-    const offsetMs = now.getTimezoneOffset() * 60_000;
-    return new Date(now.getTime() - offsetMs).toISOString().split('T')[0];
-};
+/* Fecha de hoy en YYYY-MM-DD en la zona horaria del negocio (no la del dispositivo). No usar
+   toISOString() directo: devuelve la fecha UTC y por la noche (hora de México) ya marcaría "mañana". */
+export const getTodayIso = (): string =>
+    new Date().toLocaleDateString('en-CA', { timeZone: getBusinessTimezone() });
 
 /* YYYY-MM-DD (o ISO completo) -> dd/mm/aaaa. Regresa '' si no hay fecha. */
 export const isoToDisplayDate = (isoDate: string | null | undefined): string => {

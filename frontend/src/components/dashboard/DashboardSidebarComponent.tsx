@@ -32,7 +32,7 @@ export function DashboardSidebar({ firstName, gender, items, onLogout }: Dashboa
         type="button"
         onClick={() => setIsOpen((v) => !v)}
         aria-label={isOpen ? 'Cerrar menú' : 'Abrir menú'}
-        className="fixed left-4 top-4 z-[60] flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-[#1A1A1A] text-white shadow-[var(--shadow)] transition-colors hover:border-[var(--accent)]/60 lg:hidden"
+        className="fixed left-4 top-4 z-60 flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-[#1A1A1A] text-white shadow-(--shadow) transition-colors hover:border-(--accent)/60 lg:hidden"
       >
         {isOpen ? <X size={20} /> : <Menu size={20} />}
       </button>
@@ -50,18 +50,18 @@ export function DashboardSidebar({ firstName, gender, items, onLogout }: Dashboa
           no empuja el contenido). En desktop (lg:): vuelve a ser un sidebar sticky,
           siempre visible y fijo al hacer scroll, parte del layout en flex. */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-[230px] shrink-0 flex-col border-r border-white/10 bg-[#1A1A1A] transition-transform duration-300 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-57.5 flex-col border-r border-white/10 bg-[#1A1A1A] transition-transform duration-500 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="flex flex-col items-center gap-5 border-b border-white/10 px-4 py-8">
-          <img src={mrBarberLogo} alt="Mr. Barber" className="h-24 w-24" />
-          <p className="text-center text-base text-[var(--text-h)] font-bold">
+        <div className="flex xl:flex-col items-center justify-start gap-5 border-b border-white/10 px-4 py-4 xl:py-8 transition-all duration-500">
+          <img src={mrBarberLogo} alt="Mr. Barber" className="h-14 w-14 xl:h-24 xl:w-24" />
+          <p className="text-center text-base text-(--text-h) font-bold text-[16px] 2xl:text-[18px]">
             {gender === 'female' ? `Bienvenida, ${firstName}` : `Bienvenido, ${firstName}`}
           </p>
         </div>
 
-        <nav className="flex flex-col gap-3 py-9 text-sm font-semibold text-[var(--text-h)]">
+        <nav className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto py-4 text-sm font-semibold text-(--text-h) transition-all duration-500 2xl:py-9">
           {items.map((item) => (
             <NavLink key={item.to} to={item.to} onClick={() => setIsOpen(false)} className={NAV_LINK_CLASSES}>
               {item.icon}
@@ -77,7 +77,7 @@ export function DashboardSidebar({ firstName, gender, items, onLogout }: Dashboa
               setIsOpen(false);
               onLogout();
             }}
-            className="flex cursor-pointer items-center gap-3 border-t border-white/10 px-4 py-4 text-sm font-semibold text-[var(--text)] transition-colors hover:bg-white/5 hover:text-[var(--text-h)]"
+            className="mt-auto flex shrink-0 cursor-pointer items-center gap-3 border-t border-white/10 px-4 py-4 text-sm font-semibold text-(--text) transition-colors hover:bg-white/5 hover:text-(--text-h)"
           >
             <LogOut size={20} aria-hidden="true" />
             Cerrar sesión

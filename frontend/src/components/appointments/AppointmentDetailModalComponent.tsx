@@ -1,22 +1,30 @@
 import type { ReactNode } from 'react';
-import type { AppointmentRecord, AppointmentStatus } from '../../types/appointmentType';
+import type { AppointmentRecord } from '../../types/appointmentType';
 import {
   formatAppointmentDate,
-  formatAppointmentDateTime,
   formatAppointmentTime,
   formatPrice,
   getAppointmentDuration,
   getAppointmentTotal
 } from '../../utils/appointmentUtils';
+import { AppointmentTimeline } from './AppointmentTimelineComponent';
 import { AppointmentStatusBadge } from './AppointmentStatusBadgeComponent';
 import { Modal } from '../common/ModalComponent';
 import { RewardBadge } from './RewardBadgeComponent';
 import { Trash, Pencil, UserX, X } from 'lucide-react';
+import { WalkInBadge } from './WalkInBadgeComponent';
+import { AlertCircle, Loader2, Pencil, Trash, UserCheck, X } from 'lucide-react';
 
 interface AppointmentDetailModalProps {
   /* null = modal cerrado. */
   appointment: AppointmentRecord | null;
   onClose: () => void;
+  /* Si se pasa, se muestra "Check-in". El contenedor decide cuándo está habilitado. */
+  onCheckIn?: () => void;
+  /* Muestra el estado de carga del check-in y bloquea acciones mientras termina. */
+  isCheckingIn?: boolean;
+  /* Mensaje legible si falló el check-in desde el modal. */
+  checkInError?: string;
   /* Si se pasa, se muestra "Editar cita". El contenedor decide cuándo se puede editar. */
   onEdit?: () => void;
   /* Si se pasa, se muestra "Cancelar cita". El contenedor decide cuándo se puede cancelar. */
@@ -167,9 +175,19 @@ export function AppointmentDetailModal({
   onMarkNoShow,
   canMarkNoShow = false,
   noShowDisabledReason
+  onCheckIn,
+  isCheckingIn = false,
+  checkInError = '',
+  onEdit,
+  onCancel
 }: AppointmentDetailModalProps) {
   return (
-    <Modal isOpen={appointment !== null} onClose={onClose} className="!max-w-4xl pb-8">
+    <Modal
+      isOpen={appointment !== null}
+      onClose={onClose}
+      closeOnOutsideClick={!isCheckingIn}
+      className="!max-w-4xl pb-8"
+    >
       {appointment && (
         <>
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -178,13 +196,15 @@ export function AppointmentDetailModal({
               <span className="mt-0.5 block text-sm text-[var(--text)]">ID: {appointment.id.slice(0, 8)}</span>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              {appointment.isWalkIn && <WalkInBadge />}
               {appointment.isRewardRedemption && <RewardBadge />}
               <AppointmentStatusBadge status={appointment.status} />
               <button
                 type="button"
                 onClick={onClose}
+                disabled={isCheckingIn}
                 aria-label="Cerrar"
-                className="ml-1 cursor-pointer text-[var(--text)] transition-colors hover:text-[var(--text-h)]"
+                className="ml-1 cursor-pointer text-[var(--text)] transition-colors hover:text-[var(--text-h)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <X size={20} />
               </button>
@@ -241,7 +261,7 @@ export function AppointmentDetailModal({
 
             <section>
               <SectionTitle>Seguimiento</SectionTitle>
-              <Timeline appointment={appointment} />
+              <AppointmentTimeline appointment={appointment} />
             </section>
           </div>
 
@@ -252,6 +272,23 @@ export function AppointmentDetailModal({
                 {appointment.notes}
               </div>
             </section>
+          )}
+
+          {appointment.isWalkIn && (appointment.status === 'scheduled' || appointment.status === 'rescheduled') && (
+            <div className="mt-6 rounded-lg border border-[#9B7EDE]/40 bg-[#9B7EDE]/10 px-3.5 py-2.5 text-sm text-[#DDD0F7]">
+              Servicio sin cita previa (walk-in): no requiere check-in manual, pasará automáticamente a{' '}
+              <span className="font-semibold">Iniciada</span> al llegar su hora programada.
+            </div>
+          )}
+
+          {checkInError && (
+            <div
+              role="alert"
+              className="mt-6 flex items-start gap-2.5 rounded-lg border border-[#ff4d4d]/40 bg-[#ff4d4d]/10 px-3.5 py-2.5 text-sm font-medium text-[#ffb3b3]"
+            >
+              <AlertCircle size={18} className="mt-0.5 shrink-0 text-[#ff4d4d]" aria-hidden="true" />
+              <span>{checkInError}</span>
+            </div>
           )}
 
           {/* Sin acciones (p. ej. cita ya cancelada) no se dibuja la barra, para no dejar un hueco vacío. */}
@@ -292,6 +329,52 @@ export function AppointmentDetailModal({
                   </button>
                 )}
               </div>
+          {(onCheckIn || onEdit || onCancel) && (
+            <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
+              {onCheckIn && (
+                <button
+                  type="button"
+                  onClick={onCheckIn}
+                  disabled={isCheckingIn}
+                  className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-lg border-none bg-[var(--accent)] px-5 text-sm font-bold text-[#111] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isCheckingIn ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+                      Registrando check-in...
+                    </>
+                  ) : (
+                    <>
+                      <UserCheck size={16} aria-hidden="true" />
+                      Check-in
+                    </>
+                  )}
+                </button>
+              )}
+
+              {onEdit && (
+                <button
+                  type="button"
+                  onClick={onEdit}
+                  disabled={isCheckingIn}
+                  className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-[#262626] px-5 text-sm font-semibold text-[var(--text-h)] transition-colors hover:border-[var(--accent)]/60 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Pencil size={16} aria-hidden="true" />
+                  Editar cita
+                </button>
+              )}
+
+              {onCancel && (
+                <button
+                  type="button"
+                  onClick={onCancel}
+                  disabled={isCheckingIn}
+                  className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-lg border border-[#C4608F]/40 bg-[#C4608F]/10 px-5 text-sm font-semibold text-[#E58AB3] transition-colors hover:border-[#C4608F] hover:bg-[#C4608F]/20 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Trash size={16} aria-hidden="true" />
+                  Cancelar cita
+                </button>
+              )}
             </div>
           )}
         </>

@@ -5,13 +5,12 @@ import type {
     AppointmentStatus,
     SortDirection
 } from '../types/appointmentType';
+import { ApiError } from '../types/api';
 import type { AppointmentQuery } from '../services/appointmentService';
+import { getApiErrorMessage } from './apiErrorUtils';
 import { displayToIsoDate, isValidDisplayDate } from './dateFormat';
 import { matchesQuery } from './listUtils';
-
-/* Zona horaria del negocio (la misma que usa el backend). Las fechas y horas de las citas se
-   muestran y se comparan siempre en esta zona, sin importar la del navegador. */
-export const BUSINESS_TIMEZONE = 'America/Mazatlan';
+import { getBusinessTimezone } from '../services/timezoneService';
 
 export const STATUS_LABELS: Record<AppointmentStatus, string> = {
     scheduled: 'Agendada',
@@ -57,12 +56,12 @@ export const getDefaultFilters = (): AppointmentFilterValues => ({
 
 /* Instante ISO -> fecha YYYY-MM-DD en la zona del negocio. */
 export const toBusinessDate = (isoDateTime: string): string =>
-    new Date(isoDateTime).toLocaleDateString('en-CA', { timeZone: BUSINESS_TIMEZONE });
+    new Date(isoDateTime).toLocaleDateString('en-CA', { timeZone: getBusinessTimezone() });
 
 /* "2026-10-21T16:00:00.000Z" -> "21 oct 2026" */
 export const formatAppointmentDate = (isoDateTime: string): string =>
     new Date(isoDateTime)
-        .toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric', timeZone: BUSINESS_TIMEZONE })
+        .toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric', timeZone: getBusinessTimezone() })
         .replace(/\./g, '');
 
 /* "2026-10-21T16:00:00.000Z" -> "09:00" */
@@ -71,7 +70,7 @@ export const formatAppointmentTime = (isoDateTime: string): string =>
         hour: '2-digit',
         minute: '2-digit',
         hour12: false,
-        timeZone: BUSINESS_TIMEZONE
+        timeZone: getBusinessTimezone()
     });
 
 export const formatAppointmentDateTime = (isoDateTime: string): string =>
@@ -88,7 +87,7 @@ export const MAX_RANGE_DAYS = 366;
 /* Desfase (ms) de la zona del negocio respecto a UTC en un instante dado (negativo al oeste de UTC). */
 const businessOffsetMs = (utcMs: number): number => {
     const parts = new Intl.DateTimeFormat('en-US', {
-        timeZone: BUSINESS_TIMEZONE,
+        timeZone: getBusinessTimezone(),
         hourCycle: 'h23',
         year: 'numeric',
         month: 'numeric',
@@ -248,3 +247,57 @@ export const hasActiveFilters = (search: string, filters: AppointmentFilterValue
         (Object.keys(defaults) as (keyof AppointmentFilterValues)[]).some((key) => filters[key] !== defaults[key])
     );
 };
+
+/* ---------- Check-in ---------- */
+
+export const CHECK_IN_EARLY_MINUTES = 15;
+export const CHECK_IN_LATE_MINUTES = 10;
+export const MS_PER_MINUTE = 60_000;
+
+/* Check-in manual habilitado solo para citas scheduled/rescheduled que no sean walk-in,
+   desde 15 minutos antes de scheduledStart y hasta antes de 10 minutos después. */
+export function canCheckIn(appointment: AppointmentRecord, nowMs: number = Date.now()): boolean {
+    if (appointment.isWalkIn) return false;
+    if (appointment.status !== 'scheduled' && appointment.status !== 'rescheduled') return false;
+
+    const startMs = new Date(appointment.scheduledStart).getTime();
+    if (Number.isNaN(startMs)) return false;
+
+    return (
+        nowMs >= startMs - CHECK_IN_EARLY_MINUTES * MS_PER_MINUTE &&
+        nowMs < startMs + CHECK_IN_LATE_MINUTES * MS_PER_MINUTE
+    );
+}
+
+/* Traduce errores de PUT /appointments/:id/check-in (403, 404, 409, red) a mensajes claros en español. */
+export function getCheckInErrorMessage(error: unknown): string {
+    if (error instanceof ApiError) {
+        if (error.status === 403) {
+            return 'No tienes permiso para registrar el check-in de esta cita.';
+        }
+        if (error.status === 404) {
+            return 'No se encontró la cita solicitada.';
+        }
+        if (error.status === 409) {
+            const msg = error.message.toLowerCase();
+            if (msg.includes('too early')) {
+                return 'Es demasiado pronto para hacer check-in. Se habilita 15 minutos antes de la hora de inicio.';
+            }
+            if (msg.includes('previous slot') || msg.includes('busy')) {
+                return 'No se puede hacer check-in anticipado: el barbero tiene otra cita en el horario previo.';
+            }
+            if (msg.includes('expired')) {
+                return 'La ventana de check-in venció (10 minutos después de la hora de inicio).';
+            }
+            if (msg.includes('only scheduled or rescheduled')) {
+                return 'Esta cita ya no admite check-in porque su estado cambió.';
+            }
+            return 'No se pudo registrar el check-in porque el estado o el horario de la cita ya no lo permite.';
+        }
+        if (error.status === 0) {
+            return 'No se pudo conectar con el servidor. Verifica tu conexión e intenta de nuevo.';
+        }
+    }
+
+    return getApiErrorMessage(error, 'No se pudo registrar el check-in. Intenta de nuevo.');
+}

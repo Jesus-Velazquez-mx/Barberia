@@ -1,13 +1,13 @@
 import type { ReactNode } from 'react';
-import type { AppointmentRecord, AppointmentStatus } from '../../types/appointmentType';
+import type { AppointmentRecord } from '../../types/appointmentType';
 import {
   formatAppointmentDate,
-  formatAppointmentDateTime,
   formatAppointmentTime,
   formatPrice,
   getAppointmentDuration,
   getAppointmentTotal
 } from '../../utils/appointmentUtils';
+import { AppointmentTimeline } from './AppointmentTimelineComponent';
 
 interface AppointmentDetailContentProps {
   appointment: AppointmentRecord;
@@ -29,82 +29,6 @@ function InfoTile({ label, children, className = '' }: { label: string; children
 function SectionTitle({ children }: { children: ReactNode }) {
   return (
     <h3 className="m-0 mb-3 font-sans text-xs font-bold uppercase tracking-wide text-[var(--accent)]">{children}</h3>
-  );
-}
-
-/* ---------- Línea de tiempo ---------- */
-
-interface TimelineEvent {
-  key: string;
-  title: string;
-  at: string;
-  detail?: string;
-  status?: AppointmentStatus;
-}
-
-/* Parcial: los estados sin color propio usan el punto gris. */
-const DOT_COLORS: Partial<Record<AppointmentStatus, string>> = {
-  scheduled: 'bg-[#2DB5A3]',
-  rescheduled: 'bg-[var(--accent)]',
-  checkedIn: 'bg-[#5A9BCF]',
-  completed: 'bg-[#6DBB8A]',
-  cancelled: 'bg-[#C4608F]',
-  noShow: 'bg-[#B86B5E]'
-};
-
-function buildTimeline(appointment: AppointmentRecord): TimelineEvent[] {
-  const events: TimelineEvent[] = [{ key: 'created', title: 'Cita creada', at: appointment.createdAt }];
-
-  if (appointment.status === 'rescheduled' && appointment.originalScheduledStart) {
-    events.push({
-      key: 'rescheduled',
-      title: 'Cita reagendada',
-      at: appointment.updatedAt,
-      detail: `Fecha original: ${formatAppointmentDateTime(appointment.originalScheduledStart)}`,
-      status: 'rescheduled'
-    });
-  }
-
-  if (appointment.status === 'cancelled') {
-    events.push({
-      key: 'cancelled',
-      title: 'Cita cancelada',
-      at: appointment.cancelledAt ?? appointment.updatedAt,
-      detail: appointment.cancellationReason ?? undefined,
-      status: 'cancelled'
-    });
-  }
-
-  return events;
-}
-
-function Timeline({ appointment }: { appointment: AppointmentRecord }) {
-  const events = buildTimeline(appointment);
-
-  return (
-    <ol className="m-0 list-none p-0">
-      {events.map((event, index) => {
-        const isLast = index === events.length - 1;
-        const dotColor = (event.status && DOT_COLORS[event.status]) || 'bg-[var(--text)]';
-
-        return (
-          <li key={event.key} className="relative flex gap-3 pb-4 last:pb-0">
-            {!isLast && <span aria-hidden="true" className="absolute left-[5px] top-4 bottom-0 w-px bg-white/15" />}
-            <span
-              aria-hidden="true"
-              className={`relative mt-1 h-[11px] w-[11px] shrink-0 rounded-full ${dotColor} ${
-                isLast && event.status ? 'ring-4 ring-white/10' : ''
-              }`}
-            />
-            <div className="min-w-0">
-              <span className="block text-sm font-semibold text-[var(--text-h)]">{event.title}</span>
-              <span className="block text-xs text-[var(--text)]">{formatAppointmentDateTime(event.at)}</span>
-              {event.detail && <span className="mt-1 block text-sm text-[var(--text-h)]">{event.detail}</span>}
-            </div>
-          </li>
-        );
-      })}
-    </ol>
   );
 }
 
@@ -162,7 +86,7 @@ export function AppointmentDetailContent({ appointment, showClient = true }: App
 
         <section>
           <SectionTitle>Seguimiento</SectionTitle>
-          <Timeline appointment={appointment} />
+          <AppointmentTimeline appointment={appointment} />
         </section>
       </div>
 

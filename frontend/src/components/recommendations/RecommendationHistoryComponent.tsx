@@ -4,6 +4,7 @@ import type { HaircutRecommendation } from '../../types/recommendation';
 import { Modal } from '../common/ModalComponent';
 import { useHaircutImageUrls } from '../../hooks/useHaircutImageUrls';
 import { HaircutChip } from './HaircutChipComponent';
+import { getBusinessTimezone } from '../../services/timezoneService';
 
 interface RecommendationHistoryProps {
   recommendations: HaircutRecommendation[];
@@ -12,7 +13,12 @@ interface RecommendationHistoryProps {
 }
 
 const formatDate = (iso: string) =>
-  new Date(iso).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
+  new Date(iso).toLocaleDateString('es-MX', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: getBusinessTimezone()
+  });
 
 function HistoryItem({ item }: { item: HaircutRecommendation }) {
   const [isOpen, setIsOpen] = useState(false);

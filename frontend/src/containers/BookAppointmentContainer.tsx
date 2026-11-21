@@ -20,6 +20,7 @@ import type { ClientRecord } from '../types/clientType';
 import type { OfferedService } from '../types/offeredService';
 import { formatPrice } from '../utils/appointmentUtils';
 import { formatSlotTime } from '../utils/availabilityUtils';
+import { getTodayIso } from '../utils/dateFormat';
 import { formatDuration } from '../utils/offeredServiceUtils';
 import { joinFullName } from '../utils/personUtils';
 
@@ -53,12 +54,6 @@ const DEFAULT_CLIENT_SEARCH_ERROR = 'No se pudo buscar clientes. Intenta de nuev
 
 const pad = (value: number) => String(value).padStart(2, '0');
 
-// Fecha local de hoy en YYYY-MM-DD.
-const getTodayLocal = (): string => {
-  const now = new Date();
-  const offsetMs = now.getTimezoneOffset() * 60_000;
-  return new Date(now.getTime() - offsetMs).toISOString().split('T')[0];
-};
 
 /* Convierte errores de la API en mensajes legibles siguiendo el patrón de EditUserModalContainer. */
 const formatApiError = (error: unknown, fallbackMessage: string): string => {
@@ -96,7 +91,7 @@ const DEFAULT_BOOKING_ERROR = 'No se pudo agendar la cita. Intenta de nuevo.';
 export function BookAppointmentContainer() {
   const { user, token } = useAuth();
   const navigate = useNavigate();
-  const today = getTodayLocal();
+  const today = getTodayIso();
   const [todayYear, todayMonth, todayDay] = today.split('-').map(Number);
   const currentMonthIndex = todayYear * 12 + (todayMonth - 1);
 
@@ -523,44 +518,64 @@ export function BookAppointmentContainer() {
 
               {clientMode === 'registered' && (
                 <>
-                  <InputField
-                    id="booking-client-search"
-                    label="Buscar cliente"
-                    type="text"
-                    placeholder="Nombre, apellido o correo"
-                    autoComplete="off"
-                    registerProps={register('clientSearch')}
-                  />
-
-                  {clientSearchTerm && (
+                  {selectedClient ? (
+                    <div className="flex flex-col gap-2">
+                      <span className="text-left text-[0.9rem] font-semibold text-(--labels)">Cliente seleccionado</span>
+                      <div className="flex items-center justify-between rounded-lg border border-(--accent) bg-(--accent)/10 px-3 py-2.5">
+                        <div className="flex min-w-0 flex-col">
+                          <span className="truncate text-sm font-semibold text-(--text-h)">
+                            {joinFullName(selectedClient)}
+                          </span>
+                          <span className="truncate text-xs text-(--text)">{selectedClient.email}</span>
+                        </div>
+                        <button
+                          type="button"
+                          aria-label={`Deseleccionar a ${joinFullName(selectedClient)}`}
+                          onClick={() => setSelectedClient(null)}
+                          className="ml-3 flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-white/10 bg-transparent text-(--text) transition-colors hover:border-(--accent) hover:text-(--accent)"
+                        >
+                          <X size={18} />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
                     <>
-                      {clientSearchError ? (
-                        <p className="m-0 text-sm text-[#ff4d4d]">{clientSearchError}</p>
-                      ) : clientResults.length > 0 ? (
-                        <ul className="m-0 flex max-h-60 list-none flex-col gap-2 overflow-y-auto p-0">
-                          {clientResults.map((client) => {
-                            const isSelected = selectedClient?.id === client.id;
-                            return (
-                              <li key={client.id}>
-                                <button
-                                  type="button"
-                                  aria-pressed={isSelected}
-                                  onClick={() => setSelectedClient(client)}
-                                  className={`flex w-full cursor-pointer flex-col items-start rounded-lg border px-3 py-2 text-left transition-colors ${
-                                    isSelected
-                                      ? 'border-(--accent) bg-(--accent)/10'
-                                      : 'border-[#333333] bg-[#121212] hover:border-(--accent)'
-                                  }`}
-                                >
-                                  <span className="text-sm font-semibold text-(--text-h)">{joinFullName(client)}</span>
-                                  <span className="text-xs text-(--text)">{client.email}</span>
-                                </button>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      ) : (
-                        !isSearchingClients && <p className="m-0 text-sm text-(--text)">No se encontraron clientes.</p>
+                      <InputField
+                        id="booking-client-search"
+                        label="Buscar cliente"
+                        type="text"
+                        placeholder="Nombre, apellido o correo"
+                        autoComplete="off"
+                        registerProps={register('clientSearch')}
+                      />
+
+                      {clientSearchTerm && (
+                        <>
+                          {clientSearchError ? (
+                            <p className="m-0 text-sm text-[#ff4d4d]">{clientSearchError}</p>
+                          ) : clientResults.length > 0 ? (
+                            <ul className="m-0 flex max-h-60 list-none flex-col gap-2 overflow-y-auto p-0">
+                              {clientResults.map((client) => (
+                                <li key={client.id}>
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedClient(client)}
+                                    className="flex w-full cursor-pointer flex-col items-start rounded-lg border border-[#333333] bg-[#121212] px-3 py-2 text-left transition-colors hover:border-(--accent)"
+                                  >
+                                    <span className="text-sm font-semibold text-(--text-h)">
+                                      {joinFullName(client)}
+                                    </span>
+                                    <span className="text-xs text-(--text)">{client.email}</span>
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            !isSearchingClients && (
+                              <p className="m-0 text-sm text-(--text)">No se encontraron clientes.</p>
+                            )
+                          )}
+                        </>
                       )}
                     </>
                   )}

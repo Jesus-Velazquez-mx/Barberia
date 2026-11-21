@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { AlertCircle, X } from 'lucide-react';
 import { AppointmentDetailModal } from '../components/appointments/AppointmentDetailModalComponent';
 import { MarkNoShowModal } from '../components/appointments/MarkNoShowModalComponent';
 import { AppointmentFilters, FilterToggleButton } from '../components/appointments/AppointmentFiltersComponent';
 import { AppointmentTable } from '../components/appointments/AppointmentTableComponent';
 import { ManagerPageHeader } from '../components/dashboard/ManagerPageHeaderComponent';
 import { SearchBar } from '../components/common/SearchBarComponent';
+import { Toast } from '../components/common/ToastComponent';
 import { useAuth } from '../context/AuthContext';
 import {
   getAppointmentById,
@@ -13,6 +15,7 @@ import {
   markAppointmentNoShow,
   type AppointmentQuery
 } from '../services/appointmentService';
+import { checkInAppointment, getAppointments, type AppointmentQuery } from '../services/appointmentService';
 import type { AppointmentFilterValues, AppointmentRecord, SortDirection } from '../types/appointmentType';
 import type { UserRole } from '../components/appointments/EditAppointmentModalComponent';
 import { CancelAppointmentContainer, EditAppointmentContainer } from './AppointmentActionsContainer';
@@ -21,10 +24,12 @@ import {
   STATUS_OPTIONS,
   buildServiceOptions,
   buildShopOptions,
+  canCheckIn,
   collectServiceLabels,
   collectShopLabels,
   countActiveFilters,
   filterAppointments,
+  getCheckInErrorMessage,
   getDefaultFilters,
   hasActiveFilters,
   mergeCatalog,
@@ -66,6 +71,18 @@ export function StaffAppointmentsContainer() {
   const [cancelingAppointment, setCancelingAppointment] = useState<AppointmentRecord | null>(null);
   const [currentTime, setCurrentTime] = useState(() => Date.now());
 
+  const [now, setNow] = useState(() => Date.now());
+  const [checkingInId, setCheckingInId] = useState<string | null>(null);
+  const [checkInError, setCheckInError] = useState('');
+  const [modalCheckInError, setModalCheckInError] = useState('');
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const dismissToast = useCallback(() => setToast(null), []);
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(interval);
+  }, []);
+
   const {
     register,
     watch,
@@ -78,7 +95,7 @@ export function StaffAppointmentsContainer() {
   const filters = watch();
   /* El personal no tiene el límite de 8 horas: basta con que la cita siga agendada o reagendada y no haya empezado. */
   const canModify = (a: AppointmentRecord) =>
-    (a.status === 'scheduled' || a.status === 'rescheduled') && new Date(a.scheduledStart).getTime() > Date.now();
+    (a.status === 'scheduled' || a.status === 'rescheduled') && new Date(a.scheduledStart).getTime() > now;
 
   /* Fecha de servicio, sucursal y estado se piden al backend; null mientras una fecha está incompleta o
      el rango es inválido (en ese caso se conserva la última consulta válida). */
@@ -100,6 +117,8 @@ export function StaffAppointmentsContainer() {
     const requestId = ++latestRequest.current;
     setIsLoading(true);
     setLoadError('');
+    // Un error de check-in previo deja de ser relevante cuando la lista se vuelve a consultar.
+    setCheckInError('');
 
     try {
       const data = await getAppointments(token, role, query);
@@ -135,8 +154,12 @@ export function StaffAppointmentsContainer() {
   }, [currentTime, role, selectedAppointment?.id, selectedAppointment?.scheduledStart]);
 
   /* Al cambiar cualquier filtro se vuelve a la primera página. */
+  /* Al cambiar cualquier filtro se vuelve a la primera página y se descarta el error de check-in. */
   useEffect(() => {
-    const subscription = watch(() => setPage(1));
+    const subscription = watch(() => {
+      setPage(1);
+      setCheckInError('');
+    });
     return () => subscription.unsubscribe();
   }, [watch]);
 
@@ -152,6 +175,7 @@ export function StaffAppointmentsContainer() {
   const handleSearchChange = (value: string) => {
     setSearch(value);
     setPage(1);
+    setCheckInError('');
   };
 
   const handleToggleSort = () => {
@@ -163,6 +187,31 @@ export function StaffAppointmentsContainer() {
     reset(getDefaultFilters());
     setSearch('');
     setPage(1);
+    setCheckInError('');
+  };
+
+  const handleCheckIn = async (appointment: AppointmentRecord, source: 'table' | 'modal') => {
+    if (!token || checkingInId !== null) return;
+
+    setCheckingInId(appointment.id);
+    setCheckInError('');
+    setModalCheckInError('');
+
+    try {
+      const updated = await checkInAppointment(token, appointment.id);
+      setSelectedAppointment((current) => (current?.id === updated.id ? updated : current));
+      setToast({ message: `Check-in registrado para ${appointment.clientName}.`, type: 'success' });
+      await loadAppointments();
+    } catch (error) {
+      const message = getCheckInErrorMessage(error);
+      if (source === 'modal') {
+        setModalCheckInError(message);
+      } else {
+        setCheckInError(message);
+      }
+    } finally {
+      setCheckingInId(null);
+    }
   };
 
   const handleMarkNoShow = async (appointmentId: string) => {
@@ -226,7 +275,7 @@ export function StaffAppointmentsContainer() {
 
   return (
     <>
-      <ManagerPageHeader title="Citas" subtitle="Consulta de citas agendadas, reagendadas y canceladas." />
+      <ManagerPageHeader title="Citas" subtitle="Consulta y gestión de citas, estados y registro de check-in." />
 
       <div className="mt-6 flex items-center gap-3">
         <div className="min-w-0 flex-1">
@@ -257,6 +306,26 @@ export function StaffAppointmentsContainer() {
         />
       </div>
 
+      {checkInError && (
+        <div
+          role="alert"
+          className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-[#ff4d4d]/40 bg-[#ff4d4d]/10 px-4 py-3 text-sm font-medium text-[#ffb3b3]"
+        >
+          <div className="flex items-center gap-2.5">
+            <AlertCircle size={18} className="shrink-0 text-[#ff4d4d]" aria-hidden="true" />
+            <span>{checkInError}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setCheckInError('')}
+            aria-label="Cerrar alerta"
+            className="cursor-pointer rounded-md p-1 text-[#ffb3b3] transition-colors hover:bg-white/10 hover:text-white"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
       <div className="mt-6">
         <AppointmentTable
           rows={pageResult.pageItems}
@@ -271,6 +340,12 @@ export function StaffAppointmentsContainer() {
             setCurrentTime(Date.now());
             setSelectedAppointment(appointment);
           }}
+            setModalCheckInError('');
+            setSelectedAppointment(appointment);
+          }}
+          onCheckIn={(appointment) => void handleCheckIn(appointment, 'table')}
+          canCheckInRow={(appointment) => canCheckIn(appointment, now)}
+          checkingInId={checkingInId}
           sortDirection={sortDirection}
           onToggleSort={handleToggleSort}
           pagination={{
@@ -304,6 +379,17 @@ export function StaffAppointmentsContainer() {
           getNoShowDisabledReason(selectedAppointment) === undefined
         }
         noShowDisabledReason={selectedAppointment ? getNoShowDisabledReason(selectedAppointment) : undefined}
+          if (checkingInId === selectedAppointment?.id) return;
+          setModalCheckInError('');
+          setSelectedAppointment(null);
+        }}
+        onCheckIn={
+          selectedAppointment && canCheckIn(selectedAppointment, now)
+            ? () => void handleCheckIn(selectedAppointment, 'modal')
+            : undefined
+        }
+        isCheckingIn={selectedAppointment !== null && checkingInId === selectedAppointment.id}
+        checkInError={modalCheckInError}
         onEdit={
           selectedAppointment && canModify(selectedAppointment)
             ? () => {
@@ -351,6 +437,8 @@ export function StaffAppointmentsContainer() {
           onClose={() => setNoShowAppointment(null)}
         />
       )}
+
+      <Toast message={toast?.message ?? null} type={toast?.type} onDismiss={dismissToast} />
     </>
   );
 }
