@@ -1,5 +1,6 @@
 import connection from '../connection/connection.js';
 import { createJobRunner, type JobRunner } from './jobRunner.js';
+import { walkInCheckInJob } from './walkInCheckInJob.js';
 import { noShowJob } from './noShowJob.js';
 import { reminderJob } from './reminderJob.js';
 import type { JobGroup } from './types.js';
@@ -28,7 +29,7 @@ export const buildJobGroups = (config: JobsConfig): JobGroup[] => [
          *   3) marcar no-show             (#254)
          * Cada job debe ser un UPDATE atómico e idempotente que use `ctx.now` (no `now()` de SQL).
          */
-        jobs: [noShowJob],
+        jobs: [walkInCheckInJob, noShowJob],
     },
     {
         name: 'appointment-reminders',
