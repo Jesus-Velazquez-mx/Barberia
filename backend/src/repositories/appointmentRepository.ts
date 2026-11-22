@@ -472,6 +472,20 @@ export const markAppointmentAsNoShow = async (now: Date, graceMinutes: number): 
     return result.rowCount ?? 0;
 };
 
+export const autoCheckInWalkInAppointments = async (now: Date): Promise<number> => {
+    const result = await db.getPool().query(
+        `UPDATE appointments
+         SET status = 'checked_in',
+             checked_in_at = scheduled_start
+         WHERE is_walk_in = true
+           AND status IN ('scheduled', 'rescheduled')
+           AND scheduled_start <= $1`,
+        [now]
+    );
+
+    return result.rowCount ?? 0;
+};
+
 export const markAppointmentAsNoShowById = async (
     appointmentId: string,
     now: Date,

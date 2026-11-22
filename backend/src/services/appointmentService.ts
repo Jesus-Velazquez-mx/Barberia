@@ -8,7 +8,8 @@ import {
     getServicesByAppointmentIds,
     updateAppointmentWithServices,
     markAppointmentAsNoShow,
-    markAppointmentAsNoShowById
+    markAppointmentAsNoShowById,
+    autoCheckInWalkInAppointments
 } from '../repositories/appointmentRepository.js';
 import { getShopById, getShopIdsByManagerId } from '../repositories/shopRepository.js';
 import { getBarberById } from '../repositories/barberRepository.js';
@@ -630,6 +631,10 @@ export const listAppointments = async (
     );
 };
 
+
+/* No hay errores en la api aquí */
+export const autoCheckInWalkIns = (now: Date): Promise<number> =>
+    autoCheckInWalkInAppointments(now);
 
 /* No hay errores en la api aquí */
 export const markNoShow = (now: Date): Promise<number> =>
