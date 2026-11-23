@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { useNavigate } from 'react-router-dom';
-import { AlertCircle, Footprints, X } from 'lucide-react';
-import { Button } from '../components/common/ButtonComponent';
+import { AlertCircle, X } from 'lucide-react';
 import { AppointmentDetailModal } from '../components/appointments/AppointmentDetailModalComponent';
 import { MarkNoShowModal } from '../components/appointments/MarkNoShowModalComponent';
 import { AppointmentFilters, FilterToggleButton } from '../components/appointments/AppointmentFiltersComponent';
@@ -51,7 +49,6 @@ const RANGE_TOO_LONG_MESSAGE = 'El rango de fechas no puede exceder 1 año.';
 /* Vista de citas para manager y recepcionista (misma pantalla para ambos roles). */
 export function StaffAppointmentsContainer() {
   const { token, user } = useAuth();
-  const navigate = useNavigate();
   const role = user?.role;
   /* La recepcionista solo ve las citas de su sucursal, así que el filtro de sucursal es solo del manager. */
   const canFilterByShop = role === 'manager';
@@ -149,7 +146,10 @@ export function StaffAppointmentsContainer() {
     const remaining = noShowAt - currentTime;
     if (remaining <= 0) return;
 
-    const timer = window.setTimeout(() => setCurrentTime(Date.now()), Math.min(remaining, 2_147_000_000));
+    const timer = window.setTimeout(
+      () => setCurrentTime(Date.now()),
+      Math.min(remaining, 2_147_000_000)
+    );
     return () => window.clearTimeout(timer);
   }, [currentTime, role, selectedAppointment?.id, selectedAppointment?.scheduledStart]);
 
@@ -281,16 +281,7 @@ export function StaffAppointmentsContainer() {
 
   return (
     <>
-      <ManagerPageHeader title="Citas" subtitle="Consulta y gestión de citas, estados y registro de check-in.">
-        <Button
-          type="button"
-          onClick={() => navigate(`/${role}/walk-in`)}
-          className="inline-flex items-center gap-2 px-4 text-sm! font-semibold! normal-case!"
-        >
-          <Footprints size={18} aria-hidden="true" />
-          Registrar servicio sin cita
-        </Button>
-      </ManagerPageHeader>
+      <ManagerPageHeader title="Citas" subtitle="Consulta y gestión de citas, estados y registro de check-in." />
 
       <div className="mt-6 flex items-center gap-3">
         <div className="min-w-0 flex-1">
@@ -383,10 +374,10 @@ export function StaffAppointmentsContainer() {
         onMarkNoShow={
           selectedAppointment && role === 'receptionist'
             ? () => {
-                setModalCheckInError('');
-                setNoShowAppointment(selectedAppointment);
-                setSelectedAppointment(null);
-              }
+              setModalCheckInError('');
+              setNoShowAppointment(selectedAppointment);
+              setSelectedAppointment(null);
+            }
             : undefined
         }
         canMarkNoShow={
@@ -405,20 +396,20 @@ export function StaffAppointmentsContainer() {
         onEdit={
           selectedAppointment && canModify(selectedAppointment)
             ? () => {
-                // Se cierra el detalle antes de abrir la edición para no apilar dos modales.
-                setModalCheckInError('');
-                setEditingAppointment(selectedAppointment);
-                setSelectedAppointment(null);
-              }
+              // Se cierra el detalle antes de abrir la edición para no apilar dos modales.
+              setModalCheckInError('');
+              setEditingAppointment(selectedAppointment);
+              setSelectedAppointment(null);
+            }
             : undefined
         }
         onCancel={
           selectedAppointment && canModify(selectedAppointment)
             ? () => {
-                setModalCheckInError('');
-                setCancelingAppointment(selectedAppointment);
-                setSelectedAppointment(null);
-              }
+              setModalCheckInError('');
+              setCancelingAppointment(selectedAppointment);
+              setSelectedAppointment(null);
+            }
             : undefined
         }
       />

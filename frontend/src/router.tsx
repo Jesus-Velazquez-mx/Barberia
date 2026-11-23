@@ -98,11 +98,6 @@ const router = createBrowserRouter([
             element: <BookAppointmentPage />
           },
           {
-            // Registrar servicio sin cita (walk-in); se abre desde la vista de citas
-            path: '/manager/walk-in',
-            element: <BookAppointmentPage isWalkIn />
-          },
-          {
             path: '/manager/inventory',
             element: <StaffInventoryPage role="manager" />
           },
@@ -164,11 +159,6 @@ const router = createBrowserRouter([
           {
             path: '/receptionist/booking',
             element: <BookAppointmentPage />
-          },
-          {
-            // Registrar servicio sin cita (walk-in); se abre desde la vista de citas
-            path: '/receptionist/walk-in',
-            element: <BookAppointmentPage isWalkIn />
           },
           {
             path: '/receptionist/clients',
