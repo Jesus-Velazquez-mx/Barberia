@@ -59,6 +59,8 @@ export interface CreateAppointmentPayload {
     clientId?: string;
     guestClientName?: string;
     notes?: string;
+    /* Servicio sin cita (solo personal): el horario debe ser de hoy; pasa sola a checked_in al llegar su hora. */
+    isWalkIn?: boolean;
 }
 
 export interface AppointmentClientInfo {
@@ -302,7 +304,7 @@ export const cancelAppointment = async (
 
 export const markAppointmentNoShow = async (token: string, appointmentId: string): Promise<void> => {
     await apiClient.put<AppointmentApi>(`/appointments/${appointmentId}/no-show`, {}, authHeaders(token));
-}
+};
 /**
  * Registra el check-in de una cita (status 'checked_in').
  * Requiere token JWT (solo receptionist de la sucursal o manager de la sucursal).
@@ -316,4 +318,4 @@ export const checkInAppointment = async (token: string, appointmentId: string): 
     );
     const catalogs = await loadCatalogs(token, [data.shopId]);
     return toRecord(data, catalogs);
-}
+};

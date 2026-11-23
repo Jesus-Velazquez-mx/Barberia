@@ -23,8 +23,8 @@ import ClientAppointmentsPage from './pages/client/ClientAppointmentPage';
 import ClientAppointmentDetailPage from './pages/client/ClientAppointmentDetailPage';
 import ManagerShiftsPage from './pages/staff/ManagerShiftsPage';
 import ManagerShopsPage from './pages/staff/ManagerShopsPage';
-import ClientReminderPage from './pages/client/ClientReminderPage'
-import ManagerNotificationTestPage from './pages/staff/ManagerNotificationTestPage'
+import ClientReminderPage from './pages/client/ClientReminderPage';
+import ManagerNotificationTestPage from './pages/staff/ManagerNotificationTestPage';
 const router = createBrowserRouter([
   /* Client */
   {
@@ -63,7 +63,7 @@ const router = createBrowserRouter([
           {
             path: '/client/reminders',
             element: <ClientReminderPage />
-          },
+          }
         ]
       }
     ]
@@ -96,6 +96,11 @@ const router = createBrowserRouter([
           {
             path: '/manager/booking',
             element: <BookAppointmentPage />
+          },
+          {
+            // Registrar servicio sin cita (walk-in); se abre desde la vista de citas
+            path: '/manager/walk-in',
+            element: <BookAppointmentPage isWalkIn />
           },
           {
             path: '/manager/inventory',
@@ -134,7 +139,7 @@ const router = createBrowserRouter([
           {
             path: '/manager/reminders',
             element: <ManagerNotificationTestPage />
-          },
+          }
         ]
       }
     ]
@@ -159,6 +164,11 @@ const router = createBrowserRouter([
           {
             path: '/receptionist/booking',
             element: <BookAppointmentPage />
+          },
+          {
+            // Registrar servicio sin cita (walk-in); se abre desde la vista de citas
+            path: '/receptionist/walk-in',
+            element: <BookAppointmentPage isWalkIn />
           },
           {
             path: '/receptionist/clients',

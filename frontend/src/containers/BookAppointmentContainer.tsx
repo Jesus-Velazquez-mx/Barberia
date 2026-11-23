@@ -7,9 +7,11 @@ import { InputField } from '../components/common/InputFieldComponent';
 import { SelectField } from '../components/common/SelectFieldComponent';
 import { AvailabilityCalendar } from '../components/appointments/AvailabilityCalendarComponent';
 import { SlotPickerModal } from '../components/appointments/SlotPickerModalComponent';
+import { NextSlotPicker } from '../components/appointments/NextSlotPickerComponent';
+import { WalkInBadge } from '../components/appointments/WalkInBadgeComponent';
 import { Toast } from '../components/common/ToastComponent';
 import { getShops, getActiveBarbersByShop, getOfferedServices } from '../services/shopService';
-import { getShopAvailability } from '../services/availabilityService';
+import { getNextAvailability, getShopAvailability } from '../services/availabilityService';
 import { createAppointment } from '../services/appointmentService';
 import { searchClients } from '../services/clientService';
 import { useAuth } from '../context/AuthContext';
@@ -54,7 +56,6 @@ const DEFAULT_CLIENT_SEARCH_ERROR = 'No se pudo buscar clientes. Intenta de nuev
 
 const pad = (value: number) => String(value).padStart(2, '0');
 
-
 /* Convierte errores de la API en mensajes legibles siguiendo el patrón de EditUserModalContainer. */
 const formatApiError = (error: unknown, fallbackMessage: string): string => {
   if (error instanceof ApiError) {
@@ -88,7 +89,19 @@ const APPOINTMENTS_ROUTE_BY_ROLE: Record<string, string> = {
 const BOOKING_SUCCESS_MESSAGE = 'Cita agendada correctamente.';
 const DEFAULT_BOOKING_ERROR = 'No se pudo agendar la cita. Intenta de nuevo.';
 
-export function BookAppointmentContainer() {
+/* Servicio sin cita (walk-in): solo personal y solo horarios de hoy. */
+const WALK_IN_SUCCESS_MESSAGE = 'Servicio sin cita registrado correctamente.';
+const DEFAULT_WALK_IN_ERROR = 'No se pudo registrar el servicio sin cita. Intenta de nuevo.';
+const DEFAULT_NEXT_SLOT_ERROR = 'No se pudo consultar el próximo horario disponible. Intenta de nuevo.';
+const WALK_IN_SLOT_TAKEN_MESSAGE =
+  'El horario seleccionado se ocupó mientras tanto. Se recalculó el próximo horario disponible.';
+
+interface BookAppointmentContainerProps {
+  /* true: registrar un servicio sin cita en el próximo slot de hoy en lugar de elegir día en el calendario. */
+  isWalkIn?: boolean;
+}
+
+export function BookAppointmentContainer({ isWalkIn = false }: BookAppointmentContainerProps) {
   const { user, token } = useAuth();
   const navigate = useNavigate();
   const today = getTodayIso();
@@ -121,6 +134,9 @@ export function BookAppointmentContainer() {
   const [clientSearchError, setClientSearchError] = useState<string | null>(null);
   const [clientMode, setClientMode] = useState<ClientMode | null>(null);
   const [selectedClient, setSelectedClient] = useState<ClientRecord | null>(null);
+  const [nextSlots, setNextSlots] = useState<AvailableSlot[]>([]);
+  const [isFetchingNextSlots, setIsFetchingNextSlots] = useState(false);
+  const [nextSlotsError, setNextSlotsError] = useState<string | null>(null);
 
   const { register, watch, control, reset, setValue } = useForm<BookAppointmentFormValues>({
     defaultValues: { clientSearch: '', guestClientName: '', shopId: '', services: [{ serviceId: '' }] }
@@ -232,7 +248,7 @@ export function BookAppointmentContainer() {
 
   /* 3. Calcular la disponibilidad real de cada día del mes visible en el calendario */
   useEffect(() => {
-    if (!shopId || selectedServiceIds.length === 0) {
+    if (isWalkIn || !shopId || selectedServiceIds.length === 0) {
       setAvailabilityByDate({});
       return;
     }
@@ -276,11 +292,11 @@ export function BookAppointmentContainer() {
     return () => {
       active = false;
     };
-  }, [shopId, serviceKey, view.year, view.month, today, maxDate, availabilityVersion]);
+  }, [isWalkIn, shopId, serviceKey, view.year, view.month, today, maxDate, availabilityVersion]);
 
   /* 4. Consultar los slots detallados cada vez que cambie sucursal, fecha o servicio */
   useEffect(() => {
-    if (!shopId || !selectedDate || selectedServiceIds.length === 0) {
+    if (isWalkIn || !shopId || !selectedDate || selectedServiceIds.length === 0) {
       setFetchedSlots([]);
       setFetchError(null);
       return;
@@ -323,7 +339,48 @@ export function BookAppointmentContainer() {
     return () => {
       active = false;
     };
-  }, [shopId, selectedDate, serviceKey, barbers, availabilityVersion]);
+  }, [isWalkIn, shopId, selectedDate, serviceKey, barbers, availabilityVersion]);
+
+  /* 5. Walk-in: próximo slot de hoy de cada barbero; el más próximo en general queda preseleccionado */
+  useEffect(() => {
+    if (!isWalkIn || !token || !shopId || selectedServiceIds.length === 0) {
+      setNextSlots([]);
+      setNextSlotsError(null);
+      setIsFetchingNextSlots(false);
+      return;
+    }
+
+    let active = true;
+    setIsFetchingNextSlots(true);
+    setNextSlotsError(null);
+
+    getNextAvailability({ shopId, serviceIds: selectedServiceIds, token })
+      .then((data) => {
+        if (!active) return;
+        setNextSlots(data);
+        setConfirmedSlot(data[0] ?? null);
+      })
+      .catch((error) => {
+        if (!active) return;
+        setNextSlotsError(formatApiError(error, DEFAULT_NEXT_SLOT_ERROR));
+        setNextSlots([]);
+        setConfirmedSlot(null);
+      })
+      .finally(() => {
+        if (active) setIsFetchingNextSlots(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [isWalkIn, token, shopId, serviceKey, availabilityVersion]);
+
+  /* Walk-in: si el personal solo tiene una sucursal (p. ej. recepcionista), se preselecciona. */
+  useEffect(() => {
+    if (isWalkIn && shopOptions.length === 1 && !shopId) {
+      setValue('shopId', shopOptions[0].value);
+    }
+  }, [isWalkIn, shopOptions, shopId, setValue]);
 
   /* Cada fila ofrece solo los servicios que no se eligieron en otra fila */
   const getServiceOptions = (index: number) => {
@@ -370,12 +427,24 @@ export function BookAppointmentContainer() {
         barberId: confirmedSlot.barberId,
         serviceIds: selectedServiceIds,
         scheduledStart: confirmedSlot.startTime,
-        ...clientTarget
+        ...clientTarget,
+        ...(isWalkIn ? { isWalkIn: true } : {})
       });
       navigate(APPOINTMENTS_ROUTE_BY_ROLE[user?.role ?? 'client'] ?? '/client/appointments', {
-        state: { toast: BOOKING_SUCCESS_MESSAGE }
+        state: { toast: isWalkIn ? WALK_IN_SUCCESS_MESSAGE : BOOKING_SUCCESS_MESSAGE }
       });
     } catch (error) {
+      // Walk-in: si el slot lo tomó alguien más, se recalcula el próximo horario (efecto 5) y se preselecciona.
+      if (isWalkIn) {
+        const isSlotTaken = error instanceof ApiError && error.status === 409;
+        setBookingError(isSlotTaken ? WALK_IN_SLOT_TAKEN_MESSAGE : formatApiError(error, DEFAULT_WALK_IN_ERROR));
+        if (isSlotTaken) {
+          setConfirmedSlot(null);
+          setAvailabilityVersion((version) => version + 1);
+        }
+        return;
+      }
+
       setBookingError(formatApiError(error, DEFAULT_BOOKING_ERROR));
       // El horario lo tomó alguien más: se descarta, se recarga la disponibilidad y se reabre el modal para elegir otro.
       if (error instanceof ApiError && error.status === 409) {
@@ -418,7 +487,11 @@ export function BookAppointmentContainer() {
         : null;
 
   const canBook = Boolean(
-    shopId && selectedServiceIds.length > 0 && confirmedSlot && (!isStaff || clientTarget !== null)
+    shopId &&
+    selectedServiceIds.length > 0 &&
+    confirmedSlot &&
+    (!isStaff || clientTarget !== null) &&
+    (!isWalkIn || (isStaff && !isFetchingNextSlots))
   );
 
   const clientLabel =
@@ -520,7 +593,9 @@ export function BookAppointmentContainer() {
                 <>
                   {selectedClient ? (
                     <div className="flex flex-col gap-2">
-                      <span className="text-left text-[0.9rem] font-semibold text-(--labels)">Cliente seleccionado</span>
+                      <span className="text-left text-[0.9rem] font-semibold text-(--labels)">
+                        Cliente seleccionado
+                      </span>
                       <div className="flex items-center justify-between rounded-lg border border-(--accent) bg-(--accent)/10 px-3 py-2.5">
                         <div className="flex min-w-0 flex-col">
                           <span className="truncate text-sm font-semibold text-(--text-h)">
@@ -597,9 +672,17 @@ export function BookAppointmentContainer() {
           )}
         </div>
 
-        {/* Calendario */}
+        {/* Calendario (en un walk-in, el próximo horario de hoy de cada barbero) */}
         <div className="w-full max-w-190 min-[110rem]:col-start-2 min-[110rem]:row-span-2 min-[110rem]:row-start-1">
-          {shopId && selectedServiceIds.length > 0 ? (
+          {isWalkIn && shopId && selectedServiceIds.length > 0 ? (
+            <NextSlotPicker
+              slots={nextSlots}
+              isLoading={isFetchingNextSlots}
+              error={nextSlotsError}
+              selectedSlot={confirmedSlot}
+              onSelectSlot={setConfirmedSlot}
+            />
+          ) : shopId && selectedServiceIds.length > 0 ? (
             <AvailabilityCalendar
               year={view.year}
               month={view.month}
@@ -622,7 +705,10 @@ export function BookAppointmentContainer() {
 
         {/* Resumen de la selección */}
         <div className="rounded-xl border border-[#2c2c2c] bg-[#1a1a1a] p-6 min-w-fit w-full max-w-190 min-[110rem]:col-start-1 min-[110rem]:row-start-2">
-          <h2 className="mb-4 mt-0 text-2xl text-(--text-h)">Información de la cita</h2>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="m-0 text-2xl text-(--text-h)">Información de la cita</h2>
+            {isWalkIn && <WalkInBadge />}
+          </div>
 
           <div className="grid grid-cols-2 gap-3">
             {isStaff && (
@@ -631,7 +717,7 @@ export function BookAppointmentContainer() {
               </SummaryTile>
             )}
             <SummaryTile label="Sucursal">{shopLabel ?? '—'}</SummaryTile>
-            <SummaryTile label="Fecha">{selectedDate ?? '—'}</SummaryTile>
+            <SummaryTile label="Fecha">{isWalkIn ? `${today} (hoy)` : (selectedDate ?? '—')}</SummaryTile>
             <SummaryTile label="Horario" className="col-span-2">
               {confirmedSlot ? `${formatSlotTime(confirmedSlot.startTime)} · ${confirmedSlot.barberName}` : '—'}
             </SummaryTile>
@@ -685,9 +771,14 @@ export function BookAppointmentContainer() {
               disabled={!canBook || isBooking}
               className="h-12! px-8! normal-case! disabled:cursor-not-allowed! disabled:opacity-50!"
             >
-              Agendar Cita
+              {isWalkIn ? 'Registrar servicio' : 'Agendar Cita'}
             </Button>
           </div>
+          {isWalkIn && confirmedSlot && (
+            <p className="mb-0 mt-3 text-right text-xs text-(--text)">
+              La cita pasará sola a &quot;en curso&quot; a las {formatSlotTime(confirmedSlot.startTime)}.
+            </p>
+          )}
         </div>
       </div>
 
