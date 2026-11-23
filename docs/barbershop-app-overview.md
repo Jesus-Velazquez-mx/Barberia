@@ -76,7 +76,15 @@ Clients submit a photo and/or facial-structure attributes, stated preferences, a
 
 ### 3.3 Loyalty / Fidelity Program
 
-Clients accumulate credit toward free haircuts: every 6 paid services earns a 7th one free. Each client has a running count of paid services since their last free redemption; it resets to 0 once the free service is completed. Rewards are global — earned and redeemable at any shop, not tied to a specific barber. Only registered clients participate: appointments for unregistered clients never count toward a reward. If a client doesn't show up to an appointment that included a free service earned through this program, and it is marked as a no-show, they lose that free service and their count restarts from 0. Cancelling such an appointment, whether by the client or by staff, does not forfeit the reward: the client keeps it and can redeem it on another appointment.
+Clients accumulate credit toward free haircuts: every 6 completed appointments earns a 7th one free. Each client has a running count of completed appointments since their last free redemption; it resets to 0 once the free appointment is completed. The count is flat (decided): each completed appointment adds exactly 1, regardless of which services it included or what they cost. Rewards never expire, and no other promotions exist or are planned, so there is nothing to combine a reward with.
+
+**Redeeming a reward** (all decided):
+- A client redeems by booking an appointment with the free-appointment option, available once their count has reached 6. The reward covers the **whole appointment**, whatever services it includes.
+- The appointment keeps the real catalog prices as a record. The system handles no payments, so the reward flag alone marks the appointment as free.
+- A client can hold only **one open reward appointment** (scheduled, rescheduled or checked in) at a time.
+- The reward option is chosen only when the appointment is created and can't be changed afterwards. To switch, cancel and rebook; a cancelled reward appointment keeps the reward, so nothing is lost.
+- When a reward appointment is completed, the count resets to 0. Any progress above 6 at that moment is discarded (it is not carried over).
+- A client can redeem for themselves. Receptionists and managers can redeem on behalf of a registered client within their shops, including for a walk-in. Guests can never redeem, and clients can't create walk-ins themselves. Rewards are global — earned and redeemable at any shop, not tied to a specific barber. Only registered clients participate: appointments for unregistered clients never count toward a reward. If a client doesn't show up to an appointment that included a free service earned through this program, and it is marked as a no-show, they lose that free service and their count restarts from 0. Cancelling such an appointment, whether by the client or by staff, does not forfeit the reward: the client keeps it and can redeem it on another appointment.
 
 ### 3.4 Appointment Reminders
 
@@ -97,7 +105,7 @@ Every stock entry (e.g. a purchase) and exit (e.g. usage, damaged items) is also
 - **Booking an appointment**: a client picks a barber, service, and time slot within that barber's availability, confirms the booking, and is meant to receive a confirmation plus scheduled reminders ahead of the visit (pending implementation, see §3.4).
 - **Getting a haircut recommendation**: a client submits a photo and/or preferences and receives suggested haircut styles to consider before or while booking.
 - **Receiving a reminder**: a client is reminded ahead of their appointment through their preferred channel(s).
-- **Redeeming a loyalty reward**: a client (or a receptionist/manager on their behalf) redeems accumulated loyalty credit against an appointment, which is then marked as reward-redeemed for reporting purposes.
+- **Redeeming a loyalty reward**: once their count reaches 6, a client (or a receptionist/manager on their behalf) books an appointment with the free-appointment option. It covers the whole appointment and is marked as reward-redeemed for reporting purposes. Completing it resets the count to 0; cancelling it keeps the reward; a no-show loses it (see §3.3).
 
 ## 5. Open Business Questions
 
@@ -113,9 +121,15 @@ These decisions materially affect the product and need to be settled up front.
 - A barber can't be deleted while they have pending appointments — a manager or receptionist must first cancel, re-assign, and/or reschedule all of them, and only then can the barber be deleted (decided, not yet implemented).
 
 **Fidelity/loyalty program**
-- The rule is visit-based: every 6 paid services earns a free 7th, tracked as a running count that resets on redemption (decided). Does it vary by service type or price, or is every service worth the same toward the count?
-- Do rewards expire? Rewards are global — usable at any shop (decided), not tied to a specific barber.
-- Can rewards be combined with other promotions?
+- The rule is visit-based: every 6 completed appointments earns a free 7th, tracked as a running count that resets on redemption (decided).
+- The count does not vary by service type or price: each completed appointment adds 1, whatever services it included (decided).
+- Rewards do not expire (decided). They are global — usable at any shop (decided), not tied to a specific barber.
+- No other promotions are considered for the business, so reward/promotion combination rules are not needed (decided).
+- No redemption ledger is part of the scope (decided). Redemptions are identified only by the `is_reward_redemption` flag on the appointment.
+- The reward covers the whole appointment, whatever services it includes, and the appointment keeps the real catalog prices as a record (decided).
+- A client can have only one open reward appointment at a time. The reward option can only be chosen when creating the appointment, never changed afterwards (decided).
+- On completion of a reward appointment the count resets to 0, discarding any progress above 6 (decided).
+- Staff can redeem on behalf of a registered client, including for a walk-in. Guests can never redeem (decided).
 
 **Appointments & scheduling**
 - Shifts are defined by managers: each lasts exactly 4, 6 or 8 hours, overlaps are allowed, exact duplicate time ranges are not; receptionists can view them. A shift can't be deleted if it's the only one or has staff assigned. Barbers work one shift Monday through Saturday; shift assignment is set only by managers (decided).
