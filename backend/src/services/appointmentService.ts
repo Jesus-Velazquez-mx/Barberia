@@ -9,7 +9,8 @@ import {
     updateAppointmentWithServices,
     markAppointmentAsNoShow,
     markAppointmentAsNoShowById,
-    autoCheckInWalkInAppointments
+    autoCheckInWalkInAppointments,
+    completeCheckedInAppointments
 } from '../repositories/appointmentRepository.js';
 import { getShopById, getShopIdsByManagerId } from '../repositories/shopRepository.js';
 import { getBarberById } from '../repositories/barberRepository.js';
@@ -640,6 +641,9 @@ export const autoCheckInWalkIns = (now: Date): Promise<number> =>
 export const markNoShow = (now: Date): Promise<number> =>
     markAppointmentAsNoShow(now, NO_SHOW_GRACE_MINUTES);
 
+export const completeFinishedAppointments = (now: Date): Promise<number> =>
+    completeCheckedInAppointments(now);
+    
 /* Esto es para hacerlo manual */
 export const markAppointmentNoShow = async (appointmentId: string, token: string): Promise<AppointmentResponse> => {
     const performer = await isUserSessionValid(token);

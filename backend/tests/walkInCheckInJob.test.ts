@@ -31,6 +31,7 @@ describe('walkInCheckInJob unit & runner integration', () => {
         expect(statusGroup!.jobs[0].name).toBe('auto-check-in-walk-ins');
         expect(statusGroup!.jobs.map((j) => j.name)).toEqual([
             'auto-check-in-walk-ins',
+            'complete-checked-in-appointments',
             'mark-appointments-no-show',
         ]);
     });

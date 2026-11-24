@@ -4,6 +4,7 @@ import { walkInCheckInJob } from './walkInCheckInJob.js';
 import { noShowJob } from './noShowJob.js';
 import { reminderJob } from './reminderJob.js';
 import type { JobGroup } from './types.js';
+import { completeAppointmentsJob } from './completeAppointmentsJob.js';
 
 /** Claves de `pg_try_advisory_lock`, una por grupo. No reutilizar ni cambiar sin coordinar despliegues. */
 export const JOB_LOCK_KEYS = {
@@ -29,7 +30,7 @@ export const buildJobGroups = (config: JobsConfig): JobGroup[] => [
          *   3) marcar no-show             (#254)
          * Cada job debe ser un UPDATE atómico e idempotente que use `ctx.now` (no `now()` de SQL).
          */
-        jobs: [walkInCheckInJob, noShowJob],
+        jobs: [walkInCheckInJob,completeAppointmentsJob, noShowJob],
     },
     {
         name: 'appointment-reminders',
