@@ -377,10 +377,10 @@ export function BookAppointmentContainer({ isWalkIn = false }: BookAppointmentCo
 
   /* Walk-in: si el personal solo tiene una sucursal (p. ej. recepcionista), se preselecciona. */
   useEffect(() => {
-    if (isWalkIn && shopOptions.length === 1 && !shopId) {
+    if (isStaff && shopOptions.length === 1 && !shopId) {
       setValue('shopId', shopOptions[0].value);
     }
-  }, [isWalkIn, shopOptions, shopId, setValue]);
+  }, [isStaff, shopOptions, shopId, setValue]);
 
   /* Cada fila ofrece solo los servicios que no se eligieron en otra fila */
   const getServiceOptions = (index: number) => {

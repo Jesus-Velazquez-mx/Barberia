@@ -23,18 +23,21 @@ function BookAppointmentPage() {
   return (
     <section>
       {/* max-w-190: mismo ancho máximo que los recuadros del formulario, para que el botón quede alineado con su borde derecho. */}
-      <div className="mb-6 flex w-full max-w-190 flex-wrap items-center justify-between gap-4">
-        <h1 className="m-0 text-3xl text-(--text-h)">{isWalkIn ? 'Registrar servicio sin cita' : 'Agendar cita'}</h1>
-        {isStaff && (
-          <Button
-            type="button"
-            onClick={toggleWalkIn}
-            className="inline-flex items-center gap-2 px-4 text-sm! font-semibold! normal-case!"
-          >
-            {isWalkIn ? <CalendarPlus size={18} aria-hidden="true" /> : <Footprints size={18} aria-hidden="true" />}
-            {isWalkIn ? 'Agendar cita con fecha' : 'Registrar servicio sin cita'}
-          </Button>
-        )}
+      <div className='grid grid-cols-1 min-[110rem]:gap-6 min-[110rem]:grid-cols-2 mb-6'>
+        <div className="flex w-full max-w-190 flex-wrap items-center justify-between gap-4">
+          <h1 className="m-0 text-3xl text-(--text-h)">{isWalkIn ? 'Registrar servicio sin cita' : 'Agendar cita'}</h1>
+          {isStaff && (
+            <Button
+              type="button"
+              onClick={toggleWalkIn}
+              className="inline-flex items-center gap-2 px-4 text-sm! font-semibold! normal-case!"
+            >
+              {isWalkIn ? <CalendarPlus size={18} aria-hidden="true" /> : <Footprints size={18} aria-hidden="true" />}
+              {isWalkIn ? 'Agendar cita con fecha' : 'Registrar servicio sin cita'}
+            </Button>
+          )}
+        </div>
+        <div></div>
       </div>
       {/* key: al cambiar de modo el formulario se monta de nuevo, sin arrastrar la selección del otro modo. */}
       <BookAppointmentContainer key={isWalkIn ? 'walk-in' : 'booking'} isWalkIn={isWalkIn} />

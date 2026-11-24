@@ -81,10 +81,17 @@ function NextSlotOptions({ slots, isLoading, error, selectedSlot, onSelectSlot }
     );
   }
 
+  const closestStartTime = slots.reduce(
+    (closest, slot) => (slot.startTime < closest ? slot.startTime : closest),
+    slots[0].startTime,
+  );
+  const hasLaterSlot = slots.some((slot) => slot.startTime !== closestStartTime);
+
   return (
     <ul className="m-0 flex list-none flex-col gap-2 p-0">
-      {slots.map((slot, index) => {
+      {slots.map((slot) => {
         const isSelected = isSameSlot(slot, selectedSlot);
+        const isClosest = hasLaterSlot && slot.startTime === closestStartTime;
         return (
           <li key={`${slot.barberId}-${slot.startTime}`}>
             <button
@@ -99,7 +106,7 @@ function NextSlotOptions({ slots, isLoading, error, selectedSlot, onSelectSlot }
             >
               <span className="flex min-w-0 flex-col">
                 <span className="truncate text-sm font-semibold text-(--text-h)">{slot.barberName}</span>
-                {index === 0 && <span className="text-xs font-semibold text-(--accent)">Más próximo</span>}
+                {isClosest && <span className="text-xs font-semibold text-(--accent)">Más próximo</span>}
               </span>
               <span
                 className={`flex shrink-0 items-center gap-1.5 font-semibold ${isSelected ? 'text-(--accent)' : 'text-(--text-h)'}`}
