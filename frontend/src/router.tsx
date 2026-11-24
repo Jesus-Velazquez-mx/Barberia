@@ -23,8 +23,8 @@ import ClientAppointmentsPage from './pages/client/ClientAppointmentPage';
 import ClientAppointmentDetailPage from './pages/client/ClientAppointmentDetailPage';
 import ManagerShiftsPage from './pages/staff/ManagerShiftsPage';
 import ManagerShopsPage from './pages/staff/ManagerShopsPage';
-import ClientReminderPage from './pages/client/ClientReminderPage'
-import ManagerNotificationTestPage from './pages/staff/ManagerNotificationTestPage'
+import ClientReminderPage from './pages/client/ClientReminderPage';
+import ManagerNotificationTestPage from './pages/staff/ManagerNotificationTestPage';
 const router = createBrowserRouter([
   /* Client */
   {
@@ -63,7 +63,7 @@ const router = createBrowserRouter([
           {
             path: '/client/reminders',
             element: <ClientReminderPage />
-          },
+          }
         ]
       }
     ]
@@ -134,7 +134,7 @@ const router = createBrowserRouter([
           {
             path: '/manager/reminders',
             element: <ManagerNotificationTestPage />
-          },
+          }
         ]
       }
     ]

@@ -36,3 +36,20 @@ export interface DayAvailability {
     status: DayStatus;
     slotsCount: number;
 }
+
+/** Parámetros para consultar el próximo slot de hoy de cada barbero (walk-in). */
+export interface GetNextAvailabilityParams {
+    shopId: string;
+    serviceIds: string[];
+    /** Token JWT: el endpoint es solo para el personal de la sucursal. */
+    token: string;
+}
+
+/** Próximo slot de hoy de un barbero, tal como lo devuelve GET /shops/:id/availability/next. */
+export interface NextAvailableSlotApi {
+    barberId: string;
+    firstName: string;
+    lastName: string;
+    /** Horario de inicio en ISO 8601 UTC. */
+    startTime: string;
+}
