@@ -504,3 +504,16 @@ export const markAppointmentAsNoShowById = async (
 
     return result.rows[0] ?? null;
 };
+
+export const completeCheckedInAppointments = async (now: Date): Promise<number> => {
+    const result = await db.getPool().query(
+        `UPDATE appointments
+         SET status = 'completed',
+             completed_at = scheduled_end
+         WHERE status = 'checked_in'
+           AND scheduled_end <= $1`,
+        [now]
+    );
+
+    return result.rowCount ?? 0;
+};
