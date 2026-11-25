@@ -14,7 +14,7 @@ Resumen de las reglas de negocio definidas para editar y cancelar citas. Para el
    - **El cliente no se puede editar.**
    - Para cambiar la **sucursal**, hay que cancelar la cita y crear una nueva.
 8. **Duración y traslapes**: la duración de la cita es la suma de las duraciones de todos sus servicios. Un barbero nunca puede tener dos citas traslapadas. Si se cambian los servicios sin cambiar de barbero y la duración total resulta mayor que la original, el sistema debe validar que el barbero tenga tiempo libre suficiente para el cambio.
-9. **Límites de rescheduled**: una cita puede ser reagendada un máximo de 2 veces.
+9. **Sin límite de reagendas**: no hay un número máximo de veces que una cita puede reagendarse (ni cancelarse).
 10. **Sin bitácora**: por ahora no se lleva un registro de auditoría de los cambios en las citas.
 
 ## 2. Reglas por rol
@@ -47,4 +47,4 @@ Resumen de las reglas de negocio definidas para editar y cancelar citas. Para el
 - **Citas de invitados**: una cita de un cliente no registrado (invitado) **no puede convertirse** en una cita de cliente registrado, ni al revés.
 - **Disponibilidad**: cualquier nuevo horario debe respetar el turno del barbero, el horario de la sucursal (lunes a sábado) y la regla de una sola cita a la vez por barbero.
 - **Pagos**: el pago siempre se realiza en persona en la barbería; el sistema no gestiona pagos, por lo que cancelar o reprogramar no implica reembolsos ni cargos.
-- **Notificaciones**: las confirmaciones, recordatorios y notificaciones de cualquier operación sobre citas (agendar, editar, cancelar) están **pendientes de implementar**.
+- **Notificaciones**: los **recordatorios** de citas ya están implementados y se envían únicamente por **Telegram** (unas 24 horas y 4 horas antes de la cita). Al reagendar, los recordatorios se calculan con el nuevo horario; al cancelar, dejan de enviarse. **No** se envía confirmación al agendar ni aviso al editar o cancelar una cita.
