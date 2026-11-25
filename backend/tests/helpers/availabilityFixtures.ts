@@ -203,6 +203,7 @@ export const insertAppointment = async (
         guestClientName?: string;
         isWalkIn?: boolean;
         status?: 'scheduled' | 'rescheduled' | 'checked_in' | 'completed' | 'cancelled' | 'no_show';
+        isRewardRedemption?: boolean;
     }
 ): Promise<string> => {
     const isRegisteredClient = !!options?.clientId;
@@ -210,10 +211,11 @@ export const insertAppointment = async (
     const clientId = options?.clientId ?? null;
     const status = options?.status ?? 'scheduled';
     const isWalkIn = options?.isWalkIn ?? false;
+    const isRewardRedemption = options?.isRewardRedemption ?? false;
 
     const result = await getPool().query(
-        `INSERT INTO appointments (shop_id, barber_id, client_id, is_registered_client, guest_client_name, is_walk_in, status, scheduled_start, scheduled_end)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+        `INSERT INTO appointments (shop_id, barber_id, client_id, is_registered_client, guest_client_name, is_walk_in, status, scheduled_start, scheduled_end, is_reward_redemption)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
         [
             shopId,
             barberId,
@@ -224,11 +226,44 @@ export const insertAppointment = async (
             status,
             scheduledStart,
             scheduledEnd,
+            isRewardRedemption,
         ]
     );
     const id = result.rows[0].id;
     createdAppointmentIds.push(id);
     return id;
+};
+
+/** Umbral de lealtad que exige trg_appointments_check_reward_insert (mismo literal que el esquema). */
+export const LOYALTY_REWARD_THRESHOLD = 6;
+
+/**
+ * Inserta una cita de recompensa (is_reward_redemption = true) de un cliente registrado.
+ * La bandera es inmutable, así que solo se puede fijar al crear la cita: antes sube el contador
+ * del cliente al umbral (o al valor dado) para que el trigger de recompensa la acepte.
+ */
+export const insertRewardAppointment = async (
+    shopId: string,
+    barberId: string,
+    scheduledStart: Date | string,
+    scheduledEnd: Date | string,
+    clientId: string,
+    options?: {
+        status?: 'scheduled' | 'rescheduled' | 'checked_in' | 'completed' | 'cancelled' | 'no_show';
+        isWalkIn?: boolean;
+        completedServicesCount?: number;
+    }
+): Promise<string> => {
+    await getPool().query(`UPDATE clients SET completed_services_count = $2 WHERE user_id = $1`, [
+        clientId,
+        options?.completedServicesCount ?? LOYALTY_REWARD_THRESHOLD,
+    ]);
+    return insertAppointment(shopId, barberId, scheduledStart, scheduledEnd, {
+        clientId,
+        isRewardRedemption: true,
+        ...(options?.status ? { status: options.status } : {}),
+        ...(options?.isWalkIn !== undefined ? { isWalkIn: options.isWalkIn } : {}),
+    });
 };
 
 /**

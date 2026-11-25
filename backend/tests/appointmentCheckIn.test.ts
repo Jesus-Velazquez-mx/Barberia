@@ -15,6 +15,7 @@ import {
     insertBarber,
     insertService,
     insertAppointment,
+    insertRewardAppointment,
     insertReceptionist,
     cleanupFixtures,
     getSeededShiftId,
@@ -92,16 +93,23 @@ describe('appointment check-in and no-show', () => {
         barber?: string;
         withService?: boolean;
         isWalkIn?: boolean;
+        isRewardRedemption?: boolean;
     }) => {
         const start = options?.start ?? minutesFromNow(5);
         const end = options?.end ?? new Date(start.getTime() + 30 * MS_PER_MINUTE);
         const targetBarber = options?.barber ?? barberId;
         const clientId = options?.clientId === undefined ? clients[0].id : options.clientId;
-        const id = await insertAppointment(shopId, targetBarber, start, end, {
-            ...(clientId ? { clientId } : {}),
-            status: options?.status ?? 'scheduled',
-            ...(options?.isWalkIn !== undefined ? { isWalkIn: options.isWalkIn } : {}),
-        });
+        const status = options?.status ?? 'scheduled';
+        const isWalkIn = options?.isWalkIn !== undefined ? { isWalkIn: options.isWalkIn } : {};
+        // La bandera de recompensa es inmutable: se fija al crear la cita (el helper sube el contador al umbral).
+        const id =
+            options?.isRewardRedemption && clientId
+                ? await insertRewardAppointment(shopId, targetBarber, start, end, clientId, { status, ...isWalkIn })
+                : await insertAppointment(shopId, targetBarber, start, end, {
+                      ...(clientId ? { clientId } : {}),
+                      status,
+                      ...isWalkIn,
+                  });
         if (options?.withService) {
             await getPool().query(
                 `INSERT INTO appointment_services (appointment_id, service_id, price_at_booking, duration_minutes_at_booking)
@@ -415,9 +423,7 @@ describe('appointment check-in and no-show', () => {
 
     describe('PUT /api/appointments/:id/no-show', () => {
         test('staff marca como no-show una cita vencida y la recompensa reinicia el contador', async () => {
-            const id = await mk({ start: minutesFromNow(-11) });
-            await getPool().query(`UPDATE clients SET completed_services_count = 4 WHERE user_id = $1`, [clients[0].id]);
-            await getPool().query(`UPDATE appointments SET is_reward_redemption = true WHERE id = $1`, [id]);
+            const id = await mk({ start: minutesFromNow(-11), isRewardRedemption: true });
 
             const res = await markNoShow(receptionistToken, id);
 
@@ -536,20 +542,12 @@ describe('appointment check-in and no-show', () => {
         test('resets loyalty only for reward redemptions', async () => {
             const now = new Date();
             const overdueStart = new Date(now.getTime() - 11 * MS_PER_MINUTE);
-            const rewardAppointment = await mk({ start: overdueStart, clientId: clients[0].id });
+            await mk({ start: overdueStart, clientId: clients[0].id, isRewardRedemption: true });
             await mk({ start: overdueStart, clientId: clients[1].id });
 
             const loyaltyCounts = await withNoShowTransaction(async (client) => {
-                await client.query(
-                    `UPDATE clients SET completed_services_count = CASE user_id
-                        WHEN $1 THEN 4
-                        WHEN $2 THEN 7
-                    END
-                    WHERE user_id = ANY($3::uuid[])`,
-                    [clients[0].id, clients[1].id, [clients[0].id, clients[1].id]]
-                );
-                await client.query(`UPDATE appointments SET is_reward_redemption = true WHERE id = $1`, [
-                    rewardAppointment,
+                await client.query(`UPDATE clients SET completed_services_count = 7 WHERE user_id = $1`, [
+                    clients[1].id,
                 ]);
                 await markOverdueAppointments(now);
 

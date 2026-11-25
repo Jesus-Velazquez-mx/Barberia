@@ -445,6 +445,70 @@ CREATE TRIGGER trg_appointments_reward_no_show AFTER UPDATE ON appointments
     )
     EXECUTE FUNCTION reset_client_loyalty_count_on_no_show();
 
+-- Reward-redemption guards (safety net). The booking transaction decides the reward and only
+-- sets the flag when the client qualifies, so in normal operation these never fire; they stop
+-- any other path (a script, a future endpoint, a bug) from creating an invalid reward appointment.
+-- Rules: registered client only, completed_services_count >= 6 (same literal as the backend's
+-- LOYALTY_REWARD_THRESHOLD), and at most one open (scheduled/rescheduled/checked_in) reward
+-- appointment per client. The counter is checked at creation only: it legitimately stays >= 6
+-- until the reward appointment completes, so edits, cancel, check-in, no-show and completion are
+-- not revalidated. Custom SQLSTATEs (same pattern as 'BB001' / 'BM001') tell the guards apart in
+-- tests and logs; they are not part of the public API error contract.
+CREATE FUNCTION check_reward_redemption_insert() RETURNS trigger AS $$
+DECLARE
+    v_completed_services_count integer;
+BEGIN
+    IF NEW.client_id IS NULL THEN
+        RAISE EXCEPTION 'reward redemption requires a registered client'
+            USING ERRCODE = 'BR001';
+    END IF;
+
+    -- Lock the client row before validating, so concurrent bookings for the same client are
+    -- serialized and both checks below read a state nobody else can change. The booking
+    -- transaction already holds this lock (taken after the barber row), so here it is a re-lock;
+    -- on any other path this trigger is the only one taking it.
+    SELECT completed_services_count INTO v_completed_services_count
+    FROM clients
+    WHERE user_id = NEW.client_id
+    FOR UPDATE;
+
+    IF NOT FOUND OR v_completed_services_count < 6 THEN
+        RAISE EXCEPTION 'client % has not reached the loyalty reward threshold', NEW.client_id
+            USING ERRCODE = 'BR002';
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM appointments
+        WHERE client_id = NEW.client_id
+          AND is_reward_redemption
+          AND status IN ('scheduled', 'rescheduled', 'checked_in')
+    ) THEN
+        RAISE EXCEPTION 'client % already has an open reward appointment', NEW.client_id
+            USING ERRCODE = 'BR003';
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_appointments_check_reward_insert BEFORE INSERT ON appointments
+    FOR EACH ROW WHEN (NEW.is_reward_redemption)
+    EXECUTE FUNCTION check_reward_redemption_insert();
+
+-- is_reward_redemption is set only by the system at creation and never changes afterwards.
+-- To change it, the appointment is cancelled and booked again (cancelling keeps the counter,
+-- so the new appointment gets the reward again if the client still qualifies).
+CREATE FUNCTION prevent_reward_redemption_change() RETURNS trigger AS $$
+BEGIN
+    RAISE EXCEPTION 'is_reward_redemption is immutable (appointment %)', OLD.id
+        USING ERRCODE = 'BR004';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_appointments_reward_immutable BEFORE UPDATE ON appointments
+    FOR EACH ROW WHEN (OLD.is_reward_redemption IS DISTINCT FROM NEW.is_reward_redemption)
+    EXECUTE FUNCTION prevent_reward_redemption_change();
+
 -- ---------- staff soft-delete guards ----------
 -- Barbers/managers/receptionists are soft-deleted (deleted_at set) instead of
 -- removed, so appointments.barber_id / shops.manager_id keep pointing at a real,

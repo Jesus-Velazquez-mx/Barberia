@@ -218,6 +218,13 @@ INSERT INTO haircut_style_facial_structures (haircut_style_id, facial_structure_
 
 -- ---------- appointments ----------
 
+-- Rei (A2) redeems a reward, so she must already hold the 6 paid services the reward
+-- guard (trg_appointments_check_reward_insert) requires before her reward appointment
+-- is inserted; completing A2 then resets her counter through the loyalty trigger.
+UPDATE clients
+SET completed_services_count = 6
+WHERE user_id = '7a3be44f-9740-437b-86d2-c0a0463a0ea2';
+
 INSERT INTO appointments (
     id, shop_id, client_id, is_registered_client, guest_client_name, barber_id,
     is_walk_in, status, scheduled_start, scheduled_end,
