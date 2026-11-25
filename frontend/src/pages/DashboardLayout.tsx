@@ -5,7 +5,7 @@ import { LogoutConfirmModal } from '../components/auth/LogoutConfirmModalCompone
 import { Toast } from '../components/common/ToastComponent';
 import { useAuth } from '../context/AuthContext';
 import type { UserRole } from '../types/auth';
-import { Users, UserRound, Package, Settings, CalendarPlus, Calendar, Sparkles, Scissors, Bell, BellRing } from 'lucide-react';
+import { Users, UserRound, Package, Settings, CalendarPlus, Calendar, Sparkles, Scissors, Bell, BellRing, ChartColumn } from 'lucide-react';
 
 const NAV_ITEMS = {
   manager: [
@@ -15,6 +15,7 @@ const NAV_ITEMS = {
     { to: '/manager/booking', label: 'Agendar Cita', icon: <CalendarPlus size={20} aria-hidden="true" /> },
     { to: '/manager/inventory', label: 'Inventario', icon: <Package size={20} aria-hidden="true" /> },
     { to: '/manager/management', label: 'Gestión', icon: <Settings size={20} aria-hidden="true" /> },
+    { to: '/manager/reports', label: 'Reportes', icon: <ChartColumn size={20} aria-hidden="true" /> },
     { to: '/manager/reminders', label: 'Envío Manual de Recordatorios', icon: <BellRing size={20} aria-hidden="true" /> }
 
   ],
