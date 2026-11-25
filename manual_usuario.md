@@ -1,7 +1,7 @@
-# Manual de Usuario — Plataforma Web de la Barbería
+# Manual de Usuario — Plataforma Web Mr. Barber
 
-> **Versión del documento:** 0.1 (borrador en desarrollo)
-> **Última actualización:** 20 de noviembre de 2026
+> **Versión del documento:** 0.2 (borrador en desarrollo)
+> **Última actualización:** 24 de noviembre de 2026
 > **Dirigido a:** clientes, recepcionistas y gerentes/asistentes de la barbería
 
 ---
@@ -23,12 +23,46 @@
    - 3.4 [Expiración de la sesión](#34-expiración-de-la-sesión)
    - 3.5 [Cierre de sesión](#35-cierre-de-sesión)
    - 3.6 [Recuperación de contraseña](#36-recuperación-de-contraseña)
-4. Descripción de funcionalidades *(por desarrollar)*
-5. Instrucciones de uso *(por desarrollar)*
-6. Apoyo visual *(por desarrollar)*
-7. Manejo de errores *(por desarrollar)*
-8. Recomendaciones de uso *(por desarrollar)*
-9. Soporte técnico *(por desarrollar)*
+4. [Descripción de funcionalidades](#4-descripción-de-funcionalidades)
+   - 4.1 [Panorama y matriz de funcionalidades por perfil](#41-panorama-y-matriz-de-funcionalidades-por-perfil)
+   - 4.2 [Gestión de citas](#42-gestión-de-citas)
+     - 4.2.1 [Programación de citas](#421-programación-de-citas)
+     - 4.2.2 [Consulta, edición, reprogramación y cancelación](#422-consulta-edición-reprogramación-y-cancelación)
+     - 4.2.3 [Estado y progreso de la cita](#423-estado-y-progreso-de-la-cita)
+   - 4.3 [Recordatorios automáticos](#43-recordatorios-automáticos)
+   - 4.4 [Historial del cliente](#44-historial-del-cliente)
+   - 4.5 [Recomendación personalizada de cortes](#45-recomendación-personalizada-de-cortes)
+   - 4.6 [Programa de fidelidad](#46-programa-de-fidelidad)
+   - 4.7 [Funcionalidades en desarrollo](#47-funcionalidades-en-desarrollo)
+5. [Instrucciones de uso](#5-instrucciones-de-uso)
+   - 5.1 [Navegación general](#51-navegación-general)
+   - 5.2 [Citas](#52-citas)
+     - 5.2.1 [Agendar una cita (cliente)](#521-agendar-una-cita-cliente)
+     - 5.2.2 [Agendar una cita (personal)](#522-agendar-una-cita-personal)
+     - 5.2.3 [Consultar y filtrar citas](#523-consultar-y-filtrar-citas)
+     - 5.2.4 [Editar o reprogramar una cita](#524-editar-o-reprogramar-una-cita)
+     - 5.2.5 [Cancelar una cita](#525-cancelar-una-cita)
+     - 5.2.6 [Registrar la llegada del cliente (check-in)](#526-registrar-la-llegada-del-cliente-check-in)
+     - 5.2.7 [Registrar un servicio sin cita](#527-registrar-un-servicio-sin-cita)
+     - 5.2.8 [Seguimiento de estados](#528-seguimiento-de-estados)
+   - 5.3 [Obtener una recomendación de corte](#53-obtener-una-recomendación-de-corte)
+   - 5.4 [Recordatorios](#54-recordatorios)
+   - 5.5 [Mi perfil e historial del cliente](#55-mi-perfil-e-historial-del-cliente)
+   - 5.6 [Programa de fidelidad](#56-programa-de-fidelidad)
+6. [Administración de catálogos](#6-administración-de-catálogos)
+   - 6.1 [Conceptos generales](#61-conceptos-generales)
+   - 6.2 [Sucursales](#62-sucursales)
+   - 6.3 [Turnos](#63-turnos)
+   - 6.4 [Categorías de servicios](#64-categorías-de-servicios)
+   - 6.5 [Servicios](#65-servicios)
+   - 6.6 [Barberos](#66-barberos)
+   - 6.7 [Clientes](#67-clientes)
+   - 6.8 [Categorías de insumos](#68-categorías-de-insumos)
+   - 6.9 [Insumos](#69-insumos)
+   - 6.10 [Estilos y cortes](#610-estilos-y-cortes)
+7. [Soporte técnico](#7-soporte-técnico)
+- [Anexo A. Glosario](#anexo-a-glosario)
+- [Anexo B. Resumen de reglas de negocio](#anexo-b-resumen-de-reglas-de-negocio)
 
 ---
 
@@ -81,7 +115,7 @@ La plataforma web atiende a todos los perfiles de usuario; cada uno ve únicamen
 | Perfil | Qué puede hacer |
 |---|---|
 | **Cliente** | Reservar, consultar, editar y cancelar sus propias citas; obtener recomendaciones de cortes; consultar su avance en el programa de lealtad; administrar su perfil. |
-| **Recepcionista** | Gestionar las citas **de su sucursal** (agendar, editar, cancelar, registrar la llegada del cliente); consultar clientes, servicios, turnos e inventario. |
+| **Recepcionista** | Gestionar las citas **de su sucursal** (agendar, editar, cancelar, registrar la llegada del cliente); administrar clientes, insumos y categorías de insumos (crear, consultar, actualizar y eliminar); consultar servicios y categorías de servicios (sin modificarlos). Las sucursales y los turnos solo los ve de forma informativa en los registros de citas. |
 | **Gerente / Asistente** | Gestionar las citas de **todas las sucursales a su cargo**; administrar el catálogo de servicios, sucursales, turnos, personal (barberos y recepcionistas) e inventario de insumos. Cada sucursal tiene un único gerente, pero un gerente puede supervisar varias sucursales. |
 
 > **Los barberos no son usuarios del sistema.** No tienen cuenta ni acceso: su agenda la administra el gerente de su sucursal y sus citas las gestionan recepcionistas y gerentes.
@@ -148,7 +182,7 @@ Para iniciar sesión se necesitan un **correo electrónico** y una **contraseña
 - Cada correo electrónico y cada número de teléfono pueden estar asociados a **una sola cuenta**; si ya existe, el sistema rechazará el registro.
 - La sesión iniciada tiene una **duración de 24 horas**. Transcurrido ese tiempo, el sistema solicitará iniciar sesión nuevamente.
 - La contraseña es personal e intransferible. No la comparta ni la deje guardada en equipos de uso público.
-- Si olvida sus credenciales o necesita una cuenta de personal, consulte la sección *Soporte técnico* (por desarrollar) de este manual.
+- Si olvida sus credenciales o necesita una cuenta de personal, consulte la sección [7. Soporte técnico](#7-soporte-técnico) de este manual.
 
 ---
 
@@ -183,7 +217,7 @@ Solo los **clientes** pueden crear su cuenta por sí mismos. Las cuentas de rece
 3. Presione el botón de registro para enviar el formulario.
 4. Si los datos son correctos, la cuenta se crea y **el sistema inicia sesión automáticamente**: no es necesario volver a escribir sus credenciales. Será dirigido a su pantalla de inicio de cliente.
 
-Si algún dato no cumple las reglas, el sistema mostrará un mensaje en rojo debajo del campo correspondiente o sobre el botón (por ejemplo, *Este correo ya está registrado*). Consulte la sección *Manejo de errores* (por desarrollar) para más detalles.
+Si algún dato no cumple las reglas, el sistema mostrará un mensaje en rojo debajo del campo correspondiente o sobre el botón (por ejemplo, *Este correo ya está registrado*). Corrija el dato señalado y vuelva a enviar el formulario.
 
 ### 3.3 Proceso de inicio de sesión
 
@@ -201,7 +235,7 @@ Este procedimiento es el mismo para clientes, recepcionistas y gerentes.
    | Recepcionista | `/receptionist/home` |
    | Gerente / Asistente | `/manager/home` |
 
-   En el costado izquierdo aparecerá el **menú de navegación** de su perfil con un saludo (*Bienvenido, nombre* / *Bienvenida, nombre*). La navegación por el menú se detalla en la sección 5.
+   En el costado izquierdo aparecerá el **menú de navegación** de su perfil con un saludo (*Bienvenido, nombre* / *Bienvenida, nombre*). La navegación por el menú se detalla en la sección [5.1](#51-navegación-general).
 
 **Validaciones y mensajes en el inicio de sesión**
 
@@ -258,8 +292,227 @@ Cierre siempre su sesión al terminar de usar el sistema, especialmente en equip
 
 La pantalla de inicio de sesión muestra el enlace **¿Olvidaste tu contraseña?**; sin embargo, **la recuperación de contraseña por cuenta propia aún no está disponible** en la plataforma: al presionar el enlace el sistema lo regresa a la pantalla de inicio de sesión.
 
-Si olvidó su contraseña, contacte a soporte técnico (sección 9, por desarrollar) indicando el correo con el que está registrado. Si conoce su contraseña actual y solo desea cambiarla, un cliente puede hacerlo desde **Mi Perfil** (opción de cambio de contraseña).
+Si olvidó su contraseña, contacte a soporte técnico (sección [7](#7-soporte-técnico)) indicando el correo con el que está registrado. Si conoce su contraseña actual y solo desea cambiarla, un cliente puede hacerlo desde **Mi Perfil** (opción de cambio de contraseña).
 
 ---
 
-*Las secciones 4 a 9 se desarrollarán en las siguientes entregas de este manual.*
+## 4. Descripción de funcionalidades
+
+Esta sección explica **qué hace** cada funcionalidad del sistema, quién puede usarla y qué reglas la gobiernan. Los pasos detallados para utilizarlas se encuentran en la sección [5. Instrucciones de uso](#5-instrucciones-de-uso); la administración de catálogos, en la sección [6](#6-administración-de-catálogos).
+
+### 4.1 Panorama y matriz de funcionalidades por perfil
+
+*(por desarrollar: tabla funcionalidad × perfil —Cliente, Recepcionista, Gerente/Asistente—, indicando el estado de cada funcionalidad: disponible, en implementación o no disponible aún.)*
+
+### 4.2 Gestión de citas
+
+#### 4.2.1 Programación de citas
+
+**Disponible para:** Cliente · Recepcionista · Gerente/Asistente
+
+*(por desarrollar)*
+
+#### 4.2.2 Consulta, edición, reprogramación y cancelación
+
+**Disponible para:** Cliente · Recepcionista · Gerente/Asistente
+
+*(por desarrollar)*
+
+#### 4.2.3 Estado y progreso de la cita
+
+**Disponible para:** Cliente (consulta) · Recepcionista · Gerente/Asistente
+
+*(por desarrollar: ciclo de vida de la cita —Agendada, Reagendada, Iniciada, Completada, Cancelada, Ausencia—, registro de llegada, transiciones automáticas y servicios sin cita.)*
+
+### 4.3 Recordatorios automáticos
+
+**Disponible para:** Cliente
+
+*(por desarrollar)*
+
+### 4.4 Historial del cliente
+
+**Disponible para:** Cliente · Recepcionista · Gerente/Asistente
+
+*(por desarrollar: citas pasadas y canceladas, historial de recomendaciones y datos del perfil.)*
+
+### 4.5 Recomendación personalizada de cortes
+
+**Disponible para:** Cliente
+
+*(por desarrollar)*
+
+### 4.6 Programa de fidelidad
+
+**Disponible para:** Cliente (consulta de avance) · Recepcionista y Gerente/Asistente (aplicación en la cita)
+
+*(por desarrollar: conteo de servicios y canje de la recompensa; el canje se encuentra en proceso de implementación.)*
+
+### 4.7 Funcionalidades en desarrollo
+
+Funcionalidades contempladas que aún no están disponibles en el sistema:
+
+- Gestión de niveles de stock mínimo de insumos.
+- Control de movimientos de inventario (entradas y salidas).
+- Generación de reportes administrativos.
+
+*(por desarrollar: descripción de cada una según sus casos de uso.)*
+
+---
+
+## 5. Instrucciones de uso
+
+Esta sección presenta los procedimientos paso a paso para cada funcionalidad descrita en la sección 4.
+
+<!--
+Cada procedimiento (5.2.x a 5.6) incluye, dentro de su propia subsección y sin encabezados dedicados:
+  - Apoyo visual (capturas de pantalla, diagramas)
+  - Errores frecuentes y cómo resolverlos
+  - Recomendaciones de uso
+-->
+
+### 5.1 Navegación general
+
+*(por desarrollar: opciones del menú de navegación de cada perfil y uso del menú ☰ en teléfonos y tabletas.)*
+
+### 5.2 Citas
+
+#### 5.2.1 Agendar una cita (cliente)
+
+*(por desarrollar)*
+
+#### 5.2.2 Agendar una cita (personal)
+
+*(por desarrollar: incluye agendar a nombre de un cliente registrado o de un visitante sin cuenta.)*
+
+#### 5.2.3 Consultar y filtrar citas
+
+*(por desarrollar)*
+
+#### 5.2.4 Editar o reprogramar una cita
+
+*(por desarrollar)*
+
+#### 5.2.5 Cancelar una cita
+
+*(por desarrollar)*
+
+#### 5.2.6 Registrar la llegada del cliente (check-in)
+
+*(por desarrollar)*
+
+#### 5.2.7 Registrar un servicio sin cita
+
+*(por desarrollar)*
+
+#### 5.2.8 Seguimiento de estados
+
+*(por desarrollar)*
+
+### 5.3 Obtener una recomendación de corte
+
+*(por desarrollar: subir la fotografía, interpretar el resultado y consultar el historial de recomendaciones.)*
+
+### 5.4 Recordatorios
+
+*(por desarrollar)*
+
+### 5.5 Mi perfil e historial del cliente
+
+*(por desarrollar)*
+
+### 5.6 Programa de fidelidad
+
+*(por desarrollar)*
+
+---
+
+## 6. Administración de catálogos
+
+<!--
+Plantilla de cada catálogo (6.2 a 6.10):
+  - Para qué sirve
+  - Quién accede
+  - Campos y reglas
+  - Procedimientos (consultar, crear, editar, eliminar), con capturas de pantalla
+  - Errores frecuentes y cómo resolverlos
+  - Recomendaciones de uso
+-->
+
+### 6.1 Conceptos generales
+
+*(por desarrollar: patrón común de las pantallas de catálogo, permisos por perfil, orden recomendado de configuración inicial —sucursales, turnos, categorías y servicios, barberos, insumos— y reglas de eliminación.)*
+
+### 6.2 Sucursales
+
+**Disponible para:** Gerente/Asistente (página dedicada de administración). El recepcionista no cuenta con esta página; solo ve la sucursal de forma informativa en los registros de citas.
+
+*(por desarrollar)*
+
+### 6.3 Turnos
+
+**Disponible para:** Gerente/Asistente (página dedicada de administración). El recepcionista no cuenta con esta página; solo ve los turnos de forma informativa en los registros de citas.
+
+*(por desarrollar)*
+
+### 6.4 Categorías de servicios
+
+**Disponible para:** Gerente/Asistente (administración) · Recepcionista (solo consulta)
+
+*(por desarrollar)*
+
+### 6.5 Servicios
+
+**Disponible para:** Gerente/Asistente (administración) · Recepcionista (solo consulta)
+
+*(por desarrollar)*
+
+### 6.6 Barberos
+
+**Disponible para:** Gerente/Asistente
+
+*(por desarrollar: los barberos se administran desde la opción *Personal* del menú del gerente, que también administra a los recepcionistas.)*
+
+### 6.7 Clientes
+
+**Disponible para:** Gerente/Asistente · Recepcionista (crear, consultar, actualizar y eliminar)
+
+*(por desarrollar)*
+
+### 6.8 Categorías de insumos
+
+**Disponible para:** Gerente/Asistente · Recepcionista (crear, consultar, actualizar y eliminar)
+
+*(por desarrollar)*
+
+### 6.9 Insumos
+
+**Disponible para:** Gerente/Asistente · Recepcionista (crear, consultar, actualizar y eliminar)
+
+*(por desarrollar)*
+
+### 6.10 Estilos y cortes
+
+**Disponible para:** *(por definir según los casos de uso)*
+
+*(por desarrollar: se describirá a partir de los casos de uso definidos para este catálogo.)*
+
+---
+
+## 7. Soporte técnico
+
+*(por desarrollar: incluye recuperación de contraseña y solicitud de cuentas de personal.)*
+
+---
+
+## Anexo A. Glosario
+
+*(por desarrollar)*
+
+## Anexo B. Resumen de reglas de negocio
+
+*(por desarrollar)*
+
+---
+
+*Las secciones marcadas como «por desarrollar» se completarán en las siguientes entregas de este manual.*
