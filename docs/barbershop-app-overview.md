@@ -95,7 +95,15 @@ Clients are reminded ahead of their appointment via WhatsApp and/or email, to re
 
 ### 3.5 Reporting (for Managers)
 
-Managers need visibility into business performance — for example revenue, most-booked services, barber utilization, client retention/churn, and loyalty redemption rates. The exact set of reports needed is still to be defined.
+Managers need visibility into business performance — for example revenue, most-booked services, barber utilization, client retention/churn, and loyalty redemption rates. The exact set of reports needed is still to be defined; the first one implemented is the barber performance report.
+
+**Barber performance report (implemented).** A manager picks one of their shops and a date range, and optionally a first and/or last name; with no name, every barber of the shop is evaluated. For each barber it shows first name, last name, email, assigned shop, completed vs. booked appointments, completed vs. booked services, and the percentage of booked services that were completed.
+
+- A donut chart (all evaluated barbers or one of them, with an equivalent table) breaks down the booked services into completed, pending (no outcome yet), cancelled and no-show, so a low percentage can be told apart from services that simply have not happened yet.
+- A manager can only report on the shops they manage (active or inactive). Receptionists and clients have no access.
+- An appointment counts on the business-timezone day of its scheduled start. "Booked" is every appointment in the range regardless of status (including cancelled, no-show and not-yet-attended ones); "completed" is only the `completed` ones. A range that includes future days therefore lowers the percentage.
+- Only appointments held at the evaluated shop count. A barber reassigned to another shop of the same manager, or soft-deleted, still appears if they had appointments at that shop within the range.
+- The report is not generated if there are no completed services in the range.
 
 ### 3.6 Shop Supplies (Internal)
 
@@ -148,7 +156,7 @@ These decisions materially affect the product and need to be settled up front.
 - Who owns the WhatsApp Business account/verification — has that process been started, since approval can take time?
 
 **Reporting**
-- What reports does the manager actually need — revenue, most-booked services, barber utilization, client retention/churn, loyalty redemption rates?
+- What reports does the manager need besides barber performance — revenue, most-booked services, client retention/churn, loyalty redemption rates?
 
 **Payments**
 - Payment is always done in person at the barbershop; the system does not handle payments or deposits (decided).

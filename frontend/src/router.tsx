@@ -25,6 +25,7 @@ import ManagerShiftsPage from './pages/staff/ManagerShiftsPage';
 import ManagerShopsPage from './pages/staff/ManagerShopsPage';
 import ClientReminderPage from './pages/client/ClientReminderPage';
 import ManagerNotificationTestPage from './pages/staff/ManagerNotificationTestPage';
+import ManagerReportsPage from './pages/staff/ManagerReportsPage';
 const router = createBrowserRouter([
   /* Client */
   {
@@ -130,6 +131,10 @@ const router = createBrowserRouter([
           {
             path: '/manager/management/service-categories',
             element: <StaffServiceCategoriesPage role="manager" />
+          },
+          {
+            path: '/manager/reports',
+            element: <ManagerReportsPage />
           },
           {
             path: '/manager/reminders',
