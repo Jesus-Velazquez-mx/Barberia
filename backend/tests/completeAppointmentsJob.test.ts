@@ -10,6 +10,7 @@ import {
     insertUser,
     getSeededShiftId,
     insertAppointment,
+    insertRewardAppointment,
     cleanupFixtures,
 } from './helpers/availabilityFixtures.js';
 
@@ -262,12 +263,11 @@ describe('Auto-complete de citas (business rules & database integration)', () =>
 
     it('con recompensa (is_reward_redemption) reinicia el contador del cliente a 0', async () => {
     const clientId = await createClient();
-    await getPool().query(`UPDATE clients SET completed_services_count = 5 WHERE user_id = $1`, [clientId]);
 
+    // La bandera es inmutable: la cita se crea ya como recompensa (el helper sube el contador al umbral).
     const start = new Date('2026-11-22T23:00:00.000Z');
     const end = new Date('2026-11-22T23:45:00.000Z');
-    const id = await createAppointmentFixture({ start, end, clientId });
-    await getPool().query('UPDATE appointments SET is_reward_redemption = true WHERE id = $1', [id]);
+    const id = await insertRewardAppointment(shopId, barberId, start, end, clientId, { status: 'checked_in' });
 
     await completeFinishedAppointments(end);
 
