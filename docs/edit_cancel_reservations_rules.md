@@ -21,7 +21,7 @@ Resumen de las reglas de negocio definidas para editar y cancelar citas. Para el
 
 ### Cliente
 - Puede editar y cancelar sus citas solo cuando faltan **8 horas o más** para la hora agendada. Con menos de 8 horas no puede editar ni cancelar.
-- Si no se presenta a una cita y esta incluía un servicio gratis del programa de lealtad, **pierde ese servicio gratis** y su contador de visitas **vuelve a cero**.
+- Si no se presenta a una cita y esta incluía un servicio gratis del programa de lealtad, **pierde ese servicio gratis** y su contador de visitas **vuelve a cero**, incluido cualquier progreso que excediera el umbral (es intencional, como incentivo para no faltar).
 
 ### Recepcionista
 - Puede crear, editar y cancelar citas **solo de su sucursal asignada**.
@@ -34,7 +34,7 @@ Resumen de las reglas de negocio definidas para editar y cancelar citas. Para el
 
 ## 3. Cancelaciones y programa de lealtad
 
-- Si una cita con **canje de recompensa** se cancela (ya sea por el cliente o por el personal), el cliente **conserva la recompensa** y puede usarla en otra cita.
+- Si una cita con **canje de recompensa** se cancela (ya sea por el cliente o por el personal), el cliente **conserva la recompensa** y se le aplica automáticamente en la siguiente cita que agende.
 - La recompensa **solo se pierde cuando la cita se marca como no-show** (el cliente no se presentó).
 
 ## 4. Barberos y citas pendientes
