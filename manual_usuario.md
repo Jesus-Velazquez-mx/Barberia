@@ -1088,7 +1088,111 @@ Si el problema persiste, consulte la sección [7. Soporte técnico](#7-soporte-t
 
 #### 5.2.3 Consultar y filtrar citas
 
-*(por desarrollar)*
+**Perfil:** Cliente · Recepcionista · Gerente/Asistente. Para conocer qué citas ve cada perfil y las reglas de consulta, consulte los apartados [4.2.2](#422-consulta-edición-reprogramación-y-cancelación) y [4.4](#44-historial-del-cliente). El procedimiento del **cliente** (*Mis Citas*) y el del **personal** (*Citas*) son distintos, por lo que se explican por separado.
+
+---
+
+**A. Cliente: consultar mis citas**
+
+> 📷 **[Apoyo visual pendiente — Figura 5.2.3-A]** Pantalla *Mis citas* con las pestañas *Próximas citas*, *Citas pasadas* y *Citas canceladas*, el botón *Filtros* y la tabla de citas.
+
+**Procedimiento**
+
+1. En el menú de navegación, presione **Mis Citas**. En teléfonos y tabletas, abra primero el menú ☰.
+2. Se muestra la pestaña **Próximas citas**. Elija la pestaña que desea consultar:
+   - **Próximas citas:** citas Agendadas, Reagendadas o Iniciadas que aún no terminan.
+   - **Citas pasadas:** citas Completadas, con *Ausencia* o cuyo horario ya terminó.
+   - **Citas canceladas:** citas con estado *Cancelada*.
+
+   Junto al nombre de cada pestaña se muestra cuántas citas contiene.
+3. Revise la tabla. Cada fila muestra el número de la cita (**#**), la **fecha de servicio** con su horario, los **servicios**, el **barbero** con su sucursal, la fecha en que se **creó** la cita y su **estado**. Una **estrella** junto a los servicios indica que la cita incluyó una recompensa del programa de fidelidad.
+4. Para cambiar el orden, presione el encabezado **Fecha de servicio**: alterna entre la más antigua primero y la más reciente primero.
+5. Si hay más de 8 citas en la pestaña, use los controles de **Página anterior**, los números de página y **Página siguiente**, al pie de la tabla. El texto *«Mostrando 1 - 8 de N citas.»* indica qué parte del listado está viendo.
+6. Para ver el detalle de una cita, **presione su fila**. Se abre la página **Detalle de la cita** con el estado, la fecha, el horario y la duración, la sucursal, el barbero, los servicios con su precio, el total, las notas y el **seguimiento** de la cita.
+7. Para regresar al listado, presione **Volver a mis citas**.
+
+**Cómo filtrar las citas**
+
+1. Presione el botón **Filtros**, a la derecha de las pestañas. Se despliega el panel de filtros.
+2. Use uno o más de los filtros disponibles:
+   - **Fecha de creación (desde)** y **(hasta):** escriba la fecha en formato **dd/mm/aaaa** (por ejemplo, 05/03/2026). Se muestran las citas que se agendaron dentro de ese rango.
+   - **Servicio:** elija un servicio de la lista para ver solo las citas que lo incluyeron.
+3. Los filtros se aplican **de inmediato**, sin botón de confirmación. El número en el botón **Filtros** indica cuántos filtros están activos, y los contadores de las pestañas se actualizan.
+4. Para quitar todos los filtros, presione **Restablecer filtros**.
+
+> 📷 **[Apoyo visual pendiente — Figura 5.2.3-B]** Panel *Filtros* del cliente con los campos *Fecha de creación* y *Servicio*.
+>
+> 📷 **[Apoyo visual pendiente — Figura 5.2.3-C]** Página *Detalle de la cita* del cliente, con el seguimiento de la cita.
+
+---
+
+**B. Personal: consultar y filtrar las citas**
+
+> 📷 **[Apoyo visual pendiente — Figura 5.2.3-D]** Pantalla *Citas* del personal con la barra de búsqueda, el botón *Filtros* y la tabla de citas.
+
+**Procedimiento**
+
+1. En el menú de navegación, presione **Citas**.
+2. Se muestra el listado de citas con su **fecha de servicio**, **cliente** (con su correo; los visitantes se identifican con la etiqueta *Visitante*), **servicios**, **barbero** con su sucursal, fecha de **creación** y **estado**. Las citas de servicios sin cita incluyen la etiqueta *Walk-in*. Si el cliente tiene una recompensa, aparece una estrella junto a los servicios.
+   - El **recepcionista** ve solo las citas de **su sucursal**.
+   - El **gerente o asistente** ve las citas de **todas las sucursales a su cargo**.
+3. Mientras no indique fechas, el listado muestra las citas **de hoy a los próximos 30 días**. Para consultar otro periodo, use los filtros de **fecha de servicio** (ver más abajo).
+4. Para ubicar a un cliente, escriba su **nombre o correo electrónico** en la barra **Buscar por nombre o correo del cliente…**. La búsqueda se aplica de inmediato y no distingue mayúsculas ni acentos (escribir «jose» encuentra «José»).
+5. Para ordenar el listado, presione el encabezado **Fecha de servicio**. Por defecto aparece primero la cita más cercana.
+6. El listado se divide en páginas de **10 citas**. Use **Página anterior**, los números de página y **Página siguiente**. El texto *«Mostrando 1 - 10 de N citas.»* indica qué parte está viendo.
+7. Para ver el detalle de una cita, **presione su fila**. Se abre la ventana **Detalle de la cita** con la fecha, el horario y la duración, la sucursal, el barbero, el cliente, el total, los servicios con su precio y duración, el **seguimiento** y las notas. Desde ahí, según el estado y la hora de la cita, el personal puede usar las acciones **Check-in**, **Marcar inasistencia** (solo la recepción), **Editar cita** y **Cancelar cita** (ver [5.2.4](#524-editar-o-reprogramar-una-cita), [5.2.5](#525-cancelar-una-cita) y [5.2.6](#526-registrar-la-llegada-del-cliente-check-in)). Para cerrar la ventana, presione la **X**, haga clic fuera de ella o presione la tecla **Esc**.
+8. En la columna **Acciones** del listado aparece el botón **Check-in** de las citas que están dentro de su ventana de registro (de 15 minutos antes a 10 minutos después de la hora de inicio), sin necesidad de abrir el detalle. Los servicios sin cita muestran **Automático**, porque pasan solos al estado *Iniciada* al llegar su hora; las demás citas muestran un guion (—).
+
+**Cómo filtrar las citas**
+
+1. Presione el botón **Filtros**, junto a la barra de búsqueda. Se despliega el panel de filtros.
+2. Combine los filtros que necesite; todos se aplican **de inmediato**:
+
+   | Filtro | Qué hace |
+   |---|---|
+   | **Fecha de servicio (desde) / (hasta)** | Define el periodo de las citas que se consultan, en formato **dd/mm/aaaa**. El periodo no puede exceder **1 año**. Si indica solo una de las dos fechas, el sistema completa la otra con el máximo permitido. |
+   | **Fecha de creación (desde) / (hasta)** | Muestra las citas que se agendaron dentro de ese rango. |
+   | **Sucursal** | Solo para el gerente o asistente con **más de una sucursal**. Limita el listado a la sucursal elegida. |
+   | **Servicio** | Muestra las citas que incluyen el servicio elegido. Las opciones corresponden a los servicios presentes en las citas cargadas. |
+   | **Estado** | Muestra solo las citas con el estado elegido: *Agendada*, *Reagendada*, *Iniciada*, *Completada*, *Cancelada* o *Ausencia*. |
+
+3. El número en el botón **Filtros** indica cuántos filtros del panel están activos (la búsqueda por nombre no se cuenta, porque está fuera del panel).
+4. Para limpiar la búsqueda y todos los filtros, presione **Restablecer filtros**.
+
+**Cómo consultar el historial de un cliente**
+
+El personal no cuenta con una página dedicada al historial de un cliente (ver [4.4](#44-historial-del-cliente)). Para consultarlo: escriba el nombre o correo del cliente en la búsqueda y defina en **Fecha de servicio** un periodo amplio (por ejemplo, desde hace un año hasta hoy). Después, ordene por fecha o filtre por estado.
+
+> 📷 **[Apoyo visual pendiente — Figura 5.2.3-E]** Panel *Filtros* del personal con todos los campos.
+>
+> 📷 **[Apoyo visual pendiente — Figura 5.2.3-F]** Ventana *Detalle de la cita* del personal con las acciones disponibles.
+
+**Errores frecuentes y cómo resolverlos**
+
+| Situación o mensaje | Causa | Qué hacer |
+|---|---|---|
+| *No se pudieron cargar tus citas.* (cliente) / *No se pudieron cargar las citas. Intenta de nuevo.* (personal) | Falla de conexión o del servidor. | Presione **Reintentar** o recargue la página. |
+| *No tienes citas próximas.* / *Aún no tienes citas pasadas.* / *No tienes citas canceladas.* | La pestaña no tiene citas. | No es un error: significa que aún no hay citas en esa categoría. |
+| *No hay citas que coincidan con los filtros.* (cliente) / *No se encontraron citas con los filtros aplicados.* (personal) | Los filtros o la búsqueda excluyen todas las citas. | Presione **Restablecer filtros** o amplíe los criterios. |
+| *No hay citas en este periodo.* (personal) | No hay citas en el periodo consultado y no hay filtros activos. | Cambie el periodo en **Fecha de servicio**. |
+| *Usa el formato dd/mm/aaaa* (cliente) / *Fecha no válida (dd/mm/aaaa).* (personal) | La fecha está incompleta o mal escrita. | Escriba día, mes y año completos (por ejemplo, 05/03/2026). |
+| *Debe ser posterior a la fecha inicial* (cliente) / *No puede ser anterior a la fecha inicial.* (personal) | La fecha «hasta» es anterior a la fecha «desde». | Corrija el rango. |
+| *El rango de fechas no puede exceder 1 año.* (personal) | El periodo de **Fecha de servicio** es mayor a un año. | Reduzca el rango. Consulte por periodos más cortos. |
+| La lista no cambia al escribir una fecha. | La fecha aún está incompleta; el sistema conserva la última consulta válida hasta que se completa. | Termine de escribir la fecha en formato dd/mm/aaaa. |
+| No se encuentra una cita antigua (cliente). | El cliente consulta aproximadamente los últimos 11 meses. | Las citas más antiguas no se muestran en *Mis Citas*. |
+| No se encuentra una cita futura lejana (personal). | Sin fechas, el listado solo muestra de hoy a 30 días. | Defina **Fecha de servicio** para ampliar el periodo. |
+| El filtro **Sucursal** no aparece. | Solo se muestra al gerente con más de una sucursal. | No es un error: el recepcionista solo ve su sucursal. |
+| El filtro **Servicio** no ofrece un servicio. | La lista contiene solo los servicios de las citas ya cargadas. | Amplíe primero el periodo en **Fecha de servicio**. |
+
+**Recomendaciones de uso**
+
+- **Personal:** para buscar a un cliente, escriba solo una parte del nombre o el correo; la búsqueda encuentra coincidencias parciales y no distingue acentos.
+- **Personal:** si busca una cita que no aparece, revise primero el **periodo de fecha de servicio**: por defecto solo se muestran las próximas citas (de hoy a 30 días).
+- **Personal:** para ver las citas de la jornada, filtre **Fecha de servicio** con el día de hoy en ambas fechas.
+- **Personal:** combine **Estado** con **Fecha de servicio** para tareas concretas, por ejemplo revisar las citas con *Ausencia* de la semana.
+- **Personal:** el botón **Check-in** del listado agiliza el registro de llegada; para otras acciones, abra el detalle.
+- **Cliente:** use la pestaña **Citas pasadas** para recordar qué servicios recibió y con qué barbero, y **Citas canceladas** para confirmar una cancelación.
+- Si el listado no muestra lo esperado, revise los **filtros activos** (el número del botón *Filtros*) y presione **Restablecer filtros**.
 
 #### 5.2.4 Editar o reprogramar una cita
 
