@@ -41,5 +41,7 @@ DROP FUNCTION IF EXISTS check_barber_deletable() CASCADE;
 DROP FUNCTION IF EXISTS check_manager_deletable() CASCADE;
 DROP FUNCTION IF EXISTS set_appointment_client_email() CASCADE;
 DROP FUNCTION IF EXISTS set_original_appointment_start() CASCADE;
+DROP FUNCTION IF EXISTS check_reward_redemption_insert() CASCADE;
+DROP FUNCTION IF EXISTS prevent_reward_redemption_change() CASCADE;
 
 COMMIT;

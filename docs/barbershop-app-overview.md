@@ -6,7 +6,7 @@ This project consists of building an app for a barber shop, available on web and
 
 - Give clients haircut suggestions based on their facial structure and preferences
 - Implement a fidelity program for clients to get free haircuts
-- Send reminders for appointments through WhatsApp and/or email
+- Send reminders for appointments through Telegram
 
 The web app serves every role — clients, receptionists, and managers/assistants each get a view suited to their role. The mobile (Android) app is **client-facing only** (decided): receptionist and manager functionality, such as check-in and walk-in registration, is web-only and out of scope for mobile.
 
@@ -68,7 +68,7 @@ All rules below are decided.
 - The reward is lost only when the appointment is marked as a no-show (see §3.3).
 
 **Notifications**
-- Confirmations, reminders, and notifications for appointment operations (booking, editing, cancelling) are pending implementation — see §3.4.
+- Reminders are implemented through Telegram (see §3.4). The system does not send a confirmation when an appointment is booked, nor a notification when it is edited or cancelled (decided).
 
 ### 3.2 Haircut Recommendations
 
@@ -91,7 +91,12 @@ Clients accumulate credit toward free services: every 6 completed appointments e
 
 ### 3.4 Appointment Reminders
 
-Clients are reminded ahead of their appointment via WhatsApp and/or email, to reduce no-shows and missed visits. Reminders apply to registered clients only; appointments for unregistered clients have no contact info and are skipped. Reminders, confirmations, and notifications for all appointment operations are pending implementation.
+Reminders are **implemented**, and **Telegram is the only messaging channel**. Clients are reminded ahead of their appointment to reduce no-shows and missed visits: one reminder about 24 hours before and another about 4 hours before the appointment.
+
+- A client enables reminders by linking their Telegram account once: the **Recordatorios** page of the web app shows a QR code that opens the Mr. Barber bot in Telegram, where the client presses *Start*. There is no option to unlink the account.
+- Reminders apply to registered clients only; appointments for unregistered clients have no contact info and are skipped. Walk-ins and appointments that are no longer scheduled or rescheduled (cancelled, checked in, completed, no-show) do not get reminders. A client who has not linked Telegram receives nothing, and the failed attempt is logged.
+- Rescheduling an appointment re-times its reminders to the new date and time; cancelling it stops them.
+- The system does **not** send a confirmation when an appointment is booked, nor a notification when it is edited or cancelled (decided).
 
 ### 3.5 Reporting (for Managers)
 
@@ -113,9 +118,9 @@ Every stock entry (e.g. a purchase) and exit (e.g. usage, damaged items) is also
 
 ## 4. Example User Journeys
 
-- **Booking an appointment**: a client picks a barber, service, and time slot within that barber's availability, confirms the booking, and is meant to receive a confirmation plus scheduled reminders ahead of the visit (pending implementation, see §3.4).
+- **Booking an appointment**: a client picks a barber, service, and time slot within that barber's availability, and confirms the booking. No confirmation message is sent, but the client receives Telegram reminders ahead of the visit if they linked their account (see §3.4).
 - **Getting a haircut recommendation**: a client submits a photo and/or preferences and receives suggested haircut styles to consider before or while booking.
-- **Receiving a reminder**: a client is reminded ahead of their appointment through their preferred channel(s).
+- **Receiving a reminder**: a client who linked their Telegram account is reminded about 24 hours and 4 hours before their appointment.
 - **Receiving a loyalty reward**: once their count reaches 6, the next appointment a client books (or a receptionist/manager books for them) automatically includes a free service: the cheapest one in the appointment. The appointment is marked as a reward appointment for reporting purposes. Completing it subtracts 6 from the count and keeps any surplus; cancelling it keeps the reward; a no-show loses it and resets the count to 0 (see §3.3).
 
 ## 5. Open Business Questions
@@ -151,9 +156,9 @@ These decisions materially affect the product and need to be settled up front.
 - Cancellations and reschedules are decided (see §3.1): clients have an 8-hour cutoff, there is no cancellation/reschedule limit, a cancelled reward appointment keeps the reward, and a no-show on a free-service appointment forfeits it and resets the count (§3.3). Waitlists, and any penalties for no-shows beyond that, are still undefined.
 
 **Notifications**
-- Can clients choose/opt out of channel (WhatsApp vs. email vs. both)? Required for consent/compliance either way.
-- Reminder timing — e.g., 24h and 2h before, configurable per shop?
-- Who owns the WhatsApp Business account/verification — has that process been started, since approval can take time?
+- The only channel is Telegram, and reminders are sent 24 hours and 4 hours before the appointment (decided, implemented).
+- Booking confirmations and notifications for edits and cancellations are not sent (decided).
+- Clients cannot unlink Telegram or opt out from the app today. Whether that is needed for consent/compliance is still open.
 
 **Reporting**
 - What reports does the manager need besides barber performance — revenue, most-booked services, client retention/churn, loyalty redemption rates?

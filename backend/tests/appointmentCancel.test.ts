@@ -12,9 +12,11 @@ import {
     insertBarber,
     insertService,
     insertAppointment,
+    insertRewardAppointment,
     insertReceptionist,
     cleanupFixtures,
     createdAppointmentIds,
+    LOYALTY_REWARD_THRESHOLD,
     getSeededShiftId,
 } from './helpers/availabilityFixtures.js';
 
@@ -180,13 +182,20 @@ describe('PUT /api/appointments/:id/cancel', () => {
     });
 
     test('conserva la recompensa y los servicios de la cita', async () => {
-        const booked = await request(app)
-            .post('/api/appointments')
-            .set('Authorization', `Bearer ${clients[0].token}`)
-            .send({ barberId: barber, serviceIds: [serviceId], scheduledStart: at(day, '12:00') });
-        expect(booked.status).toBe(201);
-        const id = booked.body.data.id as string;
-        await getPool().query(`UPDATE appointments SET is_reward_redemption = true WHERE id = $1`, [id]);
+        // La bandera es inmutable: la cita se crea ya como recompensa (el helper sube el contador al umbral).
+        const start = at(day, '12:00');
+        const id = await insertRewardAppointment(
+            shopId,
+            barber,
+            start,
+            new Date(Date.parse(start) + 30 * 60_000).toISOString(),
+            clients[0].id
+        );
+        await getPool().query(
+            `INSERT INTO appointment_services (appointment_id, service_id, price_at_booking, duration_minutes_at_booking)
+             VALUES ($1, $2, 200, 30)`,
+            [id, serviceId]
+        );
 
         expect((await cancel(clients[0].token, id)).status).toBe(200);
 
@@ -194,6 +203,10 @@ describe('PUT /api/appointments/:id/cancel', () => {
         expect(row.rows[0].is_reward_redemption).toBe(true);
         const services = await getPool().query(`SELECT 1 FROM appointment_services WHERE appointment_id = $1`, [id]);
         expect(services.rows.length).toBe(1);
+        const client = await getPool().query(`SELECT completed_services_count FROM clients WHERE user_id = $1`, [
+            clients[0].id,
+        ]);
+        expect(client.rows[0].completed_services_count).toBe(LOYALTY_REWARD_THRESHOLD);
     });
 
     test('el horario queda libre y la cita cancelada ya no se puede editar', async () => {
