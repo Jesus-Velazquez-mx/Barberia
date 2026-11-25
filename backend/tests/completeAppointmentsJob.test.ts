@@ -261,17 +261,24 @@ describe('Auto-complete de citas (business rules & database integration)', () =>
         expect(new Date(row.completed_at).toISOString()).toBe(end.toISOString());
     });
 
-    it('con recompensa (is_reward_redemption) reinicia el contador del cliente a 0', async () => {
-    const clientId = await createClient();
+    it.each([
+        [6, 0],
+        [8, 2],
+        [12, 6],
+    ])('con recompensa (is_reward_redemption) y contador %i resta 6 y deja %i', async (before, after) => {
+        const clientId = await createClient();
 
-    // La bandera es inmutable: la cita se crea ya como recompensa (el helper sube el contador al umbral).
-    const start = new Date('2026-11-22T23:00:00.000Z');
-    const end = new Date('2026-11-22T23:45:00.000Z');
-    const id = await insertRewardAppointment(shopId, barberId, start, end, clientId, { status: 'checked_in' });
+        // La bandera es inmutable: la cita se crea ya como recompensa (el helper fija el contador).
+        const start = new Date('2026-11-22T23:00:00.000Z');
+        const end = new Date('2026-11-22T23:45:00.000Z');
+        const id = await insertRewardAppointment(shopId, barberId, start, end, clientId, {
+            status: 'checked_in',
+            completedServicesCount: before,
+        });
 
-    await completeFinishedAppointments(end);
+        await completeFinishedAppointments(end);
 
-    expect((await getAppointment(id)).status).toBe('completed');
-    expect(await getLoyalty(clientId)).toBe(0);
-});
+        expect((await getAppointment(id)).status).toBe('completed');
+        expect(await getLoyalty(clientId)).toBe(after);
+    });
 });

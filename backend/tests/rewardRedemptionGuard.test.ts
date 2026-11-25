@@ -207,7 +207,8 @@ describe('Triggers de cita de recompensa (is_reward_redemption)', () => {
                 const first = await reward(clientId);
                 await setStatus(first, status);
 
-                // Completar o no presentarse reinicia el contador, así que de inmediato ya no califica.
+                // Con contador en el umbral, completar (resta 6) o no presentarse (reinicia) lo deja en 0,
+                // así que de inmediato ya no califica.
                 expect(await getLoyalty(clientId)).toBe(0);
                 await expect(rawRewardInsert(clientId)).rejects.toMatchObject({ code: BELOW_THRESHOLD });
 
@@ -243,7 +244,7 @@ describe('Triggers de cita de recompensa (is_reward_redemption)', () => {
     });
 
     describe('ciclo de vida de una cita de recompensa', () => {
-        test('editar, reprogramar, hacer check-in y completar sigue funcionando y reinicia el contador', async () => {
+        test('editar, reprogramar, hacer check-in y completar sigue funcionando y resta el umbral al contador', async () => {
             const clientId = await createClient();
             const id = await reward(clientId);
             const { start, end } = nextSlot();
@@ -279,10 +280,31 @@ describe('Triggers de cita de recompensa (is_reward_redemption)', () => {
             await expect(setStatus(id, 'checked_in')).resolves.toMatchObject({ rowCount: 1 });
         });
 
-        test('marcar no-show reinicia el contador (trigger de lealtad existente)', async () => {
+        test('completar conserva el sobrante y el cliente vuelve a calificar si queda en el umbral', async () => {
             const clientId = await createClient();
             const id = await reward(clientId);
-            await setLoyalty(clientId, LOYALTY_REWARD_THRESHOLD + 3);
+            await setLoyalty(clientId, LOYALTY_REWARD_THRESHOLD * 2);
+
+            await setStatus(id, 'completed');
+            expect(await getLoyalty(clientId)).toBe(LOYALTY_REWARD_THRESHOLD);
+            await expect(rawRewardInsert(clientId)).resolves.toBeDefined();
+        });
+
+        test('completar dos veces no descuenta dos veces (solo la transición a completed)', async () => {
+            const clientId = await createClient();
+            const id = await reward(clientId);
+            await setLoyalty(clientId, LOYALTY_REWARD_THRESHOLD + 2);
+
+            await setStatus(id, 'completed');
+            await getPool().query(`UPDATE appointments SET notes = 'editada' WHERE id = $1`, [id]);
+            await setStatus(id, 'completed');
+            expect(await getLoyalty(clientId)).toBe(2);
+        });
+
+        test('marcar no-show reinicia el contador a 0, sobrante incluido (trigger de lealtad existente)', async () => {
+            const clientId = await createClient();
+            const id = await reward(clientId);
+            await setLoyalty(clientId, LOYALTY_REWARD_THRESHOLD + 2);
 
             await setStatus(id, 'no_show');
             expect(await getLoyalty(clientId)).toBe(0);
