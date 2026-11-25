@@ -63,8 +63,10 @@ describe('GET /api/reports/barber-performance', () => {
     let moved: { id: string; email: string };
     let serviceIds: string[];
 
-    // Rango evaluado en la mayoría de las pruebas
-    const RANGE = { startDate: '2025-03-01', endDate: '2025-03-31' };
+    // Rango evaluado en la mayoría de las pruebas. Va en el futuro a propósito: los jobs de no-show y de
+    // completado (que otros archivos de prueba ejecutan en paralelo sobre la misma base) actualizan todas las
+    // citas pasadas, y cambiarían el estado de las citas pendientes de este reporte.
+    const RANGE = { startDate: '2099-03-01', endDate: '2099-03-31' };
 
     // Instante real de una hora de pared del negocio
     const at = (date: string, time: string) => new Date(businessWallClockToUtcMs(Date.parse(`${date}T${time}Z`)));
@@ -135,22 +137,22 @@ describe('GET /api/reports/barber-performance', () => {
         moved = await insertBarber(shopB, { firstName: 'Tomás', lastName: 'Reasignado' });
 
         // José: 8 servicios agendados en 6 citas, 5 finalizados en 2 citas
-        await book(shopA, jose.id, '2025-03-01', 'completed', 3, '00:00:00'); // primer instante del rango
-        await book(shopA, jose.id, '2025-03-31', 'completed', 2, '23:59:00'); // último minuto del rango
-        await book(shopA, jose.id, '2025-03-10', 'cancelled', 1);
-        await book(shopA, jose.id, '2025-03-11', 'no_show', 1);
-        await book(shopA, jose.id, '2025-03-12', 'rescheduled', 1);
-        await book(shopA, jose.id, '2025-03-13', 'checked_in', 0);
+        await book(shopA, jose.id, '2099-03-01', 'completed', 3, '00:00:00'); // primer instante del rango
+        await book(shopA, jose.id, '2099-03-31', 'completed', 2, '23:59:00'); // último minuto del rango
+        await book(shopA, jose.id, '2099-03-10', 'cancelled', 1);
+        await book(shopA, jose.id, '2099-03-11', 'no_show', 1);
+        await book(shopA, jose.id, '2099-03-12', 'rescheduled', 1);
+        await book(shopA, jose.id, '2099-03-13', 'checked_in', 0);
         // Fuera del rango, a un minuto de cada extremo
-        await book(shopA, jose.id, '2025-02-28', 'completed', 3, '23:59:00');
-        await book(shopA, jose.id, '2025-04-01', 'completed', 3, '00:00:00');
+        await book(shopA, jose.id, '2099-02-28', 'completed', 3, '23:59:00');
+        await book(shopA, jose.id, '2099-04-01', 'completed', 3, '00:00:00');
 
         // Mariana: 2 agendados, 0 finalizados
-        await book(shopA, mariana.id, '2025-03-05', 'scheduled', 2);
+        await book(shopA, mariana.id, '2099-03-05', 'scheduled', 2);
 
-        await book(shopA, deletedWithWork.id, '2025-03-06', 'completed', 1);
-        await book(shopA, moved.id, '2025-03-07', 'completed', 1);
-        await book(shopB, moved.id, '2025-03-20', 'completed', 2);
+        await book(shopA, deletedWithWork.id, '2099-03-06', 'completed', 1);
+        await book(shopA, moved.id, '2099-03-07', 'completed', 1);
+        await book(shopB, moved.id, '2099-03-20', 'completed', 2);
     });
 
     afterAll(async () => {
@@ -202,13 +204,13 @@ describe('GET /api/reports/barber-performance', () => {
         });
 
         test.each([
-            ['inicio posterior al fin', { startDate: '2025-03-31', endDate: '2025-03-01' }],
+            ['inicio posterior al fin', { startDate: '2099-03-31', endDate: '2099-03-01' }],
             ['sin fechas', {}],
-            ['sin inicio', { endDate: '2025-03-31' }],
-            ['sin fin', { startDate: '2025-03-01' }],
-            ['fecha vacía', { startDate: '', endDate: '2025-03-31' }],
+            ['sin inicio', { endDate: '2099-03-31' }],
+            ['sin fin', { startDate: '2099-03-01' }],
+            ['fecha vacía', { startDate: '', endDate: '2099-03-31' }],
             ['formato incorrecto', { startDate: '01/03/2025', endDate: '31/03/2025' }],
-            ['día inexistente', { startDate: '2025-02-30', endDate: '2025-03-31' }],
+            ['día inexistente', { startDate: '2099-02-30', endDate: '2099-03-31' }],
         ])('400 con el mensaje del caso de uso: %s', async (_name, dates) => {
             const res = await get(managerToken, { shopId: shopA, ...(dates as Record<string, string>) });
             expect(res.status).toBe(400);
@@ -216,7 +218,7 @@ describe('GET /api/reports/barber-performance', () => {
         });
 
         test('acepta un rango de un solo día y fechas extremas', async () => {
-            const oneDay = await get(managerToken, { shopId: shopA, startDate: '2025-03-06', endDate: '2025-03-06' });
+            const oneDay = await get(managerToken, { shopId: shopA, startDate: '2099-03-06', endDate: '2099-03-06' });
             expect(oneDay.status).toBe(200);
             expect(oneDay.body.data.totals.completedServices).toBe(1);
 
