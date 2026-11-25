@@ -44,8 +44,8 @@ export function OutcomeDonut({ metrics, subject }: OutcomeDonutProps) {
   const summary = segments.map((segment) => `${segment.label.toLowerCase()} ${segment.value}`).join(', ');
 
   return (
-    <div className="mx-auto grid max-w-4xl items-center gap-8 md:grid-cols-2">
-      <div className="relative mx-auto w-full max-w-72">
+    <div className="mx-auto grid max-w-3xl items-center gap-8 md:grid-cols-[13rem_1fr]">
+      <div className="relative mx-auto w-full max-w-52">
         <svg
           viewBox={`0 0 ${SIZE} ${SIZE}`}
           role="img"
@@ -78,10 +78,10 @@ export function OutcomeDonut({ metrics, subject }: OutcomeDonutProps) {
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center"
         >
-          <span className="text-5xl font-bold leading-none text-[var(--text-h)]">
+          <span className="text-4xl font-bold leading-none text-[var(--text-h)]">
             {active ? metrics[active.key] : total}
           </span>
-          <span className="mt-2 text-sm text-[var(--text)]">{active ? active.label : 'agendados'}</span>
+          <span className="mt-1 text-sm text-[var(--text)]">{active ? active.label : 'agendados'}</span>
           {active && (
             <span className="mt-0.5 text-sm font-semibold text-[var(--text-h)]">
               {formatShare(metrics[active.key], total)}
