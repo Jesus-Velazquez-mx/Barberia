@@ -449,7 +449,7 @@ El **precio y la duración** de cada servicio corresponden a los vigentes **al m
 
 | Dato | ¿Editable? | Observaciones |
 |---|---|---|
-| Fecha y hora | Sí | Dentro del periodo de reprogramación (ver más adelante). |
+| Fecha y hora | Sí, excepto en servicios sin cita | Dentro del periodo de reprogramación (ver más adelante). |
 | Barbero | Sí | Solo entre los barberos **de la misma sucursal** de la cita. |
 | Servicios | Sí | Se pueden agregar o quitar, siempre con al menos uno. La duración total se recalcula. |
 | Notas | Sí | Hasta 500 caracteres. |
@@ -464,6 +464,7 @@ El **precio y la duración** de cada servicio corresponden a los vigentes **al m
 - El nuevo horario debe estar **disponible**: respetar el turno del barbero, el horario de la sucursal (lunes a sábado) y la regla de una sola cita a la vez por barbero. El horario actual de la propia cita no bloquea su reprogramación.
 - Si se **cambian los servicios** y la duración total aumenta, el sistema valida que el barbero tenga tiempo libre suficiente para la nueva duración; si no lo tiene, es necesario elegir otro horario u otro barbero.
 - Si se cambia la **fecha, la hora o el barbero**, la cita pasa al estado **Reagendada**. Si solo se modifican los servicios o las notas, conserva su estado.
+- En los **servicios sin cita** (*walk-in*), la **fecha y la hora no pueden modificarse**. Antes de la hora de inicio solo pueden cambiarse el barbero, los servicios y las notas, siempre que haya disponibilidad en el mismo horario.
 - No existe un límite de veces que una cita puede reprogramarse ni se lleva un registro de los cambios realizados.
 
 **Cancelación**
@@ -548,7 +549,7 @@ Es el caso del cliente que **llega sin haber agendado**. El personal lo registra
 - En este modo no se elige un día en el calendario: el sistema muestra el **próximo horario disponible de hoy de cada barbero** de la sucursal para los servicios elegidos, y deja **preseleccionado el más próximo**. El personal comunica las opciones al cliente y selecciona la que este prefiera.
 - Solo pueden registrarse servicios **del día en curso**. Si ya no queda disponibilidad hoy para los servicios elegidos, el sistema indica que no es posible registrarlo y se debe ofrecer al cliente agendar otro día.
 - Los clientes no pueden crear servicios sin cita.
-- Se crean como una cita *Agendada*; mientras no llegue su hora de inicio pueden editarse o cancelarse como cualquier otra cita.
+- Se crean como una cita *Agendada*. Mientras no llegue su hora de inicio pueden cancelarse y se pueden editar el barbero, los servicios y las notas; la **fecha y la hora no pueden modificarse**.
 - Al llegar la hora de inicio, el sistema **registra el check-in automáticamente** y la cita pasa a *Iniciada*; al llegar la hora de término, pasa a *Completada*.
 - **Nunca pasan a *Ausencia***, porque el cliente ya se encuentra en la barbería. No requieren que el personal registre su llegada.
 - En los listados se identifican con la etiqueta **Walk-in**, y en su seguimiento aparece como *Walk-in registrado*.
@@ -1196,19 +1197,528 @@ El personal no cuenta con una página dedicada al historial de un cliente (ver [
 
 #### 5.2.4 Editar o reprogramar una cita
 
-*(por desarrollar)*
+**Perfil:** Cliente · Recepcionista · Gerente/Asistente. Para conocer qué datos pueden modificarse y las reglas que rigen la edición, consulte el apartado [4.2.2](#422-consulta-edición-reprogramación-y-cancelación). La forma de **abrir** la edición cambia según el perfil; la ventana **Editar cita** funciona igual para todos.
+
+**Antes de comenzar**, verifique que la cita cumpla con lo siguiente:
+
+- Su estado es **Agendada** o **Reagendada**.
+- Su hora de inicio **aún no ha llegado**.
+- **Solo clientes:** faltan **8 horas o más** para la hora de inicio.
+- La **sucursal** y el **cliente** no se pueden cambiar. Si necesita modificar alguno, cancele la cita (ver [5.2.5](#525-cancelar-una-cita)) y agende una nueva.
+- En los **servicios sin cita** (etiqueta **Walk-in**), tampoco se pueden cambiar la **fecha ni la hora** (ver [5.2.7](#527-registrar-un-servicio-sin-cita)).
+
+---
+
+**A. Cómo abrir la edición (cliente)**
+
+1. En el menú de navegación, presione **Mis Citas**. En teléfonos y tabletas, abra primero el menú ☰.
+2. En la pestaña **Próximas citas**, presione la fila de la cita que desea modificar.
+3. En la página **Detalle de la cita**, presione **Editar cita**, al final de la página. Se abre la ventana **Editar cita**.
+
+> El botón **Editar cita** solo aparece en citas Agendadas o Reagendadas que aún no empiezan. Si faltan menos de 8 horas, el botón sigue visible, pero la ventana se abre con los campos bloqueados y el mensaje *«No puedes modificar la cita con menos de 8 horas de anticipación.»*
+
+> 📷 **[Apoyo visual pendiente — Figura 5.2.4-A]** Página *Detalle de la cita* del cliente con los botones *Editar cita* y *Cancelar cita*.
+
+**B. Cómo abrir la edición (personal)**
+
+1. En el menú de navegación, presione **Citas**.
+2. Ubique la cita con la búsqueda o los filtros (ver [5.2.3](#523-consultar-y-filtrar-citas)). Recuerde que, sin fechas indicadas, el listado muestra de hoy a los próximos 30 días.
+3. Presione la fila de la cita. Se abre la ventana **Detalle de la cita**.
+4. Presione **Editar cita**. La ventana de detalle se cierra y se abre la ventana **Editar cita**.
+
+> El personal no tiene el límite de 8 horas. Si el botón **Editar cita** no aparece, la cita ya comenzó o su estado no permite cambios.
+
+> 📷 **[Apoyo visual pendiente — Figura 5.2.4-B]** Ventana *Detalle de la cita* del personal con el botón *Editar cita*.
+
+---
+
+**C. La ventana *Editar cita***
+
+La ventana se abre con los datos actuales de la cita. En la parte superior muestra el identificador y el estado.
+
+| Elemento | ¿Se puede modificar? | Descripción |
+|---|---|---|
+| **Cliente** | No | Solo lo ve el personal. Muestra nombre, correo y, si corresponde, la etiqueta *Visitante*. |
+| **Fecha** | Sí | Nueva fecha de la cita. Debajo se indica la fecha límite (*Hasta el …*). |
+| **Barbero** | Sí | Barberos de la misma sucursal que aceptan citas. El barbero actual siempre aparece en la lista. |
+| **Sucursal** | No | Se muestra con un ícono de candado. |
+| **Horarios disponibles** | Sí | Horario actual o nuevo horario, con la duración total en minutos. La lista de horas aparece plegada. |
+| **Servicios** | Sí | Servicios de la cita, con su duración y precio, y el total. |
+| **Notas** | Sí | Comentarios de la cita, de hasta 500 caracteres. |
+
+Modifique **solo los datos que necesite**; los demás se conservan. Los procedimientos siguientes pueden combinarse y guardarse en una sola operación.
+
+> 📷 **[Apoyo visual pendiente — Figura 5.2.4-C]** Ventana *Editar cita* con los datos actuales y la lista de horarios plegada.
+
+**D. Reprogramar la cita (cambiar fecha, hora o barbero)**
+
+> **Servicios sin cita:** la fecha y la hora no pueden modificarse, por lo que los pasos 1, 3 y 4 no aplican. Solo puede cambiar el barbero (paso 2), siempre que la otra persona esté disponible en el mismo horario.
+
+1. Si desea otro día, presione el recuadro **Fecha** y elija el día en el calendario. Solo puede elegir **desde hoy hasta 30 días después del día en que se agendó la cita**. Recuerde que la barbería no abre los domingos.
+2. Si desea que atienda otra persona, abra la lista **Barbero** y selecciónela.
+3. En **Horarios disponibles**, presione la **flecha** del lado derecho para desplegar las horas libres.
+4. Presione la hora que prefiera; quedará resaltada. El resumen mostrará **Nuevo horario** con la hora de inicio y de término.
+   - La hora que ya tiene la cita se identifica con la leyenda **· actual**.
+   - Al cambiar de fecha, el resumen indica **Elige un horario**: debe seleccionar una hora del nuevo día.
+   - Al cambiar de barbero, la hora seleccionada se conserva si esa persona la tiene libre; de lo contrario, deberá elegir otra.
+5. Verifique que aparezca el aviso **«Al guardar, la cita pasará a Reagendada.»**
+6. Continúe con otros cambios o presione **Guardar cambios** (ver apartado G).
+
+> 📷 **[Apoyo visual pendiente — Figura 5.2.4-D]** Lista de horarios desplegada con la hora actual, un nuevo horario seleccionado y el aviso de reagendado.
+
+**E. Cambiar los servicios**
+
+1. **Para agregar un servicio:** en la sección **Servicios**, presione **Añadir otro servicio** y elija uno de la lista. Cada opción muestra su duración y precio.
+2. **Para quitar un servicio:** presione la **X** que aparece a la derecha del servicio. La cita debe conservar al menos uno, por lo que la X no se muestra cuando solo queda un servicio.
+3. **Para reemplazar un servicio** cuando la cita tiene solo uno: agregue primero el nuevo y después quite el anterior.
+4. Revise el **Total** y la duración. Si el precio total cambió, debajo se muestra el anterior (*Antes …*).
+5. Verifique el horario en **Horarios disponibles**. Al cambiar los servicios, el sistema vuelve a consultar las horas libres según la nueva duración. Si la nueva selección dura **más** que la anterior, despliegue la lista y compruebe la disponibilidad.
+
+> **Importante:** al agregar servicios, la ventana puede seguir mostrando el **Horario actual** aunque la nueva duración ya no quepa en él. El sistema lo comprueba al guardar y, si no hay tiempo suficiente, rechaza el cambio. En ese caso, elija otro horario u otro barbero.
+
+Los servicios que ya estaban en la cita conservan el **precio y la duración con que se agendaron**; los servicios nuevos usan los del catálogo vigente. Si solo cambia los servicios, sin mover el horario ni el barbero, la cita **conserva su estado**.
+
+> 📷 **[Apoyo visual pendiente — Figura 5.2.4-E]** Sección *Servicios* con la lista de *Añadir otro servicio* desplegada y el total actualizado.
+
+**F. Agregar o modificar las notas**
+
+1. En la sección **Notas**, escriba o corrija el texto (máximo **500 caracteres**; el contador muestra cuántos lleva).
+2. Para eliminar las notas, borre todo el texto.
+
+Si solo modifica las notas, la cita conserva su horario y su estado.
+
+**G. Guardar o descartar los cambios**
+
+1. Revise la fecha, el barbero, el horario, los servicios y el total.
+2. Presione **Guardar cambios**. Mientras se procesa, el botón muestra **Guardando...**; espere sin cerrar la página.
+3. Si los cambios se guardan, la ventana se cierra **sin mostrar un mensaje de confirmación** y la información se actualiza:
+   - El **cliente** permanece en la página **Detalle de la cita**, ya actualizada.
+   - El **personal** regresa al listado **Citas**. Si la nueva fecha queda fuera del periodo o de los filtros activos, la cita dejará de verse en el listado.
+4. Compruebe los datos nuevos. Si cambió la fecha, la hora o el barbero, el estado será **Reagendada** y el seguimiento del detalle mostrará **Cita reagendada** con la fecha original.
+
+Para **salir sin guardar**, presione **Cancelar** o la **X** de la ventana. También se cierra al hacer clic fuera de ella o al presionar la tecla **Esc**. Los cambios se descartan **sin pedir confirmación**.
+
+> El botón **Cancelar** de esta ventana **no cancela la cita**; solo cierra la edición. Para cancelar la cita, consulte [5.2.5](#525-cancelar-una-cita).
+
+> 📷 **[Apoyo visual pendiente — Figura 5.2.4-F]** Detalle de una cita *Reagendada* con el evento *Cita reagendada* en el seguimiento.
+
+**Errores frecuentes y cómo resolverlos**
+
+*Mensajes y situaciones dentro de la ventana de edición:*
+
+| Situación o mensaje | Causa | Qué hacer |
+|---|---|---|
+| No aparece el botón **Editar cita**. | La cita ya comenzó o su estado es *Iniciada*, *Completada*, *Cancelada* o *Ausencia*. | Esa cita ya no puede editarse. Si necesita otro horario, agende una cita nueva. |
+| *No puedes modificar la cita con menos de 8 horas de anticipación.* | El cliente intenta editar fuera del plazo permitido. | Comuníquese con la barbería: el personal puede hacer el cambio mientras la cita no haya comenzado. |
+| *Esta cita ya comenzó, no se puede editar.* / *Solo se pueden editar citas agendadas o reagendadas.* | La cita dejó de cumplir las condiciones de edición. | Cierre la ventana y actualice la página para ver su estado actual. |
+| *Elige un horario disponible.* | Se presionó *Guardar cambios* sin una hora válida; suele ocurrir al cambiar de fecha, barbero o servicios. La lista de horarios se despliega automáticamente. | Elija una hora. Si la lista está vacía, cambie la fecha, el barbero o los servicios. |
+| *No hay cambios que guardar.* | Los datos son iguales a los de la cita. | Modifique algún dato o cierre la ventana. |
+| *Elige al menos un servicio.* | La cita no tiene servicios seleccionados. | Agregue al menos uno. |
+| *No hay horarios disponibles ese día.* | El barbero no tiene un hueco suficiente para la duración total, ya terminó su turno o el día es domingo. | Pruebe con otra fecha u otro barbero, o revise los servicios. |
+| *No se pudieron cargar los horarios. Intenta con otra fecha.* | Falla de conexión o del servidor; fecha escrita fuera del periodo permitido; o uno de los servicios de la cita ya no está activo en el catálogo. | Revise la conexión y la fecha. Si un servicio fue dado de baja, quítelo de la cita (agregando otro si era el único) o pida apoyo al gerente. |
+| *No se pudieron cargar los datos de la cita.* (u otro mensaje al abrir la ventana) | No se pudieron obtener los barberos o los servicios. | Cierre la ventana, verifique su conexión y vuelva a presionar **Editar cita**. |
+| Una fecha no puede elegirse en el calendario. | Es anterior a hoy o posterior a la fecha límite indicada en *Hasta el …*. | Elija una fecha dentro del periodo. Si necesita una fecha posterior, cancele la cita y agende otra (recuerde el límite de 30 días a partir de hoy). |
+
+*Mensajes que pueden aparecer al guardar.* Actualmente el sistema muestra en **inglés** las respuestas del servidor:
+
+| Mensaje | Significado | Qué hacer |
+|---|---|---|
+| *Selected time slot is no longer available* / *Selected time slot is not available* | El horario ya no está libre: otra cita lo ocupó o la nueva duración no cabe en él. | Cierre y vuelva a abrir **Editar cita** para actualizar los horarios; después elija otra hora, fecha o barbero. |
+| *Selected services do not fit in the barber shift* | Con los nuevos servicios, la cita terminaría después del turno del barbero. | Elija una hora más temprana, otro barbero u otros servicios. |
+| *Barber not found or is not accepting bookings* / *Barber is not accepting bookings* | La persona seleccionada ya no está recibiendo citas. Esto impide guardar incluso un cambio de notas. | Seleccione otro barbero y un horario disponible, y guarde de nuevo. |
+| *Service not found or is inactive* | Uno de los servicios fue dado de baja del catálogo. | Cierre y vuelva a abrir la ventana, y elija servicios vigentes. |
+| *Appointments can only be rescheduled up to 30 days after the booking date* | La nueva fecha excede el periodo de reprogramación. | Elija una fecha anterior al límite indicado en *Hasta el …*. |
+| *Clients cannot edit an appointment less than 8 hours before it starts* | El plazo de 8 horas venció mientras la ventana estaba abierta. | Comuníquese con la barbería. |
+| *Only future appointments can be edited* | La cita comenzó mientras se editaba. | Ya no puede modificarse. |
+| *Only scheduled or rescheduled appointments can be edited* | El estado cambió mientras se editaba (por ejemplo, se canceló o se registró la llegada). | Cierre la ventana y actualice la página. |
+| *Network error — could not reach the API* | No hubo conexión con el servidor. | Revise su conexión. Antes de repetir el cambio, actualice la página y compruebe si se guardó. |
+| El sistema le pide iniciar sesión nuevamente. | La sesión expiró. | Inicie sesión (ver [3.4](#34-expiración-de-la-sesión)), compruebe los datos de la cita y repita los cambios. |
+
+Si el problema persiste, consulte la sección [7. Soporte técnico](#7-soporte-técnico).
+
+**Recomendaciones de uso**
+
+- **Edite la cita en lugar de cancelarla** cuando solo necesite cambiar la fecha, la hora, el barbero, los servicios o las notas.
+- **Cambie primero los servicios y después el horario:** la disponibilidad depende de la duración total.
+- **Revise el resumen del horario antes de guardar**, para confirmar la hora de inicio y de término.
+- **Cliente:** haga sus cambios con anticipación; con menos de 8 horas ya no podrá hacerlos por su cuenta.
+- **Cliente:** si no encuentra un horario conveniente, cierre la ventana sin guardar: su cita original se mantiene.
+- **Personal:** confirme el cambio con el cliente antes de guardarlo y **avísele después**, ya que el sistema no envía notificaciones por ediciones.
+- **Recordatorios:** al reprogramar, los recordatorios de los clientes registrados se calculan con el nuevo horario (ver [4.3](#43-recordatorios-automáticos)).
+- **Recompensa de fidelidad:** si la cita tiene la etiqueta **Recompensa otorgada**, la edición no la quita. Al cambiar los servicios, la recompensa corresponde al más barato de la nueva selección (ver [4.6](#46-programa-de-fidelidad)).
+- Utilice las **notas** para indicaciones sobre el servicio y evite incluir en ellas información personal delicada.
 
 #### 5.2.5 Cancelar una cita
 
-*(por desarrollar)*
+**Perfil:** Cliente · Recepcionista · Gerente/Asistente. Para conocer las reglas que rigen la cancelación, consulte el apartado [4.2.2](#422-consulta-edición-reprogramación-y-cancelación). La forma de **abrir** la cancelación cambia según el perfil; la ventana **Cancelar cita** es prácticamente igual para todos.
+
+> **Importante:** la cancelación **no se puede deshacer**. Si solo necesita cambiar la fecha, la hora, el barbero, los servicios o las notas, **edite la cita** (ver [5.2.4](#524-editar-o-reprogramar-una-cita)).
+
+**Antes de comenzar**, verifique que la cita cumpla con lo siguiente:
+
+- Su estado es **Agendada** o **Reagendada**.
+- Su hora de inicio **aún no ha llegado**.
+- **Solo clientes:** faltan **8 horas o más** para la hora de inicio.
+
+---
+
+**A. Cómo abrir la cancelación (cliente)**
+
+1. En el menú de navegación, presione **Mis Citas**. En teléfonos y tabletas, abra primero el menú ☰.
+2. En la pestaña **Próximas citas**, presione la fila de la cita que desea cancelar.
+3. En la página **Detalle de la cita**, presione **Cancelar cita**, al final de la página. Se abre la ventana **Cancelar cita**.
+
+> El botón **Cancelar cita** solo aparece en citas Agendadas o Reagendadas que aún no empiezan. Si faltan menos de 8 horas, el botón sigue visible, pero la ventana muestra el mensaje *«No puedes cancelar la cita con menos de 8 horas de anticipación.»* y solo permite cerrarla.
+
+> 📷 **[Apoyo visual pendiente — Figura 5.2.5-A]** Página *Detalle de la cita* del cliente con el botón *Cancelar cita*.
+
+**B. Cómo abrir la cancelación (personal)**
+
+1. En el menú de navegación, presione **Citas**.
+2. Ubique la cita con la búsqueda o los filtros (ver [5.2.3](#523-consultar-y-filtrar-citas)). Recuerde que, sin fechas indicadas, el listado muestra de hoy a los próximos 30 días.
+3. Presione la fila de la cita. Se abre la ventana **Detalle de la cita**.
+4. Presione **Cancelar cita**. La ventana de detalle se cierra y se abre la ventana **Cancelar cita**.
+
+> El **recepcionista** puede cancelar citas de su sucursal; el **gerente o asistente**, las de las sucursales a su cargo. El personal no tiene el límite de 8 horas. Si el botón **Cancelar cita** no aparece, la cita ya comenzó o su estado no permite cancelarla.
+
+> 📷 **[Apoyo visual pendiente — Figura 5.2.5-B]** Ventana *Detalle de la cita* del personal con el botón *Cancelar cita*.
+
+---
+
+**C. Confirmar la cancelación**
+
+1. Revise el resumen de la ventana para comprobar que sea **la cita correcta**: identificador, fecha, horario, barbero, servicios y total. El personal ve además el nombre del **cliente**.
+2. Si lo desea, escriba la razón en **Motivo de la cancelación**. Es **opcional** y admite hasta **255 caracteres**; el contador muestra cuántos lleva.
+3. Si la cita incluye una recompensa del programa de fidelidad, la ventana lo informa:
+   - Cliente: *«Conservas tu recompensa y podrás usarla en otra cita.»*
+   - Personal: *«El cliente conserva su recompensa y podrá usarla en otra cita.»*
+4. Presione **Cancelar cita**. **Este botón ejecuta la cancelación de inmediato**, sin otra confirmación. Mientras se procesa, muestra **Cancelando...**; espere sin cerrar la página.
+
+> 📷 **[Apoyo visual pendiente — Figura 5.2.5-C]** Ventana *Cancelar cita* con el resumen, el campo de motivo y los botones *Volver* y *Cancelar cita*.
+>
+> 📷 **[Apoyo visual pendiente — Figura 5.2.5-D]** Ventana *Cancelar cita* con el aviso de conservación de la recompensa.
+
+**Cómo salir sin cancelar la cita**
+
+Antes de confirmar, presione **Volver** o la **X** de la ventana. También se cierra al hacer clic fuera de ella o al presionar la tecla **Esc**. La cita se mantiene sin cambios y el motivo escrito se descarta.
+
+**D. Verificar la cancelación**
+
+Si la operación es correcta, la ventana se cierra **sin mostrar un mensaje de confirmación**. Compruebe el resultado:
+
+- **Cliente:** permanece en la página **Detalle de la cita**. El estado cambia a **Cancelada** y desaparecen los botones *Editar cita* y *Cancelar cita*. En **Mis Citas**, la cita se encuentra ahora en la pestaña **Citas canceladas**.
+- **Personal:** regresa al listado **Citas**, donde la cita aparece como **Cancelada**. Si tenía un filtro de **Estado** distinto de *Cancelada*, dejará de verse.
+
+El seguimiento de la cita muestra el evento **Cita cancelada** con su fecha y hora y, si se capturó, el **motivo de la cancelación**. Tanto el cliente como el personal pueden verlo. El horario del barbero **queda disponible** para nuevas citas.
+
+> 📷 **[Apoyo visual pendiente — Figura 5.2.5-E]** Detalle de una cita *Cancelada* con el evento *Cita cancelada* y su motivo en el seguimiento.
+>
+> 📷 **[Apoyo visual pendiente — Figura 5.2.5-F]** Pestaña *Citas canceladas* del cliente.
+
+**Errores frecuentes y cómo resolverlos**
+
+*Mensajes y situaciones antes de confirmar:*
+
+| Situación o mensaje | Causa | Qué hacer |
+|---|---|---|
+| No aparece el botón **Cancelar cita**. | La cita ya comenzó o su estado es *Iniciada*, *Completada*, *Cancelada* o *Ausencia*. | Esa cita ya no puede cancelarse. |
+| *No puedes cancelar la cita con menos de 8 horas de anticipación.* | El cliente intenta cancelar fuera del plazo permitido. | Comuníquese con la barbería: el personal puede cancelarla mientras no haya comenzado. |
+| *Esta cita ya comenzó, no se puede cancelar.* | La hora de inicio ya llegó. | Cierre la ventana. Si el cliente no se presentó, la cita pasará a *Ausencia* (ver [4.2.3](#423-estado-y-progreso-de-la-cita)). |
+| *Solo se pueden cancelar citas agendadas o reagendadas.* | El estado de la cita no permite cancelarla. | Cierre la ventana y actualice la página para ver el estado actual. |
+| No se encuentra la cita que se desea cancelar. | Está en otro periodo o hay filtros activos. | Presione **Restablecer filtros** y ajuste el periodo en **Fecha de servicio** (personal), o revise la pestaña **Próximas citas** (cliente). |
+
+*Mensajes que pueden aparecer al confirmar.* Actualmente el sistema muestra en **inglés** las respuestas del servidor:
+
+| Mensaje | Significado | Qué hacer |
+|---|---|---|
+| *Clients cannot cancel an appointment less than 8 hours before it starts* | El plazo de 8 horas venció mientras la ventana estaba abierta. | Comuníquese con la barbería. |
+| *Only future appointments can be cancelled* | La cita comenzó antes de que se confirmara la cancelación. | Ya no puede cancelarse. |
+| *Only scheduled or rescheduled appointments can be cancelled* | El estado cambió antes de confirmar (por ejemplo, ya se canceló o se registró la llegada). | Cierre la ventana y actualice la página. |
+| *Not authorized to cancel this appointment* | La cita no corresponde a su cuenta o a sus sucursales. | Verifique que haya iniciado sesión con la cuenta correcta. Si el problema continúa, contacte al gerente o a soporte. |
+| *Appointment not found* | La cita ya no existe en el sistema. | Cierre la ventana y actualice el listado. |
+| *Network error — could not reach the API* | No hubo conexión con el servidor. | Revise su conexión. Antes de repetir, actualice la página y compruebe si la cita ya aparece como *Cancelada*. |
+| El sistema le pide iniciar sesión nuevamente. | La sesión expiró. | Inicie sesión (ver [3.4](#34-expiración-de-la-sesión)) y compruebe el estado de la cita antes de repetir la cancelación. |
+
+Si el problema persiste, consulte la sección [7. Soporte técnico](#7-soporte-técnico).
+
+**Recomendaciones de uso**
+
+- **Revise el resumen antes de confirmar**, sobre todo si hay varias citas del mismo cliente o en fechas cercanas.
+- **Reprograme en lugar de cancelar** si la cita solo necesita otro horario. Una cita cancelada no puede recuperarse: habría que agendar otra, y el horario original podría ya no estar disponible.
+- **Cancele en cuanto sepa que no se asistirá**, para liberar el horario para otras personas.
+- **Cliente:** recuerde el plazo de **8 horas**. Después de ese plazo, comuníquese con la barbería.
+- **Personal:** confirme la cancelación con el cliente y, si usted la realiza, **avísele**, ya que el sistema no envía notificaciones por cancelaciones.
+- **Personal:** las citas de **visitantes** solo puede cancelarlas el personal, porque no tienen una cuenta asociada.
+- **Recordatorios:** una cita cancelada deja de generar recordatorios (ver [4.3](#43-recordatorios-automáticos)). Un mensaje enviado antes de la cancelación permanece en Telegram.
+- **Recompensa de fidelidad:** cancelar no hace perder la recompensa; no presentarse sí. Si no se va a asistir, es preferible cancelar a tiempo (ver [4.6](#46-programa-de-fidelidad)).
+- Como el sistema **no procesa pagos**, cancelar no genera cargos ni reembolsos.
+- Si escribe un motivo, sea breve y evite incluir información personal delicada. El motivo se muestra en el seguimiento de la cita, por lo que **el cliente también puede ver el que escriba el personal**.
 
 #### 5.2.6 Registrar la llegada del cliente (check-in)
 
-*(por desarrollar)*
+**Perfil:** Recepcionista · Gerente/Asistente. El cliente no registra su propia llegada. Para conocer las reglas que rigen el check-in, consulte el apartado [4.2.3](#423-estado-y-progreso-de-la-cita). El check-in cambia el estado de la cita a **Iniciada** y puede registrarse desde el **listado** de citas o desde el **detalle** de una cita.
+
+> **Importante:** el check-in se registra **de inmediato**, sin ventana de confirmación, y **no se puede deshacer**. Después de registrarlo, la cita ya no puede editarse ni cancelarse, y pasa automáticamente a **Completada** al llegar su hora de término. Regístrelo solo cuando el cliente **ya se encuentre en la barbería**.
+
+**Antes de comenzar**, verifique que la cita cumpla con lo siguiente:
+
+- Su estado es **Agendada** o **Reagendada**.
+- **No** es un servicio sin cita (etiqueta **Walk-in**), ya que estos registran su llegada automáticamente.
+- La hora actual está dentro de la **ventana de check-in**: desde **15 minutos antes** de la hora de inicio y **hasta antes de que se cumplan 10 minutos** después de ella.
+- Si es un **check-in anticipado** (antes de la hora de inicio), el mismo barbero no tiene otra cita Agendada, Reagendada o Iniciada en los 15 minutos previos.
+
+Por ejemplo, para una cita que inicia a las **12:00**:
+
+| Hora actual | ¿Se puede registrar el check-in? |
+|---|---|
+| Antes de las 11:45 | No. Es demasiado pronto. |
+| De las 11:45 a antes de las 12:00 | Sí, **si el barbero no tiene otra cita pendiente** en ese periodo. |
+| De las 12:00 a antes de las 12:10 | Sí, aunque el barbero tenga otra cita en el periodo previo. |
+| A partir de las 12:10 | No. La ventana venció y la cita pasa a **Ausencia**. |
+
+---
+
+**A. Ubicar la cita**
+
+1. En el menú de navegación, presione **Citas**. En teléfonos y tabletas, abra primero el menú ☰.
+2. Ubique la cita del cliente. Sin fechas indicadas, el listado muestra de hoy a los próximos 30 días, ordenado de la fecha más próxima a la más lejana.
+3. Si hay muchas citas, escriba el **nombre o correo del cliente** en el buscador o use los filtros (ver [5.2.3](#523-consultar-y-filtrar-citas)). Los **visitantes** no tienen correo; búsquelos por nombre.
+4. Compruebe con el cliente la **hora**, el **barbero** y los **servicios**.
+
+Una vez ubicada la cita, registre la llegada con el método **B** o el **C**.
+
+---
+
+**B. Registrar el check-in desde el listado**
+
+Es la forma más rápida.
+
+1. En la columna **Acciones** de la cita, presione **Check-in**. En pantallas pequeñas, es posible que deba desplazar la tabla hacia un lado para ver la columna.
+2. Mientras se procesa, el botón muestra **Registrando...** y los demás botones de check-in quedan deshabilitados. Espere sin cerrar la página.
+
+La columna **Acciones** puede mostrar lo siguiente:
+
+| Contenido | Significado |
+|---|---|
+| Botón **Check-in** | La cita está dentro de la ventana de check-in. |
+| **Automático** | Es un servicio sin cita pendiente de iniciar; no requiere ninguna acción. |
+| **—** | El check-in no está disponible en este momento o para el estado de la cita. |
+
+> 📷 **[Apoyo visual pendiente — Figura 5.2.6-A]** Listado *Citas* del personal con el botón *Check-in* en la columna *Acciones*, junto con filas que muestren *Automático* y *—*.
+>
+> 📷 **[Apoyo visual pendiente — Figura 5.2.6-B]** Botón de la columna *Acciones* con el indicador *Registrando...*.
+
+---
+
+**C. Registrar el check-in desde el detalle de la cita**
+
+Use este método si desea revisar todos los datos antes de registrar la llegada.
+
+1. En el listado, presione la fila de la cita (fuera del botón **Check-in**). Se abre la ventana **Detalle de la cita**.
+2. Revise el cliente, la fecha, el horario, el barbero, los servicios y las notas.
+3. Presione **Check-in**, en la parte inferior de la ventana.
+4. Mientras se procesa, el botón muestra **Registrando check-in...** y la ventana no puede cerrarse.
+
+> El botón **Check-in** del detalle solo aparece cuando la cita está dentro de la ventana de check-in.
+
+> 📷 **[Apoyo visual pendiente — Figura 5.2.6-C]** Ventana *Detalle de la cita* del personal con el botón *Check-in*.
+
+---
+
+**D. Verificar el registro**
+
+Si la operación es correcta:
+
+1. Aparece durante unos segundos el aviso **Check-in registrado para {nombre del cliente}.** en la parte superior derecha. Si usó el detalle, la ventana se cierra.
+2. El listado se actualiza y la cita aparece como **Iniciada**. Si tenía un filtro de **Estado** distinto de *Iniciada*, dejará de verse.
+3. Al abrir el detalle, el seguimiento muestra el evento **Check-in registrado** con la fecha y hora en que se realizó, y ya no aparecen los botones **Editar cita** ni **Cancelar cita**.
+
+El check-in **no cambia el horario** de la cita: la hora de inicio y la de término se conservan, aunque el cliente haya llegado antes o después. La cita pasa a **Completada** automáticamente al llegar su hora de término.
+
+> 📷 **[Apoyo visual pendiente — Figura 5.2.6-D]** Aviso *Check-in registrado* y cita con estado *Iniciada* en el listado.
+>
+> 📷 **[Apoyo visual pendiente — Figura 5.2.6-E]** Detalle de una cita *Iniciada* con el evento *Check-in registrado* en el seguimiento.
+
+**Servicios sin cita (Walk-in)**
+
+Los servicios sin cita **no requieren check-in manual**: el sistema lo registra automáticamente al llegar su hora de inicio. Mientras estén pendientes, el detalle muestra un aviso que lo indica. Consulte el apartado [5.2.7](#527-registrar-un-servicio-sin-cita).
+
+> 📷 **[Apoyo visual pendiente — Figura 5.2.6-F]** Detalle de un servicio sin cita pendiente con el aviso de check-in automático.
+
+**Errores frecuentes y cómo resolverlos**
+
+*Situaciones en las que no se puede iniciar el registro:*
+
+| Situación | Causa | Qué hacer |
+|---|---|---|
+| No aparece el botón **Check-in** y faltan más de 15 minutos para la cita. | La ventana de check-in aún no se abre. | Espere hasta 15 minutos antes de la hora de inicio. |
+| Ya es hora, pero el botón **Check-in** no aparece. | La pantalla revisa la hora aproximadamente cada 30 segundos. También puede deberse a que la hora del dispositivo es incorrecta. | Espere unos segundos. Si no aparece, compruebe la fecha y la hora del dispositivo y actualice la página. |
+| No aparece el botón y ya pasaron 10 minutos o más desde la hora de inicio. | La ventana de check-in venció. | No es posible registrar la llegada en esa cita (vea la nota *Si el cliente llega después de la ventana*, más adelante). |
+| No aparece el botón en una cita con etiqueta **Walk-in**. | El check-in de los servicios sin cita es automático. | No se requiere ninguna acción. |
+| No aparece el botón y la cita está *Iniciada*, *Completada*, *Cancelada* o *Ausencia*. | El estado de la cita no admite check-in. | Abra el detalle y revise el seguimiento para saber qué ocurrió. |
+| No se encuentra la cita del cliente. | Hay filtros activos, la cita es de otra fecha o sucursal, o no fue agendada. | Presione **Restablecer filtros** y busque de nuevo. Confirme la fecha y la sucursal con el cliente. Si no tiene cita, puede registrar un servicio sin cita (ver [5.2.7](#527-registrar-un-servicio-sin-cita)). |
+
+*Mensajes que pueden aparecer al registrar el check-in.* Si usó el listado, el mensaje aparece **arriba de la tabla** y puede cerrarse con la **X**; si usó el detalle, aparece **dentro de la ventana**.
+
+| Mensaje | Causa | Qué hacer |
+|---|---|---|
+| *No se puede hacer check-in anticipado: el barbero tiene otra cita en el horario previo.* | El mismo barbero tiene una cita pendiente o en curso en los 15 minutos previos. Esto incluye la cita de un cliente que aún no llega. | Pida al cliente que espere y registre el check-in **a partir de la hora de inicio** de su cita, antes de que se cumplan 10 minutos. |
+| *Es demasiado pronto para hacer check-in. Se habilita 15 minutos antes de la hora de inicio.* | Faltan más de 15 minutos, por ejemplo, porque la cita se reagendó o la hora del dispositivo está adelantada. | Actualice la página, revise el horario de la cita y espere a que se abra la ventana. |
+| *La ventana de check-in venció (10 minutos después de la hora de inicio).* | Pasaron 10 minutos o más desde la hora de inicio. | No es posible registrar la llegada en esa cita. |
+| *Esta cita ya no admite check-in porque su estado cambió.* | Otra persona registró la llegada o canceló la cita, o el sistema la marcó como *Ausencia*. | Actualice la página y revise el estado actual. |
+| *No se pudo registrar el check-in porque el estado o el horario de la cita ya no lo permite.* | La cita cambió antes de completar el registro. | Actualice la página y revise la cita. |
+| *No tienes permiso para registrar el check-in de esta cita.* | La cita no pertenece a su sucursal o a las sucursales a su cargo. | Verifique que haya iniciado sesión con la cuenta correcta. Si el problema continúa, contacte al gerente o a soporte. |
+| *No se encontró la cita solicitada.* | La cita ya no existe en el sistema. | Actualice la página y vuelva a buscarla. |
+| *No se pudo conectar con el servidor. Verifica tu conexión e intenta de nuevo.* | No hubo conexión con el servidor. | Revise su conexión. Antes de repetir, actualice la página y compruebe si la cita ya aparece como *Iniciada*. |
+| El sistema le pide iniciar sesión nuevamente. | La sesión expiró. | Inicie sesión (ver [3.4](#34-expiración-de-la-sesión)) y compruebe el estado de la cita antes de repetir el registro. |
+
+> **Si el cliente llega después de la ventana:** la cita pasa a **Ausencia** y no puede reactivarse. Si desea atenderlo, puede registrar un **servicio sin cita**, siempre que quede disponibilidad ese día (ver [5.2.7](#527-registrar-un-servicio-sin-cita)). Si la cita incluía una recompensa del programa de fidelidad, la *Ausencia* hace que el cliente la pierda (ver [4.6](#46-programa-de-fidelidad)).
+
+Si el problema persiste, consulte la sección [7. Soporte técnico](#7-soporte-técnico).
+
+**Recomendaciones de uso**
+
+- **Registre la llegada en cuanto el cliente se presente.** Si pasan 10 minutos desde la hora de inicio sin check-in, la cita se marca como *Ausencia*, aunque el cliente esté en la barbería.
+- **Confirme que sea la cita correcta antes de presionar el botón**, sobre todo si hay clientes con nombres parecidos o un cliente con varias citas. No hay confirmación previa ni forma de revertir el registro.
+- **No registre llegadas por adelantado** para clientes que aún no están presentes: la cita pasaría a *Completada* y contaría como servicio atendido en el programa de fidelidad.
+- **Haga los cambios necesarios antes del check-in.** Los servicios, el barbero y las notas solo pueden modificarse antes de la hora de inicio y mientras la cita no esté *Iniciada* (ver [5.2.4](#524-editar-o-reprogramar-una-cita)).
+- **Actualice la página periódicamente** si mantiene abierto el listado. Los cambios automáticos de estado y los registros de otras personas no se reflejan por sí solos.
+- Para registrar que un cliente **no se presentó**, consulte el apartado [5.2.8](#528-seguimiento-de-estados).
 
 #### 5.2.7 Registrar un servicio sin cita
 
-*(por desarrollar)*
+**Perfil:** Recepcionista · Gerente/Asistente. Los clientes no pueden registrar servicios sin cita. Para conocer las reglas que los rigen, consulte *Servicios sin cita* en el apartado [4.2.3](#423-estado-y-progreso-de-la-cita). Use este procedimiento cuando una persona **llega a la barbería sin haber agendado** y desea atenderse **ese mismo día**. En los listados, estos servicios se identifican con la etiqueta **Walk-in**.
+
+> **Importante:** al llegar la hora de inicio, el sistema **registra el check-in automáticamente**. Después, el servicio ya no puede editarse ni cancelarse, y pasa a **Completada** al llegar su hora de término. Registre el servicio solo si el cliente **está en la barbería** y aceptó el horario.
+
+**Antes de comenzar:**
+
+- Pregunte al cliente qué **servicios** desea.
+- Pregunte si **tiene una cuenta** en la plataforma. Si no la tiene, se registra como **visitante**.
+- Considere que solo pueden usarse **horarios del día en curso**. Si no queda disponibilidad hoy, deberá ofrecerle agendar otro día (ver [5.2.2](#522-agendar-una-cita-personal)).
+- El horario que ofrece el sistema **no necesariamente es inmediato**: depende del turno y de las citas de cada barbero, así como de la duración de los servicios.
+
+---
+
+**A. Abrir el registro de un servicio sin cita**
+
+1. En el menú de navegación, presione **Agendar Cita**. En teléfonos y tabletas, abra primero el menú ☰.
+2. En la parte superior de la página, presione **Registrar servicio sin cita**. El título de la página cambia a **Registrar servicio sin cita**.
+
+> Para volver al agendado normal, presione **Agendar cita con fecha**. Al cambiar entre ambos modos, el formulario se vacía.
+
+> 📷 **[Apoyo visual pendiente — Figura 5.2.7-A]** Página *Agendar cita* del personal con el botón *Registrar servicio sin cita*.
+
+---
+
+**B. Capturar la sucursal, los servicios y el cliente**
+
+1. En **Sucursal**, seleccione el local. Si solo tiene una sucursal disponible, como en el caso del **recepcionista**, aparece ya seleccionada. El **gerente o asistente** puede elegir cualquiera de las sucursales a su cargo.
+2. En **Servicio**, seleccione el servicio solicitado. Si requiere más de uno, use **Añadir otro servicio** (y la **X** para quitar uno).
+3. En la sección **Cliente**, indique a nombre de quién se registra el servicio, igual que en el paso 4 del apartado [5.2.2](#522-agendar-una-cita-personal):
+   - **Cliente registrado:** búsquelo por nombre, apellido o correo y presione el resultado correcto.
+   - **Visitante:** escriba su nombre completo (máximo 100 caracteres).
+
+> 📷 **[Apoyo visual pendiente — Figura 5.2.7-B]** Formulario en modo *Registrar servicio sin cita* con la sucursal, los servicios y el cliente capturados.
+
+---
+
+**C. Elegir el barbero y el horario**
+
+En este modo **no hay calendario**. Cuando la sucursal y al menos un servicio están seleccionados, aparece el panel **Próximo horario de hoy**.
+
+1. Revise las opciones. El sistema muestra **una por barbero**, con su **primer horario disponible de hoy** para los servicios elegidos, ordenadas de la hora más temprana a la más tardía. Los barberos sin disponibilidad no aparecen.
+2. El sistema **preselecciona la primera opción** de la lista. Cuando hay horarios distintos, el más temprano se identifica como **Más próximo**.
+3. Informe al cliente las opciones (barbero y hora) y presione **la que prefiera**. La opción elegida queda resaltada.
+
+> 📷 **[Apoyo visual pendiente — Figura 5.2.7-C]** Panel *Próximo horario de hoy* con varios barberos, la etiqueta *Más próximo* y una opción seleccionada.
+>
+> 📷 **[Apoyo visual pendiente — Figura 5.2.7-D]** Panel con el mensaje *No queda disponibilidad hoy para estos servicios*.
+
+---
+
+**D. Revisar y registrar**
+
+1. En el panel **Información de la cita**, identificado con la etiqueta **Walk-in**, revise el cliente, la sucursal, la fecha (la de hoy), el horario con el barbero, los servicios, el precio total y la duración total.
+2. Compruebe que **la hora elegida no haya pasado** mientras capturaba los datos, ya que la lista de horarios no se actualiza sola.
+3. Presione **Registrar servicio**. El botón se habilita cuando están completos el cliente, la sucursal, los servicios y el horario. Presiónelo una sola vez y espere sin cerrar la página.
+
+Debajo del botón, el sistema indica a qué hora la cita *pasará sola a "en curso"*. Ese momento corresponde al cambio al estado **Iniciada**.
+
+> 📷 **[Apoyo visual pendiente — Figura 5.2.7-E]** Panel *Información de la cita* con la etiqueta *Walk-in* y el botón *Registrar servicio*.
+
+**Cómo hacer cambios antes de registrar**
+
+- Si cambia la **sucursal** o los **servicios**, el sistema vuelve a consultar los horarios y preselecciona la primera opción. **Confirme de nuevo el barbero** que eligió el cliente.
+- El botón **Cancelar** vacía el formulario, incluido el cliente. Si solo tiene una sucursal disponible, esta se selecciona de nuevo. No cancela ningún servicio ya registrado.
+
+---
+
+**E. Verificar el registro y dar seguimiento**
+
+Si la operación es correcta, el sistema muestra **«Servicio sin cita registrado correctamente.»** y lo lleva al listado **Citas**. El servicio avanza así:
+
+| Momento | Estado | Qué observará |
+|---|---|---|
+| Desde el registro y antes de la hora de inicio | **Agendada** | Etiqueta **Walk-in** y la leyenda **Automático** en la columna *Acciones*. El seguimiento muestra **Walk-in registrado**. |
+| A partir de la hora de inicio (la actualización puede tardar cerca de un minuto) | **Iniciada** | El seguimiento agrega **Check-in registrado**, con la indicación *Check-in automático (Walk-in)* y la hora de inicio programada. |
+| A partir de la hora de término | **Completada** | El seguimiento agrega **Cita completada**. |
+
+El personal **no necesita registrar el check-in** y un servicio sin cita **nunca pasa a *Ausencia***. Para ver los cambios de estado, actualice la página.
+
+> 📷 **[Apoyo visual pendiente — Figura 5.2.7-F]** Listado *Citas* con un servicio sin cita recién registrado: aviso de confirmación, etiqueta *Walk-in* y leyenda *Automático*.
+
+**Si algo cambia antes de la hora de inicio**
+
+Mientras no llegue la hora de inicio, el servicio puede cancelarse y editarse, pero su **fecha y hora no pueden modificarse**.
+
+- **El cliente se retira o ya no desea el servicio:** cancélelo **antes de la hora de inicio** (ver [5.2.5](#525-cancelar-una-cita)). Si no lo hace, el sistema lo registrará como atendido.
+- **Cambian los servicios o el barbero:** edite la cita (ver [5.2.4](#524-editar-o-reprogramar-una-cita)). El cambio solo es posible si hay disponibilidad **en el mismo horario**. Si no la hay, cancele el servicio y regístrelo de nuevo.
+- **Desea agregar notas:** el formulario de registro no tiene campo de notas. Puede agregarlas editando la cita antes de la hora de inicio.
+- **El cliente prefiere otra hora de hoy:** cancele el servicio sin cita y regístrelo de nuevo, eligiendo entre los horarios que ofrezca el sistema.
+- **El cliente prefiere atenderse otro día:** cancele el servicio sin cita y agende una **cita normal** (ver [5.2.2](#522-agendar-una-cita-personal)).
+
+**Errores frecuentes y cómo resolverlos**
+
+*Situaciones durante la captura:*
+
+| Situación o mensaje | Causa | Qué hacer |
+|---|---|---|
+| No aparece el botón **Registrar servicio sin cita**. | No se encuentra en la página *Agendar Cita* o su cuenta no es de personal. | Presione **Agendar Cita** en el menú y verifique la cuenta con la que inició sesión. |
+| Las listas de **Sucursal** o **Servicio** aparecen vacías. | No se pudieron cargar los datos o no hay sucursales o servicios activos disponibles para su cuenta. | Actualice la página. Si continúan vacías, contacte al gerente o a soporte. |
+| *Selecciona una sucursal y al menos un servicio para ver la disponibilidad.* | Falta elegir la sucursal o el servicio. | Complete ambos datos. |
+| *No queda disponibilidad hoy para estos servicios. No es posible registrar el servicio sin cita. Ofrece al cliente agendar otro día.* | Ningún barbero tiene hoy un espacio suficiente: las agendas están llenas, los turnos terminan antes de que concluya el servicio o la sucursal no abre ese día (domingo). | Ofrezca agendar otro día (ver [5.2.2](#522-agendar-una-cita-personal)). Si el cliente acepta un servicio más corto o menos servicios, ajuste la selección y revise si hay horarios. |
+| No aparece un barbero en las opciones. | No le queda un horario suficiente hoy, está fuera de turno o no está aceptando citas. | Ofrezca otra de las opciones. Si cree que es un error, pida al gerente que revise la configuración del barbero. |
+| El panel muestra *No se pudo consultar el próximo horario disponible. Intenta de nuevo.* o un mensaje en inglés. | Falló la consulta de horarios. | Revise la conexión y actualice la página. Deberá capturar de nuevo los datos. |
+| El botón **Registrar servicio** aparece deshabilitado. | Falta el cliente, la sucursal, el servicio o el horario, o los horarios todavía se están consultando. | Complete los datos y presione una de las opciones de horario, aunque la lista ya esté visible. |
+| *No se encontraron clientes.* | Ningún cliente coincide con la búsqueda. | Revise la ortografía o busque por correo. Si la persona no tiene cuenta, use **Visitante**. |
+
+*Mensajes que pueden aparecer al registrar.* Aparecen durante unos segundos en la parte superior derecha. Actualmente, la mayoría de las respuestas del servidor se muestran en **inglés**:
+
+| Mensaje | Significado | Qué hacer |
+|---|---|---|
+| *El horario seleccionado se ocupó mientras tanto. Se recalculó el próximo horario disponible.* | El horario ya no está disponible porque su hora pasó o alguien más lo ocupó. | El sistema preselecciona la primera opción de la nueva lista, que **puede ser de otro barbero**. Revísela con el cliente, elija una opción y presione **Registrar servicio** de nuevo. |
+| *Barber not found or is not accepting bookings* (o *…at this shop*) | El barbero dejó de estar disponible. | Actualice la página y capture de nuevo el servicio con otro barbero. |
+| *Service not found or is inactive* | Un servicio dejó de estar disponible. | Actualice la página y seleccione otro servicio. |
+| *Shop not found or is inactive* | La sucursal no está disponible. | Contacte al gerente o a soporte. |
+| *Client not found* | El cliente seleccionado ya no existe en el sistema. | Busque de nuevo al cliente. |
+| *Not authorized to create this appointment* o *Not authorized to manage walk-ins of this shop* | La sucursal no corresponde a su cuenta. | Verifique la cuenta y la sucursal. Si el problema continúa, contacte al gerente o a soporte. |
+| *Network error — could not reach the API* | No hubo conexión con el servidor. | Revise su conexión. **Antes de repetir**, consulte **Citas** para comprobar que el servicio no se haya registrado y así evitar un duplicado. |
+| El sistema le pide iniciar sesión nuevamente. | La sesión expiró. | Inicie sesión (ver [3.4](#34-expiración-de-la-sesión)), compruebe en **Citas** si el servicio se registró y, si no, repita el procedimiento. |
+
+Si el problema persiste, consulte la sección [7. Soporte técnico](#7-soporte-técnico).
+
+**Recomendaciones de uso**
+
+- **Registre el servicio en cuanto el cliente confirme.** Los primeros horarios pueden estar muy próximos y dejar de estar disponibles si la captura se demora.
+- **Comunique la hora de inicio y el barbero** antes de registrar, sobre todo si el cliente tendrá que esperar.
+- **Confirme que el barbero seleccionado sea el que eligió el cliente** antes de presionar **Registrar servicio**, en especial después de cambiar los servicios o de recibir un aviso de horario ocupado.
+- **Confirme todos los servicios desde el registro.** Solo podrán cambiarse antes de la hora de inicio, que puede ser en pocos minutos.
+- **Prefiera «Cliente registrado»** si el cliente tiene cuenta: así el servicio queda en su historial y, al completarse, cuenta para el programa de fidelidad (ver [4.6](#46-programa-de-fidelidad)). Los servicios de **visitantes** no suman a ningún conteo.
+- **Cancele a tiempo los servicios que no se realizarán**, para liberar el horario y evitar que se registren como atendidos.
+- Los servicios sin cita **no generan recordatorios** (ver [4.3](#43-recordatorios-automáticos)).
+- **No use este procedimiento para un cliente que ya tiene una cita de hoy.** Si llegó dentro de la ventana permitida, registre su check-in (ver [5.2.6](#526-registrar-la-llegada-del-cliente-check-in)).
+- Recuerde al cliente que el **pago se realiza en la barbería**.
 
 #### 5.2.8 Seguimiento de estados
 
