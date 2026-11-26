@@ -244,3 +244,14 @@ export const canManageServiceCategories = (performer: UserIdentity): boolean => 
  * /services: Solo los usuarios con rol 'manager' pueden registrar, editar o eliminar servicios del catálogo.
  */
 export const canManageServices = (performer: UserIdentity): boolean => performer.role === 'manager';
+
+/**
+ * /reports: Solo los usuarios con rol 'manager' pueden generar reportes.
+ */
+export const canGenerateReports = (performer: UserIdentity): boolean => performer.role === 'manager';
+
+/**
+ * /reports: un gerente solo genera reportes de las sucursales que administra.
+ */
+export const canGenerateShopReports = (shopId: string, managedShopIds: string[]): boolean =>
+    managedShopIds.includes(shopId);

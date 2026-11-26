@@ -12,9 +12,10 @@ El producto se entrega como:
 - **Reservas y gestión de citas.** Clientes y personal reservan citas según el turno y la disponibilidad del barbero. Las citas se pueden editar (reprogramar, reasignar barbero o cambiar servicios) o cancelar, con reglas según el rol. También se admiten clientes sin cita (walk-ins) y reservas para clientes no registrados (invitados).
 - **Recomendaciones de corte con IA.** El cliente envía una foto, el sistema detecta la forma del rostro y sugiere cortes del catálogo de la barbería. La sugerencia es orientativa y no limita lo que el cliente puede reservar.
 - **Programa de lealtad.** Por cada 6 servicios pagados, el cliente gana un servicio gratis. Las recompensas son válidas en todas las sucursales.
+- **Reportes de desempeño.** El gerente consulta, por sucursal y rango de fechas, los servicios y citas finalizados de uno o varios barberos respecto a los agendados.
 - **Operación de la barbería.** Los gerentes configuran sucursales, turnos, barberos, recepcionistas y el catálogo de servicios compartido. Cada sucursal lleva su propio inventario de insumos, con alertas automáticas de reabastecimiento cuando el stock es bajo.
 
-Planeado pero aún no implementado: recordatorios de citas por WhatsApp y correo electrónico, y reportes para gerencia.
+Planeado pero aún no implementado: recordatorios de citas por WhatsApp y correo electrónico, y otros reportes para gerencia (ingresos, servicios más solicitados, retención de clientes).
 
 ## Usuarios y roles
 
@@ -88,7 +89,7 @@ Barberia/
 
 ## Estado del proyecto
 
-- **Backend**: la API principal está implementada, incluyendo autenticación, usuarios, clientes, personal, sucursales, turnos, catálogo de servicios, insumos, citas (crear, listar, editar, cancelar), disponibilidad y recomendaciones de IA. Aún no están construidos: creación de citas sin cita previa (walk-ins), check-in, transiciones a completada y no-show, canje de recompensas por la API, movimientos de stock de insumos, notificaciones y reportes.
+- **Backend**: la API principal está implementada, incluyendo autenticación, usuarios, clientes, personal, sucursales, turnos, catálogo de servicios, insumos, citas (crear, listar, editar, cancelar), disponibilidad, recomendaciones de IA y reporte de desempeño de barberos. Aún no están construidos: creación de citas sin cita previa (walk-ins), check-in, transiciones a completada y no-show, canje de recompensas por la API, movimientos de stock de insumos y notificaciones.
 - **Web**: vistas por rol para clientes, gerentes y recepcionistas. Algunas vistas de gestión de clientes para el personal todavía usan datos simulados.
 - **Servicio de IA**: la detección de forma de rostro y la recomendación de cortes están implementadas. Todavía no forma parte del CI/CD.
 - **Android**: pantallas de inicio de sesión, inicio y perfil. Las pantallas de reservas, citas, recomendaciones y lealtad aún no están construidas.
