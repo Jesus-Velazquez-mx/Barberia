@@ -183,7 +183,7 @@ CREATE TRIGGER trg_barbers_updated_at BEFORE UPDATE ON barbers
 CREATE TABLE clients (
     user_id                    uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     facial_structure_type      facial_structure_type,
-    completed_services_count   integer NOT NULL DEFAULT 0 CHECK (completed_services_count >= 0), -- paid services since the last free reward; resets to 0 on redemption
+    completed_services_count   integer NOT NULL DEFAULT 0 CHECK (completed_services_count >= 0), -- paid services toward the next free reward; completing a reward subtracts 6 (surplus kept), a reward no-show resets to 0
     client_telegram_id          VARCHAR(64) NULL
 );
 
@@ -409,11 +409,15 @@ CREATE TRIGGER trg_appointments_set_client_email BEFORE INSERT ON appointments
 
 -- Loyalty: every completed, non-reward appointment counts as one paid service
 -- toward the client's next free service; completing a reward-redemption
--- appointment resets the count back to 0 (see clients.completed_services_count).
+-- appointment subtracts the threshold (6) and keeps any surplus, e.g. 8 -> 2
+-- (see clients.completed_services_count); GREATEST is a safety net for the CHECK (>= 0).
+-- The 6 is the same literal as the backend's LOYALTY_REWARD_THRESHOLD (#285) and the one in
+-- check_reward_redemption_insert() (#284): the two SQL literals and the constant change together.
 CREATE FUNCTION update_client_loyalty_count() RETURNS trigger AS $$
 BEGIN
     IF NEW.is_reward_redemption THEN
-        UPDATE clients SET completed_services_count = 0 WHERE user_id = NEW.client_id;
+        UPDATE clients SET completed_services_count = GREATEST(completed_services_count - 6, 0)
+        WHERE user_id = NEW.client_id;
     ELSE
         UPDATE clients SET completed_services_count = completed_services_count + 1 WHERE user_id = NEW.client_id;
     END IF;
