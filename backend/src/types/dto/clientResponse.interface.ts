@@ -22,3 +22,12 @@ export interface ClientDetailResponse {
     updatedAt: Date;
     clientTelegramId: string | null;
 }
+
+export interface LoyaltyStatusResponse {
+    completedServicesCount: number;
+    threshold: number;
+    appointmentsUntilReward: number;
+    rewardAvailable: boolean;
+    hasOpenRewardAppointment: boolean;
+    rewardAppliesOnNextBooking: boolean;
+}

@@ -84,6 +84,15 @@ export const canViewRecommendationHistory = (performer: UserIdentity, targetClie
     performer.role === 'client' ? performer.id === targetClientId : true;
 
 /**
+ * GET /clients/:id/loyalty: un cliente solo puede consultar su propio estado de lealtad; la recepción y los
+ * gerentes pueden consultar el de cualquier cliente para usarlo en sus sucursales.
+ */
+export const canViewClientLoyalty = (performer: UserIdentity, targetClientId: string): boolean =>
+    performer.role === 'client'
+        ? performer.id === targetClientId
+        : performer.role === 'manager' || performer.role === 'receptionist';
+
+/**
  * /suppliesCategories: los usuarios con rol 'manager' y 'receptionist' pueden consultar, crear, editar o eliminar categorías de insumos.
  */
 export const canManageSuppliesCategories = (performer: UserIdentity): boolean =>

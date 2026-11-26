@@ -1,3 +1,4 @@
+import type { Pool, PoolClient } from 'pg';
 import db from '../connection/connection.js';
 import type { AppointmentClient } from '../types/dto/appointmentResponse.interface.js';
 import type { Client, FacialStructureType } from '../types/entities/client.interface.js';
@@ -380,6 +381,55 @@ export const deleteClientById = async (id: string): Promise<void> => {
         client.release();
     }
 };
+
+export interface LoyaltyState {
+    completedServicesCount: number;
+    hasOpenRewardAppointment: boolean;
+}
+
+const queryLoyaltyState = async (
+    queryable: Pick<Pool | PoolClient, 'query'>,
+    userId: string,
+    forUpdate: boolean
+): Promise<LoyaltyState | null> => {
+    const lockClause = forUpdate ? ' FOR UPDATE' : '';
+    const clientResult = await queryable.query<{ completed_services_count: number }>(
+        `SELECT completed_services_count FROM clients WHERE user_id = $1${lockClause}`,
+        [userId]
+    );
+    if (clientResult.rows.length === 0) {
+        return null;
+    }
+
+    const openRewardResult = await queryable.query(
+        `SELECT 1 FROM appointments
+         WHERE client_id = $1
+           AND is_reward_redemption = true
+           AND status IN ('scheduled', 'rescheduled', 'checked_in')
+         LIMIT 1`,
+        [userId]
+    );
+
+    return {
+        completedServicesCount: clientResult.rows[0].completed_services_count,
+        hasOpenRewardAppointment: openRewardResult.rows.length > 0,
+    };
+};
+
+/**
+ * Obtiene el estado de lealtad de un cliente usando el pool (sin candado, para consultas de lectura).
+ */
+export const getLoyaltyState = async (userId: string): Promise<LoyaltyState | null> =>
+    queryLoyaltyState(db.getPool(), userId, false);
+
+/**
+ * Obtiene y bloquea (`FOR UPDATE`) el estado de lealtad del cliente usando la conexión de una transacción abierta.
+ * No abre ni cierra transacciones.
+ */
+export const getLoyaltyStateForUpdate = async (
+    client: PoolClient,
+    userId: string
+): Promise<LoyaltyState | null> => queryLoyaltyState(client, userId, true);
 
 /* Para poner el chat_id de Telegram */
 export const updateClientTelegramId = async (
