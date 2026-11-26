@@ -131,6 +131,7 @@ describe('PUT /api/appointments/:id/cancel', () => {
         expect(res.status).toBe(200);
         expect(res.body.data.id).toBe(id);
         expect(res.body.data.status).toBe('cancelled');
+        expect(res.body.data.cancellationReason).toBe('Cambio de planes');
 
         const row = await getPool().query(
             `SELECT status, cancelled_at, cancellation_reason FROM appointments WHERE id = $1`,

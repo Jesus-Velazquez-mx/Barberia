@@ -17,7 +17,7 @@ export interface ClientAppointmentResponse {
     checkedInAt: Date | null;
     completedAt: Date | null;
     cancelledAt: Date | null;
-    cancelationReason: string | null;
+    cancellationReason: string | null;
     notes: string | null;
     isRewardRedemption: boolean;
     services: AppointmentServiceResponse[];

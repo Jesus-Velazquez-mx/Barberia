@@ -22,7 +22,7 @@ export const toClientAppointmentResponse = (
         checkedInAt: appointment.checked_in_at,
         completedAt: appointment.completed_at,
         cancelledAt: appointment.cancelled_at,
-        cancelationReason: appointment.cancellation_reason,
+        cancellationReason: appointment.cancellation_reason,
         notes: appointment.notes,
         isRewardRedemption: appointment.is_reward_redemption,
         services: services.map((s) => ({
