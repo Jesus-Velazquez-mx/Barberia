@@ -17,6 +17,11 @@ Problemas encontrados al revisar el código durante la redacción del [manual de
 | [ISS-09](#iss-09-el-listado-del-personal-puede-mostrar-estados-desactualizados) | Check-in y consulta de citas (personal) | El listado puede mostrar estados desactualizados, incluso después de un error de check-in. |
 | [ISS-10](#iss-10-un-servicio-sin-cita-puede-reprogramarse-a-otro-día) | Servicios sin cita (edición) | Un servicio sin cita puede reprogramarse a otro día y conserva el check-in automático. |
 | [ISS-11](#iss-11-la-selección-de-barbero-se-reemplaza-al-recalcular-los-horarios) | Registro de servicios sin cita | Al recalcular los horarios, la selección de barbero puede cambiar. |
+| [ISS-12](#iss-12-el-evento-cita-reagendada-desaparece-del-seguimiento) | Seguimiento de la cita (todos los perfiles) | El evento **Cita reagendada** desaparece cuando la cita pasa a otro estado. |
+| [ISS-13](#iss-13-el-clasificador-de-rostros-siempre-arroja-un-resultado) | Recomendación de cortes (análisis de la foto) | El clasificador de rostros siempre arroja un resultado, aunque la foto no muestre un rostro. |
+| [ISS-14](#iss-14-la-cuenta-puede-eliminarse-con-citas-pendientes-o-en-curso) | Mi perfil (eliminación de cuenta) | El cliente puede eliminar su cuenta aunque tenga citas pendientes o en curso. |
+| [ISS-15](#iss-15-la-sesión-se-pierde-al-recargar-después-de-actualizar-los-datos) | Mi perfil (actualización de datos) | Después de actualizar los datos, recargar la página cierra la sesión. |
+| [ISS-16](#iss-16-la-fotografía-del-cliente-no-se-elimina-al-borrar-su-cuenta) | Mi perfil (eliminación de cuenta) y recomendación de cortes | La fotografía del cliente no se elimina cuando este borra su cuenta. |
 
 ---
 
@@ -139,3 +144,123 @@ Las reglas de negocio indican que solo hay servicios sin cita del día actual, a
 **Descripción:** La lista de próximos horarios no se actualiza con el paso del tiempo. Si la hora seleccionada pasa mientras se capturan los datos, o alguien más ocupa el horario, el registro se rechaza con *El horario seleccionado se ocupó mientras tanto*, incluso si la causa fue solo que la hora pasó. Al recalcular, se preselecciona la primera opción de la lista, aunque el cliente hubiera elegido otro barbero. El botón queda habilitado, por lo que se puede registrar el servicio con un barbero distinto sin advertirlo. Lo mismo ocurre al cambiar los servicios.
 
 **Código relacionado:** `frontend/src/containers/BookAppointmentContainer.tsx` (efecto de `getNextAvailability` y `handleBook`).
+
+## ISS-12. El evento «Cita reagendada» desaparece del seguimiento
+
+**Funcionalidad:** Seguimiento de la cita (cliente y personal).
+
+**Descripción:** La línea de tiempo solo muestra el evento **Cita reagendada** mientras la cita está en estado *Reagendada*. Cuando pasa a *Iniciada*, *Completada*, *Cancelada* o *Ausencia*, el evento desaparece y el seguimiento ya no indica que la cita se reprogramó.
+
+**Verificación:** A diferencia de los problemas anteriores revisados solo en el código, este se comprobó ejecutando de forma aislada el componente de la línea de tiempo con datos de prueba (sin backend ni base de datos). No se ha reproducido en la aplicación completa.
+
+| Estado de la cita de prueba | Eventos mostrados |
+|---|---|
+| *Reagendada* | Cita agendada → Cita reagendada |
+| *Iniciada* | Cita agendada → Check-in registrado |
+| *Completada* | Cita agendada → Check-in registrado → Cita completada |
+| *Cancelada* | Cita agendada → Cita cancelada |
+| *Ausencia* | Cita agendada → Cliente ausente |
+
+**Causa:** `buildTimeline` agrega el evento solo si `status === 'rescheduled'`.
+
+**Consideraciones para la corrección:** Quitar esa condición en la interfaz web no es suficiente, porque no se guarda un dato específico de la reprogramación:
+
+- **Cambio solo de barbero:** también deja la cita como *Reagendada*, pero la fecha original y la vigente coinciden. Cuando el estado cambia, comparar ambas fechas no permite detectar la reprogramación.
+- **Fecha y hora del evento:** se toman de `updated_at`, que se sobrescribe con cada modificación de la cita. Después de un cambio de estado ya no corresponde a la reprogramación. Incluso mientras la cita está *Reagendada*, editar solo las notas cambia la fecha que muestra el evento.
+
+**Corrección propuesta (no aplicada):**
+
+1. Agregar a `appointments` una columna `rescheduled_at`, que se actualice solo cuando cambie la fecha, la hora o el barbero.
+2. Incluirla en la respuesta de la API como `rescheduledAt`.
+3. Mostrar el evento siempre que ese campo tenga valor y usarlo como su fecha y hora.
+
+El proyecto no cuenta con una herramienta de migraciones. Además de modificar `init_database.sql`, habría que agregar la columna en las bases de datos existentes **antes** de desplegar el backend que la use. En las citas ya reprogramadas no se conserva la fecha en que se hizo el cambio, y las que solo cambiaron de barbero y ya no están *Reagendadas* no pueden identificarse con los datos de la cita.
+
+> **Nota — comportamiento esperado:** el evento **Cita reagendada** debería mostrarse **siempre** que se haya cambiado la fecha, la hora o el barbero, aunque la cita pase a otro estado, con la fecha y hora del último de esos cambios.
+>
+> El manual de usuario (apartados 4.2.3 y 5.2.8) **ya describe el comportamiento esperado**, aunque todavía no está implementado.
+
+**Código relacionado:** `frontend/src/components/appointments/AppointmentTimelineComponent.tsx` (`buildTimeline`), `backend/src/services/appointmentService.ts` (`updateAppointment`), `backend/src/repositories/appointmentRepository.ts` (`updateAppointmentWithServices`), `backend/database/init_database.sql` (tabla `appointments`).
+
+## ISS-13. El clasificador de rostros siempre arroja un resultado
+
+**Funcionalidad:** Recomendación de cortes (análisis de la foto).
+
+**Descripción:** El clasificador de la estructura facial no comprueba que la foto muestre un rostro. Para cualquier imagen válida que reciba, elige una de las formas que reconoce el modelo: la de mayor puntuación, sin exigir un nivel mínimo de confianza ni contemplar una respuesta de «sin rostro». Por ejemplo, la foto de un objeto o de un paisaje también recibiría una forma de rostro.
+
+**Consecuencias:**
+
+- El resultado se guarda en la cuenta del cliente (`clients.facial_structure_type`) **antes** de solicitar la recomendación.
+- La recomendación utiliza ese dato para seleccionar los cortes candidatos, y las instrucciones que recibe el modelo de recomendación indican que lo trate como un hecho.
+- El segundo paso del análisis tiene instrucciones para rechazar fotos que no muestren el rostro y el cabello. Sin embargo, ese rechazo no borra la forma ya guardada.
+- Si el cliente reutiliza la misma foto, no se vuelve a clasificar: se usa el dato guardado. Este se descarta cuando el cliente solicita una nueva subida de foto.
+
+**Código relacionado:** `ai_service/app/services/face_classifier.py` (`classify_image_bytes`), `ai_service/app/api/face.py` (`detect_structure`), `backend/src/services/aiService.ts` (`requestRecommendation`), `ai_service/app/services/recommend_haircut.py` (`_build_haircut_prompt`), `backend/src/services/bucketService.ts` (`generatePresignedURL`).
+
+## ISS-14. La cuenta puede eliminarse con citas pendientes o en curso
+
+**Funcionalidad:** Mi perfil (eliminación de cuenta del cliente).
+
+**Descripción:** Desde **Mi Perfil**, el cliente puede eliminar su cuenta aunque tenga citas pendientes (*Agendadas* o *Reagendadas*) o en curso (*Iniciadas*). La interfaz web usa `DELETE /api/users/:id`, que no comprueba las citas del cliente, por lo que no impide la operación ni explica ningún motivo. Esto incumple la regla documentada en `docs/epic-appointment-status-business-rules.md`: las citas en esos estados bloquean el borrado de clientes.
+
+**Consecuencias:**
+
+- La cuenta se elimina y las citas conservan su estado; solo pierden la liga con ella (`client_id` queda en `NULL`).
+- Las que están *Agendadas* o *Reagendadas* siguen ocupando el horario del barbero mientras mantengan ese estado.
+- En la vista del personal, la interfaz web las mostraría como de un **Visitante**, con el nombre **Cliente** y **Sin correo**, por lo que no se puede identificar ni contactar desde ahí a quien las agendó.
+
+**Verificación:** El comportamiento del servidor se comprobó ejecutando ambas rutas contra una base de datos temporal; en cada caso, un cliente intentó eliminar su propia cuenta. No se probó en las pantallas de la aplicación; lo que muestra la vista del personal se identificó mediante análisis del código.
+
+| Estado de la cita | `DELETE /api/users/:id` | `DELETE /api/clients/:id` |
+|---|---|---|
+| *Agendada*, *Reagendada* o *Iniciada* | Elimina la cuenta (200) | Rechaza la operación (409, *Cannot delete a client with pending appointments*) |
+| *Completada* o *Cancelada* | Elimina la cuenta (200) | Elimina la cuenta (200) |
+
+> **Nota — comportamiento esperado:** el cliente **no debe poder eliminar su cuenta** si tiene citas pendientes o en curso. Al intentarlo, debe mostrarse un mensaje que explique **por qué no se puede realizar la operación**. Las citas no se cancelan automáticamente.
+>
+> El apartado 5.5 del manual de usuario **ya describe el comportamiento esperado**, aunque todavía no está implementado.
+
+**Solución:** La corrección comprende **únicamente la migración de los endpoints** de perfil a `/api/clients/:id`, tanto en la web como en Android. **No incluye la eliminación de `/api/users`.**
+
+| Cliente | Operaciones a migrar |
+|---|---|
+| Web (dashboard de **Mi Perfil**) | Actualización de datos, cambio de contraseña y eliminación de la cuenta. |
+| Android (perfil) | Actualización de datos y eliminación de la cuenta. La migración de Android es **necesaria**. |
+
+- `PUT /api/users` se sustituye por `PUT /api/clients/:id`.
+- `DELETE /api/users/:id` se sustituye por `DELETE /api/clients/:id`, que ya rechaza la eliminación en los tres estados indicados. La pantalla **Clientes** del personal ya utiliza esta ruta para eliminar.
+
+**Consideraciones para la migración:**
+
+- **Mensaje:** el servidor responde en inglés. La interfaz web y la aplicación de Android deben mostrar un mensaje en español que explique el motivo. Android no define un texto propio para la respuesta 409.
+- **Formato de la actualización:** `PUT /api/clients/:id` admite los campos que se editan en el perfil. A diferencia de `PUT /api/users`, no usa el objeto `user` que envuelve los datos; la web y Android deben ajustar el cuerpo de la solicitud.
+- **Respuesta de la actualización:** no incluye el campo `profile`, por lo que la web debe convertirla antes de guardar el usuario, como ya hace al consultar el perfil. De lo contrario, persistiría [ISS-15](#iss-15-la-sesión-se-pierde-al-recargar-después-de-actualizar-los-datos). Según el código, Android ignora los campos adicionales de la respuesta; la compatibilidad no se ha probado.
+- **Limitación conocida:** mientras `DELETE /api/users/:id` conserve su comportamiento actual, seguirá permitiendo eliminar clientes sin la comprobación mediante solicitudes directas del propio cliente o de un gerente (según el código), y desde versiones de la aplicación de Android que no se hayan actualizado.
+
+**Código relacionado:** `frontend/src/containers/DeleteAccountModalContainer.tsx`, `frontend/src/containers/EditUserModalContainer.tsx`, `frontend/src/containers/ChangePasswordModalContainer.tsx`, `frontend/src/services/userService.ts`, `frontend/src/services/clientService.ts`, `frontend/src/services/appointmentService.ts` (`resolveClient`), `backend/src/services/userService.ts` (`deleteUserById`), `backend/src/services/clientService.ts` (`updateClient`, `deleteClient`), `backend/src/repositories/appointmentRepository.ts` (`hasPendingAppointmentsByClientId`), `android/app/src/main/java/com/mrbarber/cliente/features/perfil/data/remote/UserApi.kt`, `android/app/src/main/java/com/mrbarber/cliente/features/perfil/data/remote/dto/UpdateUserRequestDto.kt`, `android/app/src/main/java/com/mrbarber/cliente/features/perfil/data/repository/ProfileRepositoryImpl.kt`, `android/app/src/main/java/com/mrbarber/cliente/core/common/ErrorMessages.kt`.
+
+## ISS-15. La sesión se pierde al recargar después de actualizar los datos
+
+**Funcionalidad:** Mi perfil (actualización de datos del cliente).
+
+**Descripción:** Después de guardar cambios en la ventana *Editar usuario*, si el cliente recarga la página, la aplicación descarta la sesión y le pide iniciar sesión de nuevo, aunque la sesión no haya expirado.
+
+**Causa:** La respuesta de `PUT /api/users` no incluye el campo `profile`. La interfaz web reemplaza con esa respuesta el usuario guardado en el navegador. Al recargar, la validación de la sesión exige `profile`; como falta, considera inválido el usuario guardado y borra la sesión.
+
+El problema no se presenta si, antes de recargar, la pantalla **Mi perfil** vuelve a consultar los datos correctamente, lo que ocurre al salir de ella y entrar de nuevo. El cambio de contraseña no tiene este problema, porque no reemplaza el usuario guardado.
+
+**Código relacionado:** `frontend/src/containers/EditUserModalContainer.tsx`, `frontend/src/pages/client/EditUserPage.tsx` (`handleUpdated`), `frontend/src/context/AuthContext.tsx` (`updateUser`, `restoreSession`), `frontend/src/utils/userValidation.ts` (`isStoredUserValid`), `backend/src/utils/userMapper.ts` (`toUserResponse`).
+
+## ISS-16. La fotografía del cliente no se elimina al borrar su cuenta
+
+**Funcionalidad:** Mi perfil (eliminación de cuenta) y recomendación de cortes (almacenamiento de la foto).
+
+**Descripción:** Cuando el cliente elimina su cuenta, el sistema borra sus registros de la base de datos, pero no la fotografía que subió para las recomendaciones de corte. No se encontró en el backend ni en el servicio de IA ninguna operación que borre fotos del almacenamiento (S3). Por lo tanto, la foto del rostro permanece guardada con una clave que contiene el identificador de la cuenta eliminada.
+
+La eliminación del cliente desde la pantalla **Clientes** del personal tampoco borra la foto.
+
+`docs/architecture.md` confirma que no existe un procedimiento de borrado ni una política de retención de fotos. No se revisó la configuración del bucket, por lo que no se sabe si tiene reglas propias de expiración definidas fuera del repositorio.
+
+> **Nota — comportamiento esperado:** al borrar su cuenta, también debería eliminarse la **fotografía del cliente**.
+
+**Código relacionado:** `backend/src/services/userService.ts` (`deleteUserById`), `backend/src/repositories/userRepository.ts` (`hardDeleteClient`), `backend/src/services/clientService.ts` (`deleteClient`), `backend/src/services/bucketService.ts`, `backend/src/utils/photoKey.ts` (`getUserPhotoKey`).
