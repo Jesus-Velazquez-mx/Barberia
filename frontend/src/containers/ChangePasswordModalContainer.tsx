@@ -7,7 +7,7 @@ import { ChangePasswordModal } from '../components/profile/ChangePasswordModalCo
 import { Toast } from '../components/common/ToastComponent';
 import { useAuth } from '../context/AuthContext';
 
-const REQUIRED_MESSAGE = 'Debe capturar su contraseña actual, la nueva contraseña y su confirmación.';
+const REQUIRED_MESSAGE = 'Debe capturar la nueva contraseña y su confirmación.';
 const POLICY_MESSAGE = 'La contraseña debe tener al menos 8 caracteres, una mayúscula y un número.';
 /* RN-03: mínimo 8 caracteres, al menos una mayúscula y un número */
 const PASSWORD_POLICY_REGEX = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
