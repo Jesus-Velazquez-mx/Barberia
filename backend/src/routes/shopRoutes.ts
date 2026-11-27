@@ -393,6 +393,8 @@ router.get('/shops/:id/receptionists', listReceptionistsByShop);
  *         client solo su propia cita; receptionist solo citas de su sucursal; manager solo citas de las sucursales que administra (sin permiso → 403).
  *       - La cita debe pertenecer a la sucursal `{id}` (si no → 422). Esta validación ocurre después de la de permiso, para no revelar
  *         a qué sucursal pertenece una cita ajena.
+ *       - Los servicios que ya forman parte de la cita se aceptan aunque se hayan desactivado después de agendarla, y cuentan con su
+ *         duración original (`duration_minutes_at_booking`); los servicios nuevos deben existir y estar activos (si no → 404).
  *
  *       Con `excludeAppointmentId` este endpoint solo garantiza la **ocupación**: los horarios devueltos no chocan con ninguna otra cita
  *       del barbero, con las mismas reglas que usa `PUT /api/appointments/{id}` para la misma cita, barbero y servicios. **No** valida las
@@ -475,7 +477,7 @@ router.get('/shops/:id/receptionists', listReceptionistsByShop);
  *       403:
  *         description: El solicitante no tiene permiso para editar la cita indicada en `excludeAppointmentId`.
  *       404:
- *         description: Sucursal no encontrada/inactiva, algún servicio no encontrado/inactivo, o la cita indicada en `excludeAppointmentId` no existe.
+ *         description: Sucursal no encontrada/inactiva, algún servicio no encontrado/inactivo (salvo los que ya pertenecen a la cita indicada en `excludeAppointmentId`), o la cita indicada en `excludeAppointmentId` no existe.
  *       422:
  *         description: La cita indicada en `excludeAppointmentId` no pertenece a la sucursal `{id}`.
  *       500:
