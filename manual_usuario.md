@@ -47,8 +47,9 @@
      - 5.2.8 [Seguimiento de estados](#528-seguimiento-de-estados)
    - 5.3 [Obtener una recomendación de corte](#53-obtener-una-recomendación-de-corte)
    - 5.4 [Recordatorios](#54-recordatorios)
-   - 5.5 [Mi perfil e historial del cliente](#55-mi-perfil-e-historial-del-cliente)
-   - 5.6 [Programa de fidelidad](#56-programa-de-fidelidad)
+   - 5.5 [Mi perfil](#55-mi-perfil)
+   - 5.6 [Historial del cliente](#56-historial-del-cliente)
+   - 5.7 [Programa de fidelidad](#57-programa-de-fidelidad)
 6. [Administración de catálogos](#6-administración-de-catálogos)
    - 6.1 [Conceptos generales](#61-conceptos-generales)
    - 6.2 [Sucursales](#62-sucursales)
@@ -140,7 +141,7 @@ Consideraciones adicionales:
 - Debe estar habilitado **JavaScript**.
 - Debe permitirse el **almacenamiento local** del navegador (`localStorage`): el sistema lo usa para conservar la sesión iniciada. En modo incógnito o con el almacenamiento bloqueado, la sesión se perderá al cerrar la ventana o podría no iniciarse correctamente.
 - La plataforma tiene diseño adaptable, por lo que puede usarse en computadora, tableta o teléfono. Para tareas administrativas (gerentes y recepcionistas) se recomienda una **computadora de escritorio o portátil**.
-- Para la función de recomendación de cortes, el navegador debe permitir **seleccionar un archivo de imagen** del dispositivo (formatos de imagen, hasta **5 MB**).
+- Para la función de recomendación de cortes, el navegador debe permitir **seleccionar un archivo de imagen** del dispositivo (formato JPG, PNG o WEBP, hasta **5 MB**).
 - No se admite Internet Explorer.
 
 > **Aplicación móvil:** existe además una aplicación para Android dirigida únicamente a clientes (inicio de sesión, inicio y perfil). Las funciones de recepcionistas y gerentes **solo están disponibles en la plataforma web**. Este manual cubre exclusivamente la plataforma web.
@@ -292,7 +293,7 @@ Cierre siempre su sesión al terminar de usar el sistema, especialmente en equip
 
 La pantalla de inicio de sesión muestra el enlace **¿Olvidaste tu contraseña?**; sin embargo, **la recuperación de contraseña por cuenta propia aún no está disponible** en la plataforma: al presionar el enlace el sistema lo regresa a la pantalla de inicio de sesión.
 
-Si olvidó su contraseña, contacte a soporte técnico (sección [7](#7-soporte-técnico)) indicando el correo con el que está registrado. Si conoce su contraseña actual y solo desea cambiarla, un cliente puede hacerlo desde **Mi Perfil** (opción de cambio de contraseña).
+Si olvidó su contraseña, contacte a soporte técnico (sección [7](#7-soporte-técnico)) indicando el correo con el que está registrado. Si tiene una sesión abierta y solo desea cambiarla, un cliente puede hacerlo desde **Mi Perfil** (opción de cambio de contraseña), **sin necesidad de ingresar su contraseña actual** (ver [5.5](#55-mi-perfil)).
 
 ---
 
@@ -623,9 +624,14 @@ El sistema revisa las citas próximas **cada 15 minutos**, por lo que el mensaje
 | Cita de un **visitante** (sin cuenta) | No: no hay datos de contacto asociados |
 | **Servicio sin cita** (walk-in) | No: se atiende en el momento |
 | Cita **Cancelada**, **Iniciada**, **Completada** o **Ausencia** | No |
-| Cita agendada con **menos de 24 horas** de anticipación | No recibe el primer aviso, solo el segundo si todavía faltan unas 4 horas o más |
-| Cita agendada con **menos de 4 horas** de anticipación | No recibe recordatorios |
+| Cita agendada o reprogramada con **menos de 23 horas y 30 minutos** de anticipación | No recibe el primer aviso; solo puede recibir el segundo, si todavía faltan al menos 3 horas y 30 minutos |
+| Cita agendada o reprogramada con **menos de 3 horas y 30 minutos** de anticipación | No recibe recordatorios |
 | Cliente que **no ha vinculado** Telegram | No recibe el aviso; el sistema deja constancia de que no pudo enviarse |
+
+> **Avisos no garantizados:** hay un margen de **15 minutos por encima de cada límite** en el que el aviso puede llegar o no, según el momento en que el sistema realice su siguiente revisión:
+>
+> - **Aviso de 24 horas:** si al agendar o reprogramar faltan entre **23 horas y 30 minutos** y **23 horas y 45 minutos**.
+> - **Aviso de 4 horas:** si al agendar o reprogramar faltan entre **3 horas y 30 minutos** y **3 horas y 45 minutos**.
 
 **Cómo vincular Telegram (cliente)**
 
@@ -634,7 +640,7 @@ La vinculación se hace una sola vez desde la opción **Recordatorios** del men�
 1. Ingrese a **Recordatorios**. Si su cuenta aún no está vinculada, la pantalla muestra el título **Vincula tu cuenta** y un **código QR**.
 2. Escanee el código con la cámara de su teléfono. Se abrirá la conversación con el bot de Mr. Barber en Telegram.
 3. En Telegram, presione **Iniciar**. El bot responderá con un mensaje de confirmación que indica que la cuenta quedó vinculada y que recibirá avisos 24 y 4 horas antes de cada cita.
-4. Regrese a la plataforma. La pantalla se actualiza al volver a la pestaña; si no lo hace, presione **Ya escaneé el código**.
+4. Regrese a la plataforma. La pantalla se actualiza al volver a la pestaña; si no lo hace, presione **Ya escanee el código**.
 5. Cuando la vinculación se completó, la pantalla muestra la etiqueta **Notificaciones Activas** y el mensaje **Telegram vinculado**.
 
 📷 **[Apoyo visual pendiente — Figura 4.3-1: pantalla Recordatorios con el código QR para vincular]**
@@ -653,12 +659,12 @@ La vinculación se hace una sola vez desde la opción **Recordatorios** del men�
 
 | Situación | Causa probable | Qué hacer |
 |---|---|---|
-| El QR no se muestra y queda en **Generando QR…** | La conexión es lenta o la aplicación no pudo generar el enlace | Recargue la página. Si persiste, informe a la gerencia |
+| El QR no se muestra y queda en **Generando QR…** | La plataforma no pudo generar el código | Recargue la página. Si persiste, informe a la gerencia |
 | El bot responde **«El enlace de vinculación no es válido. Genera un nuevo código QR desde tu cuenta.»** | El enlace que se abrió está incompleto o se modificó | Vuelva a **Recordatorios** y escanee de nuevo el código QR de la pantalla |
 | El bot responde **«No encontramos tu cuenta de cliente en el sistema.»** | La cuenta que inició sesión no es de un cliente registrado | Verifique que haya iniciado sesión con su cuenta de cliente y repita el escaneo |
 | El bot responde **«Ocurrió un error al vincular tu cuenta. Intenta escanear el código nuevamente.»** | Falla temporal del sistema | Escanee el código otra vez en unos minutos |
 | Al abrir el bot sin el código, este solo da la bienvenida y pide escanear el QR | Se entró al bot directamente, sin pasar por el QR | Entre a **Recordatorios** en la plataforma y escanee el código |
-| La pantalla sigue mostrando el QR después de presionar **Iniciar** en Telegram | La pantalla aún no se actualiza | Presione **Ya escaneé el código** |
+| La pantalla sigue mostrando el QR después de presionar **Iniciar** en Telegram | La pantalla aún no se actualiza | Presione **Ya escanee el código** |
 | La cuenta aparece vinculada, pero no llegó el recordatorio | La cita es de un visitante, un servicio sin cita o ya no está Agendada/Reagendada; o se agendó con muy poca anticipación (ver tabla anterior); o el cliente bloqueó el bot en Telegram | Revise el estado y la anticipación de la cita; pida al cliente verificar que no haya bloqueado el bot de Mr. Barber |
 
 **Recomendaciones de uso**
@@ -748,7 +754,7 @@ Los filtros se aplican de inmediato y el botón **Filtros** indica cuántos hay 
 - Consulte **Citas canceladas** si necesita confirmar que una cita quedó cancelada.
 - Use el filtro por **Servicio** para ver cuántas veces ha agendado un servicio en particular.
 - Si una cita no aparece donde espera, revise las **otras pestañas** y los **filtros activos** (el contador del botón *Filtros* lo indica).
-- Para el procedimiento paso a paso, consulte [5.2.3](#523-consultar-y-filtrar-citas) y [5.5](#55-mi-perfil-e-historial-del-cliente).
+- Para el procedimiento paso a paso, consulte [5.2.3](#523-consultar-y-filtrar-citas) y [5.6](#56-historial-del-cliente).
 
 ### 4.5 Recomendación personalizada de cortes
 
@@ -769,7 +775,7 @@ La plataforma sugiere al cliente cortes de cabello adecuados a su **estructura f
 | Elemento | Descripción |
 |---|---|
 | **Cortes sugeridos** | Uno o varios cortes del catálogo, mostrados como etiquetas. Los que tienen fotografía de referencia muestran un **ícono de ojo**; al presionarlos se despliega la imagen del corte. |
-| **Sugerencia** | Texto que resume la recomendación. |
+| **Recomendación** | Texto que resume la sugerencia. |
 | **Por qué** | Explicación del motivo por el que se sugieren esos cortes. |
 | **Confianza** | Porcentaje que indica qué tan seguro está el sistema de la sugerencia. Es un indicador orientativo. |
 
@@ -783,7 +789,7 @@ En la misma pantalla, el apartado **Recomendaciones anteriores** lista las recom
 
 **Requisitos de la foto**
 
-- Debe ser una **imagen** (cualquier formato de imagen común) de **máximo 5 MB**.
+- Debe ser una imagen en formato **JPG (JPEG), PNG o WEBP**, de **máximo 5 MB**.
 - Se recomienda una foto **de frente, con buena iluminación y sin gorra ni lentes**, como indica la propia pantalla.
 - La foto nueva **reemplaza** a la anterior: la plataforma conserva únicamente la última foto subida para poder reutilizarla.
 - Al subir una foto nueva se vuelve a identificar la estructura facial.
@@ -806,7 +812,7 @@ En la misma pantalla, el apartado **Recomendaciones anteriores** lista las recom
 | Mensaje o situación | Causa probable | Qué hacer |
 |---|---|---|
 | **«Sube o toma una foto para continuar.»** | Se presionó *Obtener recomendación* sin foto | Presione **Subir foto** o **Usar cámara**, o marque **Usar la última foto subida** si está disponible |
-| **«El archivo debe ser una imagen.»** | El archivo seleccionado no es una imagen | Elija un archivo de imagen |
+| **«El archivo debe ser una imagen.»** | El archivo seleccionado no es una imagen | Elija una imagen JPG (JPEG), PNG o WEBP |
 | **«La imagen no debe pesar más de 5 MB.»** | La foto es demasiado grande | Use una foto de menor tamaño o reduzca su resolución |
 | **«Permiso de cámara denegado. Habilítalo en tu navegador o sube una foto.»** | El navegador no tiene permiso para usar la cámara | Permita el acceso a la cámara en el navegador o suba una foto desde el dispositivo |
 | **«No se encontró ninguna cámara en este dispositivo.»** | El dispositivo no tiene cámara | Suba una foto desde el dispositivo |
@@ -912,7 +918,7 @@ El programa de fidelidad premia la constancia de los **clientes registrados**: a
 - **Para el personal:** al agendar a nombre de un cliente, selecciónelo como **cliente registrado**; con un visitante no hay conteo ni recompensa (ver [4.2.1](#421-programación-de-citas)).
 - **Para el personal:** si cambia los servicios de una cita con recompensa, recuerde que el servicio gratuito pasa a ser el más barato de la nueva selección; informe al cliente para que el cobro en la barbería sea el correcto.
 
-Para ver cómo agendar una cita, consulte [5.2.1](#521-agendar-una-cita-cliente) y [5.2.2](#522-agendar-una-cita-personal); para la consulta del avance, el apartado [5.6](#56-programa-de-fidelidad).
+Para ver cómo agendar una cita, consulte [5.2.1](#521-agendar-una-cita-cliente) y [5.2.2](#522-agendar-una-cita-personal); para la consulta del avance, el apartado [5.7](#57-programa-de-fidelidad).
 
 ### 4.7 Funcionalidades en desarrollo
 
@@ -932,7 +938,7 @@ Funcionalidades contempladas que aún no están disponibles en el sistema:
 Esta sección presenta los procedimientos paso a paso para cada funcionalidad descrita en la sección 4.
 
 <!--
-Cada procedimiento (5.2.x a 5.6) incluye, dentro de su propia subsección y sin encabezados dedicados:
+Cada procedimiento (5.2.x a 5.7) incluye, dentro de su propia subsección y sin encabezados dedicados:
   - Apoyo visual (capturas de pantalla, diagramas)
   - Errores frecuentes y cómo resolverlos
   - Recomendaciones de uso
@@ -1722,21 +1728,723 @@ Si el problema persiste, consulte la sección [7. Soporte técnico](#7-soporte-t
 
 #### 5.2.8 Seguimiento de estados
 
-*(por desarrollar)*
+**Perfil:** Cliente (solo consulta) · Recepcionista · Gerente/Asistente. La opción **Marcar inasistencia** es exclusiva del **recepcionista**. Para conocer el significado de cada estado, el ciclo de vida de la cita y las transiciones automáticas, consulte el apartado [4.2.3](#423-estado-y-progreso-de-la-cita).
+
+El seguimiento permite saber **en qué punto se encuentra una cita** y **qué ha ocurrido con ella**. La plataforma lo muestra de dos formas:
+
+- La **etiqueta de estado**, que indica la situación actual. Aparece en el listado y en el detalle de la cita.
+- La sección **Seguimiento** del detalle, una línea de tiempo con los hechos de la cita y su fecha y hora.
+
+No existe una opción para elegir o cambiar libremente el estado de una cita: este cambia como resultado de una acción (reprogramar, registrar la llegada, cancelar o marcar la inasistencia) o de forma **automática** según la hora.
+
+> **Importante:** las pantallas **no se actualizan solas**. Si mantiene abierto un listado o un detalle, **actualice la página** para ver los cambios automáticos y los que hayan hecho otras personas.
+
+**Cómo identificar el estado**
+
+| Etiqueta | Color | ¿Es un estado final? |
+|---|---|---|
+| **Agendada** | Turquesa | No |
+| **Reagendada** | Dorado | No |
+| **Iniciada** | Azul | No |
+| **Completada** | Verde | Sí |
+| **Cancelada** | Rosa | Sí |
+| **Ausencia** | Terracota | Sí |
+
+Además de su estado, una cita puede mostrar el distintivo **Walk-in** (servicio sin cita) o el de recompensa del programa de fidelidad (una **estrella** en el listado y la etiqueta **Recompensa otorgada** en el detalle). Estos distintivos no son estados.
+
+---
+
+**A. Cliente: consultar el estado y el seguimiento de una cita**
+
+1. En el menú de navegación, presione **Mis Citas**. En teléfonos y tabletas, abra primero el menú ☰.
+2. Elija la pestaña donde se encuentra la cita:
+
+   | Estado de la cita | Pestaña |
+   |---|---|
+   | **Agendada**, **Reagendada** o **Iniciada** cuyo horario aún no termina | **Próximas citas** |
+   | **Completada** o **Ausencia** | **Citas pasadas** |
+   | **Cancelada** | **Citas canceladas** |
+
+   Una cita cuyo horario ya terminó aparece en **Citas pasadas**, aunque su estado todavía no se haya actualizado.
+
+3. Consulte la columna **Estado**. El cliente no cuenta con un filtro por estado; para buscar una cita, use las pestañas y los filtros descritos en el apartado [5.2.3](#523-consultar-y-filtrar-citas).
+4. Presione la fila de la cita. Se abre la página **Detalle de la cita**, con la etiqueta de estado en la parte superior.
+5. Revise la sección **Seguimiento** (ver *Cómo interpretar el seguimiento*, más adelante).
+6. Para volver al listado, presione **Volver a mis citas**.
+
+Los botones **Editar cita** y **Cancelar cita** solo aparecen en citas **Agendadas** o **Reagendadas** que aún no han comenzado. Que aparezcan no significa que el cambio todavía esté permitido: si faltan menos de 8 horas, el sistema le indica que ya no puede hacerlo (ver [5.2.4](#524-editar-o-reprogramar-una-cita) y [5.2.5](#525-cancelar-una-cita)).
+
+El cliente **no puede cambiar el estado** de su cita registrando su llegada o una inasistencia. Solo puede reprogramarla o cancelarla dentro del plazo permitido.
+
+> 📷 **[Apoyo visual pendiente — Figura 5.2.8-A]** Pantalla *Mis citas* del cliente con las etiquetas de estado en la columna *Estado*.
+>
+> 📷 **[Apoyo visual pendiente — Figura 5.2.8-B]** Página *Detalle de la cita* del cliente con la etiqueta de estado y la sección *Seguimiento*.
+
+---
+
+**B. Personal: dar seguimiento a las citas**
+
+El **recepcionista** consulta las citas de su sucursal; el **gerente o asistente**, las de las sucursales a su cargo.
+
+1. En el menú de navegación, presione **Citas**.
+2. Revise la columna **Estado**. Sin fechas indicadas, el listado muestra de hoy a los próximos 30 días. Para revisar citas de días anteriores, defina el periodo en **Fecha de servicio (desde) / (hasta)**.
+3. Para ver solo las citas de un estado, presione **Filtros** y elíjalo en **Estado**. Para volver a verlas todas, seleccione **Todos los estados**. La opción **Restablecer filtros** limpia además la búsqueda y los demás filtros (ver [5.2.3](#523-consultar-y-filtrar-citas)).
+4. Presione la fila de la cita. Se abre la ventana **Detalle de la cita**.
+5. Revise la etiqueta de estado, en la parte superior, y la sección **Seguimiento**.
+
+La ventana muestra los datos que tenía la cita al abrirla desde el listado. Para comprobar si hubo cambios, ciérrela, actualice la página y vuelva a abrirla.
+
+Las acciones disponibles en el detalle dependen del estado y de la hora de la cita:
+
+| Situación de la cita | Acciones disponibles |
+|---|---|
+| **Agendada** o **Reagendada**, antes de su hora de inicio | **Editar cita** y **Cancelar cita**. Además, **Check-in** desde 15 minutos antes (excepto en servicios sin cita). |
+| **Agendada** o **Reagendada**, desde su hora de inicio | **Check-in** hasta antes de que pasen 10 minutos y, solo para la recepción, **Marcar inasistencia**. No aplican a servicios sin cita. |
+| **Iniciada**, **Completada**, **Cancelada** o **Ausencia** | Ninguna: la cita ya no admite cambios manuales. |
+
+El recepcionista ve el botón de inasistencia en **todas** las citas, pero **deshabilitado** cuando no corresponde usarlo. El gerente o asistente no ve este botón.
+
+Para realizar cada acción, consulte los apartados [5.2.4](#524-editar-o-reprogramar-una-cita) (editar o reprogramar), [5.2.5](#525-cancelar-una-cita) (cancelar) y [5.2.6](#526-registrar-la-llegada-del-cliente-check-in) (check-in).
+
+> 📷 **[Apoyo visual pendiente — Figura 5.2.8-C]** Listado *Citas* del personal con el filtro *Estado* desplegado y citas con distintas etiquetas.
+>
+> 📷 **[Apoyo visual pendiente — Figura 5.2.8-D]** Ventana *Detalle de la cita* del personal con la etiqueta de estado y la sección *Seguimiento*.
+
+---
+
+**Cómo interpretar el seguimiento**
+
+*Aplica a todos los perfiles.* La línea de tiempo se lee **de arriba hacia abajo**, en orden cronológico. El último punto aparece resaltado.
+
+| Evento | Fecha y hora que muestra | Información adicional |
+|---|---|---|
+| **Cita agendada** o **Walk-in registrado** | Cuándo se creó la cita. | — |
+| **Cita reagendada** | Cuándo se cambió por última vez la fecha, la hora o el barbero. | **Fecha original:** la fecha y hora con las que se agendó por primera vez. |
+| **Check-in registrado** | Cuándo se registró la llegada. En un servicio sin cita, su hora de inicio programada. | *Check-in automático (Walk-in)*, en servicios sin cita. |
+| **Cliente ausente** | La **hora de inicio programada** de la cita, no la hora en que se marcó la ausencia. | *El cliente no se presentó*. |
+| **Cita cancelada** | Cuándo se canceló. | El motivo, si se indicó. |
+| **Cita completada** | La hora de término de la cita. | — |
+
+Tenga en cuenta lo siguiente:
+
+- La fecha que aparece **debajo de cada evento** no es siempre la fecha de la cita. La fecha y el horario vigentes de la cita se muestran en los datos generales del detalle.
+- El evento **Cita reagendada** aparece en toda cita a la que se le cambió la fecha, la hora o el barbero, y **se conserva aunque el estado cambie** a *Iniciada*, *Completada*, *Cancelada* o *Ausencia*. Por ello, el seguimiento puede mostrarlo aunque la etiqueta de estado ya no sea *Reagendada*.
+- Cambiar solo los **servicios** o las **notas** no convierte una cita *Agendada* en *Reagendada*. En una cita ya reprogramada, estos cambios tampoco modifican la fecha y hora del evento **Cita reagendada**.
+- Si solo se cambió el **barbero**, la **Fecha original** puede coincidir con la fecha y hora vigentes de la cita.
+- La línea de tiempo **no es un registro de todos los cambios**: si una cita se reprograma varias veces, muestra un solo evento **Cita reagendada**, correspondiente al último cambio. Tampoco indica quién hizo cada acción.
+- En una **Ausencia**, el seguimiento no distingue si la marcó la recepción o el sistema.
+
+> 📷 **[Apoyo visual pendiente — Figura 5.2.8-E]** Ejemplos de la sección *Seguimiento*: una cita *Reagendada*, una cita *Completada* que conserva el evento *Cita reagendada* y una con *Ausencia*.
+
+**Cambios automáticos de estado**
+
+El sistema aplica estos cambios sin intervención del personal. Los revisa cada minuto, por lo que pueden tardar un poco en reflejarse y requieren actualizar la página:
+
+| Cuándo | Cambio | Qué debe hacer el personal |
+|---|---|---|
+| Llega la hora de inicio de un **servicio sin cita** | **Agendada** o **Reagendada** → **Iniciada** | Nada. Si el servicio no se realizará, debe cancelarlo **antes** de esa hora. |
+| Pasan 10 minutos de la hora de inicio de una cita **sin check-in** (no aplica a servicios sin cita) | **Agendada** o **Reagendada** → **Ausencia** | Si el cliente llegó a tiempo, registrar su check-in **antes** de que se cumplan los 10 minutos. |
+| Llega la hora de término de una cita **Iniciada** | **Iniciada** → **Completada** | Nada. No existe un botón para completar la cita. |
+
+El sistema no envía ningún aviso al cliente cuando cambia el estado de su cita. El efecto de cada estado final en el programa de fidelidad se describe en *Efecto en el programa de fidelidad*, en el apartado [4.2.3](#423-estado-y-progreso-de-la-cita).
+
+---
+
+**C. Recepcionista: marcar una inasistencia**
+
+Use esta opción cuando ya sepa que el cliente **no se presentará** y quiera cerrar la cita sin esperar el cambio automático. Esto libera el horario del barbero. Si no lo hace, el sistema marca la *Ausencia* por sí solo 10 minutos después de la hora de inicio, por lo que **no es obligatorio** usarla.
+
+> **Importante:** la inasistencia **no se puede deshacer** y la cita ya no admitirá check-in. Puede marcarse desde la hora de inicio, **antes de que termine el plazo de 10 minutos** de tolerancia para la llegada. Si el cliente todavía puede llegar, no la marque.
+
+**Requisitos:**
+
+- La cita pertenece a **su sucursal**.
+- Su estado es **Agendada** o **Reagendada**.
+- **No** es un servicio sin cita.
+- Ya llegó la **hora de inicio** programada.
+
+**Procedimiento**
+
+1. En el menú de navegación, presione **Citas** y ubique la cita.
+2. Presione su fila para abrir **Detalle de la cita**.
+3. Verifique el cliente, la fecha, el horario y el barbero.
+4. Presione **Marcar inasistencia**, en la parte inferior de la ventana. Si abrió el detalle antes de la hora de inicio, el botón se habilita al llegar esa hora.
+   - Mientras la ventana de check-in siga abierta, este botón aparece **junto al botón Check-in**. Asegúrese de presionar el correcto.
+5. En la ventana **Confirmar inasistencia**, revise los datos del cliente, la fecha y el horario.
+   - Si la cita incluye una recompensa, aparece el aviso **«Al confirmar, el cliente perderá la recompensa y su contador de lealtad se reiniciará.»** (ver [4.6](#46-programa-de-fidelidad)).
+6. Presione **Confirmar inasistencia**. Para regresar al detalle sin hacer cambios, presione **Volver**; para cerrar sin hacer cambios, presione la **X**.
+7. Mientras se procesa, el botón muestra **Marcando...** y la ventana no puede cerrarse.
+
+**Verificar el registro**
+
+Si la operación es correcta:
+
+1. La ventana se cierra y aparece el aviso **Cita marcada como inasistencia.** en la parte superior derecha.
+2. El listado se actualiza y la cita aparece como **Ausencia**. Si tenía un filtro de **Estado** distinto de *Ausencia*, dejará de verse.
+3. Al abrir el detalle, el seguimiento muestra **Cliente ausente** y el botón aparece deshabilitado con el texto **Inasistencia registrada**.
+
+> 📷 **[Apoyo visual pendiente — Figura 5.2.8-F]** Ventana *Detalle de la cita* de la recepción con los botones *Check-in* y *Marcar inasistencia*.
+>
+> 📷 **[Apoyo visual pendiente — Figura 5.2.8-G]** Ventana *Confirmar inasistencia*, incluido el aviso de pérdida de recompensa.
+>
+> 📷 **[Apoyo visual pendiente — Figura 5.2.8-H]** Aviso de confirmación y detalle de la cita con *Inasistencia registrada* y el evento *Cliente ausente*.
+
+**Errores frecuentes y cómo resolverlos**
+
+*Situaciones al consultar el estado:*
+
+| Situación | Causa | Qué hacer |
+|---|---|---|
+| El estado no cambió aunque ya pasó la hora. | La pantalla no se actualiza sola, o el sistema aún no ha revisado la cita. | Espere cerca de un minuto y actualice la página. Si continúa igual, informe a la gerencia o a soporte (sección [7](#7-soporte-técnico)). |
+| La cita aparece como **Ausencia**, pero el cliente sí asistió. | No se registró el check-in antes de cumplirse los 10 minutos, o la recepción marcó la inasistencia. | El estado es final y no puede corregirse. Para evitarlo, registre la llegada a tiempo (ver [5.2.6](#526-registrar-la-llegada-del-cliente-check-in)). |
+| La cita aparece como **Completada**, pero el servicio no se realizó. | Se había registrado el check-in, o era un servicio sin cita que no se canceló antes de su hora de inicio. | El estado es final y no puede corregirse. Informe a la gerencia. |
+| La cita está en **Citas pasadas**, pero su estado aún es *Agendada*, *Reagendada* o *Iniciada* (cliente). | Su horario ya terminó y la pantalla no muestra todavía el estado actualizado. | Espere cerca de un minuto y actualice la página. |
+| No se encuentra una cita *Completada*, *Cancelada* o *Ausencia* de días anteriores (personal). | Sin fechas, el listado solo muestra de hoy a los próximos 30 días. | Defina el periodo en **Fecha de servicio**. |
+| *No encontramos esta cita.* (cliente) | La cita no existe en el sistema. | Presione **Volver a mis citas** y selecciónela desde el listado. |
+| *No se pudo cargar la cita.* (cliente) | Falla de conexión o del servidor, o la cita no corresponde a su cuenta. | Presione **Reintentar**. Si continúa, regrese a **Mis Citas** y verifique la cuenta con la que inició sesión. |
+
+*Situaciones en las que **Marcar inasistencia** no está disponible.* En una computadora, al colocar el cursor sobre el botón deshabilitado puede aparecer el motivo.
+
+| Situación o mensaje | Causa | Qué hacer |
+|---|---|---|
+| El botón no aparece. | Solo se muestra al **recepcionista**. | El gerente o asistente no puede marcar inasistencias. Solicítelo a la recepción de la sucursal o espere el cambio automático. |
+| *Se habilita a partir de la hora programada de inicio.* | La cita aún no comienza. | Espere a la hora de inicio. Si el cliente avisó que no asistirá, puede cancelar la cita antes de esa hora (ver [5.2.5](#525-cancelar-una-cita)). |
+| Ya es la hora, pero el botón sigue deshabilitado. | La hora del dispositivo puede ser incorrecta. | Compruebe la fecha y la hora del dispositivo, actualice la página y abra de nuevo la cita. |
+| *Los walk-ins no se marcan como inasistencia.* | Es un servicio sin cita. | Si no se realizará y aún no llega su hora de inicio, cancélelo (ver [5.2.7](#527-registrar-un-servicio-sin-cita)). |
+| *Solo se pueden marcar citas agendadas o reagendadas.* | La cita está *Iniciada*, *Completada* o *Cancelada*. | Revise el seguimiento para saber qué ocurrió. |
+| *Esta cita ya está marcada como inasistencia.* | La *Ausencia* ya fue registrada. | No se requiere ninguna acción. |
+
+*Mensajes que pueden aparecer al confirmar la inasistencia.* Se muestran dentro de la ventana **Confirmar inasistencia**. Actualmente, las respuestas del servidor aparecen en **inglés**. Si el sistema detecta que la cita ya cambió de estado, el botón puede mostrar **Cita ya cerrada**; en ese caso, cierre la ventana y actualice la página.
+
+| Mensaje | Significado | Qué hacer |
+|---|---|---|
+| *Only scheduled or rescheduled appointments can be marked as no-show* | La cita ya cambió de estado; por ejemplo, otra persona registró la llegada o la canceló, o el sistema ya la marcó como *Ausencia*. | Actualice la página y revise el estado actual. |
+| *Appointment can no longer be marked as no-show* | La cita cambió mientras se procesaba la solicitud. | Actualice la página y revise la cita. |
+| *Appointment cannot be marked as no-show before its scheduled start* | Todavía no llega la hora de inicio; la hora del dispositivo puede estar adelantada. | Revise la hora del dispositivo y espere a la hora de inicio. |
+| *Walk-in appointments cannot be marked as no-show* | Es un servicio sin cita. | No es posible marcarlo como inasistencia. |
+| *Not authorized to mark this appointment as no-show* | La cuenta no es de recepción o la cita pertenece a otra sucursal. | Verifique la cuenta con la que inició sesión. Si el problema continúa, contacte al gerente o a soporte. |
+| *Appointment not found* | La cita ya no existe en el sistema. | Actualice la página y vuelva a buscarla. |
+| *Network error — could not reach the API* | No hubo conexión con el servidor. | Revise su conexión. Antes de repetir, actualice la página y compruebe si la cita ya aparece como *Ausencia*. |
+| El sistema le pide iniciar sesión nuevamente. | La sesión expiró. | Inicie sesión (ver [3.4](#34-expiración-de-la-sesión)) y compruebe el estado de la cita antes de repetir la acción. |
+
+Si el problema persiste, consulte la sección [7. Soporte técnico](#7-soporte-técnico).
+
+**Recomendaciones de uso**
+
+- **Personal:** al comenzar la jornada, filtre **Fecha de servicio** con el día de hoy en ambas fechas para dar seguimiento a las citas del día.
+- **Personal:** actualice la página antes de tomar una decisión sobre una cita, en especial cerca de su hora de inicio.
+- **Personal:** antes de cerrar la jornada, revise las citas del día y confirme que sus estados correspondan con lo ocurrido. Comunique las diferencias a la gerencia.
+- **Recepción:** antes de marcar una inasistencia, confirme que el cliente **no esté en la barbería** y que no haya avisado que viene en camino dentro de la tolerancia.
+- **Recepción:** si no tiene certeza, **no marque la inasistencia**; el sistema lo hará al terminar el plazo si no se registra el check-in.
+- **Recepción:** si el cliente llega después de que la cita quedó en *Ausencia* y desea atenderse, puede registrar un **servicio sin cita**, siempre que quede disponibilidad ese día (ver [5.2.7](#527-registrar-un-servicio-sin-cita)).
+- **Cliente:** si no podrá asistir, **cancele o reprograme su cita con al menos 8 horas de anticipación**, para no dejarla pasar como *Ausencia*.
+- **Cliente:** si el estado de una cita no corresponde con lo ocurrido, comuníquese con la barbería.
 
 ### 5.3 Obtener una recomendación de corte
 
-*(por desarrollar: subir la fotografía, interpretar el resultado y consultar el historial de recomendaciones.)*
+**Perfil:** Cliente. El personal no cuenta con esta función. Para conocer cómo funciona la recomendación y qué reglas la rigen, consulte el apartado [4.5](#45-recomendación-personalizada-de-cortes). La recomendación es una **guía de apoyo**: no agenda una cita ni limita los servicios que puede reservar.
+
+**Antes de comenzar:**
+
+- Tenga una fotografía de su rostro, o un dispositivo con cámara para tomarla. La foto debe mostrar su **rostro y cabello**, de preferencia **de frente, con buena iluminación y sin gorra ni lentes**.
+- Si sube un archivo, use una imagen en formato **JPG (JPEG), PNG o WEBP**, de **máximo 5 MB**. La pantalla permite elegir otros formatos de imagen (por ejemplo, GIF o HEIC), pero el análisis no los acepta.
+- Cuente con una conexión estable a internet.
+- Tenga en cuenta que, además de la foto y sus preferencias, la recomendación considera la **edad** y el **género** registrados en su cuenta.
+
+> **Importante:** la plataforma conserva únicamente la **última foto que subió**. Cada foto nueva **reemplaza** a la anterior.
+
+---
+
+**A. Abrir la función y agregar la foto**
+
+1. En el menú de navegación, presione **Recomendación de corte**. En teléfonos y tabletas, abra primero el menú ☰.
+2. La pantalla contiene dos secciones: **Nueva recomendación** y **Recomendaciones anteriores**. En pantallas amplias aparecen lado a lado; en pantallas más pequeñas, el historial se encuentra debajo del formulario.
+3. En **Nueva recomendación**, agregue la foto con **una** de las siguientes opciones.
+
+> 📷 **[Apoyo visual pendiente — Figura 5.3-A]** Pantalla *Recomendación de corte* con el formulario *Nueva recomendación* vacío y la sección *Recomendaciones anteriores*.
+
+**Opción 1 — Subir una foto del dispositivo**
+
+1. Presione **Subir foto** y seleccione el archivo. En una computadora, también puede **arrastrar** la imagen hasta la zona de la foto.
+2. Revise la vista previa. Para elegir otra imagen, presione **Cambiar foto** y repita el paso anterior.
+
+**Opción 2 — Tomar una foto con la cámara**
+
+1. Presione **Usar cámara**.
+2. Si el navegador solicita permiso para usar la cámara, **permítalo**.
+3. Espere a que desaparezca el texto **Iniciando cámara...** y aparezca la imagen. En los dispositivos con varias cámaras, la plataforma solicita la **frontal**.
+4. Ubique su rostro de frente y presione **Tomar foto**. Para cerrar la cámara sin tomar la foto, presione **Cancelar**.
+5. Revise la vista previa. Si no le convence, presione **Cambiar foto** y repita la toma.
+
+**Opción 3 — Usar la última foto subida**
+
+1. Marque la casilla **Usar la última foto subida**.
+2. La zona de la foto se sustituye por el aviso *Se usará la última foto que subiste*. Para volver a elegir una foto, desmarque la casilla.
+
+La casilla solo aparece si ya tiene al menos una recomendación en su historial. Esta opción **no muestra una vista previa** de la foto guardada. Corresponde a la última que se subió, **aunque la solicitud en la que la usó haya fallado**. Si no está seguro de cuál es, suba una foto nueva.
+
+> 📷 **[Apoyo visual pendiente — Figura 5.3-B]** Zona de la foto con los botones *Subir foto* y *Usar cámara*, y la vista de la cámara con los botones *Tomar foto* y *Cancelar*.
+>
+> 📷 **[Apoyo visual pendiente — Figura 5.3-C]** Vista previa de la foto con el botón *Cambiar foto*, y formulario con la casilla *Usar la última foto subida* marcada.
+
+---
+
+**B. Escribir las preferencias y solicitar la recomendación**
+
+1. Si lo desea, en **Preferencias (opcional)** describa lo que busca: largo, estilo, mantenimiento u ocasión. Admite hasta **500 caracteres**; el contador indica cuántos ha escrito. Por ejemplo: *«Quiero un corte corto, fácil de peinar y adecuado para la oficina»*.
+2. Presione **Obtener recomendación**.
+3. Mientras se procesa, el botón muestra **Generando recomendación...** y permanece deshabilitado. El análisis puede tardar. **No cierre ni recargue la página** y espere a que aparezca el resultado.
+4. Al terminar, se abre la ventana **Tu recomendación**.
+
+El sistema trata sus preferencias como un **requisito**: si ningún corte disponible es compatible con ellas, no le propone el más parecido, sino que le informa que no encontró uno adecuado.
+
+> 📷 **[Apoyo visual pendiente — Figura 5.3-D]** Formulario con la foto y las preferencias capturadas, y botón con el texto *Generando recomendación...*.
+
+---
+
+**C. Interpretar el resultado**
+
+La ventana **Tu recomendación** puede mostrar uno de dos resultados.
+
+**Resultado 1 — Cortes recomendados**
+
+| Elemento | Cómo interpretarlo |
+|---|---|
+| **Cortes sugeridos** (etiquetas en la parte superior) | Cortes del catálogo propuestos para usted, ordenados **del más al menos adecuado** según el análisis. |
+| **Mensaje de la recomendación** (texto debajo de los cortes) | Resumen de la recomendación. |
+| **Por qué** | Razones de la propuesta, por ejemplo, la relación del corte con la forma de su rostro, las características visibles en la foto y sus preferencias. |
+| **Confianza** | Porcentaje orientativo que el sistema asigna a su propia recomendación. No garantiza el resultado del corte. |
+
+Para ver cómo es un corte:
+
+1. Presione una etiqueta que tenga el **ícono de ojo**. Se muestra la foto de referencia del corte.
+2. Para ocultarla, presione de nuevo la misma etiqueta. Para ver otro corte, presione su etiqueta.
+
+El ícono puede tardar unos momentos en aparecer mientras se carga la imagen. Si un corte no lo muestra, solo está disponible su nombre. Las fotos son **de referencia**: no simulan cómo se verá el corte en usted.
+
+En cuanto a la **confianza**, un porcentaje **bajo** puede indicar que la foto limitó el análisis, por ejemplo, porque está borrosa, el rostro está parcialmente cubierto o no está de frente. En ese caso, considere generar otra recomendación con una foto mejor. El valor es una estimación del servicio de análisis y puede variar.
+
+**Resultado 2 — Ningún corte adecuado**
+
+La ventana muestra el mensaje **«Ninguno de los cortes existentes parece ajustarse a tus preferencias, te sugerimos hablar directamente con tu barbero»** y, debajo, el **Motivo**. Este resultado **no es un error**. Puede:
+
+1. Leer el **Motivo** para identificar qué preferencia no pudo cumplirse.
+2. Cerrar la ventana, ajustar las **Preferencias** y solicitar otra recomendación.
+3. Comentar su idea directamente con su barbero.
+
+**Cerrar la ventana y volver a intentar**
+
+- Para cerrar el resultado, presione la **X**, haga clic fuera de la ventana o presione la tecla **Esc**. Podrá consultarlo de nuevo en **Recomendaciones anteriores**.
+- Después de generar una recomendación, la foto elegida y las preferencias permanecen en el formulario mientras no salga de la página ni la recargue.
+- Para probar **otras preferencias con la misma foto**, marque **Usar la última foto subida**, modifique el texto y presione **Obtener recomendación**. Así evita volver a subirla y que el sistema identifique de nuevo la forma de su rostro. Si no marca la casilla y la foto sigue en la vista previa, se vuelve a subir.
+- Cada solicitud genera un resultado nuevo, que puede ser distinto del anterior aunque use los mismos datos.
+
+> 📷 **[Apoyo visual pendiente — Figura 5.3-E]** Ventana *Tu recomendación* con los cortes sugeridos, la foto de referencia de un corte, la explicación y la confianza.
+>
+> 📷 **[Apoyo visual pendiente — Figura 5.3-F]** Ventana *Tu recomendación* con el resultado de ningún corte adecuado y su *Motivo*.
+
+---
+
+**D. Consultar el historial de recomendaciones**
+
+1. En la página **Recomendación de corte**, ubique la sección **Recomendaciones anteriores**.
+2. Identifique la recomendación que busca. Se ordenan de la **más reciente a la más antigua** y cada una muestra:
+   - la **fecha** en que se solicitó, y
+   - los **nombres de los cortes** sugeridos o el texto **Sin corte adecuado**. Si ninguno de los cortes sugeridos sigue disponible en el sistema, puede aparecer solo la palabra **Recomendación**.
+3. Presione la recomendación para **desplegarla**. Según el resultado, verá:
+   - los cortes sugeridos, el texto bajo el título **Recomendación**, el apartado **Por qué** y la **Confianza**; o
+   - el **Motivo** por el que ningún corte resultó adecuado.
+4. Para ampliar la foto de un corte, presione su etiqueta con el **ícono de ojo**. Para cerrar la imagen, haga clic o toque **fuera de la ventana**, o presione la tecla **Esc**.
+5. Presione de nuevo la recomendación para **contraerla**.
+
+El historial no muestra la **foto** ni las **preferencias** que usó en cada solicitud. Tampoco permite eliminar recomendaciones. Las solicitudes que terminaron en error no aparecen.
+
+> 📷 **[Apoyo visual pendiente — Figura 5.3-G]** Sección *Recomendaciones anteriores* con una recomendación desplegada y otra con *Sin corte adecuado*.
+>
+> 📷 **[Apoyo visual pendiente — Figura 5.3-H]** Foto ampliada de un corte, abierta desde el historial.
+
+---
+
+**Errores frecuentes y cómo resolverlos**
+
+*Al agregar la foto.* Los mensajes aparecen en la zona de la foto o debajo de ella.
+
+| Situación o mensaje | Causa | Qué hacer |
+|---|---|---|
+| *Sube o toma una foto para continuar.* | Presionó **Obtener recomendación** sin agregar una foto ni marcar la casilla para usar la anterior. | Agregue una foto o marque **Usar la última foto subida**, si está disponible. |
+| *El archivo debe ser una imagen.* | El archivo elegido no es una imagen. | Elija una imagen JPG, PNG o WEBP. |
+| *La imagen no debe pesar más de 5 MB.* | El archivo supera el tamaño permitido. | Reduzca su tamaño o resolución, o elija otra foto. |
+| *Permiso de cámara denegado. Habilítalo en tu navegador o sube una foto.* | El navegador no tiene permiso para usar la cámara. | Habilite el permiso en el navegador y vuelva a abrir la cámara, o suba una foto. |
+| *No se encontró ninguna cámara en este dispositivo.* | No se detectó una cámara. | Suba una foto. |
+| *La cámara está siendo usada por otra aplicación.* | Otro programa está utilizando la cámara. | Cierre ese programa e intente de nuevo, o suba una foto. |
+| *Tu navegador no permite usar la cámara. Sube una foto en su lugar.* | El navegador no permite el acceso a la cámara desde la página. | Suba una foto o utilice un navegador compatible (ver [2.1](#21-navegador-web-compatible)). |
+| *No se pudo acceder a la cámara.* | Ocurrió otro problema al abrir la cámara. | Presione **Volver** e intente de nuevo, o suba una foto. |
+| No aparece la casilla **Usar la última foto subida**. | Aún no tiene recomendaciones en su historial, o este no pudo cargarse. | Suba o tome una foto. Si ya tenía recomendaciones, recargue la página. |
+
+*Al generar la recomendación.* Los errores del servidor pueden mostrarse en **inglés**.
+
+| Mensaje | Causa probable | Qué hacer |
+|---|---|---|
+| *No pudimos usar tu última foto. Sube o toma una nueva para continuar.* | Al usar la foto guardada, esta no se encontró, no es válida o no permitió completar el análisis. | Suba o tome una foto nueva, de frente y bien iluminada. |
+| *File is not a valid image (accepted formats: JPEG, PNG, WEBP)* | El formato no es aceptado o el archivo está dañado. Cambiar solo la extensión del nombre no convierte el formato. | Use una foto en formato JPG, PNG o WEBP, o tómela con **Usar cámara**. |
+| *Image dimensions are too large* | La resolución de la imagen es demasiado grande, aunque el archivo pese menos de 5 MB. | Reduzca la resolución o use otra foto. |
+| *Photo was not found* | El sistema no encontró la foto. | Suba la foto de nuevo. |
+| Otro texto que describe un problema con la foto o los datos; puede variar. | El servicio no obtuvo información suficiente para recomendar, por ejemplo, porque no se distinguen el rostro y el cabello. | Use otra foto, de frente, con buena luz y el rostro y cabello visibles. |
+| *Network error — could not upload the photo* | No fue posible enviar la foto, normalmente por un problema de conexión. | Revise su conexión e intente de nuevo. |
+| *Photo upload failed with status …* | El servicio de almacenamiento rechazó la foto, por ejemplo, porque la subida tardó tanto que venció el permiso de 2 minutos. | Intente de nuevo con una conexión estable o una foto de menor tamaño. |
+| *Network error — could not reach the API* | No hubo conexión con el servidor. | Revise su conexión. **Antes de repetir**, recargue la página y compruebe en el historial si la recomendación se generó. |
+| *Facial detection request failed with status code: …* o *Network error. Could not call AI facial detection microservice* | Falló el servicio que analiza la forma del rostro. | Espere unos minutos e intente de nuevo. Si persiste, contacte a soporte. |
+| *Haircut recommendation request failed with status code: …* o *Network error. Could not call AI microservice* | Falló el servicio de recomendación. | Espere unos minutos e intente de nuevo. Si persiste, contacte a soporte. |
+| *No haircut styles were found* | No hay cortes activos disponibles en el catálogo. | Informe a la barbería o a soporte. Cambiar la foto no resuelve este problema. |
+| *An unexpected error ocurred* | Ocurrió un error inesperado en el servidor. | Intente más tarde. Si persiste, contacte a soporte. |
+| *No se pudo generar la recomendación. Intenta de nuevo.* | Ocurrió un error sin más detalles. | Intente de nuevo; si persiste, contacte a soporte. |
+| El sistema le pide iniciar sesión nuevamente. | La sesión expiró. | Inicie sesión (ver [3.4](#34-expiración-de-la-sesión)), revise el historial y, si la recomendación no aparece, repita el procedimiento. |
+
+*Al consultar el historial.*
+
+| Situación o mensaje | Causa | Qué hacer |
+|---|---|---|
+| *Cargando historial...* permanece en pantalla. | La consulta está tardando. | Espere unos momentos; si no termina, recargue la página. |
+| *No se pudo cargar el historial. Intenta de nuevo.* o un mensaje en inglés dentro del historial. | Falla de conexión o del servidor. | Revise su conexión y recargue la página. |
+| *Aún no has generado ninguna recomendación. Sube una foto para obtener la primera.* | No tiene recomendaciones guardadas. | No es un error: genere la primera. |
+| Una recomendación recién generada no aparece. | No se pudo guardar o el historial no se actualizó. | Recargue la página. Si no aparece, informe a soporte. |
+| Un corte no muestra el ícono de ojo. | No tiene foto de referencia o la imagen no pudo cargarse. | Espere unos momentos o recargue la página. Puede consultar el corte con su barbero. |
+
+Si el problema persiste, consulte la sección [7. Soporte técnico](#7-soporte-técnico). Si va a reportarlo, indique el mensaje exacto que apareció.
+
+**Recomendaciones de uso**
+
+- **Tome la foto de frente**, con el rostro y el cabello visibles, luz uniforme y sin gorra, lentes ni filtros. Procure que aparezca **solo usted**.
+- **Escriba preferencias concretas**, como el largo deseado, el tiempo que quiere dedicar al peinado o la ocasión. Si pide demasiadas condiciones a la vez, es más probable que ningún corte las cumpla.
+- Si obtiene **Sin corte adecuado**, quite o flexibilice alguna preferencia y vuelva a intentarlo.
+- Use **Usar la última foto subida** para comparar distintas preferencias. **Suba una foto nueva** si cambió su apariencia, si la anterior no era clara o si la última que subió no era de usted.
+- Antes de agendar, revise las fotos de referencia y **confirme el corte con su barbero**, quien puede valorar aspectos que una fotografía no muestra.
+- Para mostrar el corte en la barbería, abra **Recomendaciones anteriores** desde su teléfono.
+- La recomendación **no queda vinculada a ninguna cita**. Si desea atenderse, agende el servicio correspondiente (ver [5.2.1](#521-agendar-una-cita-cliente)) y mencione el corte a su barbero.
 
 ### 5.4 Recordatorios
 
+**Perfil:** Cliente. El personal no cuenta con esta función. Para conocer cuándo se envían los avisos y qué citas los generan, consulte el apartado [4.3](#43-recordatorios-automáticos).
+
+Los recordatorios llegan por **Telegram**, aproximadamente **24 horas** y **4 horas** antes de cada cita. Una vez vinculada la cuenta, el envío es **automático**: ni el cliente ni el personal deben hacer algo para que se envíen.
+
+**Antes de comenzar:**
+
+- Tenga **Telegram** instalado en su teléfono y una cuenta de Telegram activa.
+- Inicie sesión en la plataforma con **su propia cuenta** de cliente.
+- De preferencia, abra la plataforma en una **computadora u otro dispositivo**, para poder escanear el código QR con la cámara de su teléfono.
+
+> **Importante:** el código QR es **personal**. La cuenta de Telegram desde la que se abra quedará vinculada a **su** cuenta de la plataforma y recibirá sus recordatorios; si ya había otra vinculada, la nueva la reemplaza. No comparta el código ni publique capturas de pantalla en las que aparezca.
+
+---
+
+**A. Vincular su cuenta de Telegram**
+
+La vinculación se realiza una sola vez.
+
+1. En el menú de navegación, presione **Recordatorios**. En teléfonos y tabletas, abra primero el menú ☰.
+2. Mientras la plataforma consulta su cuenta, aparece el texto **Verificando estado...**.
+3. Si su cuenta no está vinculada, se muestra el título **Vincula tu cuenta** con un **código QR**.
+4. Abra la cámara de su teléfono, o un lector de códigos QR, y apunte al código.
+5. Abra el enlace que detecte el teléfono. Se mostrará en Telegram la conversación con el bot de Mr. Barber.
+6. En Telegram, presione **Iniciar**. Según el idioma de la aplicación, el botón puede decir **Start**.
+7. Espere el mensaje de confirmación del bot. Lo saluda por su nombre, indica que la cuenta quedó vinculada y que recibirá un aviso **24 horas** y **4 horas** antes de cada cita.
+8. Regrese a la plataforma y compruebe la vinculación con el procedimiento B.
+
+La pantalla no ofrece un enlace que pueda presionar; la vinculación se hace a través del código QR. Si solo dispone de su teléfono, puede tomar una captura de pantalla y abrirla con un lector que reconozca códigos QR en imágenes, si su teléfono cuenta con esa función. Elimine la captura al terminar.
+
+> 📷 **[Apoyo visual pendiente — Figura 5.4-A]** Menú del cliente con la opción *Recordatorios* y pantalla *Vincula tu cuenta* con el código QR (cubra u oculte el código en la captura).
+>
+> 📷 **[Apoyo visual pendiente — Figura 5.4-B]** Conversación con el bot de Mr. Barber: botón *Iniciar* y mensaje de confirmación de la vinculación.
+
+---
+
+**B. Comprobar que la vinculación se completó**
+
+1. Regrese a la pestaña o ventana donde tiene abierta la plataforma. La pantalla **Recordatorios** consulta el estado automáticamente al volver a ella.
+2. Si todavía muestra el código QR, presione **Ya escanee el código**. Mientras se realiza la consulta, el botón muestra **Verificando...**.
+3. La vinculación está completa cuando aparecen la etiqueta **Notificaciones Activas**, el título **Telegram vinculado** y la confirmación de que recibirá recordatorios 24 y 4 horas antes de cada cita.
+
+Si la pantalla no cambia, no se muestra ningún mensaje de error: consulte la tabla de errores frecuentes. Puede volver a **Recordatorios** en cualquier momento para revisar si su cuenta sigue vinculada.
+
+La etiqueta **Notificaciones Activas** indica que la cuenta tiene un Telegram vinculado, pero no comprueba que los mensajes puedan entregarse. Por ejemplo, la etiqueta se conserva aunque usted bloquee el bot.
+
+> **Nota:** una vez vinculada la cuenta, la plataforma ya no muestra el código QR y no ofrece opciones para **desvincular** Telegram ni para **cambiar** la cuenta vinculada. Si cambió de cuenta de Telegram o vinculó una equivocada, consulte la sección [7. Soporte técnico](#7-soporte-técnico).
+
+> 📷 **[Apoyo visual pendiente — Figura 5.4-C]** Pantalla *Recordatorios* con la etiqueta *Notificaciones Activas* y el mensaje *Telegram vinculado*.
+
+---
+
+**C. Revisar un recordatorio y actuar**
+
+1. En Telegram, abra la conversación con el bot de Mr. Barber.
+2. Revise el mensaje **Recordatorio de Cita - Mr. Barber**, que incluye:
+   - su nombre;
+   - el tiempo de anticipación del aviso (**24 horas** o **4 horas**), y
+   - el **día y la hora** de la cita.
+3. El mensaje **no indica la sucursal, el barbero ni los servicios**. Para consultarlos, ingrese a **Mis Citas** y abra el detalle de la cita (ver [5.2.3](#523-consultar-y-filtrar-citas)).
+4. Actúe según su situación:
+
+| Situación | Qué hacer |
+|---|---|
+| **Asistirá** a la cita | No necesita responder ni confirmar. Preséntese a la hora programada y registre su llegada con el personal. |
+| Necesita **reprogramar o cancelar** y faltan **8 horas o más** | Hágalo desde **Mis Citas** (ver [5.2.4](#524-editar-o-reprogramar-una-cita) y [5.2.5](#525-cancelar-una-cita)). |
+| Necesita **reprogramar o cancelar** y faltan **menos de 8 horas** | Ya no puede hacerlo desde su cuenta. Comuníquese con la barbería para que el personal le ayude. |
+
+> **Importante:** el aviso de **24 horas** es el que le permite hacer cambios por su cuenta. Cuando llega el aviso de **4 horas**, el plazo de 8 horas ya terminó, aunque el mensaje invite a reprogramar o cancelar desde la plataforma.
+
+Responder al mensaje en Telegram **no confirma, cambia ni cancela** la cita.
+
+**Qué ocurre si la cita cambia**
+
+- **Si cambia la fecha o la hora**, los avisos se calculan con el nuevo horario. Los mensajes enviados antes permanecen en Telegram con el horario anterior: tome como referencia lo que muestre **Mis Citas**.
+- **Si solo cambia el barbero, los servicios o las notas**, no se repite un aviso que ya se había enviado.
+- **Si la cita se cancela**, dejan de enviarse sus recordatorios. No se envía un mensaje para avisar de la cancelación.
+
+**Citas con poca anticipación**
+
+- Si al agendar o reprogramar faltan **menos de 23 horas y 30 minutos**, no recibirá el aviso de 24 horas.
+- Si faltan **menos de 3 horas y 30 minutos**, no recibirá ningún aviso.
+- Durante los **15 minutos por encima de cada límite**, el aviso **no está garantizado**: que llegue o no depende del momento en que el sistema realice su siguiente revisión. Esto ocurre con el aviso de 24 horas si faltan entre **23 horas y 30 minutos** y **23 horas y 45 minutos**, y con el de 4 horas si faltan entre **3 horas y 30 minutos** y **3 horas y 45 minutos**.
+
+> 📷 **[Apoyo visual pendiente — Figura 5.4-D]** Ejemplo de recordatorio de cita recibido en Telegram (sin datos personales reales).
+
+---
+
+**Errores frecuentes y cómo resolverlos**
+
+*Al vincular la cuenta.*
+
+| Situación o mensaje | Causa probable | Qué hacer |
+|---|---|---|
+| *Verificando estado...* no desaparece. | La consulta de su cuenta está tardando. | Revise su conexión y recargue la página. |
+| El código queda en *Generando QR...* | La plataforma no pudo generar el código. | Recargue la página. Si persiste, contacte a soporte. |
+| Al escanear, no se abre la conversación en Telegram. | Telegram no está instalado o el lector no abrió el enlace. | Instale o actualice Telegram y vuelva a escanear. Pruebe con otro lector de códigos QR. |
+| El bot solo le da la bienvenida y le pide escanear el código. | Abrió el bot directamente, sin el enlace del código QR. | Vuelva a **Recordatorios** y escanee el código. |
+| *El enlace de vinculación no es válido. Genera un nuevo código QR desde tu cuenta.* | El enlace está incompleto o fue modificado. | Recargue **Recordatorios** y escanee el código nuevamente. |
+| *No encontramos tu cuenta de cliente en el sistema.* | El código no corresponde a una cuenta de cliente existente. | Inicie sesión con su cuenta de cliente y escanee el código que se muestre. |
+| *Ocurrió un error al vincular tu cuenta. Intenta escanear el código nuevamente.* | Ocurrió una falla al guardar la vinculación. | Espere unos minutos y vuelva a escanear. Si persiste, contacte a soporte. |
+| El bot no responde después de presionar **Iniciar**. | Problema de conexión o el servicio del bot no está disponible. | Revise su conexión e intente más tarde. Si persiste, contacte a soporte. |
+| La pantalla sigue mostrando el código después de la confirmación del bot. | La pantalla no se ha actualizado, no pudo consultar su cuenta o abrió un código de otra cuenta. | Presione **Ya escanee el código** o recargue la página. Compruebe que la sesión abierta sea la suya. |
+
+*Al esperar un recordatorio.*
+
+| Situación | Causa probable | Qué hacer |
+|---|---|---|
+| El aviso no llegó a la hora exacta. | El sistema revisa las citas cada 15 minutos. | Una diferencia de algunos minutos es normal. |
+| No llegó ningún aviso. | La cuenta no está vinculada, el bot está bloqueado, la cita no cumple las condiciones o se agendó con poca anticipación. | Revise **Recordatorios** y el estado de la cita en **Mis Citas**; compruebe que no haya bloqueado el bot. Consulte las condiciones en [4.3](#43-recordatorios-automáticos). |
+| Solo llegó el aviso de 4 horas. | Agendó o reprogramó con poca anticipación, o vinculó su cuenta cuando el primer aviso ya no correspondía. | No es necesario hacer nada. |
+| Los mensajes llegan a otra cuenta de Telegram. | La cuenta se vinculó desde ese Telegram. | Contacte a soporte; la pantalla no permite cambiar la vinculación. |
+| El horario del mensaje no coincide con **Mis Citas**. | La cita cambió después de que se envió el mensaje. | Tome como referencia **Mis Citas**. Si tiene dudas, comuníquese con la barbería. |
+
+Si el problema persiste, consulte la sección [7. Soporte técnico](#7-soporte-técnico). Si va a reportarlo, indique el mensaje exacto que apareció y la fecha y hora de la cita afectada.
+
+**Recomendaciones de uso**
+
+*Para el cliente:*
+
+- **Vincule Telegram antes de agendar**, para poder recibir los dos avisos desde su primera cita.
+- Conserve la conversación con el bot y **no lo bloquee**. Active las notificaciones de Telegram en su teléfono; puede silenciar otras conversaciones, pero evite silenciar la de Mr. Barber.
+- Al recibir el aviso de 24 horas, **confirme que podrá asistir**. Si necesita hacer cambios, realícelos de inmediato.
+- No dependa únicamente de los recordatorios: consulte **Mis Citas** para verificar sus próximas citas.
+
+*Para el personal:*
+
+- Al atender o agendar a un cliente registrado, **invítelo a activar sus recordatorios**. La vinculación debe hacerla el cliente desde su cuenta.
+
+### 5.5 Mi perfil
+
+**Perfil:** Cliente. El personal no cuenta con esta pantalla. En **Mi perfil**, el cliente puede consultar y actualizar sus datos personales, cambiar su contraseña, cerrar sesión y eliminar su cuenta.
+
+**Antes de comenzar:**
+
+- Inicie sesión con su cuenta de cliente (ver [3.3](#33-proceso-de-inicio-de-sesión)).
+- Si va a cambiar su correo o teléfono, verifique que el nuevo dato sea correcto y que no esté registrado en otra cuenta.
+- Si va a eliminar su cuenta, lea primero el procedimiento E completo: la eliminación **no se puede deshacer**.
+
+---
+
+**A. Consultar sus datos**
+
+1. En el menú de navegación, presione **Mi Perfil**. En teléfonos y tabletas, abra primero el menú ☰.
+2. En la primera tarjeta aparecen sus iniciales, su nombre y la etiqueta **Cliente**, junto con los siguientes datos:
+
+| Campo | Contenido |
+|---|---|
+| **Nombre Completo** | Nombre y apellido de la cuenta. |
+| **Correo electrónico** | Correo con el que inicia sesión. |
+| **Teléfono** | Número registrado. Si no tiene uno, aparece **Sin teléfono**. |
+| **Fecha de nacimiento** | Fecha en formato día/mes/año. |
+| **Género** | **Femenino**, **Masculino** u **Otro**. |
+
+Debajo de sus datos se encuentran los botones **Cambiar Contraseña** y **Actualizar Datos**. Más abajo están las opciones **Cerrar Sesión** y **Eliminar Cuenta**.
+
+Esta pantalla no muestra el historial de citas ni el avance del programa de fidelidad.
+
+> 📷 **[Apoyo visual pendiente — Figura 5.5-A]** Pantalla *Mi perfil* completa, con datos ficticios.
+
+---
+
+**B. Actualizar sus datos personales**
+
+1. En **Mi perfil**, presione **Actualizar Datos**.
+2. Se abre la ventana **Editar usuario**, con sus datos actuales.
+3. Modifique los campos necesarios. Los marcados con asterisco (`*`) son obligatorios.
+
+| Campo | Cómo llenarlo |
+|---|---|
+| **Nombre \*** | Al menos 2 caracteres. |
+| **Apellido \*** | Al menos 2 caracteres. |
+| **Teléfono** | Exactamente 10 dígitos, sin espacios ni guiones. Es opcional; para quitarlo, deje el campo vacío. |
+| **Fecha de nacimiento** | Formato *dd/mm/aaaa*. Puede escribir solo los números, ya que las diagonales se agregan solas, o elegir la fecha con el ícono de calendario. No puede ser futura ni anterior a 1900. |
+| **Género** | Seleccione **Femenino**, **Masculino** u **Otro**. |
+| **Correo Electrónico \*** | Formato `usuario@dominio.com`. No puede pertenecer a otra cuenta. |
+
+4. Revise la información y presione **Actualizar Usuario**.
+5. Mientras se guardan los cambios, el botón muestra **Actualizando...**.
+6. Al terminar, la ventana se cierra, aparece el mensaje **Usuario actualizado correctamente.** y la pantalla muestra los nuevos datos.
+
+Para salir **sin guardar**, presione **Cancelar** o la **X**, haga clic fuera de la ventana o presione la tecla **Esc**. Los cambios se descartan sin pedir confirmación.
+
+**Efectos de los cambios**
+
+- **Correo electrónico:** en los siguientes inicios de sesión, use el correo **nuevo**.
+- **Fecha de nacimiento y género:** las siguientes recomendaciones de corte consideran los datos actualizados (ver [5.3](#53-obtener-una-recomendación-de-corte)).
+- **Fecha de nacimiento:** no es posible dejarla sin valor. Si borra el campo y guarda, se conserva la fecha anterior.
+
+> 📷 **[Apoyo visual pendiente — Figura 5.5-B]** Ventana *Editar usuario* y mensaje *Usuario actualizado correctamente.*
+
+---
+
+**C. Cambiar su contraseña**
+
+1. En **Mi perfil**, presione **Cambiar Contraseña**.
+2. En **Nueva contraseña**, escriba una contraseña que tenga:
+   - al menos **8 caracteres**;
+   - al menos **una letra mayúscula**, y
+   - al menos **un número**.
+3. Escríbala de nuevo en **Confirmar nueva contraseña**. Puede usar el ícono de ojo de cada campo para mostrarla u ocultarla.
+4. Presione **Cambiar contraseña**. Mientras se guarda, el botón muestra **Actualizando...**.
+5. Al terminar, aparece el mensaje **Contraseña actualizada correctamente.**
+6. En el siguiente inicio de sesión, use la contraseña nueva.
+
+La ventana **no solicita la contraseña actual**. Al cambiarla, la sesión en la que realiza el cambio permanece abierta, y las sesiones que tenga en otros dispositivos **no se cierran de inmediato**: pueden continuar activas hasta que expiren (ver [3.4](#34-expiración-de-la-sesión)).
+
+> **Importante:** como no se pide la contraseña actual, cualquier persona con acceso a su sesión abierta puede cambiarla. **Cierre sesión** cuando use un equipo compartido o público.
+
+Si olvidó su contraseña y no tiene una sesión abierta, consulte [3.6](#36-recuperación-de-contraseña).
+
+> 📷 **[Apoyo visual pendiente — Figura 5.5-C]** Ventana *Cambiar contraseña* con los campos ocultos.
+
+---
+
+**D. Cerrar sesión desde el perfil**
+
+1. En la tarjeta **Cerrar Sesión**, presione el botón **Cerrar Sesión**.
+2. En la ventana **¿Cerrar sesión?**, presione **Sí, cerrar sesión**. Para permanecer en la plataforma, presione **Cancelar**.
+
+También puede cerrar sesión desde el menú de navegación (ver [3.5](#35-cierre-de-sesión)).
+
+> 📷 **[Apoyo visual pendiente — Figura 5.5-D]** Ventana *¿Cerrar sesión?* abierta desde el perfil.
+
+---
+
+**E. Eliminar su cuenta**
+
+> **Importante:** esta acción es **permanente**. No hay forma de recuperar la cuenta desde la plataforma.
+
+Solo puede eliminar su cuenta si **no tiene citas pendientes** (**Agendadas** o **Reagendadas**) **ni en curso** (**Iniciadas**).
+
+**Qué pierde al eliminar la cuenta**
+
+- Sus datos de acceso y datos de perfil: ya no podrá iniciar sesión con esa cuenta.
+- El acceso a su **historial de citas**.
+- Su avance en el **programa de fidelidad**, incluidas las recompensas que no haya utilizado.
+- Su historial de **recomendaciones de corte**.
+- La vinculación con **Telegram** para recibir recordatorios.
+
+La barbería **conserva registros de las citas**, incluido el correo que tenía la cuenta al agendarlas, aunque ya no queden ligados a ella.
+
+**Antes de eliminarla**
+
+1. Ingrese a **Mis Citas** y revise la pestaña **Próximas citas**.
+2. Compruebe que no tenga citas **Agendadas**, **Reagendadas** o **Iniciadas**. Mientras tenga alguna, la plataforma **no le permitirá eliminar la cuenta**.
+3. Si no va a asistir a una cita pendiente, **cancélela** (ver [5.2.5](#525-cancelar-una-cita)). La plataforma **no cancela sus citas automáticamente**. Si va a asistir, elimine la cuenta después de que la cita haya concluido.
+4. Si necesita cancelar una cita, pero faltan menos de 8 horas, comuníquese con la barbería. Si tiene una cita **en curso**, espere a que concluya.
+5. Anote o guarde la información que quiera conservar, por ejemplo, los cortes que le recomendaron.
+
+**Cómo eliminarla**
+
+1. En **Mi perfil**, en la tarjeta **Eliminar Cuenta**, presione **Eliminar Cuenta**.
+2. Lea la advertencia de la ventana **¿Eliminar cuenta permanentemente?**.
+3. En el campo de confirmación, escriba **ELIMINAR**, en mayúsculas y sin espacios adicionales. El botón **Sí, eliminar cuenta** permanece deshabilitado mientras el texto no coincida.
+4. Presione **Sí, eliminar cuenta**. Mientras se procesa, el botón muestra **Eliminando...**.
+5. Si **tiene citas pendientes o en curso**, la cuenta **no se elimina** y aparece un mensaje que explica el motivo. Su cuenta, sus datos y sus citas se conservan. Presione **Cancelar** para cerrar la ventana, revise los pasos de **Antes de eliminarla** y vuelva a intentarlo cuando ya no tenga esas citas.
+6. Si no las tiene, al terminar se cierra la sesión y la plataforma lo lleva a la página principal.
+
+Para conservar la cuenta, presione **Cancelar** antes de confirmar. También puede cerrar la ventana haciendo clic fuera de ella o presionando la tecla **Esc**.
+
+Después puede registrarse de nuevo, incluso con el mismo correo (ver [3.2](#32-registro-de-un-cliente-nuevo)). La cuenta nueva **no recupera** las citas, recompensas ni recomendaciones de la anterior.
+
+> 📷 **[Apoyo visual pendiente — Figura 5.5-E]** Ventana *¿Eliminar cuenta permanentemente?* con el campo de confirmación vacío y el botón deshabilitado.
+
+---
+
+**Errores frecuentes y cómo resolverlos**
+
+Los errores del servidor pueden mostrarse en **inglés**.
+
+*Al actualizar los datos.*
+
+| Situación o mensaje | Causa | Qué hacer |
+|---|---|---|
+| *El nombre es obligatorio.* / *El apellido es obligatorio.* / *El correo es obligatorio.* | Un campo obligatorio está vacío. | Complete el campo indicado. |
+| *Debe tener al menos 2 caracteres.* | El nombre o apellido es demasiado corto. | Escriba al menos 2 caracteres. |
+| *Debe tener 10 dígitos.* | El teléfono tiene menos o más dígitos, espacios u otros símbolos. | Escriba exactamente 10 dígitos o deje el campo vacío. |
+| *El correo no es válido.* | El correo no tiene el formato esperado. | Revise que esté escrito como `usuario@dominio.com`. |
+| *Usa el formato dd/mm/aaaa.* | La fecha está incompleta o no existe en el calendario. | Corrija el día, mes y año. |
+| *La fecha de nacimiento no puede ser en el futuro.* / *La fecha de nacimiento no es válida.* | La fecha es posterior a hoy o anterior a 1900. | Escriba su fecha de nacimiento correcta. |
+| *Email is already registered* | El correo pertenece a otra cuenta. | Use otro correo. Si considera que le pertenece, contacte a soporte. |
+| *Phone is already registered* | El teléfono pertenece a otra cuenta. | Revise el número, use otro o contacte a soporte. |
+| Un texto técnico que contiene *"field"* y *"detail"*. | El servidor rechazó un dato. | El valor junto a *"field"* identifica el campo. Corríjalo; verifique, por ejemplo, que el nombre y apellido no sean solo espacios. |
+| *Network error — could not reach the API* | No hubo conexión con el servidor. | Revise su conexión. Recargue la página para comprobar sus datos antes de intentar de nuevo. |
+| *No se pudo actualizar el usuario* u otro mensaje del servidor. | No se pudo completar la actualización. | Intente más tarde. Si persiste, contacte a soporte. |
+
+*Al cambiar la contraseña.*
+
+| Situación o mensaje | Causa | Qué hacer |
+|---|---|---|
+| *Debe capturar la nueva contraseña y su confirmación.* | Falta la nueva contraseña o su confirmación. | Complete los dos campos que aparecen. |
+| *La contraseña debe tener al menos 8 caracteres, una mayúscula y un número.* | La contraseña no cumple los requisitos. | Ajústela según los requisitos. |
+| *La confirmación no coincide con la nueva contraseña.* | Los dos campos son diferentes. | Escriba exactamente la misma contraseña en ambos. |
+| *Ocurrió un error al actualizar la contraseña. Intente nuevamente.* | Falla de conexión o del servidor. | Revise su conexión e intente de nuevo. Si no sabe cuál contraseña quedó activa, pruebe primero la nueva al iniciar sesión. |
+
+*Al eliminar la cuenta.*
+
+| Situación o mensaje | Causa | Qué hacer |
+|---|---|---|
+| El botón **Sí, eliminar cuenta** está deshabilitado. | El texto de confirmación no es exactamente **ELIMINAR**. | Escríbalo en mayúsculas y sin espacios. |
+| Un mensaje indica que no puede eliminar la cuenta porque tiene citas pendientes o en curso. | Tiene al menos una cita **Agendada**, **Reagendada** o **Iniciada**. | Revise **Mis Citas**. Cancele las citas pendientes a las que no asistirá o espere a que concluyan. Si no puede cancelar una porque faltan menos de 8 horas, comuníquese con la barbería. |
+| *Network error — could not reach the API* | No hubo respuesta del servidor. | Revise su conexión y recargue la página antes de intentar de nuevo; la solicitud pudo haberse procesado. |
+| *No se pudo eliminar la cuenta. Intenta de nuevo.* u otro mensaje del servidor. | No se pudo completar la eliminación. | Intente más tarde. Si persiste, contacte a soporte. |
+
+*En general.* Si aparece **Tu sesión expiró** o el sistema lo envía a la pantalla de inicio de sesión, ingrese de nuevo (ver [3.4](#34-expiración-de-la-sesión)) y revise en **Mi perfil** si el cambio se guardó.
+
+Si el problema persiste, consulte la sección [7. Soporte técnico](#7-soporte-técnico). Si va a reportarlo, indique el mensaje exacto, pero **nunca comparta su contraseña**.
+
+**Recomendaciones de uso**
+
+- **Mantenga actualizados su correo y teléfono**, y revise que el correo esté bien escrito antes de guardar.
+- **Registre correctamente su fecha de nacimiento y género**, ya que se consideran en las recomendaciones de corte.
+- Use una **contraseña distinta** de las que utiliza en otros servicios y no la comparta.
+- **Cierre sesión** al terminar en equipos compartidos o públicos.
+- Si solo quiere dejar de usar la cuenta temporalmente, **cierre sesión en lugar de eliminarla**.
+
+### 5.6 Historial del cliente
+
 *(por desarrollar)*
 
-### 5.5 Mi perfil e historial del cliente
-
-*(por desarrollar)*
-
-### 5.6 Programa de fidelidad
+### 5.7 Programa de fidelidad
 
 *(por desarrollar)*
 
