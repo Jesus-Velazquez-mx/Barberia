@@ -1,4 +1,5 @@
 import { ApiError, type ApiResponse } from '../types/api';
+import { NETWORK_ERROR_MESSAGE } from '../utils/apiErrorUtils';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 const API_BASE_IP = import.meta.env.VITE_API_IP;
@@ -31,7 +32,7 @@ async function request<T>(
             }
         });
     } catch {
-        throw new ApiError('Network error — could not reach the API', 0);
+        throw new ApiError(NETWORK_ERROR_MESSAGE, 0);
     }
 
     const body: ApiResponse<T> | undefined = await response.json().catch(() => undefined);
