@@ -1,0 +1,1873 @@
+This file is a merged representation of a subset of the codebase, containing specifically included files, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Only files matching these patterns are included: backend/src/services/availabilityService.ts, backend/src/services/appointmentService.ts, backend/src/controllers/availabilitySlotController.ts, backend/src/controllers/appointmentController.ts, backend/src/repositories/appointmentRepository.ts
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+backend/
+  src/
+    controllers/
+      appointmentController.ts
+      availabilitySlotController.ts
+    repositories/
+      appointmentRepository.ts
+    services/
+      appointmentService.ts
+      availabilityService.ts
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="backend/src/services/availabilityService.ts">
+import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
+import { getServicesByIds } from '../repositories/offeredServiceRepository.js';
+import { getShopById } from '../repositories/shopRepository.js';
+import { getActiveBarbersByShop } from '../repositories/barberRepository.js';
+import { getBlockingAppointmentsByBarberIdsAndRange } from '../repositories/appointmentRepository.js';
+import { getAllShifts } from '../repositories/shiftRepository.js';
+import type { OfferedService } from '../types/entities/offeredService.interface.js';
+import { timeToMinutes, toBusinessWallClockMs, businessWallClockToUtcMs, getBusinessToday } from '../utils/businessTime.js';
+
+/** Máximo de días de anticipación con los que se puede consultar/agendar. */
+export const MAX_BOOKING_DAYS_AHEAD = 30;
+
+/** Días de la semana en que las sucursales abren (0 = domingo, igual que en la BD). Todas cierran domingo. */
+export const OPEN_DAYS_OF_WEEK = [1, 2, 3, 4, 5, 6];
+
+/** Separación entre horarios de inicio candidatos dentro de cada hueco libre. */
+export const SLOT_STEP_MINUTES = 15;
+
+const MS_PER_MINUTE = 60_000;
+const MS_PER_DAY = 24 * 60 * MS_PER_MINUTE;
+
+export interface GetAvailableSlotsInput {
+    shopId: string;
+    /** Fecha en formato YYYY-MM-DD, interpretada en UTC. */
+    date: string;
+    /** Servicios de la cita; los horarios se calculan con la suma de sus duraciones. */
+    serviceIds: string[];
+    /** Cita que se está editando: no cuenta como ocupada, para que no choque consigo misma. */
+    excludeAppointmentId?: string;
+}
+
+export interface AvailableSlotsByBarber {
+    barberId: string;
+    firstName: string;
+    lastName: string;
+    /** Horarios de inicio agendables en ISO 8601 UTC. */
+    startTimes: string[];
+}
+
+/** Intervalo semiabierto [start, end) en minutos desde la medianoche UTC de la fecha. */
+export type Interval = [number, number];
+
+/**
+ * Lógica pura: a cada ventana le resta los intervalos ocupados y divide cada hueco libre
+ * desde su propio inicio en pasos de `step`, conservando los inicios cuyo
+ * [start, start + duration) cabe en el hueco y no son anteriores a `notBefore`.
+ * Después de una cita, los horarios arrancan justo donde ésta termina.
+ */
+export const computeStartMinutes = (
+    windows: Interval[],
+    busy: Interval[],
+    duration: number,
+    notBefore = -Infinity,
+    step = SLOT_STEP_MINUTES
+): number[] => {
+    const sortedBusy = [...busy].sort((a, b) => a[0] - b[0]);
+    const starts: number[] = [];
+    for (const [winStart, winEnd] of windows) {
+        let cursor = winStart;
+        // El centinela [winEnd, winEnd] cierra el último hueco de la ventana.
+        for (const [busyStart, busyEnd] of [...sortedBusy, [winEnd, winEnd]]) {
+            const gapEnd = Math.min(busyStart, winEnd);
+            for (let s = cursor; s + duration <= gapEnd; s += step) {
+                if (s >= notBefore) starts.push(s);
+            }
+            cursor = Math.max(cursor, busyEnd);
+            if (cursor >= winEnd) break;
+        }
+    }
+    return [...new Set(starts)].sort((a, b) => a - b);
+};
+
+/** Valida 'YYYY-MM-DD' y devuelve la medianoche UTC de esa fecha en ms. */
+const parseDate = (date: string): number => {
+    const ms = /^\d{4}-\d{2}-\d{2}$/.test(date) ? Date.parse(`${date}T00:00:00Z`) : NaN;
+    if (Number.isNaN(ms) || new Date(ms).toISOString().slice(0, 10) !== date) {
+        throw new ApiError(ApiErrorCode.INVALID_INPUT, 'Invalid date, expected YYYY-MM-DD');
+    }
+    return ms;
+};
+
+/**
+ * Devuelve los servicios pedidos, o lanza 404 si alguno no existe o está inactivo.
+ */
+export const getBookableServices = async (serviceIds: string[]): Promise<OfferedService[]> => {
+    const services = await getServicesByIds(serviceIds);
+    if (services.length !== new Set(serviceIds).size || services.some((s) => !s.is_active)) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Service not found or is inactive');
+    }
+    return services;
+};
+
+/**
+ * Calcula, por barbero elegible de la sucursal, los horarios de inicio agendables para
+ * los servicios en la fecha dada (duración = suma de sus duraciones): ventana del turno
+ * del barbero (si la sucursal abre ese día), menos las citas scheduled / checked_in, con
+ * cada hueco libre dividido en pasos de SLOT_STEP_MINUTES.
+ * `date` es la fecha de calendario del negocio (zona BUSINESS_TIMEZONE). Internamente, turnos,
+ * ventanas y huecos se calculan en hora de pared del negocio (mismo truco que toBusinessWallClockMs:
+ * un ms "ficticio-UTC" que, leído con getters UTC, muestra esa hora de pared); los `startTimes` que
+ * se devuelven son instantes UTC reales (convertidos con businessWallClockToUtcMs), igual que
+ * `scheduled_start`/`scheduled_end` en la base de datos.
+ */
+export const getAvailableSlots = async ({
+    shopId,
+    date,
+    serviceIds,
+    excludeAppointmentId,
+}: GetAvailableSlotsInput): Promise<AvailableSlotsByBarber[]> => {
+    const dayStart = parseDate(date);
+    // "Ahora" en hora de pared del negocio (BUSINESS_TIMEZONE), no del servidor.
+    const now = toBusinessWallClockMs();
+    const todayStart = now - (now % MS_PER_DAY);
+
+    if (dayStart < todayStart) {
+        throw new ApiError(ApiErrorCode.INVALID_INPUT, 'La fecha no puede estar en pasado');
+    }
+    if (dayStart > todayStart + MAX_BOOKING_DAYS_AHEAD * MS_PER_DAY) {
+        throw new ApiError(ApiErrorCode.INVALID_INPUT, `Date cannot be more than ${MAX_BOOKING_DAYS_AHEAD} days ahead`);
+    }
+
+    const services = await getBookableServices(serviceIds);
+    const duration = services.reduce((sum, s) => sum + s.duration_minutes, 0);
+
+    const shop = await getShopById(shopId);
+    if (!shop || !shop.is_active) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Shop not found or is inactive');
+    }
+
+    const barbers = await getActiveBarbersByShop(shopId);
+    if (barbers.length === 0) return [];
+
+    const barberIds: string[] = barbers.map((b: { id: string }) => b.id);
+    const dayOfWeek = new Date(dayStart).getUTCDay(); // 0 = domingo, igual que la BD
+
+    // Ninguna sucursal abre en domingo: ningún barbero tiene horarios ese día.
+    if (!OPEN_DAYS_OF_WEEK.includes(dayOfWeek)) {
+        return barbers.map((barber: { id: string; first_name: string; last_name: string }) => ({ barberId: barber.id, firstName: barber.first_name, lastName: barber.last_name, startTimes: [] }));
+    }
+
+    // El día de negocio [dayStart, dayStart + 1 día) en hora de pared corresponde a este rango
+    // real en UTC; las citas se buscan en ese rango, no en el literal [dayStart, dayStart + 1 día).
+    const [appointments, shifts] = await Promise.all([
+        getBlockingAppointmentsByBarberIdsAndRange(
+            barberIds,
+            new Date(businessWallClockToUtcMs(dayStart)),
+            new Date(businessWallClockToUtcMs(dayStart + MS_PER_DAY)),
+            excludeAppointmentId
+        ),
+        getAllShifts(),
+    ]);
+
+    // scheduled_start/scheduled_end son instantes UTC reales; se pasan a hora de pared del
+    // negocio antes de compararlos con las ventanas (que ya están en esa misma convención).
+    const toMinutes = (d: Date) => (toBusinessWallClockMs(new Date(d).getTime()) - dayStart) / MS_PER_MINUTE;
+    // Hoy no se ofrecen inicios que ya pasaron.
+    const notBefore = dayStart === todayStart ? (now - dayStart) / MS_PER_MINUTE : -Infinity;
+
+    return barbers.map((barber: { id: string; first_name: string; last_name: string; shift_id: string }) => {
+        const shift = shifts.find((s) => s.id === barber.shift_id);
+        const windows: Interval[] = shift ? [[timeToMinutes(shift.start_time), timeToMinutes(shift.end_time)]] : [];
+
+        const busy = appointments
+            .filter((a) => a.barber_id === barber.id)
+            .map((a): Interval => [toMinutes(a.scheduled_start), toMinutes(a.scheduled_end)]);
+
+        return {
+            barberId: barber.id,
+            firstName: barber.first_name,
+            lastName: barber.last_name,
+            startTimes: computeStartMinutes(windows, busy, duration, notBefore).map((m) =>
+                new Date(businessWallClockToUtcMs(dayStart + m * MS_PER_MINUTE)).toISOString()
+            ),
+        };
+    });
+};
+
+export interface GetNextAvailableSlotsInput {
+    shopId: string;
+    /** Servicios de la cita; los horarios se calculan con la suma de sus duraciones. */
+    serviceIds: string[];
+}
+
+export interface NextAvailableSlot {
+    barberId: string;
+    firstName: string;
+    lastName: string;
+    /** Próximo horario de inicio agendable hoy, en ISO 8601 UTC. */
+    startTime: string;
+}
+
+/**
+ * Próximo slot disponible de cada barbero de la sucursal para un walk-in: el primer `startTime` que
+ * getAvailableSlots ofrece hoy (día de negocio en BUSINESS_TIMEZONE) a cada barbero, de modo que todo slot
+ * devuelto es aceptado por POST /appointments con los mismos servicios. Hereda sus reglas: turnos,
+ * is_accepting_bookings, días abiertos, citas que ocupan agenda y horas ya pasadas.
+ * Los barberos sin slot restante hoy se omiten; si ninguno tiene, la lista es vacía (p. ej. domingo).
+ * Ordenado por `startTime` ascendente; los empates se ordenan por nombre solo para que la respuesta sea estable.
+ */
+export const getNextAvailableSlots = async ({
+    shopId,
+    serviceIds,
+}: GetNextAvailableSlotsInput): Promise<NextAvailableSlot[]> => {
+    const availability = await getAvailableSlots({ shopId, date: getBusinessToday(), serviceIds });
+
+    const withSlot = availability.filter((b) => b.startTimes.length > 0);
+    if (withSlot.length === 0) return [];
+
+    // getAvailableSlots solo expone ids; los nombres salen de los mismos barberos elegibles de la sucursal.
+    // const barbers = await getActiveBarbersByShop(shopId);
+    // const nameById = new Map(barbers.map((b) => [b.id, `${b.first_name} ${b.last_name}`]));
+
+    return withSlot
+        .map((b) => ({ barberId: b.barberId, firstName: b.firstName, lastName: b.lastName, startTime: b.startTimes[0] }))
+        .sort((a, b) => a.startTime.localeCompare(b.startTime) || a.firstName.localeCompare(b.firstName));
+};
+</file>
+
+<file path="backend/src/controllers/availabilitySlotController.ts">
+import { z, ZodError } from 'zod';
+import type { ApiHandler } from '../utils/apiResponse.js';
+import { sendFail, sendInternalServerError, sendSuccess, sendValidationError } from '../utils/apiResponse.js';
+import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
+import { getAvailableSlots, getNextAvailableSlots } from '../services/availabilityService.js';
+import type { AvailableSlotsByBarber, NextAvailableSlot } from '../services/availabilityService.js';
+import { getBusinessToday } from '../utils/businessTime.js';
+import { extractBearerFromHeader, extractOptionalBearerFromHeader } from '../utils/headerHandling.js';
+import {
+    assertCanExcludeAppointmentFromAvailability,
+    assertCanManageShopWalkIns,
+} from '../services/appointmentService.js';
+
+// Validación del ID de la sucursal en los parámetros de la ruta
+const getAvailabilityParamsSchema = z.object({
+    id: z.uuid('Invalid shop ID format'),
+});
+
+// serviceIds acepta el parámetro repetido (?serviceIds=a&serviceIds=b) o separado por comas (?serviceIds=a,b).
+const serviceIdsQueryField = z.preprocess(
+    (val) => (typeof val === 'string' ? val.split(',') : val),
+    z
+        .array(z.uuid('Invalid service ID format'), 'serviceIds is required')
+        .min(1, 'At least one service is required')
+        .refine((ids) => new Set(ids).size === ids.length, { message: 'Duplicate service IDs' })
+);
+
+// Validación de los parámetros de consulta (query params): fecha, servicios y cita excluida opcional.
+const getAvailabilityQuerySchema = z.object({
+    date: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format, expected YYYY-MM-DD')
+        .refine((val) => val >= getBusinessToday(), { message: 'Date cannot be before today' }),
+    serviceIds: serviceIdsQueryField,
+    excludeAppointmentId: z.uuid('Invalid excludeAppointmentId format').optional(),
+});
+
+// Validación de los parámetros de consulta del próximo slot por barbero: solo servicios (la fecha siempre es hoy).
+const getNextAvailabilityQuerySchema = z.object({
+    serviceIds: serviceIdsQueryField,
+});
+
+// Handler público para calcular y consultar los slots de disponibilidad de una sucursal.
+// Cuando se envía `excludeAppointmentId`, se exige token JWT y se valida que el solicitante
+// tenga permiso para editar esa cita (mismas reglas que PUT /api/appointments/:id).
+export const getAvailability: ApiHandler<AvailableSlotsByBarber[]> = async (req, res) => {
+    try {
+        // Valida los parámetros de ruta y de consulta con sus respectivos esquemas Zod
+        const validParams = getAvailabilityParamsSchema.parse({ id: req.params.id });
+        const validQuery = getAvailabilityQuerySchema.parse(req.query);
+        const shopId = validParams.id;
+
+        // Excluir una cita exige token (401) y las mismas reglas de alcance que PUT /appointments/:id:
+        // cita inexistente → 404, sin permiso → 403, cita de otra sucursal → 422 (en ese orden).
+        if (validQuery.excludeAppointmentId) {
+            const bearerToken = extractOptionalBearerFromHeader(req);
+            if (!bearerToken) {
+                throw new ApiError(
+                    ApiErrorCode.UNAUTHORIZED,
+                    'Token is required when excludeAppointmentId is provided'
+                );
+            }
+            await assertCanExcludeAppointmentFromAvailability(validQuery.excludeAppointmentId, bearerToken, shopId);
+        }
+
+        // Llama al servicio de dominio para calcular los horarios agendables por barbero
+        const result = await getAvailableSlots({
+            shopId,
+            date: validQuery.date,
+            serviceIds: validQuery.serviceIds,
+            excludeAppointmentId: validQuery.excludeAppointmentId,
+        });
+
+        // Retorna respuesta exitosa con los slots disponibles
+        sendSuccess({ res, data: result, message: 'Available slots retrieved successfully' });
+    } catch (error: unknown) {
+        // Error de validación de datos de entrada (Zod)
+        if (error instanceof ZodError) {
+            sendValidationError({ res, error });
+            return;
+        }
+
+        // Error controlado de lógica de negocio o recurso no encontrado (ApiError)
+        if (error instanceof ApiError) {
+            sendFail({ res, message: error.message, status: error.code });
+            return;
+        }
+
+        // Error no esperado del servidor
+        sendInternalServerError({ res, error: [String(error)] });
+    }
+};
+
+// Handler para consultar el próximo slot disponible hoy de cada barbero de la sucursal (apoyo al walk-in).
+// Requiere token JWT y que el solicitante sea personal de la sucursal (su recepcionista o su manager).
+export const getNextAvailability: ApiHandler<NextAvailableSlot[]> = async (req, res) => {
+    try {
+        // Valida los parámetros de ruta y de consulta con sus respectivos esquemas Zod
+        const validParams = getAvailabilityParamsSchema.parse({ id: req.params.id });
+        const validQuery = getNextAvailabilityQuerySchema.parse(req.query);
+        const shopId = validParams.id;
+
+        // Solo personal de la sucursal: sin token → 401, cliente o staff de otra sucursal → 403
+        const bearerToken = extractBearerFromHeader(req);
+        await assertCanManageShopWalkIns(shopId, bearerToken);
+
+        // Llama al servicio de dominio para obtener el próximo slot de hoy por barbero
+        const result = await getNextAvailableSlots({ shopId, serviceIds: validQuery.serviceIds });
+
+        // Retorna respuesta exitosa (lista vacía si a ningún barbero le queda disponibilidad hoy)
+        sendSuccess({ res, data: result, message: 'Next available slots retrieved successfully' });
+    } catch (error: unknown) {
+        // Error de validación de datos de entrada (Zod)
+        if (error instanceof ZodError) {
+            sendValidationError({ res, error });
+            return;
+        }
+
+        // Error controlado de autenticación, permisos o recurso no encontrado (ApiError)
+        if (error instanceof ApiError) {
+            sendFail({ res, message: error.message, status: error.code });
+            return;
+        }
+
+        // Error no esperado del servidor
+        sendInternalServerError({ res, error: [String(error)] });
+    }
+};
+</file>
+
+<file path="backend/src/controllers/appointmentController.ts">
+import { z, ZodError } from 'zod';
+import type { ApiHandler } from '../utils/apiResponse.js';
+import { sendFail, sendInternalServerError, sendSuccess, sendValidationError } from '../utils/apiResponse.js';
+import { ApiError } from '../errors/ApiError.js';
+import {
+    cancelAppointment,
+    checkInAppointment,
+    getAppointment,
+    listAppointments,
+    markAppointmentNoShow,
+    registerAppointment,
+    updateAppointment,
+} from '../services/appointmentService.js';
+import type { AppointmentResponse, ClientAppointmentResponse } from '../types/dto/appointmentResponse.interface.js';
+import { extractBearerFromHeader } from '../utils/headerHandling.js';
+
+// Campos compartidos por agendar y editar una cita.
+const barberIdField = z.uuid('Invalid barber ID format');
+const serviceIdsField = z
+    .array(z.uuid('Invalid service ID format'))
+    .min(1, 'At least one service is required')
+    .refine((ids) => new Set(ids).size === ids.length, { message: 'Duplicate service IDs' });
+const scheduledStartField = z.iso.datetime({ message: 'Invalid scheduledStart, expected ISO 8601 date-time' });
+const notesField = z.string().trim().max(500, 'Notes must be at most 500 characters');
+
+const createAppointmentSchema = z
+    .object({
+        barberId: barberIdField,
+        serviceIds: serviceIdsField,
+        scheduledStart: scheduledStartField,
+        clientId: z.uuid('Invalid client ID format').optional(),
+        guestClientName: z
+            .string()
+            .trim()
+            .min(1, 'Guest client name must not be empty')
+            .max(100, 'Guest client name must be at most 100 characters')
+            .optional(),
+        notes: notesField.optional(),
+        isWalkIn: z.boolean().optional(),
+    })
+    .refine((data) => !(data.clientId && data.guestClientName), {
+        message: 'Provide either clientId or guestClientName, not both',
+    });
+
+// El cliente, el invitado y la sucursal no se pueden editar: strict() rechaza cualquier otro campo.
+const updateAppointmentSchema = z
+    .strictObject({
+        barberId: barberIdField.optional(),
+        serviceIds: serviceIdsField.optional(),
+        scheduledStart: scheduledStartField.optional(),
+        notes: notesField.nullable().optional(),
+    })
+    .refine((data) => Object.values(data).some((value) => value !== undefined), {
+        message: 'At least one field to update is required',
+    });
+
+// El cuerpo es opcional; solo se acepta el motivo de la cancelación.
+const cancelAppointmentSchema = z.strictObject({
+    reason: z.string().trim().max(255, 'Reason must be at most 255 characters').nullable().optional(),
+});
+
+const appointmentIdParamSchema = z.object({ id: z.uuid('Invalid appointment ID format') });
+
+const APPOINTMENT_STATUSES = ['scheduled', 'rescheduled', 'checked_in', 'completed', 'cancelled', 'no_show'] as const;
+
+// status acepta el parámetro repetido (?status=a&status=b) o separado por comas (?status=a,b).
+const listAppointmentsQuerySchema = z.object({
+    from: z.iso
+        .datetime({ offset: true, message: 'Invalid from, expected ISO 8601 date-time' })
+        .transform((val) => new Date(val))
+        .optional(),
+    to: z.iso
+        .datetime({ offset: true, message: 'Invalid to, expected ISO 8601 date-time' })
+        .transform((val) => new Date(val))
+        .optional(),
+    status: z
+        .preprocess(
+            (val) => (typeof val === 'string' ? val.split(',') : val),
+            z
+                .array(z.enum(APPOINTMENT_STATUSES, 'Invalid status'))
+                .min(1, 'At least one status is required')
+                .transform((statuses) => [...new Set(statuses)])
+        )
+        .optional(),
+    clientId: z.uuid('Invalid client ID format').optional(),
+    shopId: z.uuid('Invalid shop ID format').optional(),
+    clientType: z.enum(['registered', 'visitor'], 'Invalid clientType, expected registered or visitor').optional(),
+    barberId: z.uuid('Invalid barber ID format').optional(),
+    isWalkIn: z
+        .enum(['true', 'false'])
+        .transform((val) => val === 'true')
+        .optional(),
+});
+
+// Agendar cita.
+export const create: ApiHandler<AppointmentResponse | ClientAppointmentResponse> = async (req, res) => {
+    try {
+        const token = extractBearerFromHeader(req);
+        const validData = createAppointmentSchema.parse(req.body);
+
+        const result = await registerAppointment(validData, token);
+
+        sendSuccess({ res, data: result, message: 'Appointment created successfully', status: 201 });
+    } catch (error: unknown) {
+        if (error instanceof ZodError) {
+            sendValidationError({ res, error });
+            return;
+        }
+        if (error instanceof ApiError) {
+            sendFail({ res, message: error.message, status: error.code });
+            return;
+        }
+        sendInternalServerError({ res, error: [String(error)] });
+    }
+};
+
+// Editar cita (horario, barbero, servicios y notas).
+export const update: ApiHandler<AppointmentResponse | ClientAppointmentResponse> = async (req, res) => {
+    try {
+        const token = extractBearerFromHeader(req);
+        const { id } = appointmentIdParamSchema.parse(req.params);
+        const validData = updateAppointmentSchema.parse(req.body);
+
+        const result = await updateAppointment(id, validData, token);
+
+        sendSuccess({ res, data: result, message: 'Appointment updated successfully' });
+    } catch (error: unknown) {
+        if (error instanceof ZodError) {
+            sendValidationError({ res, error });
+            return;
+        }
+        if (error instanceof ApiError) {
+            sendFail({ res, message: error.message, status: error.code });
+            return;
+        }
+        sendInternalServerError({ res, error: [String(error)] });
+    }
+};
+
+// Cancelar cita.
+export const cancel: ApiHandler<AppointmentResponse | ClientAppointmentResponse> = async (req, res) => {
+    try {
+        const token = extractBearerFromHeader(req);
+        const { id } = appointmentIdParamSchema.parse(req.params);
+        const validData = cancelAppointmentSchema.parse(req.body ?? {});
+
+        const result = await cancelAppointment(id, validData, token);
+
+        sendSuccess({ res, data: result, message: 'Appointment cancelled successfully' });
+    } catch (error: unknown) {
+        if (error instanceof ZodError) {
+            sendValidationError({ res, error });
+            return;
+        }
+        if (error instanceof ApiError) {
+            sendFail({ res, message: error.message, status: error.code });
+            return;
+        }
+        sendInternalServerError({ res, error: [String(error)] });
+    }
+};
+
+// Registrar check-in de una cita.
+export const checkIn: ApiHandler<AppointmentResponse> = async (req, res) => {
+    try {
+        const token = extractBearerFromHeader(req);
+        const { id } = appointmentIdParamSchema.parse(req.params);
+
+        const result = await checkInAppointment(id, token);
+
+        sendSuccess({ res, data: result, message: 'Appointment checked in successfully' });
+    } catch (error: unknown) {
+        if (error instanceof ZodError) {
+            sendValidationError({ res, error });
+            return;
+        }
+        if (error instanceof ApiError) {
+            sendFail({ res, message: error.message, status: error.code });
+            return;
+        }
+        sendInternalServerError({ res, error: [String(error)] });
+    }
+};
+
+export const markNoShow: ApiHandler<AppointmentResponse> = async (req, res) => {
+    try {
+        const token = extractBearerFromHeader(req);
+        const { id } = appointmentIdParamSchema.parse(req.params);
+        const result = await markAppointmentNoShow(id, token);
+
+        sendSuccess({ res, data: result, message: 'Appointment marked as no-show successfully' });
+    } catch (error: unknown) {
+        if (error instanceof ZodError) {
+            sendValidationError({ res, error });
+            return;
+        }
+        if (error instanceof ApiError) {
+            sendFail({ res, message: error.message, status: error.code });
+            return;
+        }
+        sendInternalServerError({ res, error: [String(error)] });
+    }
+};
+
+// Consultar una cita por id.
+export const getById: ApiHandler<AppointmentResponse | ClientAppointmentResponse> = async (req, res) => {
+    try {
+        const token = extractBearerFromHeader(req);
+        const { id } = appointmentIdParamSchema.parse(req.params);
+
+        const result = await getAppointment(id, token);
+
+        sendSuccess({ res, data: result, message: 'Appointment retrieved successfully' });
+    } catch (error: unknown) {
+        if (error instanceof ZodError) {
+            sendValidationError({ res, error });
+            return;
+        }
+        if (error instanceof ApiError) {
+            sendFail({ res, message: error.message, status: error.code });
+            return;
+        }
+        sendInternalServerError({ res, error: [String(error)] });
+    }
+};
+
+// Consultar citas según el rol del solicitante.
+export const list: ApiHandler<AppointmentResponse[] | ClientAppointmentResponse[]> = async (req, res) => {
+    try {
+        const token = extractBearerFromHeader(req);
+        const validQuery = listAppointmentsQuerySchema.parse(req.query);
+
+        const result = await listAppointments(validQuery, token);
+
+        sendSuccess({ res, data: result, message: 'Appointments retrieved successfully' });
+    } catch (error: unknown) {
+        if (error instanceof ZodError) {
+            sendValidationError({ res, error });
+            return;
+        }
+        if (error instanceof ApiError) {
+            sendFail({ res, message: error.message, status: error.code });
+            return;
+        }
+        sendInternalServerError({ res, error: [String(error)] });
+    }
+};
+</file>
+
+<file path="backend/src/services/appointmentService.ts">
+import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
+import {
+    cancelAppointmentById,
+    checkInAppointmentById,
+    createAppointmentWithServices,
+    getAppointmentById,
+    getAppointments,
+    getServicesByAppointmentIds,
+    updateAppointmentWithServices,
+    markAppointmentAsNoShow,
+    markAppointmentAsNoShowById,
+    autoCheckInWalkInAppointments,
+    completeCheckedInAppointments
+} from '../repositories/appointmentRepository.js';
+import { getShopById, getShopIdsByManagerId } from '../repositories/shopRepository.js';
+import { getBarberById } from '../repositories/barberRepository.js';
+import { getAppointmentClientsById, getClientByUserId } from '../repositories/clientRepository.js';
+import { getReceptionistByUserId } from '../repositories/receptionistRepository.js';
+import { getAllShifts } from '../repositories/shiftRepository.js';
+import {
+    getAvailableSlots,
+    getBookableServices,
+    MAX_BOOKING_DAYS_AHEAD,
+    SLOT_STEP_MINUTES,
+} from './availabilityService.js';
+import {
+    canCheckInAppointment,
+    canMarkAppointmentNoShow,
+    canCreateAppointment,
+    canEditAppointment,
+    canManageShopWalkIns,
+    canViewAppointment,
+    canViewShopAppointments,
+    isWithinClientEditCutoff,
+} from './userPermissions.js';
+import { isUserSessionValid } from '../utils/userSession.js';
+import { toAppointmentResponse, toClientAppointmentResponse } from '../utils/appointmentMapper.js';
+import { getBusinessDayStart, getBusinessToday, timeToMinutes, toBusinessWallClockMs } from '../utils/businessTime.js';
+import type { AppointmentListFilters } from '../repositories/appointmentRepository.js';
+import type { Appointment } from '../types/entities/appointment.interface.js';
+import type { AppointmentService } from '../types/entities/appointmentService.interface.js';
+import type {
+    CancelAppointmentRequest,
+    CreateAppointmentRequest,
+    ListAppointmentsQuery,
+    UpdateAppointmentRequest,
+} from '../types/dto/appointmentRequest.interface.js';
+import type { AppointmentResponse, ClientAppointmentResponse } from '../types/dto/appointmentResponse.interface.js';
+
+const MS_PER_MINUTE = 60_000;
+const MS_PER_DAY = 24 * 60 * MS_PER_MINUTE;
+export const NO_SHOW_GRACE_MINUTES = 10;
+// Días que cubre la ventana por defecto, hoy incluido: hasta el último día que availabilityService deja agendar.
+const DEFAULT_WINDOW_DAYS = MAX_BOOKING_DAYS_AHEAD + 1;
+const MAX_WINDOW_DAYS = 366;
+
+/**
+ * Agenda una nueva cita para un cliente registrado o un invitado.
+ * Discrimina por rol con canCreateAppointment y solo acepta un horario que
+ * GET /shops/:id/availability ofrecería para ese barbero y esos servicios.
+ */
+export const registerAppointment = async (
+    data: CreateAppointmentRequest,
+    token: string
+): Promise<AppointmentResponse | ClientAppointmentResponse> => {
+    const performer = await isUserSessionValid(token);
+
+    const isWalkIn = data.isWalkIn ?? false;
+    if (isWalkIn && performer.role === 'client') {
+        throw new ApiError(ApiErrorCode.FORBIDDEN, 'Clients cannot create walk-in appointments');
+    }
+
+    // Un cliente que no indica a quién agenda, agenda para sí mismo.
+    const clientId = data.guestClientName
+        ? null
+        : (data.clientId ?? (performer.role === 'client' ? performer.id : null));
+    if (clientId === null && !data.guestClientName) {
+        throw new ApiError(ApiErrorCode.INVALID_INPUT, 'Either clientId or guestClientName is required');
+    }
+
+    // Un barbero pertenece a una sola sucursal, así que shopId se deriva de barberId
+    // en vez de pedirse por separado (y poder no coincidir con la del barbero).
+    const barber = await getBarberById(data.barberId);
+    if (!barber) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Barber not found');
+    }
+
+    const shop = await getShopById(barber.shop_id);
+    if (!shop || !shop.is_active) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Shop not found or is inactive');
+    }
+
+    const receptionistShopId =
+        performer.role === 'receptionist' ? ((await getReceptionistByUserId(performer.id))?.shop_id ?? null) : null;
+
+    if (
+        !canCreateAppointment(
+            performer,
+            { clientId, shopId: shop.id, shopManagerId: shop.manager_id },
+            receptionistShopId
+        )
+    ) {
+        throw new ApiError(ApiErrorCode.FORBIDDEN, 'Not authorized to create this appointment');
+    }
+
+    if (
+        isWalkIn &&
+        !canManageShopWalkIns(performer, { shopId: shop.id, shopManagerId: shop.manager_id }, receptionistShopId)
+    ) {
+        throw new ApiError(ApiErrorCode.FORBIDDEN, 'Not authorized to manage walk-ins of this shop');
+    }
+
+    if (clientId !== null && !(await getClientByUserId(clientId))) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Client not found');
+    }
+
+    const scheduledStart = new Date(data.scheduledStart);
+
+    if (isWalkIn) {
+        const appointmentDay = getBusinessToday(scheduledStart.getTime());
+        const today = getBusinessToday();
+        if (appointmentDay !== today) {
+            throw new ApiError(
+                ApiErrorCode.BAD_REQUEST,
+                'Walk-in appointments must be scheduled for the current business day'
+            );
+        }
+    }
+    const startIso = scheduledStart.toISOString();
+    const availability = await getAvailableSlots({
+        shopId: shop.id,
+        date: getBusinessToday(scheduledStart.getTime()),
+        serviceIds: data.serviceIds,
+    });
+    const barberSlots = availability.find((b) => b.barberId === data.barberId);
+    if (!barberSlots) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Barber not found or is not accepting bookings at this shop');
+    }
+    if (!barberSlots.startTimes.includes(startIso)) {
+        throw new ApiError(ApiErrorCode.CONFLICT, 'Selected time slot is not available');
+    }
+
+    // getAvailableSlots ya confirmó que existen y están activos.
+    const services = await getBookableServices(data.serviceIds);
+    const durationMinutes = services.reduce((sum, s) => sum + s.duration_minutes, 0);
+
+    const { appointment, services: bookedServices } = await createAppointmentWithServices({
+        shopId: shop.id,
+        barberId: data.barberId,
+        clientId,
+        guestClientName: data.guestClientName ?? null,
+        scheduledStart,
+        scheduledEnd: new Date(scheduledStart.getTime() + durationMinutes * MS_PER_MINUTE),
+        notes: data.notes ?? null,
+        isWalkIn,
+        services: services.map((s) => ({
+            serviceId: s.id,
+            priceAtBooking: s.price,
+            durationMinutesAtBooking: s.duration_minutes,
+        })),
+    });
+
+    if (performer.role === 'client') {
+        return toClientAppointmentResponse(appointment, bookedServices);
+    }
+
+    const [client] = await getAppointmentClientsById(clientId !== null ? [clientId] : []);
+    return toAppointmentResponse(appointment, bookedServices, client ?? null);
+};
+
+/** Días después de la fecha en que se agendó dentro de los cuales se puede reprogramar una cita. */
+const RESCHEDULE_WINDOW_DAYS = 30;
+
+type SessionPerformer = Awaited<ReturnType<typeof isUserSessionValid>>;
+
+/**
+ * Valida la sesión, que la cita exista (404) y que el solicitante tenga alcance para editarla según su rol (403).
+ * Es la única fuente de las reglas de alcance de PUT /appointments/:id; la usan editar, cancelar y la disponibilidad
+ * con excludeAppointmentId, para que no se desincronicen.
+ */
+const loadAppointmentInEditScope = async (
+    appointmentId: string,
+    token: string,
+    action: string
+): Promise<{ performer: SessionPerformer; appointment: Appointment }> => {
+    const performer = await isUserSessionValid(token);
+
+    const appointment = await getAppointmentById(appointmentId);
+    if (!appointment) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Appointment not found');
+    }
+
+    const shop = await getShopById(appointment.shop_id);
+    if (!shop) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Shop not found');
+    }
+
+    const receptionistShopId =
+        performer.role === 'receptionist' ? ((await getReceptionistByUserId(performer.id))?.shop_id ?? null) : null;
+
+    // Editar y cancelar comparten el mismo alcance por rol.
+    if (
+        !canEditAppointment(
+            performer,
+            { clientId: appointment.client_id, shopId: appointment.shop_id, shopManagerId: shop.manager_id },
+            receptionistShopId
+        )
+    ) {
+        throw new ApiError(ApiErrorCode.FORBIDDEN, `Not authorized to ${action} this appointment`);
+    }
+
+    return { performer, appointment };
+};
+
+/**
+ * GET /shops/:id/availability con excludeAppointmentId: exige que el solicitante pueda editar la cita (mismas
+ * reglas de alcance que PUT /appointments/:id) y que la cita sea de la sucursal consultada. El alcance (403) se
+ * valida antes que la sucursal (422) para no revelar a qué sucursal pertenece una cita ajena.
+ */
+export const assertCanExcludeAppointmentFromAvailability = async (
+    appointmentId: string,
+    token: string,
+    shopId: string
+): Promise<void> => {
+    const { appointment } = await loadAppointmentInEditScope(appointmentId, token, 'exclude');
+    if (appointment.shop_id !== shopId) {
+        throw new ApiError(ApiErrorCode.INVALID_INPUT, 'The appointment does not belong to the requested shop');
+    }
+};
+
+/**
+ * GET /shops/:id/availability/next: valida la sesión (401) y que el solicitante sea personal de la sucursal (403).
+ * Los clientes se rechazan antes de consultar la sucursal; una sucursal inexistente responde 404.
+ */
+export const assertCanManageShopWalkIns = async (shopId: string, token: string): Promise<void> => {
+    const performer = await isUserSessionValid(token);
+    if (performer.role === 'client') {
+        throw new ApiError(ApiErrorCode.FORBIDDEN, 'Not authorized to manage walk-ins of this shop');
+    }
+
+    const shop = await getShopById(shopId);
+    if (!shop) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Shop not found');
+    }
+
+    const receptionistShopId =
+        performer.role === 'receptionist' ? ((await getReceptionistByUserId(performer.id))?.shop_id ?? null) : null;
+
+    if (!canManageShopWalkIns(performer, { shopId: shop.id, shopManagerId: shop.manager_id }, receptionistShopId)) {
+        throw new ApiError(ApiErrorCode.FORBIDDEN, 'Not authorized to manage walk-ins of this shop');
+    }
+};
+
+/**
+ * Prólogo compartido por editar y cancelar: además del alcance (loadAppointmentInEditScope), valida el estado
+ * (scheduled / rescheduled), que no haya empezado y el límite de 8 horas (solo clientes).
+ */
+const loadModifiableAppointment = async (
+    appointmentId: string,
+    token: string,
+    action: 'edit' | 'cancel'
+): Promise<{ performer: SessionPerformer; appointment: Appointment }> => {
+    const { performer, appointment } = await loadAppointmentInEditScope(appointmentId, token, action);
+
+    if (appointment.status !== 'scheduled' && appointment.status !== 'rescheduled') {
+        throw new ApiError(
+            ApiErrorCode.CONFLICT,
+            `Only scheduled or rescheduled appointments can be ${action === 'edit' ? 'edited' : 'cancelled'}`
+        );
+    }
+
+    const now = new Date();
+    if (appointment.scheduled_start.getTime() <= now.getTime()) {
+        throw new ApiError(
+            ApiErrorCode.CONFLICT,
+            `Only future appointments can be ${action === 'edit' ? 'edited' : 'cancelled'}`
+        );
+    }
+    if (!isWithinClientEditCutoff(performer, appointment.scheduled_start, now)) {
+        throw new ApiError(
+            ApiErrorCode.FORBIDDEN,
+            `Clients cannot ${action} an appointment less than 8 hours before it starts`
+        );
+    }
+
+    return { performer, appointment };
+};
+
+/**
+ * Edita una cita (horario, barbero, servicios y notas). El cliente, el invitado y la sucursal no cambian.
+ * Valida rol y alcance, estado (scheduled / rescheduled), que la cita no haya empezado, el límite de 8 horas
+ * (solo clientes), la ventana de 30 días desde que se agendó y la disponibilidad del barbero excluyendo la
+ * propia cita. Cambiar horario o barbero la deja en `rescheduled`; editar solo servicios o notas conserva el estado.
+ */
+export const updateAppointment = async (
+    appointmentId: string,
+    data: UpdateAppointmentRequest,
+    token: string
+): Promise<AppointmentResponse | ClientAppointmentResponse> => {
+    const { performer, appointment } = await loadModifiableAppointment(appointmentId, token, 'edit');
+
+    // Valores finales: lo que no se manda se conserva.
+    const barberId = data.barberId ?? appointment.barber_id;
+    const scheduledStart = data.scheduledStart ? new Date(data.scheduledStart) : appointment.scheduled_start;
+    const barberChanged = barberId !== appointment.barber_id;
+    const startChanged = scheduledStart.getTime() !== appointment.scheduled_start.getTime();
+    const notes = data.notes !== undefined ? data.notes : appointment.notes;
+
+    const barber = await getBarberById(barberId);
+    if (!barber || barber.deleted_at !== null) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Barber not found');
+    }
+    if (barberChanged) {
+        if (barber.shop_id !== appointment.shop_id) {
+            throw new ApiError(ApiErrorCode.INVALID_INPUT, 'Barber must belong to the same shop as the appointment');
+        }
+        if (!barber.is_accepting_bookings) {
+            throw new ApiError(ApiErrorCode.INVALID_INPUT, 'Barber is not accepting bookings');
+        }
+    }
+
+    // Los servicios que ya estaban agendados conservan su snapshot; los nuevos usan el catálogo actual.
+    const currentServices = await getServicesByAppointmentIds([appointment.id]);
+    let finalServices = currentServices.map((s) => ({
+        serviceId: s.service_id,
+        priceAtBooking: s.price_at_booking,
+        durationMinutesAtBooking: s.duration_minutes_at_booking,
+    }));
+    if (data.serviceIds) {
+        const catalog = await getBookableServices(data.serviceIds);
+        const currentById = new Map(finalServices.map((s) => [s.serviceId, s]));
+        finalServices = catalog.map(
+            (s) =>
+                currentById.get(s.id) ?? {
+                    serviceId: s.id,
+                    priceAtBooking: s.price,
+                    durationMinutesAtBooking: s.duration_minutes,
+                }
+        );
+    }
+    const servicesChanged =
+        data.serviceIds !== undefined &&
+        (finalServices.length !== currentServices.length ||
+            finalServices.some((s) => !currentServices.some((c) => c.service_id === s.serviceId)));
+    // Si no se tocan los servicios, la duración es la que ya tenía la cita; si se reemplazan, la suma de los nuevos.
+    const durationMs = data.serviceIds
+        ? finalServices.reduce((sum, s) => sum + s.durationMinutesAtBooking, 0) * MS_PER_MINUTE
+        : appointment.scheduled_end.getTime() - appointment.scheduled_start.getTime();
+    const scheduledEnd = new Date(scheduledStart.getTime() + durationMs);
+
+    if (startChanged) {
+        // Ventana de reprogramación: desde que se agendó hasta 30 días después (días de calendario del negocio).
+        // El piso lo cubre la disponibilidad (no acepta fechas pasadas); el techo se ancla en created_at, no en hoy.
+        const bookedDayMs = Date.parse(`${getBusinessToday(appointment.created_at.getTime())}T00:00:00.000Z`);
+        const newDayMs = Date.parse(`${getBusinessToday(scheduledStart.getTime())}T00:00:00.000Z`);
+        if (newDayMs > bookedDayMs + RESCHEDULE_WINDOW_DAYS * MS_PER_DAY) {
+            throw new ApiError(
+                ApiErrorCode.INVALID_INPUT,
+                `Appointments can only be rescheduled up to ${RESCHEDULE_WINDOW_DAYS} days after the booking date`
+            );
+        }
+    }
+
+    if (startChanged || barberChanged) {
+        // Misma validación que al agendar, pero sin contar la cita que se edita como ocupada.
+        const availability = await getAvailableSlots({
+            shopId: appointment.shop_id,
+            date: getBusinessToday(scheduledStart.getTime()),
+            serviceIds: finalServices.map((s) => s.serviceId),
+            excludeAppointmentId: appointment.id,
+        });
+        const barberSlots = availability.find((b) => b.barberId === barberId);
+        if (!barberSlots) {
+            throw new ApiError(ApiErrorCode.NOT_FOUND, 'Barber not found or is not accepting bookings at this shop');
+        }
+        if (!barberSlots.startTimes.includes(scheduledStart.toISOString())) {
+            throw new ApiError(ApiErrorCode.CONFLICT, 'Selected time slot is not available');
+        }
+    } else if (servicesChanged) {
+        // Mismo horario y barbero: el inicio original puede no caer en la rejilla de 15 min si las citas vecinas
+        // cambiaron, así que no se exige; solo que la nueva duración no se salga del turno. Los traslapes los
+        // valida la transacción con el candado del barbero.
+        const shift = (await getAllShifts()).find((s) => s.id === barber.shift_id);
+        const dayStartMs = Date.parse(`${getBusinessToday(scheduledStart.getTime())}T00:00:00.000Z`);
+        const endMinutes = (toBusinessWallClockMs(scheduledEnd.getTime()) - dayStartMs) / MS_PER_MINUTE;
+        if (!shift || endMinutes > timeToMinutes(shift.end_time)) {
+            throw new ApiError(ApiErrorCode.CONFLICT, 'Selected services do not fit in the barber shift');
+        }
+    }
+
+    const { appointment: updated, services } = await updateAppointmentWithServices({
+        appointmentId: appointment.id,
+        barberId,
+        scheduledStart,
+        scheduledEnd,
+        notes,
+        status: startChanged || barberChanged ? 'rescheduled' : appointment.status,
+        services: finalServices,
+    });
+
+    if (performer.role === 'client') {
+        return toClientAppointmentResponse(updated, services);
+    }
+
+    const [client] = await getAppointmentClientsById(updated.client_id !== null ? [updated.client_id] : []);
+    return toAppointmentResponse(updated, services, client ?? null);
+};
+
+/**
+ * Cancela una cita. Mismas reglas de rol, estado, cita futura y límite de 8 horas (solo clientes) que la edición.
+ * No hay reembolsos ni límite de cancelaciones, y la recompensa del programa de lealtad se conserva al cancelar
+ * (solo se pierde con no_show), por lo que aquí no hay lógica de recompensas. La cita cancelada deja de ocupar
+ * agenda porque la disponibilidad solo considera scheduled / rescheduled / checked_in.
+ */
+export const cancelAppointment = async (
+    appointmentId: string,
+    data: CancelAppointmentRequest,
+    token: string
+): Promise<AppointmentResponse | ClientAppointmentResponse> => {
+    const { performer, appointment } = await loadModifiableAppointment(appointmentId, token, 'cancel');
+
+    const { appointment: cancelled, services } = await cancelAppointmentById(appointment.id, data.reason ?? null);
+
+    if (performer.role === 'client') {
+        return toClientAppointmentResponse(cancelled, services);
+    }
+
+    const [client] = await getAppointmentClientsById(cancelled.client_id !== null ? [cancelled.client_id] : []);
+    return toAppointmentResponse(cancelled, services, client ?? null);
+};
+
+/**
+ * Registra la llegada del cliente a su cita (check-in).
+ * Solo recepción (de la sucursal de la cita) y gerentes (de las sucursales que administran).
+ * Solo aplica para citas en estado `scheduled` o `rescheduled` dentro de la ventana
+ * `[scheduled_start - SLOT_STEP_MINUTES, scheduled_start + NO_SHOW_GRACE_MINUTES)`.
+ * Si se hace antes de `scheduled_start`, exige que el mismo barbero no tenga citas bloqueantes en el slot previo.
+ */
+export const checkInAppointment = async (appointmentId: string, token: string): Promise<AppointmentResponse> => {
+    const performer = await isUserSessionValid(token);
+
+    const appointment = await getAppointmentById(appointmentId);
+    if (!appointment) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Appointment not found');
+    }
+
+    const shop = await getShopById(appointment.shop_id);
+    if (!shop) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Shop not found');
+    }
+
+    const receptionistShopId =
+        performer.role === 'receptionist' ? ((await getReceptionistByUserId(performer.id))?.shop_id ?? null) : null;
+
+    if (
+        !canCheckInAppointment(
+            performer,
+            { shopId: appointment.shop_id, shopManagerId: shop.manager_id },
+            receptionistShopId
+        )
+    ) {
+        throw new ApiError(ApiErrorCode.FORBIDDEN, 'Not authorized to check in this appointment');
+    }
+
+    // La validación de estado y ventana se ejecuta dentro de la transacción, sobre la cita ya bloqueada,
+    // para no usar datos obsoletos si una edición concurrente cambia barbero u horario.
+    const { appointment: checkedIn, services } = await checkInAppointmentById(appointment.id, (locked) => {
+        if (locked.status !== 'scheduled' && locked.status !== 'rescheduled') {
+            throw new ApiError(ApiErrorCode.CONFLICT, 'Only scheduled or rescheduled appointments can be checked in');
+        }
+
+        const now = Date.now();
+        const startMs = locked.scheduled_start.getTime();
+        const earlyWindowStartMs = startMs - SLOT_STEP_MINUTES * MS_PER_MINUTE;
+        const lateCutoffMs = startMs + NO_SHOW_GRACE_MINUTES * MS_PER_MINUTE;
+
+        if (now < earlyWindowStartMs) {
+            throw new ApiError(
+                ApiErrorCode.CONFLICT,
+                'Too early to check in; check-in opens 15 minutes before the scheduled start'
+            );
+        }
+        if (now >= lateCutoffMs) {
+            throw new ApiError(ApiErrorCode.CONFLICT, 'Check-in window has expired (10 minutes after scheduled start)');
+        }
+
+        return now < startMs ? { from: new Date(earlyWindowStartMs), to: locked.scheduled_start } : null;
+    });
+
+    const [client] = await getAppointmentClientsById(checkedIn.client_id !== null ? [checkedIn.client_id] : []);
+    return toAppointmentResponse(checkedIn, services, client ?? null);
+};
+
+/**
+ * Rango de búsqueda por inicio programado. Sin from ni to: hoy 00:00 hasta el último día agendable
+ * (hoy + MAX_BOOKING_DAYS_AHEAD) a las 23:59:59.999 (hora del negocio). Si falta solo uno, se completa:
+ * from = hoy 00:00; to = from + 31 días (menos 1 ms).
+ */
+const resolveWindow = (query: ListAppointmentsQuery): { from: Date; to: Date } => {
+    const from = query.from ?? getBusinessDayStart(0);
+    const to =
+        query.to ??
+        (query.from
+            ? new Date(from.getTime() + DEFAULT_WINDOW_DAYS * MS_PER_DAY - 1)
+            : new Date(getBusinessDayStart(DEFAULT_WINDOW_DAYS).getTime() - 1));
+
+    if (to < from) {
+        throw new ApiError(ApiErrorCode.BAD_REQUEST, 'to must not be before from');
+    }
+    if (to.getTime() - from.getTime() > MAX_WINDOW_DAYS * MS_PER_DAY) {
+        throw new ApiError(ApiErrorCode.BAD_REQUEST, `Date range must not exceed ${MAX_WINDOW_DAYS} days`);
+    }
+
+    return { from, to };
+};
+
+/**
+ * Consulta una cita por id, sin importar su fecha ni su estado. Mismo alcance por rol que editarla:
+ * client: las propias; receptionist: las de su sucursal; manager: las de las sucursales que administra.
+ */
+export const getAppointment = async (
+    appointmentId: string,
+    token: string
+): Promise<AppointmentResponse | ClientAppointmentResponse> => {
+    const performer = await isUserSessionValid(token);
+
+    const appointment = await getAppointmentById(appointmentId);
+    if (!appointment) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Appointment not found');
+    }
+
+    const shop = await getShopById(appointment.shop_id);
+    if (!shop) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Shop not found');
+    }
+
+    const receptionistShopId =
+        performer.role === 'receptionist' ? ((await getReceptionistByUserId(performer.id))?.shop_id ?? null) : null;
+
+    if (
+        !canViewAppointment(
+            performer,
+            { clientId: appointment.client_id, shopId: appointment.shop_id, shopManagerId: shop.manager_id },
+            receptionistShopId
+        )
+    ) {
+        throw new ApiError(ApiErrorCode.FORBIDDEN, 'Not authorized to view this appointment');
+    }
+
+    const services = await getServicesByAppointmentIds([appointment.id]);
+
+    if (performer.role === 'client') {
+        return toClientAppointmentResponse(appointment, services);
+    }
+
+    const [client] = await getAppointmentClientsById(appointment.client_id !== null ? [appointment.client_id] : []);
+    return toAppointmentResponse(appointment, services, client ?? null);
+};
+
+/**
+ * Lista citas según el rol:
+ * - client: solo las propias; los filtros exclusivos del personal se ignoran.
+ * - receptionist: las de su sucursal.
+ * - manager: las de las sucursales que administra.
+ * El alcance se resuelve aquí y se aplica en SQL; shopId fuera de alcance responde 403.
+ */
+export const listAppointments = async (
+    query: ListAppointmentsQuery,
+    token: string
+): Promise<AppointmentResponse[] | ClientAppointmentResponse[]> => {
+    const performer = await isUserSessionValid(token);
+    const { from, to } = resolveWindow(query);
+
+    const filters: AppointmentListFilters = { from, to, statuses: query.status };
+
+    if (performer.role === 'client') {
+        filters.clientId = performer.id;
+    } else {
+        let accessibleShopIds: string[];
+        if (performer.role === 'receptionist') {
+            const receptionist = await getReceptionistByUserId(performer.id);
+            if (!receptionist) {
+                throw new ApiError(ApiErrorCode.FORBIDDEN, 'Receptionist is not assigned to a shop');
+            }
+            accessibleShopIds = [receptionist.shop_id];
+        } else {
+            accessibleShopIds = await getShopIdsByManagerId(performer.id);
+        }
+
+        if (query.shopId !== undefined) {
+            if (!canViewShopAppointments(query.shopId, accessibleShopIds)) {
+                throw new ApiError(ApiErrorCode.FORBIDDEN, 'Not authorized to view appointments of this shop');
+            }
+            accessibleShopIds = [query.shopId];
+        }
+
+        filters.shopIds = accessibleShopIds;
+        filters.clientId = query.clientId;
+        filters.barberId = query.barberId;
+        if (query.clientType !== undefined) {
+            filters.isRegisteredClient = query.clientType === 'registered';
+        }
+        if (query.isWalkIn !== undefined) {
+            filters.isWalkIn = query.isWalkIn;
+        }
+    }
+
+    const appointments = await getAppointments(filters);
+    const services = await getServicesByAppointmentIds(appointments.map((a) => a.id));
+
+    const servicesByAppointment = new Map<string, AppointmentService[]>();
+    for (const service of services) {
+        const list = servicesByAppointment.get(service.appointment_id) ?? [];
+        list.push(service);
+        servicesByAppointment.set(service.appointment_id, list);
+    }
+
+    if (performer.role === 'client') {
+        return appointments.map((a) => toClientAppointmentResponse(a, servicesByAppointment.get(a.id) ?? []));
+    }
+
+    const clientIds = [...new Set(appointments.flatMap((a) => (a.client_id !== null ? [a.client_id] : [])))];
+    const clients = await getAppointmentClientsById(clientIds);
+    const clientsById = new Map(clients.map((c) => [c.id, c]));
+
+    return appointments.map((a) =>
+        toAppointmentResponse(
+            a,
+            servicesByAppointment.get(a.id) ?? [],
+            a.client_id !== null ? (clientsById.get(a.client_id) ?? null) : null
+        )
+    );
+};
+
+
+/* No hay errores en la api aquí */
+export const autoCheckInWalkIns = (now: Date): Promise<number> =>
+    autoCheckInWalkInAppointments(now);
+
+/* No hay errores en la api aquí */
+export const markNoShow = (now: Date): Promise<number> =>
+    markAppointmentAsNoShow(now, NO_SHOW_GRACE_MINUTES);
+
+export const completeFinishedAppointments = (now: Date): Promise<number> =>
+    completeCheckedInAppointments(now);
+    
+/* Esto es para hacerlo manual */
+export const markAppointmentNoShow = async (appointmentId: string, token: string): Promise<AppointmentResponse> => {
+    const performer = await isUserSessionValid(token);
+    const appointment = await getAppointmentById(appointmentId);
+    if (!appointment) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Appointment not found');
+    }
+
+    const shop = await getShopById(appointment.shop_id);
+    if (!shop) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Shop not found');
+    }
+
+    const receptionistShopId =
+        performer.role === 'receptionist' ? ((await getReceptionistByUserId(performer.id))?.shop_id ?? null) : null;
+
+    if (!canMarkAppointmentNoShow(performer, { shopId: appointment.shop_id }, receptionistShopId)) {
+        throw new ApiError(ApiErrorCode.FORBIDDEN, 'Not authorized to mark this appointment as no-show');
+    }
+
+    if (appointment.is_walk_in) {
+        throw new ApiError(ApiErrorCode.CONFLICT, 'Walk-in appointments cannot be marked as no-show');
+    }
+    if (appointment.status !== 'scheduled' && appointment.status !== 'rescheduled') {
+        throw new ApiError(ApiErrorCode.CONFLICT, 'Only scheduled or rescheduled appointments can be marked as no-show');
+    }
+
+    const now = new Date();
+    const graceMinutes = 0;
+    const noShowAt = appointment.scheduled_start.getTime();
+    if (now.getTime() < noShowAt) {
+        throw new ApiError(ApiErrorCode.CONFLICT, 'Appointment cannot be marked as no-show before its scheduled start');
+    }
+
+    const marked = await markAppointmentAsNoShowById(appointment.id, now, graceMinutes);
+    if (!marked) {
+        throw new ApiError(ApiErrorCode.CONFLICT, 'Appointment can no longer be marked as no-show');
+    }
+
+    const services = await getServicesByAppointmentIds([marked.id]);
+    const [client] = await getAppointmentClientsById(marked.client_id !== null ? [marked.client_id] : []);
+    return toAppointmentResponse(marked, services, client ?? null);
+};
+</file>
+
+<file path="backend/src/repositories/appointmentRepository.ts">
+import type { PoolClient } from 'pg';
+import db from '../connection/connection.js';
+import type { Appointment, AppointmentStatus } from '../types/entities/appointment.interface.js';
+import type { AppointmentService } from '../types/entities/appointmentService.interface.js';
+import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
+
+const APPOINTMENT_COLUMNS = `id, shop_id, client_id, is_registered_client, guest_client_name, barber_id, is_walk_in,
+    status, original_scheduled_start, scheduled_start, scheduled_end, checked_in_at, completed_at, cancelled_at,
+    cancellation_reason, notes, is_reward_redemption, created_at, updated_at`;
+
+export interface AppointmentListFilters {
+    from: Date;
+    to: Date;
+    // Alcance del consultante: un cliente filtra por clientId; el personal, por las sucursales visibles.
+    clientId?: string;
+    shopIds?: string[];
+    statuses?: AppointmentStatus[];
+    isRegisteredClient?: boolean;
+    barberId?: string;
+    isWalkIn?: boolean;
+}
+
+export interface CreateAppointmentInput {
+    shopId: string;
+    barberId: string;
+    clientId: string | null;
+    guestClientName: string | null;
+    scheduledStart: Date;
+    scheduledEnd: Date;
+    notes: string | null;
+    isWalkIn?: boolean;
+    services: { serviceId: string; priceAtBooking: number; durationMinutesAtBooking: number }[];
+}
+
+export interface UpdateAppointmentInput {
+    appointmentId: string;
+    barberId: string;
+    scheduledStart: Date;
+    scheduledEnd: Date;
+    notes: string | null;
+    status: AppointmentStatus;
+    // Servicios finales de la cita; los que ya estaban agendados conservan su snapshot de precio y duración.
+    services: { serviceId: string; priceAtBooking: number; durationMinutesAtBooking: number }[];
+}
+
+/**
+ * Citas que ocupan agenda (status scheduled / rescheduled / checked_in) de varios barberos que se
+ * traslapan con el rango [from, to). Las cancelled / no_show / completed nunca bloquean.
+ * `excludeAppointmentId` omite una cita (la que se está editando) para que no choque consigo misma.
+ */
+export const getBlockingAppointmentsByBarberIdsAndRange = async (
+    barberIds: string[],
+    from: Date,
+    to: Date,
+    excludeAppointmentId?: string,
+    queryable: Pick<PoolClient, 'query'> = db.getPool()
+): Promise<Pick<Appointment, 'barber_id' | 'scheduled_start' | 'scheduled_end'>[]> => {
+    if (barberIds.length === 0) return [];
+
+    const result = await queryable.query(
+        `SELECT barber_id, scheduled_start, scheduled_end FROM appointments
+         WHERE barber_id = ANY($1::uuid[])
+           AND status IN ('scheduled', 'rescheduled', 'checked_in')
+           AND scheduled_start < $3 AND scheduled_end > $2
+           AND ($4::uuid IS NULL OR id <> $4)`,
+        [barberIds, from, to, excludeAppointmentId ?? null]
+    );
+    return result.rows;
+};
+
+/**
+ * Busca una cita por su id.
+ */
+export const getAppointmentById = async (id: string): Promise<Appointment | null> => {
+    const result = await db.getPool().query(`SELECT ${APPOINTMENT_COLUMNS} FROM appointments WHERE id = $1`, [id]);
+    return result.rows.length ? result.rows[0] : null;
+};
+
+/**
+ * Citas cuyo inicio programado cae en [from, to] (ambos inclusivos), ordenadas por inicio.
+ * Exige clientId o shopIds para que nunca se ejecute una consulta sin alcance; un shopIds
+ * vacío es válido y no devuelve nada.
+ */
+export const getAppointments = async (filters: AppointmentListFilters): Promise<Appointment[]> => {
+    if (filters.clientId === undefined && filters.shopIds === undefined) {
+        throw new Error('getAppointments requires a clientId or shopIds scope');
+    }
+
+    const whereClauses: string[] = [];
+    const values: unknown[] = [];
+    const addClause = (clause: (placeholder: string) => string, value: unknown) => {
+        values.push(value);
+        whereClauses.push(clause(`$${values.length}`));
+    };
+
+    addClause((p) => `scheduled_start >= ${p}`, filters.from);
+    addClause((p) => `scheduled_start <= ${p}`, filters.to);
+    if (filters.clientId !== undefined) addClause((p) => `client_id = ${p}`, filters.clientId);
+    if (filters.shopIds !== undefined) addClause((p) => `shop_id = ANY(${p}::uuid[])`, filters.shopIds);
+    if (filters.statuses !== undefined) addClause((p) => `status = ANY(${p}::appointment_status[])`, filters.statuses);
+    if (filters.isRegisteredClient !== undefined)
+        addClause((p) => `is_registered_client = ${p}`, filters.isRegisteredClient);
+    if (filters.barberId !== undefined) addClause((p) => `barber_id = ${p}`, filters.barberId);
+    if (filters.isWalkIn !== undefined) addClause((p) => `is_walk_in = ${p}`, filters.isWalkIn);
+
+    const result = await db.getPool().query(
+        `SELECT ${APPOINTMENT_COLUMNS} FROM appointments
+         WHERE ${whereClauses.join(' AND ')}
+         ORDER BY scheduled_start ASC, id ASC`,
+        values
+    );
+    return result.rows;
+};
+
+/**
+ * Indica si el cliente tiene alguna cita pendiente (scheduled, rescheduled o checked_in), en cualquier sucursal
+ * y sin importar la fecha. A diferencia de getAppointments, no está acotada por ventana ni por alcance de rol.
+ */
+export const hasPendingAppointmentsByClientId = async (clientId: string): Promise<boolean> => {
+    const result = await db.getPool().query(
+        `SELECT EXISTS (
+             SELECT 1 FROM appointments
+             WHERE client_id = $1 AND status IN ('scheduled', 'rescheduled', 'checked_in')
+         ) AS has_pending`,
+        [clientId]
+    );
+    return result.rows[0].has_pending;
+};
+
+/**
+ * Indica si el barbero tiene alguna cita pendiente en cualquier sucursal: scheduled/rescheduled que aún no
+ * terminan, o checked_in (en curso). Las scheduled/rescheduled ya vencidas que nunca se cerraron se ignoran
+ * para que no bloqueen al barbero para siempre.
+ */
+export const hasPendingAppointmentsByBarberId = async (barberId: string): Promise<boolean> => {
+    const result = await db.getPool().query(
+        `SELECT EXISTS (
+             SELECT 1 FROM appointments
+             WHERE barber_id = $1
+               AND (status = 'checked_in'
+                    OR (status IN ('scheduled', 'rescheduled') AND scheduled_end > now()))
+         ) AS has_pending`,
+        [barberId]
+    );
+    return result.rows[0].has_pending;
+};
+
+/**
+ * Servicios agendados de varias citas en una sola consulta (evita N+1).
+ */
+export const getServicesByAppointmentIds = async (appointmentIds: string[]): Promise<AppointmentService[]> => {
+    if (appointmentIds.length === 0) return [];
+
+    const result = await db.getPool().query(
+        `SELECT id, appointment_id, service_id, price_at_booking, duration_minutes_at_booking, created_at
+         FROM appointment_services
+         WHERE appointment_id = ANY($1::uuid[])
+         ORDER BY created_at ASC, id ASC`,
+        [appointmentIds]
+    );
+    return result.rows;
+};
+
+/**
+ * Crea la cita y sus servicios en una sola transacción.
+ * Evita que dos reservas simultáneas ocupen el mismo horario de un barbero:
+ * SELECT ... FOR UPDATE bloquea la fila del barbero (el mismo candado que toma
+ * softDeleteBarberById), así que las reservas concurrentes para ese barbero se
+ * serializan. La segunda espera a que la primera confirme y, ya con el candado,
+ * su verificación de traslape sí ve la cita recién insertada y se rechaza con 409.
+ * Cualquier otra escritura que mueva citas de un barbero debe tomar este mismo candado.
+ */
+export const createAppointmentWithServices = async (
+    data: CreateAppointmentInput
+): Promise<{ appointment: Appointment; services: AppointmentService[] }> => {
+    const pool = db.getPool();
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        const barber = await client.query(
+            `SELECT id FROM barbers
+             WHERE id = $1 AND shop_id = $2 AND deleted_at IS NULL AND is_accepting_bookings = true
+             FOR UPDATE`,
+            [data.barberId, data.shopId]
+        );
+        if (barber.rows.length === 0) {
+            throw new ApiError(ApiErrorCode.NOT_FOUND, 'Barber not found or is not accepting bookings');
+        }
+
+        const overlap = await client.query(
+            `SELECT 1 FROM appointments
+             WHERE barber_id = $1
+               AND status IN ('scheduled', 'rescheduled', 'checked_in')
+               AND scheduled_start < $3 AND scheduled_end > $2
+             LIMIT 1`,
+            [data.barberId, data.scheduledStart, data.scheduledEnd]
+        );
+        if (overlap.rows.length > 0) {
+            throw new ApiError(ApiErrorCode.USER_ALREADY_EXISTS, 'Selected time slot is no longer available');
+        }
+
+        const result = await client.query(
+            `INSERT INTO appointments (shop_id, client_id, is_registered_client, guest_client_name, barber_id,
+                                       scheduled_start, scheduled_end, notes, is_walk_in)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+             RETURNING id, shop_id, client_id, is_registered_client, guest_client_name, barber_id, is_walk_in,
+                       status, original_scheduled_start, scheduled_start, scheduled_end, checked_in_at, completed_at, cancelled_at,
+                       cancellation_reason, notes, is_reward_redemption, created_at, updated_at`,
+            [
+                data.shopId,
+                data.clientId,
+                data.clientId !== null,
+                data.guestClientName,
+                data.barberId,
+                data.scheduledStart,
+                data.scheduledEnd,
+                data.notes,
+                data.isWalkIn ?? false,
+            ]
+        );
+        const appointment: Appointment = result.rows[0];
+
+        const services: AppointmentService[] = [];
+        for (const service of data.services) {
+            const inserted = await client.query(
+                `INSERT INTO appointment_services (appointment_id, service_id, price_at_booking, duration_minutes_at_booking)
+                 VALUES ($1, $2, $3, $4)
+                 RETURNING id, appointment_id, service_id, price_at_booking, duration_minutes_at_booking, created_at`,
+                [appointment.id, service.serviceId, service.priceAtBooking, service.durationMinutesAtBooking]
+            );
+            services.push(inserted.rows[0]);
+        }
+
+        await client.query('COMMIT');
+        return { appointment, services };
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
+};
+
+/**
+ * Edita la cita y sincroniza sus servicios en una sola transacción.
+ * Toma primero el candado de la cita (evita carreras contra cancelar / check-in u otra edición) y después
+ * el de la fila del barbero destino, el mismo que usa createAppointmentWithServices, así que una edición
+ * y una reserva simultáneas para ese barbero se serializan y solo una gana (la otra recibe 409).
+ * Los servicios que se conservan no se tocan para no perder su snapshot de precio y duración.
+ */
+export const updateAppointmentWithServices = async (
+    data: UpdateAppointmentInput
+): Promise<{ appointment: Appointment; services: AppointmentService[] }> => {
+    const pool = db.getPool();
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        const current = await client.query(
+            `SELECT shop_id, status FROM appointments WHERE id = $1 FOR UPDATE`,
+            [data.appointmentId]
+        );
+        if (current.rows.length === 0) {
+            throw new ApiError(ApiErrorCode.NOT_FOUND, 'Appointment not found');
+        }
+        if (!['scheduled', 'rescheduled'].includes(current.rows[0].status)) {
+            throw new ApiError(ApiErrorCode.CONFLICT, 'Only scheduled or rescheduled appointments can be edited');
+        }
+
+        const barber = await client.query(
+            `SELECT id FROM barbers
+             WHERE id = $1 AND shop_id = $2 AND deleted_at IS NULL AND is_accepting_bookings = true
+             FOR UPDATE`,
+            [data.barberId, current.rows[0].shop_id]
+        );
+        if (barber.rows.length === 0) {
+            throw new ApiError(ApiErrorCode.NOT_FOUND, 'Barber not found or is not accepting bookings');
+        }
+
+        const overlap = await client.query(
+            `SELECT 1 FROM appointments
+             WHERE barber_id = $1
+               AND id <> $4
+               AND status IN ('scheduled', 'rescheduled', 'checked_in')
+               AND scheduled_start < $3 AND scheduled_end > $2
+             LIMIT 1`,
+            [data.barberId, data.scheduledStart, data.scheduledEnd, data.appointmentId]
+        );
+        if (overlap.rows.length > 0) {
+            throw new ApiError(ApiErrorCode.CONFLICT, 'Selected time slot is no longer available');
+        }
+
+        const result = await client.query(
+            `UPDATE appointments
+             SET barber_id = $2, scheduled_start = $3, scheduled_end = $4, notes = $5, status = $6
+             WHERE id = $1
+             RETURNING ${APPOINTMENT_COLUMNS}`,
+            [data.appointmentId, data.barberId, data.scheduledStart, data.scheduledEnd, data.notes, data.status]
+        );
+        const appointment: Appointment = result.rows[0];
+
+        const serviceIds = data.services.map((s) => s.serviceId);
+        await client.query(
+            `DELETE FROM appointment_services WHERE appointment_id = $1 AND NOT (service_id = ANY($2::uuid[]))`,
+            [data.appointmentId, serviceIds]
+        );
+        await client.query(
+            `INSERT INTO appointment_services (appointment_id, service_id, price_at_booking, duration_minutes_at_booking)
+             SELECT $1, s.service_id, s.price, s.duration
+             FROM unnest($2::uuid[], $3::numeric[], $4::int[]) AS s(service_id, price, duration)
+             ON CONFLICT (appointment_id, service_id) DO NOTHING`,
+            [
+                data.appointmentId,
+                serviceIds,
+                data.services.map((s) => s.priceAtBooking),
+                data.services.map((s) => s.durationMinutesAtBooking),
+            ]
+        );
+
+        const services = await client.query(
+            `SELECT id, appointment_id, service_id, price_at_booking, duration_minutes_at_booking, created_at
+             FROM appointment_services
+             WHERE appointment_id = $1
+             ORDER BY created_at ASC, id ASC`,
+            [data.appointmentId]
+        );
+
+        await client.query('COMMIT');
+        return { appointment, services: services.rows };
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
+};
+
+/**
+ * Cancela la cita (status = cancelled, cancelled_at = now()) en una transacción.
+ * Toma el candado de la cita, igual que la edición, para serializar contra edición, check-in u otra cancelación;
+ * quien llegue segundo ve un estado ya no cancelable y recibe 409. Los servicios y is_reward_redemption no se tocan.
+ */
+export const cancelAppointmentById = async (
+    appointmentId: string,
+    reason: string | null
+): Promise<{ appointment: Appointment; services: AppointmentService[] }> => {
+    const pool = db.getPool();
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        const current = await client.query(`SELECT status FROM appointments WHERE id = $1 FOR UPDATE`, [appointmentId]);
+        if (current.rows.length === 0) {
+            throw new ApiError(ApiErrorCode.NOT_FOUND, 'Appointment not found');
+        }
+        if (!['scheduled', 'rescheduled'].includes(current.rows[0].status)) {
+            throw new ApiError(ApiErrorCode.CONFLICT, 'Only scheduled or rescheduled appointments can be cancelled');
+        }
+
+        const result = await client.query(
+            `UPDATE appointments
+             SET status = 'cancelled', cancelled_at = now(), cancellation_reason = $2
+             WHERE id = $1
+             RETURNING ${APPOINTMENT_COLUMNS}`,
+            [appointmentId, reason]
+        );
+        const services = await client.query(
+            `SELECT id, appointment_id, service_id, price_at_booking, duration_minutes_at_booking, created_at
+             FROM appointment_services
+             WHERE appointment_id = $1
+             ORDER BY created_at ASC, id ASC`,
+            [appointmentId]
+        );
+
+        await client.query('COMMIT');
+        return { appointment: result.rows[0], services: services.rows };
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
+};
+
+/**
+ * Registra el check-in de una cita (status = checked_in, checked_in_at = now()) en una transacción.
+ * Respeta el mismo orden de candados que la edición (primero la cita, luego la fila del barbero), para
+ * evitar interbloqueos. La cita se vuelve a leer ya con candado y `resolvePreviousSlot` valida estado y
+ * ventana de check-in con esos valores vigentes (puede lanzar ApiError). Si devuelve un rango, se exige que
+ * el barbero actual de la cita no tenga citas bloqueantes en él. Así, una edición concurrente (otro barbero
+ * u horario) no puede dejar pasar un check-in validado con datos obsoletos, y la transición por estado
+ * no compite con el job de no-show ni con otro check-in/cancelación.
+ */
+export const checkInAppointmentById = async (
+    appointmentId: string,
+    resolvePreviousSlot: (appointment: Appointment) => { from: Date; to: Date } | null
+): Promise<{ appointment: Appointment; services: AppointmentService[] }> => {
+    const pool = db.getPool();
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        const locked = await client.query(`SELECT ${APPOINTMENT_COLUMNS} FROM appointments WHERE id = $1 FOR UPDATE`, [
+            appointmentId,
+        ]);
+        if (locked.rows.length === 0) {
+            throw new ApiError(ApiErrorCode.NOT_FOUND, 'Appointment not found');
+        }
+        const current: Appointment = locked.rows[0];
+
+        const previousSlotRange = resolvePreviousSlot(current);
+
+        await client.query(`SELECT id FROM barbers WHERE id = $1 FOR UPDATE`, [current.barber_id]);
+
+        if (previousSlotRange !== null) {
+            const blocking = await getBlockingAppointmentsByBarberIdsAndRange(
+                [current.barber_id],
+                previousSlotRange.from,
+                previousSlotRange.to,
+                appointmentId,
+                client
+            );
+            if (blocking.length > 0) {
+                throw new ApiError(ApiErrorCode.CONFLICT, 'Barber is busy during the previous slot');
+            }
+        }
+
+        const result = await client.query(
+            `UPDATE appointments
+             SET status = 'checked_in', checked_in_at = now()
+             WHERE id = $1 AND status IN ('scheduled', 'rescheduled')
+             RETURNING ${APPOINTMENT_COLUMNS}`,
+            [appointmentId]
+        );
+        if (result.rows.length === 0) {
+            throw new ApiError(ApiErrorCode.CONFLICT, 'Only scheduled or rescheduled appointments can be checked in');
+        }
+
+        const services = await client.query(
+            `SELECT id, appointment_id, service_id, price_at_booking, duration_minutes_at_booking, created_at
+             FROM appointment_services
+             WHERE appointment_id = $1
+             ORDER BY created_at ASC, id ASC`,
+            [appointmentId]
+        );
+
+        await client.query('COMMIT');
+        return { appointment: result.rows[0], services: services.rows };
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
+};
+
+export const markAppointmentAsNoShow = async (now: Date, graceMinutes: number): Promise<number> => {
+    const result = await db.getPool().query(
+        `UPDATE appointments
+         SET status = 'no_show'
+         WHERE status IN ('scheduled', 'rescheduled')
+           AND is_walk_in = false
+           AND scheduled_start + ($2 * INTERVAL '1 minute') <= $1`,
+        [now, graceMinutes]
+    );
+
+    return result.rowCount ?? 0;
+};
+
+export const autoCheckInWalkInAppointments = async (now: Date): Promise<number> => {
+    const result = await db.getPool().query(
+        `UPDATE appointments
+         SET status = 'checked_in',
+             checked_in_at = scheduled_start
+         WHERE is_walk_in = true
+           AND status IN ('scheduled', 'rescheduled')
+           AND scheduled_start <= $1`,
+        [now]
+    );
+
+    return result.rowCount ?? 0;
+};
+
+export const markAppointmentAsNoShowById = async (
+    appointmentId: string,
+    now: Date,
+    graceMinutes: number
+): Promise<Appointment | null> => {
+    const result = await db.getPool().query(
+        `UPDATE appointments
+         SET status = 'no_show'
+         WHERE id = $1
+           AND status IN ('scheduled', 'rescheduled')
+           AND is_walk_in = false
+           AND scheduled_start + ($3 * INTERVAL '1 minute') <= $2
+         RETURNING ${APPOINTMENT_COLUMNS}`,
+        [appointmentId, now, graceMinutes]
+    );
+
+    return result.rows[0] ?? null;
+};
+
+export const completeCheckedInAppointments = async (now: Date): Promise<number> => {
+    const result = await db.getPool().query(
+        `UPDATE appointments
+         SET status = 'completed',
+             completed_at = scheduled_end
+         WHERE status = 'checked_in'
+           AND scheduled_end <= $1`,
+        [now]
+    );
+
+    return result.rowCount ?? 0;
+};
+</file>
+
+</files>

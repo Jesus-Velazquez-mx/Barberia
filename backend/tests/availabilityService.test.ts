@@ -5,6 +5,7 @@ const getServicesByIds = jest.fn<(...args: any[]) => Promise<any>>();
 const getShopById = jest.fn<(...args: any[]) => Promise<any>>();
 const getActiveBarbersByShop = jest.fn<(...args: any[]) => Promise<any>>();
 const getBlockingAppointmentsByBarberIdsAndRange = jest.fn<(...args: any[]) => Promise<any>>();
+const getServicesByAppointmentIds = jest.fn<(...args: any[]) => Promise<any>>();
 const getAllShifts = jest.fn<(...args: any[]) => Promise<any>>();
 
 // La zona horaria del negocio sale de globalConfig; el mock es mutable para fijarla por prueba.
@@ -16,6 +17,7 @@ jest.unstable_mockModule('../src/repositories/shopRepository.js', () => ({ getSh
 jest.unstable_mockModule('../src/repositories/barberRepository.js', () => ({ getActiveBarbersByShop }));
 jest.unstable_mockModule('../src/repositories/appointmentRepository.js', () => ({
     getBlockingAppointmentsByBarberIdsAndRange,
+    getServicesByAppointmentIds,
 }));
 jest.unstable_mockModule('../src/repositories/shiftRepository.js', () => ({ getAllShifts }));
 
@@ -70,6 +72,7 @@ beforeEach(() => {
     getActiveBarbersByShop.mockResolvedValue([{ id: BARBER, shift_id: SHIFT }]);
     getAllShifts.mockResolvedValue([{ id: SHIFT, start_time: '09:00:00', end_time: '13:00:00' }]);
     getBlockingAppointmentsByBarberIdsAndRange.mockResolvedValue([]);
+    getServicesByAppointmentIds.mockResolvedValue([]);
 });
 
 describe('computeStartMinutes (lógica pura)', () => {
@@ -198,6 +201,57 @@ describe('getAvailableSlots', () => {
     test('servicio inactivo lanza NOT_FOUND', async () => {
         getServicesByIds.mockResolvedValue([{ id: SERVICE, duration_minutes: 60, is_active: false }]);
         await expect(run()).rejects.toMatchObject({ code: ApiErrorCode.NOT_FOUND });
+    });
+
+    test('excludeAppointmentId: permite un servicio desactivado si ya pertenecía a la cita y usa su duración original', async () => {
+        // En el catálogo actual el servicio está inactivo y dura 90 min, pero en la cita duraba 30 min.
+        getServicesByIds.mockResolvedValue([{ id: SERVICE, duration_minutes: 90, is_active: false }]);
+        getServicesByAppointmentIds.mockResolvedValue([
+            { appointment_id: 'appt-1', service_id: SERVICE, price_at_booking: 200, duration_minutes_at_booking: 30 },
+        ]);
+
+        const result = await getAvailableSlots({
+            shopId: SHOP,
+            date: TOMORROW,
+            serviceIds: [SERVICE],
+            excludeAppointmentId: 'appt-1',
+        });
+
+        // Turno 09:00-13:00 con 30 min (snapshot de la cita): el último inicio debe ser 12:30.
+        expect(result).toEqual([{ barberId: BARBER, startTimes: every15('09:00', '12:30') }]);
+    });
+
+    test('excludeAppointmentId: suma snapshot de servicio inactivo de la cita + duración actual de servicio nuevo activo', async () => {
+        getServicesByIds.mockResolvedValue([{ id: 'service-active', duration_minutes: 30, is_active: true }]);
+        getServicesByAppointmentIds.mockResolvedValue([
+            { appointment_id: 'appt-1', service_id: SERVICE, price_at_booking: 200, duration_minutes_at_booking: 30 },
+        ]);
+
+        const result = await getAvailableSlots({
+            shopId: SHOP,
+            date: TOMORROW,
+            serviceIds: [SERVICE, 'service-active'],
+            excludeAppointmentId: 'appt-1',
+        });
+
+        // Total = 30 min (snapshot) + 30 min (catálogo) = 60 min -> último inicio en 09:00-13:00 es 12:00.
+        expect(result).toEqual([{ barberId: BARBER, startTimes: every15('09:00', '12:00') }]);
+    });
+
+    test('excludeAppointmentId: rechaza con NOT_FOUND si se agrega un servicio inactivo que no estaba en la cita', async () => {
+        getServicesByIds.mockResolvedValue([{ id: 'service-inactive-new', duration_minutes: 30, is_active: false }]);
+        getServicesByAppointmentIds.mockResolvedValue([
+            { appointment_id: 'appt-1', service_id: SERVICE, price_at_booking: 200, duration_minutes_at_booking: 30 },
+        ]);
+
+        await expect(
+            getAvailableSlots({
+                shopId: SHOP,
+                date: TOMORROW,
+                serviceIds: [SERVICE, 'service-inactive-new'],
+                excludeAppointmentId: 'appt-1',
+            })
+        ).rejects.toMatchObject({ code: ApiErrorCode.NOT_FOUND });
     });
 
     test('sucursal desconocida lanza NOT_FOUND', async () => {

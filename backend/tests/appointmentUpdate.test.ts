@@ -385,4 +385,68 @@ describe('PUT /api/appointments/:id', () => {
         );
         expect(count.rows[0].n).toBe(1);
     });
+
+    test('ISS-05: permite consultar disponibilidad, reprogramar y editar servicios conservando un servicio desactivado', async () => {
+        const inactiveServiceId = await insertService({ durationMinutes: 30, price: 250 });
+        const foreignInactiveServiceId = await insertService({ durationMinutes: 15, price: 90 });
+
+        // Se agenda la cita mientras ambos servicios están activos en un horario libre (15:00).
+        const createRes = await request(app)
+            .post('/api/appointments')
+            .set('Authorization', `Bearer ${clients[0].token}`)
+            .send({
+                barberId: barber1,
+                serviceIds: [inactiveServiceId],
+                scheduledStart: at(dayA, '15:00'),
+            });
+        expect(createRes.status).toBe(201);
+        const apptId = createRes.body.data.id as string;
+
+        // Se desactivan los servicios en el catálogo después de agendar.
+        await getPool().query(`UPDATE services SET is_active = false WHERE id = ANY($1::uuid[])`, [
+            [inactiveServiceId, foreignInactiveServiceId],
+        ]);
+
+        // 1. La consulta de disponibilidad con excludeAppointmentId responde 200 (y sin excludeAppointmentId falla con 404).
+        const availWithoutExclude = await request(app)
+            .get(`/api/shops/${shopId}/availability`)
+            .query({ date: dayB, serviceIds: inactiveServiceId });
+        expect(availWithoutExclude.status).toBe(404);
+
+        const availWithExclude = await request(app)
+            .get(`/api/shops/${shopId}/availability`)
+            .set('Authorization', `Bearer ${clients[0].token}`)
+            .query({ date: dayB, serviceIds: inactiveServiceId, excludeAppointmentId: apptId });
+        expect(availWithExclude.status).toBe(200);
+
+        // 2. Reprogramar fecha/hora y barbero manteniendo el servicio desactivado funciona y conserva el snapshot.
+        const rescheduleRes = await edit(clients[0].token, apptId, {
+            barberId: barber5,
+            scheduledStart: at(dayB, '15:00'),
+        });
+        expect(rescheduleRes.status).toBe(200);
+        expect(rescheduleRes.body.data.status).toBe('rescheduled');
+        expect(rescheduleRes.body.data.services).toEqual([
+            { serviceId: inactiveServiceId, priceAtBooking: 250, durationMinutesAtBooking: 30 },
+        ]);
+
+        // 3. Modificar la lista agregando un servicio activo mientras se conserva el inactivo funciona.
+        const addActiveRes = await edit(clients[0].token, apptId, {
+            serviceIds: [inactiveServiceId, shortServiceId],
+        });
+        expect(addActiveRes.status).toBe(200);
+        expect(new Date(addActiveRes.body.data.scheduledEnd).toISOString()).toBe(at(dayB, '15:45'));
+        expect(addActiveRes.body.data.services).toEqual(
+            expect.arrayContaining([
+                { serviceId: inactiveServiceId, priceAtBooking: 250, durationMinutesAtBooking: 30 },
+                { serviceId: shortServiceId, priceAtBooking: 100, durationMinutesAtBooking: 15 },
+            ])
+        );
+
+        // 4. Intentar agregar un servicio inactivo que NO pertenecía a la cita sigue fallando con 404.
+        const addForeignInactiveRes = await edit(clients[0].token, apptId, {
+            serviceIds: [inactiveServiceId, foreignInactiveServiceId],
+        });
+        expect(addForeignInactiveRes.status).toBe(404);
+    });
 });
