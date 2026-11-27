@@ -319,7 +319,8 @@ export const updateAppointment = async (
         }
     }
 
-    // Los servicios que ya estaban agendados conservan su snapshot; los nuevos usan el catálogo actual.
+    // Los servicios que ya estaban agendados conservan su snapshot (incluso si fueron desactivados);
+    // solo los servicios nuevos se validan contra el catálogo activo.
     const currentServices = await getServicesByAppointmentIds([appointment.id]);
     let finalServices = currentServices.map((s) => ({
         serviceId: s.service_id,
@@ -327,16 +328,27 @@ export const updateAppointment = async (
         durationMinutesAtBooking: s.duration_minutes_at_booking,
     }));
     if (data.serviceIds) {
-        const catalog = await getBookableServices(data.serviceIds);
         const currentById = new Map(finalServices.map((s) => [s.serviceId, s]));
-        finalServices = catalog.map(
-            (s) =>
-                currentById.get(s.id) ?? {
+        const addedServiceIds = data.serviceIds.filter((id) => !currentById.has(id));
+        const addedCatalog = addedServiceIds.length > 0 ? await getBookableServices(addedServiceIds) : [];
+        const addedById = new Map(
+            addedCatalog.map((s) => [
+                s.id,
+                {
                     serviceId: s.id,
                     priceAtBooking: s.price,
                     durationMinutesAtBooking: s.duration_minutes,
-                }
+                },
+            ])
         );
+
+        finalServices = data.serviceIds.map((id) => {
+            const service = currentById.get(id) ?? addedById.get(id);
+            if (!service) {
+                throw new ApiError(ApiErrorCode.NOT_FOUND, 'Service not found or is inactive');
+            }
+            return service;
+        });
     }
     const servicesChanged =
         data.serviceIds !== undefined &&

@@ -2,7 +2,10 @@ import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 import { getServicesByIds } from '../repositories/offeredServiceRepository.js';
 import { getShopById } from '../repositories/shopRepository.js';
 import { getActiveBarbersByShop } from '../repositories/barberRepository.js';
-import { getBlockingAppointmentsByBarberIdsAndRange } from '../repositories/appointmentRepository.js';
+import {
+    getBlockingAppointmentsByBarberIdsAndRange,
+    getServicesByAppointmentIds,
+} from '../repositories/appointmentRepository.js';
 import { getAllShifts } from '../repositories/shiftRepository.js';
 import type { OfferedService } from '../types/entities/offeredService.interface.js';
 import { timeToMinutes, toBusinessWallClockMs, businessWallClockToUtcMs, getBusinessToday } from '../utils/businessTime.js';
@@ -119,8 +122,7 @@ export const getAvailableSlots = async ({
         throw new ApiError(ApiErrorCode.INVALID_INPUT, `Date cannot be more than ${MAX_BOOKING_DAYS_AHEAD} days ahead`);
     }
 
-    const services = await getBookableServices(serviceIds);
-    const duration = services.reduce((sum, s) => sum + s.duration_minutes, 0);
+    const duration = await resolveServicesDurationMinutes(serviceIds, excludeAppointmentId);
 
     const shop = await getShopById(shopId);
     if (!shop || !shop.is_active) {
@@ -213,4 +215,31 @@ export const getNextAvailableSlots = async ({
     return withSlot
         .map((b) => ({ barberId: b.barberId, firstName: b.firstName, lastName: b.lastName, startTime: b.startTimes[0] }))
         .sort((a, b) => a.startTime.localeCompare(b.startTime) || a.firstName.localeCompare(b.firstName));
+};
+
+/**
+ * Calcula la duración total en minutos de los servicios solicitados.
+ * Si se está editando una cita (`excludeAppointmentId`), los servicios que ya formaban parte
+ * de ella conservan su `duration_minutes_at_booking` aunque hayan sido desactivados;
+ * los servicios nuevos deben existir y estar activos en el catálogo.
+ */
+const resolveServicesDurationMinutes = async (serviceIds: string[], excludeAppointmentId?: string): Promise<number> => {
+    if (!excludeAppointmentId) {
+        const services = await getBookableServices(serviceIds);
+        return services.reduce((sum, s) => sum + s.duration_minutes, 0);
+    }
+
+    const existingServices = await getServicesByAppointmentIds([excludeAppointmentId]);
+    const existingDurationById = new Map(
+        existingServices.map((s) => [s.service_id, s.duration_minutes_at_booking])
+    );
+
+    const newServiceIds = serviceIds.filter((id) => !existingDurationById.has(id));
+    const newCatalogServices = newServiceIds.length > 0 ? await getBookableServices(newServiceIds) : [];
+    const newDurationById = new Map(newCatalogServices.map((s) => [s.id, s.duration_minutes]));
+
+    return serviceIds.reduce((sum, id) => {
+        const duration = existingDurationById.get(id) ?? newDurationById.get(id) ?? 0;
+        return sum + duration;
+    }, 0);
 };
