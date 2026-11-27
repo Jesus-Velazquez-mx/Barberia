@@ -1,5 +1,6 @@
 import { apiClient, type ApiClientResponse } from './apiClient';
 import { ApiError } from '../types/api';
+import { NETWORK_ERROR_MESSAGE } from '../utils/apiErrorUtils';
 import type {
     GeneratedRecommendation,
     HaircutImageUrl,
@@ -58,7 +59,7 @@ export const uploadPhotoToS3 = async (form: PresignedUploadForm, photo: File): P
         // Sin header Content-Type: el navegador lo genera con el boundary del multipart
         response = await fetch(form.url, { method: 'POST', body });
     } catch {
-        throw new ApiError('Network error — could not upload the photo', 0);
+        throw new ApiError(NETWORK_ERROR_MESSAGE, 0);
     }
 
     if (!response.ok) {

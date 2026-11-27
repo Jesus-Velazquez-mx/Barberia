@@ -25,6 +25,7 @@ import { formatSlotTime } from '../utils/availabilityUtils';
 import { getTodayIso } from '../utils/dateFormat';
 import { formatDuration } from '../utils/offeredServiceUtils';
 import { joinFullName } from '../utils/personUtils';
+import { getApiErrorMessage } from '../utils/apiErrorUtils';
 
 /* Para quién agenda el personal: un cliente con cuenta o un visitante sin cuenta. */
 type ClientMode = 'registered' | 'guest';
@@ -56,24 +57,15 @@ const DEFAULT_CLIENT_SEARCH_ERROR = 'No se pudo buscar clientes. Intenta de nuev
 
 const pad = (value: number) => String(value).padStart(2, '0');
 
-/* Convierte errores de la API en mensajes legibles siguiendo el patrón de EditUserModalContainer. */
+/* Convierte errores de la API en mensajes en español; 404 y 409 tienen mensajes propios de este flujo. */
 const formatApiError = (error: unknown, fallbackMessage: string): string => {
-  if (error instanceof ApiError) {
-    if (error.status === 400 && error.errors.length > 0) {
-      return error.errors
-        .map((e: unknown) => (typeof e === 'string' ? e : ((e as { message?: string }).message ?? JSON.stringify(e))))
-        .join(' ');
-    }
-    if (error.status === 404) {
-      return error.message || 'La sucursal o el servicio seleccionado no existe.';
-    }
-    if (error.status === 409) {
-      return 'El horario seleccionado ya no está disponible. Elige otro.';
-    }
-    return error.message;
+  if (error instanceof ApiError && error.status === 404) {
+    return getApiErrorMessage(error, 'La sucursal o el servicio seleccionado no existe.');
   }
-
-  return fallbackMessage;
+  if (error instanceof ApiError && error.status === 409) {
+    return 'El horario seleccionado ya no está disponible. Elige otro.';
+  }
+  return getApiErrorMessage(error, fallbackMessage);
 };
 
 // Ventana de reserva: desde hoy hasta 30 días después
