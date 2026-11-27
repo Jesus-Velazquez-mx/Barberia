@@ -1,4 +1,5 @@
 import connection from '../../src/connection/connection.js';
+import { LOYALTY_REWARD_THRESHOLD } from '../../src/utils/loyalty.js';
 import type { UserRole } from '../../src/types/entities/user.interface.js';
 import { generateUniqueEmail, generateUniquePhone, generateUniqueName } from './uniqueValues.js';
 
@@ -234,8 +235,8 @@ export const insertAppointment = async (
     return id;
 };
 
-/** Umbral de lealtad que exige trg_appointments_check_reward_insert (mismo literal que el esquema). */
-export const LOYALTY_REWARD_THRESHOLD = 6;
+/** Umbral de lealtad que exige trg_appointments_check_reward_insert (reexportado desde la definición única del backend). */
+export { LOYALTY_REWARD_THRESHOLD };
 
 /**
  * Inserta una cita de recompensa (is_reward_redemption = true) de un cliente registrado.

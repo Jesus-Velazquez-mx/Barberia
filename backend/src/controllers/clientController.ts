@@ -11,7 +11,8 @@ import {
     updateClient,
     deleteClient,
 } from '../services/clientService.js';
-import type { ClientDetailResponse } from '../types/dto/clientResponse.interface.js';
+import { getLoyaltyStatus } from '../services/loyaltyService.js';
+import type { ClientDetailResponse, LoyaltyStatusResponse } from '../types/dto/clientResponse.interface.js';
 import { extractBearerFromHeader } from '../utils/headerHandling.js';
 
 const clientIdParamSchema = z.object({
@@ -115,6 +116,31 @@ export const getById: ApiHandler<ClientDetailResponse> = async (req, res) => {
 
         const result = await getClientDetails(validParams.id, token);
         sendSuccess({ res, data: result, message: 'Client retrieved successfully' });
+    } catch (error: unknown) {
+        if (error instanceof ZodError) {
+            sendValidationError({ res, error });
+            return;
+        }
+
+        if (error instanceof ApiError) {
+            sendFail({ res, message: error.message, status: error.code });
+            return;
+        }
+
+        sendInternalServerError({ res, error: [String(error)] });
+    }
+};
+
+/**
+ * Obtiene el estado del programa de lealtad de un cliente por su ID.
+ */
+export const getLoyalty: ApiHandler<LoyaltyStatusResponse> = async (req, res) => {
+    try {
+        const token = extractBearerFromHeader(req);
+        const validParams = clientIdParamSchema.parse({ id: req.params.id });
+
+        const result = await getLoyaltyStatus(validParams.id, token);
+        sendSuccess({ res, data: result, message: 'Client loyalty status retrieved successfully' });
     } catch (error: unknown) {
         if (error instanceof ZodError) {
             sendValidationError({ res, error });

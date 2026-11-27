@@ -14,6 +14,7 @@ import {
     insertAppointment,
     cleanupFixtures,
 } from './helpers/availabilityFixtures.js';
+import { acquireGlobalJobsLock, GLOBAL_JOBS_LOCK_TIMEOUT_MS } from './helpers/globalJobsLock.js';
 
 const { connectDB, closeDB, getPool } = connection;
 
@@ -41,6 +42,7 @@ describe('Walk-in auto check-in (business rules & database integration)', () => 
     let shopId: string;
     let barberId: string;
     let clientId: string;
+    let releaseGlobalJobsLock: (() => Promise<void>) | undefined;
 
     const createAppointmentFixture = async (options: {
         start: Date;
@@ -59,6 +61,7 @@ describe('Walk-in auto check-in (business rules & database integration)', () => 
 
     beforeAll(async () => {
         await connectDB();
+        releaseGlobalJobsLock = await acquireGlobalJobsLock();
 
         const manager = await insertManager();
         const client = await insertUser('client');
@@ -69,11 +72,15 @@ describe('Walk-in auto check-in (business rules & database integration)', () => 
         shopId = await insertShop(manager.id);
         const barber = await insertBarber(shopId, { shiftId });
         barberId = barber.id;
-    });
+    }, GLOBAL_JOBS_LOCK_TIMEOUT_MS);
 
     afterAll(async () => {
-        await cleanupFixtures();
-        await closeDB();
+        try {
+            await cleanupFixtures();
+        } finally {
+            await releaseGlobalJobsLock?.();
+            await closeDB();
+        }
     });
 
     it('antes del inicio no cambia (walk-in con scheduled_start > now permanece scheduled sin checked_in_at)', async () => {

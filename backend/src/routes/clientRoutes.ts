@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { create, list, getById, update, remove } from '../controllers/clientController.js';
+import { create, list, getById, getLoyalty, update, remove } from '../controllers/clientController.js';
 
 const router = Router();
 
@@ -62,6 +62,59 @@ router.get('/clients', list);
  *         description: Error interno del servidor.
  */
 router.get('/clients/:id', getById);
+
+/**
+ * @swagger
+ * /api/clients/{id}/loyalty:
+ *   get:
+ *     summary: Obtiene el estado del programa de lealtad de un cliente
+ *     tags: [Clients]
+ *     description: >
+ *       Retorna el progreso del cliente en el programa de lealtad, el umbral requerido, si tiene una
+ *       recompensa disponible, si ya cuenta con una cita de recompensa abierta y si la recompensa se
+ *       aplicará automáticamente en su próxima cita. Un cliente solo puede consultar su propio estado;
+ *       el personal (manager o receptionist) puede consultar el de un cliente para usarlo en sus sucursales.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID único del cliente.
+ *     responses:
+ *       200:
+ *         description: Éxito. Estado de lealtad del cliente.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     completedServicesCount: { type: integer, example: 6 }
+ *                     threshold: { type: integer, example: 6 }
+ *                     appointmentsUntilReward: { type: integer, example: 0 }
+ *                     rewardAvailable: { type: boolean, example: true }
+ *                     hasOpenRewardAppointment: { type: boolean, example: false }
+ *                     rewardAppliesOnNextBooking: { type: boolean, example: true }
+ *                 message: { type: string, example: Client loyalty status retrieved successfully }
+ *                 error: { type: string, nullable: true, example: null }
+ *       400:
+ *         description: ID con formato inválido.
+ *       401:
+ *         description: Token ausente o inválido.
+ *       403:
+ *         description: No autorizado para consultar el estado de lealtad de este cliente.
+ *       404:
+ *         description: Cliente no encontrado.
+ *       500:
+ *         description: Error interno del servidor.
+ */
+router.get('/clients/:id/loyalty', getLoyalty);
 
 /**
  * @swagger
