@@ -268,6 +268,34 @@ describe('GET /api/clients/:id/loyalty y getLoyaltyStateForUpdate', () => {
             }
         });
 
+        it('ve la cita de recompensa aún sin confirmar de su propia transacción', async () => {
+            const testClient = await createClientWithCount(LOYALTY_REWARD_THRESHOLD);
+            const start = new Date(Date.now() + 60 * MS_PER_MINUTE);
+            const end = new Date(start.getTime() + 30 * MS_PER_MINUTE);
+            const tx = await getPool().connect();
+
+            try {
+                await tx.query('BEGIN');
+                // Sin confirmar: solo esta conexión la ve, así que leerla por el pool daría false.
+                // No usa insertRewardAppointment porque ese helper inserta por el pool.
+                await tx.query(
+                    `INSERT INTO appointments (shop_id, barber_id, client_id, is_registered_client, scheduled_start, scheduled_end, is_reward_redemption)
+                     VALUES ($1, $2, $3, true, $4, $5, true)`,
+                    [shopId, barberId, testClient.id, start, end]
+                );
+
+                const state = await getLoyaltyStateForUpdate(tx, testClient.id);
+
+                expect(state).toEqual({
+                    completedServicesCount: LOYALTY_REWARD_THRESHOLD,
+                    hasOpenRewardAppointment: true,
+                });
+            } finally {
+                await tx.query('ROLLBACK');
+                tx.release();
+            }
+        });
+
         it('bloquea la fila del cliente: una segunda transacción espera hasta que la primera confirma', async () => {
             const testClient = await createClientWithCount(LOYALTY_REWARD_THRESHOLD);
             createdUserIds.push(testClient.id);

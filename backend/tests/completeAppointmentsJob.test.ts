@@ -13,6 +13,7 @@ import {
     insertRewardAppointment,
     cleanupFixtures,
 } from './helpers/availabilityFixtures.js';
+import { acquireGlobalJobsLock, GLOBAL_JOBS_LOCK_TIMEOUT_MS } from './helpers/globalJobsLock.js';
 
 const { connectDB, closeDB, getPool } = connection;
 
@@ -40,6 +41,7 @@ describe('completeAppointmentsJob unit & registration', () => {
 describe('Auto-complete de citas (business rules & database integration)', () => {
     let shopId: string;
     let barberId: string;
+    let releaseGlobalJobsLock: (() => Promise<void>) | undefined;
 
     const createClient = async (): Promise<string> => {
         const user = await insertUser('client');
@@ -70,17 +72,22 @@ describe('Auto-complete de citas (business rules & database integration)', () =>
 
     beforeAll(async () => {
         await connectDB();
+        releaseGlobalJobsLock = await acquireGlobalJobsLock();
 
         const manager = await insertManager();
         const shiftId = await getSeededShiftId('morning');
         shopId = await insertShop(manager.id);
         const barber = await insertBarber(shopId, { shiftId });
         barberId = barber.id;
-    });
+    }, GLOBAL_JOBS_LOCK_TIMEOUT_MS);
 
     afterAll(async () => {
-        await cleanupFixtures();
-        await closeDB();
+        try {
+            await cleanupFixtures();
+        } finally {
+            await releaseGlobalJobsLock?.();
+            await closeDB();
+        }
     });
 
     it('no completa antes de scheduled_end', async () => {
