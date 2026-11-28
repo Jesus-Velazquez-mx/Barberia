@@ -134,7 +134,7 @@ const router = createBrowserRouter([
             element: <StaffServiceCategoriesPage role="manager" />
           },
           {
-            path: '/manager/haircuts',
+            path: '/manager/management/haircuts',
             element: <ManagerHaircutStylesPage />
           },
           {

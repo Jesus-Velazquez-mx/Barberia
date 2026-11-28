@@ -15,7 +15,6 @@ const NAV_ITEMS = {
     { to: '/manager/booking', label: 'Agendar Cita', icon: <CalendarPlus size={20} aria-hidden="true" /> },
     { to: '/manager/inventory', label: 'Inventario', icon: <Package size={20} aria-hidden="true" /> },
     { to: '/manager/management', label: 'Gestión', icon: <Settings size={20} aria-hidden="true" /> },
-    { to: '/manager/haircuts', label: 'Estilos de corte', icon: <Scissors size={20} aria-hidden="true" /> },
     { to: '/manager/reports', label: 'Reportes', icon: <ChartColumn size={20} aria-hidden="true" /> },
     { to: '/manager/reminders', label: 'Envío Manual de Recordatorios', icon: <BellRing size={20} aria-hidden="true" /> }
 
