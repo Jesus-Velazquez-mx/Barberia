@@ -21,8 +21,7 @@ export function ClientLoyaltyProgress({
 }: ClientLoyaltyProgressProps) {
   const threshold = status ? Math.max(status.threshold, 1) : 1;
   const completed = status ? Math.max(status.completedServicesCount, 0) : 0;
-  const filledSegments = Math.min(completed, threshold);
-  const percentage = Math.min(100, Math.round((completed / threshold) * 100));
+  const filledStamps = Math.min(completed, threshold);
   const surplus = Math.max(0, completed - threshold);
 
   const helperLabel = status
@@ -58,25 +57,21 @@ export function ClientLoyaltyProgress({
           </div>
         </div>
 
-        {status !== null && (
+        {status !== null && (status.hasOpenRewardAppointment || status.rewardAppliesOnNextBooking) && (
           <span
             className={
               status.hasOpenRewardAppointment
                 ? 'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-(--accent)/50 bg-(--accent)/10 px-3 py-1 text-xs font-semibold text-(--accent)'
-                : status.rewardAppliesOnNextBooking
-                  ? 'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-(--accent)/60 bg-(--accent)/15 px-3 py-1 text-xs font-semibold text-(--accent)'
-                  : 'inline-flex shrink-0 items-center whitespace-nowrap rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-semibold text-(--text)'
+                : 'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-(--accent)/60 bg-(--accent)/15 px-3 py-1 text-xs font-semibold text-(--accent)'
             }
           >
             {status.hasOpenRewardAppointment ? (
               'Cita de recompensa abierta'
-            ) : status.rewardAppliesOnNextBooking ? (
+            ) : (
               <>
                 <Star size={12} fill="currentColor" aria-hidden="true" />
                 Recompensa disponible
               </>
-            ) : (
-              'En progreso'
             )}
           </span>
         )}
@@ -86,7 +81,11 @@ export function ClientLoyaltyProgress({
         <div role="status" aria-busy="true" className="mt-6 flex flex-col gap-4">
           <span className="sr-only">Cargando progreso de lealtad...</span>
           <div className="h-5 w-48 animate-pulse rounded bg-white/10" />
-          <div className="h-2.5 w-full animate-pulse rounded-full bg-white/10" />
+          <div className="flex flex-wrap items-center justify-center gap-2 py-2 sm:gap-4">
+            {Array.from({ length: 6 }, (_, index) => (
+              <span key={index} className="h-9 w-9 animate-pulse rounded-full bg-white/10 sm:h-14 sm:w-14" />
+            ))}
+          </div>
           <div className="h-20 w-full animate-pulse rounded-lg bg-white/5" />
         </div>
       )}
@@ -124,31 +123,32 @@ export function ClientLoyaltyProgress({
 
             <div
               role="progressbar"
-              aria-valuenow={filledSegments}
+              aria-valuenow={filledStamps}
               aria-valuemin={0}
               aria-valuemax={threshold}
               aria-label="Progreso de citas completadas para recompensa"
-              className="w-full"
+              className="flex flex-wrap items-center justify-center gap-2 py-2 sm:gap-4"
             >
-              {threshold <= 12 ? (
-                <div className="flex gap-1.5">
-                  {Array.from({ length: threshold }, (_, index) => (
-                    <div
-                      key={index}
-                      className={`h-2.5 flex-1 rounded-full transition-colors ${
-                        index < filledSegments ? 'bg-(--accent)' : 'bg-white/10'
-                      }`}
+              {Array.from({ length: threshold }, (_, index) => {
+                const isEarned = index < filledStamps;
+                return (
+                  <span
+                    key={index}
+                    aria-hidden="true"
+                    className={`flex h-9 w-9 items-center justify-center rounded-full border-2 transition-colors sm:h-14 sm:w-14 ${
+                      isEarned
+                        ? 'border-(--accent) bg-(--accent)/15 text-(--accent)'
+                        : 'border-white/25 bg-[#121212] text-white/30'
+                    }`}
+                  >
+                    <Star
+                      className="h-5 w-5 sm:h-8 sm:w-8"
+                      fill={isEarned ? 'currentColor' : 'none'}
+                      strokeWidth={1.75}
                     />
-                  ))}
-                </div>
-              ) : (
-                <div className="h-2.5 w-full overflow-hidden rounded-full bg-white/10">
-                  <div
-                    className="h-full rounded-full bg-(--accent) transition-all"
-                    style={{ width: `${percentage}%` }}
-                  />
-                </div>
-              )}
+                  </span>
+                );
+              })}
             </div>
           </div>
 
