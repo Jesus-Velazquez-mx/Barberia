@@ -4,12 +4,13 @@ import type {
     AppointmentClient,
     AppointmentResponse,
     ClientAppointmentResponse,
+    RewardDiscountResponse,
 } from '../types/dto/appointmentResponse.interface.js';
 
 /** Servicio gratis de una cita de recompensa: el snapshot más barato; en empate, el de menor service_id. */
 export const getRewardDiscount = (
     services: Pick<AppointmentService, 'service_id' | 'price_at_booking'>[]
-): { serviceId: string; amount: number } | null => {
+): RewardDiscountResponse | null => {
     const [first, ...rest] = services;
     if (!first) return null;
 

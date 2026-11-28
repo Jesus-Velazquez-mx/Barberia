@@ -175,9 +175,11 @@ describe('Recompensa de lealtad al agendar', () => {
             expectReward(res.body.data, expensiveId, 450, 0);
         });
 
+        // El orden en que llegan los servicios no se controla desde la petición; el desempate en ambos órdenes
+        // se prueba en rewardDiscount.test.ts.
         test('empate de precio: gana el menor serviceId', async () => {
             const client = await newClient(6);
-            const res = await book(client.token, { serviceIds: [...tieIds].reverse() });
+            const res = await book(client.token, { serviceIds: tieIds });
 
             expectReward(res.body.data, [...tieIds].sort()[0], 200, 200);
         });
@@ -272,13 +274,19 @@ describe('Recompensa de lealtad al agendar', () => {
     });
 
     describe('después de crear', () => {
-        test('PUT con isRewardRedemption responde 400', async () => {
+        test('PUT con isRewardRedemption responde 400 y no guarda nada', async () => {
             const client = await newClient(6);
             const { id } = (await book(client.token)).body.data;
 
-            const res = await edit(client.token, id, { isRewardRedemption: false });
+            // El campo válido garantiza que el 400 venga de strictObject: si el esquema descartara la bandera,
+            // el cuerpo no quedaría vacío y la edición de notas pasaría.
+            const res = await edit(client.token, id, { isRewardRedemption: false, notes: 'No debe guardarse' });
 
             expect(res.status).toBe(400);
+            const stored = await getPool().query('SELECT notes, is_reward_redemption FROM appointments WHERE id = $1', [
+                id,
+            ]);
+            expect(stored.rows[0]).toEqual({ notes: null, is_reward_redemption: true });
         });
 
         test('editar horario, barbero y notas conserva la recompensa', async () => {

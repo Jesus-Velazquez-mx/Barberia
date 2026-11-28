@@ -12,6 +12,24 @@ This plan is based on the loyalty analysis of the current code and docs (`docs/b
 >
 > This changes the API contract, the database guard, the tests and the UI of the sub-issues. §4 lists the effect on each one.
 
+## Implementation status (2026-11-27)
+
+The backend and the web service layer are built. The remaining work is the web views, documentation verification and the end-to-end walkthrough. The sub-task descriptions below (ST-1 to ST-11) are kept as originally planned.
+
+| Subtask | Issue | Status |
+|---|---|---|
+| ST-1 DB guard | [#284](https://github.com/Jesus-Velazquez-mx/Barberia/issues/284) | Done |
+| ST-2 Loyalty status service and endpoint | [#285](https://github.com/Jesus-Velazquez-mx/Barberia/issues/285) | Done |
+| ST-3 Automatic reward on create | [#286](https://github.com/Jesus-Velazquez-mx/Barberia/issues/286) | Implemented in [PR #323](https://github.com/Jesus-Velazquez-mx/Barberia/pull/323) |
+| ST-4 Frontend services and types | [#287](https://github.com/Jesus-Velazquez-mx/Barberia/issues/287) | Implemented in [PR #323](https://github.com/Jesus-Velazquez-mx/Barberia/pull/323) |
+| ST-5 Client progress view | [#289](https://github.com/Jesus-Velazquez-mx/Barberia/issues/289) | Pending |
+| ST-6 Reward in the booking summary | [#290](https://github.com/Jesus-Velazquez-mx/Barberia/issues/290) | Pending |
+| ST-7 Staff visibility (optional) | [#291](https://github.com/Jesus-Velazquez-mx/Barberia/issues/291) | Pending |
+| ST-8 Integration tests | [#288](https://github.com/Jesus-Velazquez-mx/Barberia/issues/288) | Issue closed as duplicate. PR #323 adds booking reward tests (`appointmentReward.test.ts`, `rewardDiscount.test.ts`); this table does not verify them against each ST-8 criterion |
+| ST-9 Docs and end-to-end verification | [#292](https://github.com/Jesus-Velazquez-mx/Barberia/issues/292) | Pending: `docs/` describes the backend flow as implemented; the SQL comments and the end-to-end walkthrough remain |
+| ST-10 Free service in appointment views | [#295](https://github.com/Jesus-Velazquez-mx/Barberia/issues/295) | Pending. Until then, web totals show full prices for reward appointments |
+| ST-11 Counter carry-over | [#294](https://github.com/Jesus-Velazquez-mx/Barberia/issues/294) | Done |
+
 ## 1. Goal
 
 Make the system apply the loyalty reward on its own: when a registered client with `completed_services_count >= 6` and no open reward appointment books an appointment, the system flags it as a reward appointment and marks its cheapest service as free. The system then shows that benefit end to end (booking summary, appointment views, progress view, staff views).
@@ -24,13 +42,24 @@ Make the system apply the loyalty reward on its own: when a registered client wi
 - Rewards do not expire, are global (usable at any shop) and are never combined with other promotions (there are none).
 - Only registered clients participate. Guest appointments never earn or receive rewards.
 - Cancelling a reward appointment keeps the reward: the next booking gets it again. A `no_show` on a reward appointment forfeits it (counter reset to 0, already implemented by `trg_appointments_reward_no_show`).
-- Completing a reward appointment **subtracts 6** from the counter, so progress above 6 is kept (decided; today `update_client_loyalty_count()` resets to 0, and ST-11 changes it).
+- Completing a reward appointment **subtracts 6** from the counter, so progress above 6 is kept (decided; implemented by ST-11 in `update_client_loyalty_count()`).
 - No redemption ledger: a redemption is identified only by `appointments.is_reward_redemption`.
 - Payment is always made in person and the system handles no payments. "Free" is information the system shows (which service is free and what is left to pay), not a charge it makes.
 
 ## 2. Current state (what exists and what is missing)
 
 | Piece | State |
+|---|---|
+| Automatic eligibility check at booking (counter ≥ 6 and no open reward appointment), server side | Implemented, inside the booking transaction |
+| Setting `is_reward_redemption` on the appointment that gets the reward | Implemented |
+| Choosing and exposing the free service (cheapest) and the amount left to pay | API implemented (`rewardDiscount`, `amountDue`); web service layer maps them. **Web views still add up the full prices** (ST-10) |
+| Guard against one reward being used on several appointments | Implemented (booking transaction and database trigger) |
+| Loyalty progress endpoint or UI for the client | Endpoint and web service implemented; **UI missing** (ST-5) |
+| Booking and appointment views that show the free service | **Missing** (ST-6, ST-10) |
+
+The table below is the state **before** this work, kept for reference.
+
+| Piece | State at planning time |
 |---|---|
 | Counter column, increment/reset trigger on `completed`, reset trigger on reward `no_show` | Implemented (`init_database.sql`) |
 | `is_reward_redemption` column and its exposure in API responses | Implemented |

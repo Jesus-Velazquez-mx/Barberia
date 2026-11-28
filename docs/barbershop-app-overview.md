@@ -65,6 +65,7 @@ All rules below are decided.
 
 **Loyalty rewards and no-shows**
 - If an appointment that includes a loyalty reward is cancelled, by the client or by staff, the client keeps the reward: it is applied again, automatically, to the next appointment they book.
+- Editing an appointment never adds or removes a reward. If the services of a reward appointment change, the free service is recalculated (see §3.3).
 - The reward is lost only when the appointment is marked as a no-show (see §3.3).
 
 **Notifications**
@@ -77,6 +78,8 @@ Clients submit a photo and/or facial-structure attributes, stated preferences, a
 ### 3.3 Loyalty / Fidelity Program
 
 Clients accumulate credit toward free services: every 6 completed appointments earns a free service on the next appointment they book (the 7th). Each client has a running count of completed appointments since their last free service. The count is flat (decided): each completed appointment adds exactly 1, regardless of which services it included or what they cost. Rewards never expire, and no other promotions exist or are planned, so there is nothing to combine a reward with.
+
+**Implementation status**: the rules below are applied by the system: the reward is added automatically when an appointment is booked, and the system works out which service is free and how much is left to pay. The web app marks reward appointments, but it does not yet show clients their progress, announce the reward while booking, or show which service is free and the amount due; **until it does, the totals it displays are the full prices, so staff must not charge from them for a reward appointment**. The Android app has no booking or loyalty screens.
 
 **Receiving a reward** (all decided):
 - The reward is applied **automatically**. Nobody requests, chooses or confirms it, and it can't be declined. When a registered client whose count has reached 6 books an appointment, that appointment is created as a reward appointment, whether the client books it themselves or a receptionist or manager books it for them.
