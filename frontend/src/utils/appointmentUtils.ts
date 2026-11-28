@@ -3,6 +3,7 @@ import type {
     AppointmentFilterValues,
     AppointmentRecord,
     AppointmentStatus,
+    RewardDiscount,
     SortDirection
 } from '../types/appointmentType';
 import { ApiError } from '../types/api';
@@ -158,6 +159,33 @@ export const getAppointmentTotal = (appointment: AppointmentRecord): number =>
 
 export const getAppointmentDuration = (appointment: AppointmentRecord): number =>
     appointment.services.reduce((sum, service) => sum + service.durationMinutesAtBooking, 0);
+
+/* ---------- Recompensa de lealtad ---------- */
+
+/* Vista previa de la recompensa para los servicios seleccionados: es gratis el más barato y, en empate, 
+    el de menor serviceId.*/
+export const getRewardPreview = (
+    services: { serviceId: string; price: number }[]
+): { rewardDiscount: RewardDiscount | null; amountDue: number } => {
+    let cheapest: { serviceId: string; price: number } | null = null;
+    let totalCents = 0;
+
+    for (const service of services) {
+        totalCents += service.price;
+
+        const difference = cheapest ? service.price - cheapest.price : -1;
+        if (!cheapest || difference < 0 || (difference === 0 && service.serviceId < cheapest.serviceId)) {
+            cheapest = service;
+        }
+    }
+
+    if (!cheapest) return { rewardDiscount: null, amountDue: 0 };
+
+    return {    
+        rewardDiscount: { serviceId: cheapest.serviceId, amount: cheapest.price },
+        amountDue: (totalCents - cheapest.price)
+    };
+};
 
 /* ---------- Filtros y orden ---------- */
 
