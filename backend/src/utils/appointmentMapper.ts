@@ -21,12 +21,15 @@ export const getRewardDiscount = (
     return { serviceId: cheapest.service_id, amount: cheapest.price_at_booking };
 };
 
+/** Los montos se operan en centavos enteros: sumar pesos como punto flotante deja residuos (220.10000000000002). */
+const toCents = (amount: number): number => Math.round(amount * 100);
+
 export const toClientAppointmentResponse = (
     appointment: Appointment,
     services: AppointmentService[]
 ): ClientAppointmentResponse => {
     const rewardDiscount = appointment.is_reward_redemption ? getRewardDiscount(services) : null;
-    const totalCents = services.reduce((sum, s) => sum + s.price_at_booking, 0);
+    const totalCents = services.reduce((sum, s) => sum + toCents(s.price_at_booking), 0);
 
     return {
         id: appointment.id,
@@ -44,7 +47,7 @@ export const toClientAppointmentResponse = (
         notes: appointment.notes,
         isRewardRedemption: appointment.is_reward_redemption,
         rewardDiscount,
-        amountDue: (totalCents - (rewardDiscount?.amount ?? 0)),
+        amountDue: (totalCents - toCents(rewardDiscount?.amount ?? 0)) / 100,
         services: services.map((s) => ({
             serviceId: s.service_id,
             priceAtBooking: s.price_at_booking,

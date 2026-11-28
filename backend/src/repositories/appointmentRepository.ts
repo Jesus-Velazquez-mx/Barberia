@@ -4,7 +4,7 @@ import type { Appointment, AppointmentStatus } from '../types/entities/appointme
 import type { AppointmentService } from '../types/entities/appointmentService.interface.js';
 import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
 import { getLoyaltyStateForUpdate } from './clientRepository.js';
-import { evaluateReward } from '../services/loyaltyService.js';
+import { evaluateReward } from '../utils/loyalty.js';
 
 const APPOINTMENT_COLUMNS = `id, shop_id, client_id, is_registered_client, guest_client_name, barber_id, is_walk_in,
     status, original_scheduled_start, scheduled_start, scheduled_end, checked_in_at, completed_at, cancelled_at,
@@ -273,10 +273,9 @@ export const updateAppointmentWithServices = async (
     try {
         await client.query('BEGIN');
 
-        const current = await client.query(
-            `SELECT shop_id, status FROM appointments WHERE id = $1 FOR UPDATE`,
-            [data.appointmentId]
-        );
+        const current = await client.query(`SELECT shop_id, status FROM appointments WHERE id = $1 FOR UPDATE`, [
+            data.appointmentId,
+        ]);
         if (current.rows.length === 0) {
             throw new ApiError(ApiErrorCode.NOT_FOUND, 'Appointment not found');
         }

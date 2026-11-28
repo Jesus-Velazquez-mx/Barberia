@@ -182,6 +182,20 @@ describe('Recompensa de lealtad al agendar', () => {
             expectReward(res.body.data, [...tieIds].sort()[0], 200, 200);
         });
 
+        test.each([
+            ['con recompensa', 6, 220.1],
+            ['sin recompensa', 5, 300.4],
+        ])('precios con centavos %s: amountDue es exacto', async (_case, counter, amountDue) => {
+            // Sumados como punto flotante dan 220.10000000000002 y 300.40000000000003.
+            const serviceIds = [await newService(99.9), await newService(120.2), await newService(80.3)];
+            const client = await newClient(counter);
+
+            const res = await book(client.token, { serviceIds });
+
+            expect(res.status).toBe(201);
+            expect(res.body.data.amountDue).toBe(amountDue);
+        });
+
         test('contador 5: cita normal aunque el cuerpo pida la recompensa', async () => {
             const client = await newClient(5);
             const res = await book(client.token, { isRewardRedemption: true });

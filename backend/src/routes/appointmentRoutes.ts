@@ -340,7 +340,6 @@ router.get('/appointments/:id', getById);
  */
 router.put('/appointments/:id', update);
 
-
 /**
  * @swagger
  * /api/appointments/{id}/cancel:

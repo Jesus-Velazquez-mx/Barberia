@@ -62,7 +62,12 @@ export const toBusinessDate = (isoDateTime: string): string =>
 /* "2026-10-21T16:00:00.000Z" -> "21 oct 2026" */
 export const formatAppointmentDate = (isoDateTime: string): string =>
     new Date(isoDateTime)
-        .toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric', timeZone: getBusinessTimezone() })
+        .toLocaleDateString('es-MX', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            timeZone: getBusinessTimezone()
+        })
         .replace(/\./g, '');
 
 /* "2026-10-21T16:00:00.000Z" -> "09:00" */
@@ -162,7 +167,10 @@ export const getAppointmentDuration = (appointment: AppointmentRecord): number =
 
 /* ---------- Recompensa de lealtad ---------- */
 
-/* Vista previa de la recompensa para los servicios seleccionados: es gratis el más barato y, en empate, 
+/* Los montos se operan en centavos enteros, igual que en el backend, para no arrastrar residuos de punto flotante. */
+const toCents = (amount: number): number => Math.round(amount * 100);
+
+/* Vista previa de la recompensa para los servicios seleccionados: es gratis el más barato y, en empate,
     el de menor serviceId.*/
 export const getRewardPreview = (
     services: { serviceId: string; price: number }[]
@@ -171,7 +179,7 @@ export const getRewardPreview = (
     let totalCents = 0;
 
     for (const service of services) {
-        totalCents += service.price;
+        totalCents += toCents(service.price);
 
         const difference = cheapest ? service.price - cheapest.price : -1;
         if (!cheapest || difference < 0 || (difference === 0 && service.serviceId < cheapest.serviceId)) {
@@ -181,9 +189,9 @@ export const getRewardPreview = (
 
     if (!cheapest) return { rewardDiscount: null, amountDue: 0 };
 
-    return {    
+    return {
         rewardDiscount: { serviceId: cheapest.serviceId, amount: cheapest.price },
-        amountDue: (totalCents - cheapest.price)
+        amountDue: (totalCents - toCents(cheapest.price)) / 100
     };
 };
 
