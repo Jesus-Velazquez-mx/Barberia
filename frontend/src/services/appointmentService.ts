@@ -51,8 +51,8 @@ interface AppointmentApi {
     updatedAt: string;
 }
 
-/* 
-   El cliente omite clientId y guestClientName: el backend usa el usuario del token. 
+/*
+   El cliente omite clientId y guestClientName: el backend usa el usuario del token.
 */
 export interface CreateAppointmentPayload {
     barberId: string;
@@ -64,6 +64,24 @@ export interface CreateAppointmentPayload {
     notes?: string;
     /* Servicio sin cita (solo personal): el horario debe ser de hoy; pasa sola a checked_in al llegar su hora. */
     isWalkIn?: boolean;
+}
+
+/* Respuesta normalizada de POST /appointments para mostrar la confirmación con la decisión del servidor. */
+export interface CreatedAppointment {
+    id: string;
+    shopId: string;
+    barberId: string;
+    isWalkIn: boolean;
+    scheduledStart: string;
+    scheduledEnd: string;
+    isRewardRedemption: boolean;
+    rewardDiscount: RewardDiscount | null;
+    amountDue: number;
+    services: {
+        serviceId: string;
+        priceAtBooking: number;
+        durationMinutesAtBooking: number;
+    }[];
 }
 
 export interface AppointmentClientInfo {
@@ -264,8 +282,29 @@ export const getAppointmentById = async (
 /* ---------- Escritura ---------- */
 
 /* Si otra persona tomó el horario primero, el backend responde 409. */
-export const createAppointment = async (token: string, payload: CreateAppointmentPayload): Promise<void> => {
-    await apiClient.post<AppointmentApi>('/appointments', payload, authHeaders(token));
+export const createAppointment = async (
+    token: string,
+    payload: CreateAppointmentPayload
+): Promise<CreatedAppointment> => {
+    const { data } = await apiClient.post<AppointmentApi>('/appointments', payload, authHeaders(token));
+    return {
+        id: data.id,
+        shopId: data.shopId,
+        barberId: data.barberId,
+        isWalkIn: Boolean(data.isWalkIn),
+        scheduledStart: data.scheduledStart,
+        scheduledEnd: data.scheduledEnd,
+        isRewardRedemption: Boolean(data.isRewardRedemption),
+        rewardDiscount: data.rewardDiscount
+            ? { serviceId: data.rewardDiscount.serviceId, amount: Number(data.rewardDiscount.amount) }
+            : null,
+        amountDue: Number(data.amountDue),
+        services: data.services.map((s) => ({
+            serviceId: s.serviceId,
+            priceAtBooking: Number(s.priceAtBooking),
+            durationMinutesAtBooking: Number(s.durationMinutesAtBooking)
+        }))
+    };
 };
 
 /**

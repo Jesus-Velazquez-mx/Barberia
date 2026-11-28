@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useFieldArray, useForm } from 'react-hook-form';
-import { Plus, X } from 'lucide-react';
+import { Plus, Star, X } from 'lucide-react';
 import { Button } from '../components/common/ButtonComponent';
 import { InputField } from '../components/common/InputFieldComponent';
 import { SelectField } from '../components/common/SelectFieldComponent';
 import { AvailabilityCalendar } from '../components/appointments/AvailabilityCalendarComponent';
+import {
+  BookingConfirmationModal,
+  type BookingConfirmationData
+} from '../components/appointments/BookingConfirmationModalComponent';
 import { SlotPickerModal } from '../components/appointments/SlotPickerModalComponent';
 import { NextSlotPicker } from '../components/appointments/NextSlotPickerComponent';
 import { WalkInBadge } from '../components/appointments/WalkInBadgeComponent';
@@ -14,13 +18,15 @@ import { getShops, getActiveBarbersByShop, getOfferedServices } from '../service
 import { getNextAvailability, getShopAvailability } from '../services/availabilityService';
 import { createAppointment } from '../services/appointmentService';
 import { searchClients } from '../services/clientService';
+import { getLoyaltyStatus } from '../services/loyaltyService';
 import { useAuth } from '../context/AuthContext';
 import { ApiError } from '../types/api';
 import type { AvailableSlot, DayAvailability } from '../types/availabilityType';
 import type { PublicBarber } from '../types/barber';
 import type { ClientRecord } from '../types/clientType';
+import type { LoyaltyStatus } from '../types/loyaltyType';
 import type { OfferedService } from '../types/offeredService';
-import { formatPrice } from '../utils/appointmentUtils';
+import { formatPrice, getRewardPreview } from '../utils/appointmentUtils';
 import { formatSlotTime } from '../utils/availabilityUtils';
 import { getTodayIso } from '../utils/dateFormat';
 import { formatDuration } from '../utils/offeredServiceUtils';
@@ -129,6 +135,9 @@ export function BookAppointmentContainer({ isWalkIn = false }: BookAppointmentCo
   const [nextSlots, setNextSlots] = useState<AvailableSlot[]>([]);
   const [isFetchingNextSlots, setIsFetchingNextSlots] = useState(false);
   const [nextSlotsError, setNextSlotsError] = useState<string | null>(null);
+  const [loyaltyStatus, setLoyaltyStatus] = useState<LoyaltyStatus | null>(null);
+  const [loyaltyVersion, setLoyaltyVersion] = useState(0);
+  const [bookingConfirmation, setBookingConfirmation] = useState<BookingConfirmationData | null>(null);
 
   const { register, watch, control, reset, setValue } = useForm<BookAppointmentFormValues>({
     defaultValues: { clientSearch: '', guestClientName: '', shopId: '', services: [{ serviceId: '' }] }
@@ -164,6 +173,25 @@ export function BookAppointmentContainer({ isWalkIn = false }: BookAppointmentCo
     .filter((service): service is OfferedService => Boolean(service));
   const totalDuration = selectedServices.reduce((sum, service) => sum + service.durationMinutes, 0);
   const totalPrice = selectedServices.reduce((sum, service) => sum + service.price, 0);
+
+  /* Cliente cuyo estado de lealtad aplica a esta reserva (null en modo visitante o sin cliente seleccionado). */
+  const loyaltyClientId = !isStaff
+    ? user?.role === 'client'
+      ? user.id
+      : null
+    : clientMode === 'registered' && selectedClient
+      ? selectedClient.id
+      : null;
+
+  /* Vista previa informativa del servicio gratis: la decisión definitiva la toma el servidor al crear la cita. */
+  const rewardApplies = Boolean(loyaltyStatus?.rewardAppliesOnNextBooking);
+  const rewardPreview =
+    rewardApplies && selectedServices.length > 0
+      ? getRewardPreview(selectedServices.map((service) => ({ serviceId: service.id, price: service.price })))
+      : null;
+  const freePreviewService = rewardPreview?.rewardDiscount
+    ? (selectedServices.find((service) => service.id === rewardPreview.rewardDiscount?.serviceId) ?? null)
+    : null;
 
   /* 0. Buscar clientes en cada pulsación; si llega otra, la respuesta anterior se descarta */
   useEffect(() => {
@@ -374,6 +402,30 @@ export function BookAppointmentContainer({ isWalkIn = false }: BookAppointmentCo
     }
   }, [isStaff, shopOptions, shopId, setValue]);
 
+  /* 6. Cargar estado de lealtad del cliente en sesión o del cliente registrado seleccionado por el personal. */
+  useEffect(() => {
+    if (!token || !loyaltyClientId) {
+      setLoyaltyStatus(null);
+      return;
+    }
+
+    let active = true;
+    setLoyaltyStatus(null);
+
+    getLoyaltyStatus(token, loyaltyClientId)
+      .then((data) => {
+        if (active) setLoyaltyStatus(data);
+      })
+      .catch((error) => {
+        console.error(formatApiError(error, 'Error al consultar el estado de lealtad.'));
+        if (active) setLoyaltyStatus(null);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [token, loyaltyClientId, loyaltyVersion]);
+
   /* Cada fila ofrece solo los servicios que no se eligieron en otra fila */
   const getServiceOptions = (index: number) => {
     const takenByOthers = services.filter((_, i) => i !== index).map((s) => s.serviceId);
@@ -408,22 +460,36 @@ export function BookAppointmentContainer({ isWalkIn = false }: BookAppointmentCo
     setView({ year: todayYear, month: todayMonth - 1 });
   };
 
-  /* Agendar: crea la cita en el backend y manda al usuario a la página de citas agendadas;
-     el aviso viaja en el state y lo pinta DashboardLayout. */
+  /* Agendar: crea la cita en el backend. Si no hay recompensa en vista previa ni en respuesta,
+     navega directo a citas con toast; de lo contrario muestra la confirmación con el resultado del servidor. */
   const handleBook = async () => {
     if (!canBook || !confirmedSlot || !token) return;
 
     setIsBooking(true);
     try {
-      await createAppointment(token, {
+      const created = await createAppointment(token, {
         barberId: confirmedSlot.barberId,
         serviceIds: selectedServiceIds,
         scheduledStart: confirmedSlot.startTime,
         ...clientTarget,
         ...(isWalkIn ? { isWalkIn: true } : {})
       });
-      navigate(APPOINTMENTS_ROUTE_BY_ROLE[user?.role ?? 'client'] ?? '/client/appointments', {
-        state: { toast: isWalkIn ? WALK_IN_SUCCESS_MESSAGE : BOOKING_SUCCESS_MESSAGE }
+      if (!created.isRewardRedemption && !rewardApplies) {
+        navigate(APPOINTMENTS_ROUTE_BY_ROLE[user?.role ?? 'client'] ?? '/client/appointments', {
+          state: { toast: isWalkIn ? WALK_IN_SUCCESS_MESSAGE : BOOKING_SUCCESS_MESSAGE }
+        });
+        return;
+      }
+
+      setBookingConfirmation({
+        appointment: created,
+        isWalkIn,
+        isStaff,
+        previewExpectedReward: rewardApplies,
+        shopName: shopLabel ?? 'Sucursal',
+        barberName: confirmedSlot.barberName,
+        clientName: clientLabel,
+        serviceNames: new Map(offeredServices.map((service) => [service.id, service.name]))
       });
     } catch (error) {
       // Walk-in: si el slot lo tomó alguien más, se recalcula el próximo horario (efecto 5) y se preselecciona.
@@ -466,6 +532,18 @@ export function BookAppointmentContainer({ isWalkIn = false }: BookAppointmentCo
     if (!selectedSlot) return;
     setConfirmedSlot(selectedSlot);
     setIsModalOpen(false);
+  };
+
+  const handleViewAppointments = () => {
+    setBookingConfirmation(null);
+    navigate(APPOINTMENTS_ROUTE_BY_ROLE[user?.role ?? 'client'] ?? '/client/appointments');
+  };
+
+  const handleBookAnother = () => {
+    setBookingConfirmation(null);
+    handleCancel();
+    setAvailabilityVersion((version) => version + 1);
+    setLoyaltyVersion((version) => version + 1);
   };
 
   /* A quién se agenda (solo personal). El backend exige clientId o guestClientName, nunca ambos;
@@ -715,24 +793,53 @@ export function BookAppointmentContainer({ isWalkIn = false }: BookAppointmentCo
             </SummaryTile>
           </div>
 
+          {rewardApplies && (
+            <div
+              role="status"
+              className="mt-4 flex items-start gap-2.5 rounded-lg border border-(--accent)/40 bg-(--accent)/10 px-3.5 py-2.5 text-sm text-(--text-h)"
+            >
+              <Star size={16} fill="currentColor" className="mt-0.5 shrink-0 text-(--accent)" aria-hidden="true" />
+              <span>
+                {freePreviewService && rewardPreview?.rewardDiscount ? (
+                  <>
+                    Esta cita incluye un servicio gratis: <strong>{freePreviewService.name}</strong> (&#8722;
+                    {formatPrice(rewardPreview.rewardDiscount.amount)})
+                  </>
+                ) : (
+                  'Esta cita incluye un servicio gratis. Selecciona al menos un servicio para ver el descuento.'
+                )}
+              </span>
+            </div>
+          )}
+
           <section className="mt-6">
             <h3 className="m-0 mb-3 font-sans text-xs font-bold uppercase tracking-wide text-(--accent)">
               {selectedServices.length > 1 ? 'Servicios' : 'Servicio'}
             </h3>
             {selectedServices.length > 0 ? (
               <ul className="m-0 list-none p-0">
-                {selectedServices.map((service) => (
-                  <li
-                    key={service.id}
-                    className="flex items-baseline justify-between gap-4 border-b border-white/5 py-2 text-sm first:pt-0"
-                  >
-                    <span className="text-(--text-h)">
-                      {service.name}
-                      <span className="ml-2 text-xs text-(--text)">{formatDuration(service.durationMinutes)}</span>
-                    </span>
-                    <span className="font-semibold text-(--text-h)">{formatPrice(service.price)}</span>
-                  </li>
-                ))}
+                {selectedServices.map((service) => {
+                  const isFree = rewardPreview?.rewardDiscount?.serviceId === service.id;
+                  return (
+                    <li
+                      key={service.id}
+                      className="flex items-baseline justify-between gap-4 border-b border-white/5 py-2 text-sm first:pt-0"
+                    >
+                      <span className="text-(--text-h)">
+                        {service.name}
+                        <span className="ml-2 text-xs text-(--text)">{formatDuration(service.durationMinutes)}</span>
+                      </span>
+                      {isFree ? (
+                        <span className="flex items-baseline gap-2">
+                          <span className="text-xs text-(--text) line-through">{formatPrice(service.price)}</span>
+                          <span className="font-semibold text-(--accent)">Gratis</span>
+                        </span>
+                      ) : (
+                        <span className="font-semibold text-(--text-h)">{formatPrice(service.price)}</span>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             ) : (
               <p className="m-0 text-sm text-(--text)">—</p>
@@ -740,11 +847,20 @@ export function BookAppointmentContainer({ isWalkIn = false }: BookAppointmentCo
           </section>
 
           <div className="mt-4 flex justify-between">
-            <h3 className="m-0 font-sans text-xs font-bold uppercase tracking-wide text-(--accent)">Total</h3>
+            <h3 className="m-0 font-sans text-xs font-bold uppercase tracking-wide text-(--accent)">
+              {rewardPreview?.rewardDiscount ? 'Total a pagar' : 'Total'}
+            </h3>
             <div className="flex flex-col items-end">
-              <span className={`text-(--accent) ${totalPrice > 0 ? 'text-2xl font-semibold' : null}`}>
-                {totalPrice > 0 ? formatPrice(totalPrice) : '—'}
-              </span>
+              {rewardPreview?.rewardDiscount ? (
+                <>
+                  <span className="text-xs text-(--text) line-through">{formatPrice(totalPrice)}</span>
+                  <span className="text-2xl font-semibold text-(--accent)">{formatPrice(rewardPreview.amountDue)}</span>
+                </>
+              ) : (
+                <span className={`text-(--accent) ${totalPrice > 0 ? 'text-2xl font-semibold' : ''}`}>
+                  {totalPrice > 0 ? formatPrice(totalPrice) : '—'}
+                </span>
+              )}
               <span>{totalDuration > 0 ? formatDuration(totalDuration) : null}</span>
             </div>
           </div>
@@ -784,6 +900,12 @@ export function BookAppointmentContainer({ isWalkIn = false }: BookAppointmentCo
         selectedSlot={selectedSlot}
         onSelectSlot={setSelectedSlot}
         onConfirm={handleConfirm}
+      />
+
+      <BookingConfirmationModal
+        confirmation={bookingConfirmation}
+        onViewAppointments={handleViewAppointments}
+        onBookAnother={handleBookAnother}
       />
 
       <Toast message={bookingError} type="error" onDismiss={() => setBookingError(null)} />
