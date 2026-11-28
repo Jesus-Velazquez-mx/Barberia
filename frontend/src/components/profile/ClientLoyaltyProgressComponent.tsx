@@ -1,4 +1,5 @@
-import { AlertCircle, CalendarCheck, Gift, RotateCw, Star } from 'lucide-react';
+import { useState } from 'react';
+import { AlertCircle, CalendarCheck, ChevronDown, Gift, RotateCw, Star } from 'lucide-react';
 import type { LoyaltyStatus } from '../../types/loyaltyType';
 import { Button } from '../common/ButtonComponent';
 
@@ -19,6 +20,8 @@ export function ClientLoyaltyProgress({
   onBookAppointment,
   onViewAppointments
 }: ClientLoyaltyProgressProps) {
+  const [isRulesOpen, setIsRulesOpen] = useState(false);
+
   const threshold = status ? Math.max(status.threshold, 1) : 1;
   const completed = status ? Math.max(status.completedServicesCount, 0) : 0;
   const filledStamps = Math.min(completed, threshold);
@@ -200,35 +203,46 @@ export function ClientLoyaltyProgress({
                 Agendar cita
               </Button>
             </div>
-          ) : (
-            <div className="rounded-lg border border-white/10 bg-[#121212] p-4 text-sm text-(--text)">
-              {status.appointmentsUntilReward === 1
-                ? 'Te falta 1 cita completada para que tu próxima cita incluya un servicio gratis.'
-                : `Te faltan ${status.appointmentsUntilReward} citas completadas para que tu próxima cita incluya un servicio gratis.`}
-            </div>
-          )}
+          ) : null}
 
-          <div className="rounded-lg border border-white/10 bg-[#121212] p-4 sm:p-5">
-            <h3 className="m-0 font-sans text-sm font-semibold text-(--text-h)">
-              ¿Cómo funciona el programa de lealtad?
-            </h3>
-            <ul className="mb-0 mt-3 list-disc space-y-1.5 pl-5 text-xs leading-relaxed text-(--text) sm:text-sm">
-              <li>Cada cita completada cuenta como 1.</li>
-              <li>
-                Al reunir {threshold} citas completadas, la recompensa se aplica automáticamente a la siguiente cita que
-                agendes, sobre el servicio de menor precio (no necesitas activar ninguna opción).
-              </li>
-              <li>Solo puedes tener una cita de recompensa abierta a la vez.</li>
-              <li>Si cancelas una cita de recompensa, conservas tu recompensa para la siguiente cita que agendes.</li>
-              <li>
-                Si no asistes a una cita de recompensa (no-show), pierdes la recompensa y todo tu progreso se reinicia a
-                0.
-              </li>
-              <li>
-                Después de completar tu cita gratis, se restan {threshold} al contador y el progreso que exceda{' '}
-                {threshold} se conserva (por ejemplo, {threshold + 2} pasa a 2).
-              </li>
-            </ul>
+          <div className="rounded-lg border border-white/10 bg-[#121212]">
+            <button
+              type="button"
+              aria-expanded={isRulesOpen}
+              aria-controls="loyalty-rules-panel"
+              onClick={() => setIsRulesOpen((prev) => !prev)}
+              className="flex w-full cursor-pointer items-center justify-between gap-3 p-4 text-left text-sm font-semibold text-(--text-h) transition-colors hover:text-(--accent) sm:px-5"
+            >
+              <span>¿Cómo funciona el programa de lealtad?</span>
+              <ChevronDown
+                size={18}
+                aria-hidden="true"
+                className={`shrink-0 text-(--text) transition-transform ${isRulesOpen ? 'rotate-180' : ''}`}
+              />
+            </button>
+            {isRulesOpen && (
+              <div id="loyalty-rules-panel" className="border-t border-white/10 px-4 pb-4 pt-3 sm:px-5 sm:pb-5">
+                <ul className="m-0 list-disc space-y-1.5 pl-5 text-xs leading-relaxed text-(--text) sm:text-sm">
+                  <li>Cada cita completada cuenta como 1.</li>
+                  <li>
+                    Al reunir {threshold} citas completadas, la recompensa se aplica automáticamente a la siguiente cita
+                    que agendes, sobre el servicio de menor precio (no necesitas activar ninguna opción).
+                  </li>
+                  <li>Solo puedes tener una cita de recompensa abierta a la vez.</li>
+                  <li>
+                    Si cancelas una cita de recompensa, conservas tu recompensa para la siguiente cita que agendes.
+                  </li>
+                  <li>
+                    Si no asistes a una cita de recompensa (no-show), pierdes la recompensa y todo tu progreso se
+                    reinicia a 0.
+                  </li>
+                  <li>
+                    Después de completar tu cita gratis, se restan {threshold} al contador y el progreso que exceda{' '}
+                    {threshold} se conserva (por ejemplo, {threshold + 2} pasa a 2).
+                  </li>
+                </ul>
+              </div>
+            )}
           </div>
         </div>
       )}
