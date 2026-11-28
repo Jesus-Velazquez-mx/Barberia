@@ -1,4 +1,4 @@
-import { GetObjectCommand, HeadObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { GetObjectCommand, HeadObjectCommand, S3Client, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import globalConfig from '../config/globalConfig.js';
 import { createPresignedPost } from '@aws-sdk/s3-presigned-post';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
@@ -79,4 +79,14 @@ export const generateHaircutImageURL = async (haircutId: string): Promise<Haircu
     }
 
     throw new ApiError(ApiErrorCode.NOT_FOUND, 'Haircut image not found');
+};
+
+/** Borra la foto del cliente. Si no existe, S3 responde 204 igual. */
+export const deleteUserPhoto = async (userId: string): Promise<void> => {
+    await client.send(
+        new DeleteObjectCommand({
+            Bucket: globalConfig.AWS_BUCKET,
+            Key: getUserPhotoKey(userId),
+        })
+    );
 };

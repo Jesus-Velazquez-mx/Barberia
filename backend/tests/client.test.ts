@@ -1,6 +1,6 @@
+import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
-import router from '../src/routes/routes.js';
 import connection from '../src/connection/connection.js';
 import { signToken } from '../src/services/jwtTokenService.js';
 import type { User, UserRole } from '../src/types/entities/user.interface.js';
@@ -10,6 +10,18 @@ import {
     generateUniqueName as uniqueName,
 } from './helpers/uniqueValues.js';
 import { getSeededShiftId } from './helpers/availabilityFixtures.js';
+
+// S3 se reemplaza por un mock: borrar un cliente también borra su foto del bucket.
+// El mock debe registrarse antes de cargar el router (ESM), por eso se importa con await import.
+const deleteUserPhoto = jest.fn<(userId: string) => Promise<void>>().mockResolvedValue(undefined);
+
+jest.unstable_mockModule('../src/services/bucketService.js', () => ({
+    deleteUserPhoto,
+    generatePresignedURL: jest.fn(),
+    generateHaircutImageURL: jest.fn(),
+}));
+
+const { default: router } = await import('../src/routes/routes.js');
 
 const { connectDB, closeDB, getPool } = connection;
 
@@ -658,6 +670,10 @@ describe('CRUD de Clientes (/api/clients)', () => {
     // 4. DELETE (DELETE /api/clients/:id)
     // =========================================================================
     describe('DELETE /api/clients/:id (Borrado Físico de Clientes)', () => {
+        beforeEach(() => {
+            deleteUserPhoto.mockClear();
+        });
+
         test('Un cliente puede eliminar su propia cuenta mediante borrado físico (Hard delete)', async () => {
             const clientUser = await insertUser('client');
             await getPool().query('INSERT INTO clients (user_id) VALUES ($1)', [clientUser.id]);
@@ -669,6 +685,7 @@ describe('CRUD de Clientes (/api/clients)', () => {
 
             expect(response.status).toBe(200);
             expect(response.body.message).toContain('Client deleted successfully');
+            expect(deleteUserPhoto).toHaveBeenCalledWith(clientUser.id);
 
             // Verificar borrado físico en ambas tablas: clients y users
             const pool = getPool();
@@ -688,6 +705,7 @@ describe('CRUD de Clientes (/api/clients)', () => {
                 .set('Authorization', `Bearer ${managerToken}`);
 
             expect(response.status).toBe(200);
+            expect(deleteUserPhoto).toHaveBeenCalledWith(clientUser.id);
 
             const pool = getPool();
             const check = await pool.query('SELECT * FROM users WHERE id = $1', [clientUser.id]);
@@ -703,8 +721,9 @@ describe('CRUD de Clientes (/api/clients)', () => {
                 .set('Authorization', `Bearer ${receptionistToken}`);
 
             expect(response.status).toBe(200);
+            expect(deleteUserPhoto).toHaveBeenCalledWith(clientUser.id);
 
-            // La base de datos debe conservarse intacta
+            // El usuario debe quedar eliminado de la base de datos
             const pool = getPool();
             const check = await pool.query('SELECT * FROM users WHERE id = $1', [clientUser.id]);
             expect(check.rows.length).toBe(0);
@@ -724,6 +743,7 @@ describe('CRUD de Clientes (/api/clients)', () => {
 
             expect(response.status).toBe(403);
             expect(response.body.message).toContain('You do not have permission to delete this account');
+            expect(deleteUserPhoto).not.toHaveBeenCalled();
         });
 
         test('Debe responder 404 Not Found si el cliente a eliminar no existe', async () => {
@@ -734,6 +754,7 @@ describe('CRUD de Clientes (/api/clients)', () => {
 
             expect(response.status).toBe(404);
             expect(response.body.message).toContain('Client not found');
+            expect(deleteUserPhoto).not.toHaveBeenCalled();
         });
 
         test('Debe responder 401 Unauthorized si no se envía token', async () => {

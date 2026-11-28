@@ -18,6 +18,7 @@ import type { UserResponse } from '../types/dto/userResponse.interface.js';
 import type { ProfileResponse } from '../types/dto/authResponse.interface.js';
 import { toUserResponse, toManagerProfile, toReceptionistProfile, toClientProfile } from '../utils/userMapper.js';
 import { calculateAgeFromDateOnly as calculateAge } from '../utils/dateOnly.js';
+import { deleteUserPhoto } from './bucketService.js';
 
 const MANAGER_HAS_SHOPS_ERROR_CODE = 'BM001';
 
@@ -115,6 +116,7 @@ const deleteUserById = async (targetId: string, token: string): Promise<void> =>
     // Ejecuta el borrado correspondiente
     if (targetUser.role === 'client') {
         // Borrado físico: el ON DELETE CASCADE eliminará el registro en la tabla 'clients'
+        await deleteUserPhoto(targetId);
         await hardDeleteClient(targetId);
     } else {
         // Borrado lógico: marca el campo 'deleted_at' del miembro del staff

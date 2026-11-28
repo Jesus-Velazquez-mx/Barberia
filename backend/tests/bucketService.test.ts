@@ -1,7 +1,7 @@
 import { jest } from '@jest/globals';
 
 /*
- * Pruebas unitarias de generatePresignedURL y generateHaircutImageURL (src/services/bucketService.ts).
+ * Pruebas unitarias de generatePresignedURL, generateHaircutImageURL y deleteUserPhoto (src/services/bucketService.ts).
  * S3, la base de datos y la sesión se reemplazan por mocks.
  */
 
@@ -20,6 +20,7 @@ class FakeCommand {
 }
 class HeadObjectCommand extends FakeCommand {}
 class GetObjectCommand extends FakeCommand {}
+class DeleteObjectCommand extends FakeCommand {}
 
 jest.unstable_mockModule('@aws-sdk/client-s3', () => ({
     S3Client: class {
@@ -27,6 +28,7 @@ jest.unstable_mockModule('@aws-sdk/client-s3', () => ({
     },
     HeadObjectCommand,
     GetObjectCommand,
+    DeleteObjectCommand,
 }));
 jest.unstable_mockModule('@aws-sdk/credential-providers', () => ({ fromEnv: jest.fn() }));
 jest.unstable_mockModule('@aws-sdk/s3-presigned-post', () => ({ createPresignedPost }));
@@ -43,7 +45,8 @@ jest.unstable_mockModule('../src/repositories/clientRepository.js', () => ({ cle
 jest.unstable_mockModule('../src/repositories/haircutRepository.js', () => ({ getHaircutStyleById }));
 jest.unstable_mockModule('../src/utils/userSession.js', () => ({ isUserSessionValid }));
 
-const { generatePresignedURL, generateHaircutImageURL } = await import('../src/services/bucketService.js');
+const { generatePresignedURL, generateHaircutImageURL, deleteUserPhoto } =
+    await import('../src/services/bucketService.js');
 const { ApiError, ApiErrorCode } = await import('../src/errors/ApiError.js');
 
 const presignedPost = { url: 'https://s3.example.com', fields: { key: `${KEY_PREFIX}user-1` } };
@@ -146,5 +149,24 @@ describe('generateHaircutImageURL', () => {
 
         expect(send).toHaveBeenCalledTimes(1);
         expect(getSignedUrl).not.toHaveBeenCalled();
+    });
+});
+
+describe('deleteUserPhoto', () => {
+    test('borra la key del usuario', async () => {
+        send.mockResolvedValueOnce({});
+
+        await deleteUserPhoto('client-1');
+
+        expect(send).toHaveBeenCalledTimes(1);
+        const [command] = send.mock.calls[0]!;
+        expect(command).toBeInstanceOf(DeleteObjectCommand);
+        expect((command as DeleteObjectCommand).input).toEqual({ Bucket: 'bucket', Key: `${KEY_PREFIX}client-1` });
+    });
+
+    test('propaga el error si S3 falla', async () => {
+        send.mockRejectedValueOnce(new Error('aws down'));
+
+        await expect(deleteUserPhoto('client-1')).rejects.toThrow('aws down');
     });
 });

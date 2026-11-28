@@ -1,8 +1,20 @@
+import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
-import router from '../src/routes/routes.js';
 import connection from '../src/connection/connection.js';
 import { generateUniqueEmail as uniqueEmail, generateUniquePhone } from './helpers/uniqueValues.js';
+
+// S3 se reemplaza por un mock: borrar un cliente también borra su foto del bucket.
+// El mock debe registrarse antes de cargar el router (ESM), por eso se importa con await import.
+const deleteUserPhoto = jest.fn<(userId: string) => Promise<void>>().mockResolvedValue(undefined);
+
+jest.unstable_mockModule('../src/services/bucketService.js', () => ({
+    deleteUserPhoto,
+    generatePresignedURL: jest.fn(),
+    generateHaircutImageURL: jest.fn(),
+}));
+
+const { default: router } = await import('../src/routes/routes.js');
 
 const { connectDB, closeDB, getPool } = connection;
 
@@ -47,6 +59,10 @@ afterAll(async () => {
 describe('Pruebas de eliminación de usuarios por roles', () => {
     const testPassword = 'password123';
 
+    beforeEach(() => {
+        deleteUserPhoto.mockClear();
+    });
+
     test('DELETE /api/users/:id - Borrado físico para el rol CLIENTE', async () => {
         const email = generateUniqueEmail();
         createdEmails.push(email);
@@ -74,6 +90,7 @@ describe('Pruebas de eliminación de usuarios por roles', () => {
             .set('Authorization', `Bearer ${token}`);
 
         expect(deleteResponse.statusCode).toBe(200);
+        expect(deleteUserPhoto).toHaveBeenCalledWith(user.id);
 
         // Paso 3: Verificar en la BD que el usuario ya no exista físicamente (Hard delete)
         const dbCheck = await getPool().query('SELECT id FROM users WHERE id = $1', [user.id]);
@@ -112,6 +129,8 @@ describe('Pruebas de eliminación de usuarios por roles', () => {
             .set('Authorization', `Bearer ${token}`);
 
         expect(deleteResponse.statusCode).toBe(200);
+        // El staff se borra de forma lógica: no tiene foto que eliminar
+        expect(deleteUserPhoto).not.toHaveBeenCalled();
 
         // Paso 4: Verificar que el registro en 'managers' sigue existiendo pero su campo 'deleted_at' ya tiene una fecha (Soft delete)
         const dbCheck = await pool.query('SELECT deleted_at FROM managers WHERE user_id = $1', [user.id]);
@@ -191,6 +210,7 @@ describe('Pruebas de eliminación de usuarios por roles', () => {
         // 4. Verificaciones
         expect(deleteResponse.statusCode).toBe(403);
         expect(deleteResponse.body.message).toBe('Forbidden: Managers cannot delete other managers');
+        expect(deleteUserPhoto).not.toHaveBeenCalled();
 
         // La base de datos debe permanecer intacta (sin borrado lógico)
         const dbCheck = await pool.query('SELECT deleted_at FROM managers WHERE user_id = $1', [target.user.id]);
