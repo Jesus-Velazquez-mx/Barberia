@@ -5,6 +5,11 @@ export interface AppointmentServiceResponse {
     priceAtBooking: number;
     durationMinutesAtBooking: number;
 }
+export interface RewardDiscountResponse {
+    serviceId: string;
+    amount: number;
+}
+
 export interface ClientAppointmentResponse {
     id: string;
     shopId: string;
@@ -20,6 +25,8 @@ export interface ClientAppointmentResponse {
     cancelationReason: string | null;
     notes: string | null;
     isRewardRedemption: boolean;
+    rewardDiscount: RewardDiscountResponse | null;
+    amountDue: number;
     services: AppointmentServiceResponse[];
     createdAt: Date;
     updatedAt: Date;

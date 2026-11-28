@@ -18,6 +18,10 @@ const router = Router();
  *       - manager: para un cliente registrado (`clientId`) o un invitado (`guestClientName`), solo en las sucursales que administra.
  *       Walk-ins: al enviar `isWalkIn: true`, solo receptionist (su sucursal) o manager (sus sucursales) pueden registrarlo, y `scheduledStart` debe ser del día actual en la zona horaria del negocio (400 si es de otro día).
  *       Si dos personas intentan reservar el mismo horario al mismo tiempo, solo una lo obtiene; la otra recibe 409.
+ *       Recompensa de lealtad: se aplica automáticamente; no se solicita ni se puede rechazar, y `isRewardRedemption` en el cuerpo se ignora.
+ *       Si el cliente registrado tiene 6 o más en su contador y no tiene otra cita de recompensa abierta (`scheduled`, `rescheduled` o `checked_in`),
+ *       el servicio de menor precio queda gratis (en empate, el de menor `serviceId`), lo agende él o el personal, también en walk-ins.
+ *       Los invitados nunca la reciben. Quien no califica recibe una cita normal, sin error.
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -74,6 +78,15 @@ const router = Router();
  *                     scheduledStart: { type: string, format: date-time }
  *                     scheduledEnd: { type: string, format: date-time }
  *                     notes: { type: string, nullable: true }
+ *                     isRewardRedemption: { type: boolean, description: La cita canjea la recompensa de lealtad. }
+ *                     rewardDiscount:
+ *                       type: object
+ *                       nullable: true
+ *                       description: Servicio gratis (el de menor precio de la cita). Es null si la cita no canjea recompensa.
+ *                       properties:
+ *                         serviceId: { type: string, format: uuid }
+ *                         amount: { type: number, example: 200 }
+ *                     amountDue: { type: number, example: 150, description: Suma de priceAtBooking menos rewardDiscount.amount. }
  *                     services:
  *                       type: array
  *                       items:
@@ -182,6 +195,15 @@ router.post('/appointments', create);
  *                       scheduledStart: { type: string, format: date-time }
  *                       scheduledEnd: { type: string, format: date-time }
  *                       notes: { type: string, nullable: true }
+ *                       isRewardRedemption: { type: boolean, description: La cita canjea la recompensa de lealtad. }
+ *                       rewardDiscount:
+ *                         type: object
+ *                         nullable: true
+ *                         description: Servicio gratis (el de menor precio de la cita). Es null si la cita no canjea recompensa.
+ *                         properties:
+ *                           serviceId: { type: string, format: uuid }
+ *                           amount: { type: number, example: 200 }
+ *                       amountDue: { type: number, example: 150, description: Suma de priceAtBooking menos rewardDiscount.amount. }
  *                       services:
  *                         type: array
  *                         items:
@@ -264,6 +286,7 @@ router.get('/appointments/:id', getById);
  *       - La duración es la suma de las duraciones de los servicios; si crece, el barbero debe tener tiempo libre suficiente. Los servicios que se
  *         conservan mantienen su precio y duración originales; los nuevos usan los valores actuales del catálogo.
  *       - Cambiar `scheduledStart` o `barberId` deja la cita en `rescheduled`; editar solo servicios o notas conserva su estado.
+ *       - La edición no agrega ni quita la recompensa de lealtad; si la cita la canjea, al cambiar los servicios se recalcula cuál es el gratis.
  *       Si una edición y otra reserva compiten por el mismo horario, solo una lo obtiene; la otra recibe 409.
  *     security:
  *       - bearerAuth: []
@@ -316,7 +339,6 @@ router.get('/appointments/:id', getById);
  *         description: Error interno del servidor.
  */
 router.put('/appointments/:id', update);
-
 
 /**
  * @swagger

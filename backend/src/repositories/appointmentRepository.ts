@@ -3,6 +3,8 @@ import db from '../connection/connection.js';
 import type { Appointment, AppointmentStatus } from '../types/entities/appointment.interface.js';
 import type { AppointmentService } from '../types/entities/appointmentService.interface.js';
 import { ApiError, ApiErrorCode } from '../errors/ApiError.js';
+import { getLoyaltyStateForUpdate } from './clientRepository.js';
+import { evaluateReward } from '../utils/loyalty.js';
 
 const APPOINTMENT_COLUMNS = `id, shop_id, client_id, is_registered_client, guest_client_name, barber_id, is_walk_in,
     status, original_scheduled_start, scheduled_start, scheduled_end, checked_in_at, completed_at, cancelled_at,
@@ -201,10 +203,21 @@ export const createAppointmentWithServices = async (
             throw new ApiError(ApiErrorCode.USER_ALREADY_EXISTS, 'Selected time slot is no longer available');
         }
 
+        let isRewardRedemption = false;
+        if (data.clientId !== null) {
+            const loyaltyState = await getLoyaltyStateForUpdate(client, data.clientId);
+            if (loyaltyState !== null) {
+                isRewardRedemption = evaluateReward(
+                    loyaltyState.completedServicesCount,
+                    loyaltyState.hasOpenRewardAppointment
+                ).rewardAppliesOnNextBooking;
+            }
+        }
+
         const result = await client.query(
             `INSERT INTO appointments (shop_id, client_id, is_registered_client, guest_client_name, barber_id,
-                                       scheduled_start, scheduled_end, notes, is_walk_in)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                                       scheduled_start, scheduled_end, notes, is_walk_in, is_reward_redemption)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
              RETURNING id, shop_id, client_id, is_registered_client, guest_client_name, barber_id, is_walk_in,
                        status, original_scheduled_start, scheduled_start, scheduled_end, checked_in_at, completed_at, cancelled_at,
                        cancellation_reason, notes, is_reward_redemption, created_at, updated_at`,
@@ -218,6 +231,7 @@ export const createAppointmentWithServices = async (
                 data.scheduledEnd,
                 data.notes,
                 data.isWalkIn ?? false,
+                isRewardRedemption,
             ]
         );
         const appointment: Appointment = result.rows[0];
@@ -259,10 +273,9 @@ export const updateAppointmentWithServices = async (
     try {
         await client.query('BEGIN');
 
-        const current = await client.query(
-            `SELECT shop_id, status FROM appointments WHERE id = $1 FOR UPDATE`,
-            [data.appointmentId]
-        );
+        const current = await client.query(`SELECT shop_id, status FROM appointments WHERE id = $1 FOR UPDATE`, [
+            data.appointmentId,
+        ]);
         if (current.rows.length === 0) {
             throw new ApiError(ApiErrorCode.NOT_FOUND, 'Appointment not found');
         }

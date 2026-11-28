@@ -8,6 +8,12 @@ export interface AppointmentServiceItem {
     durationMinutesAtBooking: number;
 }
 
+/* Servicio gratis de una cita de recompensa. */
+export interface RewardDiscount {
+    serviceId: string;
+    amount: number;
+}
+
 /* Cita lista para mostrarse: ya trae los nombres (cliente, barbero, sucursal, servicios).
    El GET /appointments del backend solo devuelve ids; el servicio se encarga de completarlos
    (ver services/appointmentService.ts). */
@@ -39,6 +45,10 @@ export interface AppointmentRecord {
     notes: string | null;
     /* true cuando la cita se canjeó con la recompensa de lealtad (is_reward_redemption). */
     isRewardRedemption?: boolean;
+    /* null cuando la cita no canjea recompensa. */
+    rewardDiscount: RewardDiscount | null;
+    /* Suma de los servicios menos el descuento. */
+    amountDue: number;
     services: AppointmentServiceItem[];
     createdAt: string;
     updatedAt: string;
