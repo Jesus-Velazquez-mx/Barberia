@@ -331,15 +331,15 @@ INSERT INTO appointments (
     checked_in_at, completed_at, cancelled_at, cancellation_reason,
     notes, is_reward_redemption
 ) VALUES
-    -- A12: scheduled, entra en ventana reminder_24h (en 24 horas exactas)
+    -- A13: scheduled, entra en ventana reminder_24h (en 24 horas exactas)
     ('b1c2d3e4-1234-4a5b-8c9d-0e1f2a3b4c12', '064e25fa-26c1-4ec8-9d49-78fc5f520519',
      '9df92579-03de-47c4-aa1f-76658d361e2b', true, NULL, '60bdbfde-b471-4a48-a8dc-208a709793de',
      false, 'scheduled',
-     now() + interval '24 hours', now() + interval '24 hours 45 minutes',
+     now() + interval '24 hours', now() + interval '25 hours 5 minutes',
      NULL, NULL, NULL, NULL,
      'Mock 24h reminder test (scheduled).', false),
 
-    -- A13: scheduled, entra en ventana reminder_4h (en 4 horas exactas)
+    -- A14: scheduled, entra en ventana reminder_4h (en 4 horas exactas)
     ('b1c2d3e4-1234-4a5b-8c9d-0e1f2a3b4c13', '064e25fa-26c1-4ec8-9d49-78fc5f520519',
      '9df92579-03de-47c4-aa1f-76658d361e2b', true, NULL, '0d67c12d-3947-4ac2-8667-83410cfd5ce1',
      false, 'scheduled',
@@ -347,7 +347,7 @@ INSERT INTO appointments (
      NULL, NULL, NULL, NULL,
      'Mock 4h reminder test (scheduled).', false),
 
-    -- A14: rescheduled, entra en ventana reminder_24h (en 23h 50m)
+    -- A15: rescheduled, entra en ventana reminder_24h (en 23h 50m)
     ('b1c2d3e4-1234-4a5b-8c9d-0e1f2a3b4c14', '96c3c0e1-b183-446f-9d2d-d3f3fc9f9361',
      '9df92579-03de-47c4-aa1f-76658d361e2b', true, NULL, 'cf28b56a-f463-4300-8743-e20979b0901e',
      false, 'rescheduled',
@@ -355,11 +355,11 @@ INSERT INTO appointments (
      NULL, NULL, NULL, NULL,
      'Mock 24h reminder test (rescheduled).', false),
 
-    -- A15: rescheduled, entra en ventana reminder_4h (en 3h 50m)
+    -- A16: rescheduled, entra en ventana reminder_4h (en 3h 50m)
     ('b1c2d3e4-1234-4a5b-8c9d-0e1f2a3b4c15', '96c3c0e1-b183-446f-9d2d-d3f3fc9f9361',
      '9df92579-03de-47c4-aa1f-76658d361e2b', true, NULL, '347e8a2f-973c-4fab-97a2-144616b2ede0',
      false, 'rescheduled',
-     now() + interval '3 hours 50 minutes', now() + interval '4 hours 20 minutes',
+     now() + interval '3 hours 50 minutes', now() + interval '4 hours 50 minutes',
      NULL, NULL, NULL, NULL,
      'Mock 4h reminder test (rescheduled).', false);
 
@@ -378,7 +378,13 @@ INSERT INTO appointment_services (appointment_id, service_id, price_at_booking, 
     ('5c088974-46e9-4077-955a-6b66e8e10c8a', 'ade5fab3-14a5-4455-8ccd-853439ca35fa', 200.00, 45), -- A9: Skin Fade
     ('7f9d8e6a-6c4b-4d1a-9f2e-8b7c6a5d4e3f', '3d4c9ce3-31e5-4825-8fa4-cbfae2b7f341', 180.00, 30), -- A10: Hot Towel Shave
     ('8a6e5d4c-3b2f-4a1e-9d8c-7b6a5f4e3d2c', '208bea03-e5d3-490a-9f43-54a1ee0decca', 150.00, 30), -- A11: Classic Haircut
-    ('9b7c6d5e-4f3a-4b2c-8d1e-6f5a4b3c2d1e', 'ade5fab3-14a5-4455-8ccd-853439ca35fa', 200.00, 45); -- A12: Skin Fade
+    ('9b7c6d5e-4f3a-4b2c-8d1e-6f5a4b3c2d1e', 'ade5fab3-14a5-4455-8ccd-853439ca35fa', 200.00, 45), -- A12: Skin Fade
+    ('b1c2d3e4-1234-4a5b-8c9d-0e1f2a3b4c12', 'ade5fab3-14a5-4455-8ccd-853439ca35fa', 200.00, 45), -- A13: Skin Fade (24h reminder mock)
+    ('b1c2d3e4-1234-4a5b-8c9d-0e1f2a3b4c12', 'd4d0d57a-01e0-48f8-83ef-1fc1fcd1aeb4', 100.00, 20), -- A13: Beard Trim
+    ('b1c2d3e4-1234-4a5b-8c9d-0e1f2a3b4c13', '208bea03-e5d3-490a-9f43-54a1ee0decca', 150.00, 30), -- A14: Classic Haircut (4h reminder mock)
+    ('b1c2d3e4-1234-4a5b-8c9d-0e1f2a3b4c14', 'ade5fab3-14a5-4455-8ccd-853439ca35fa', 200.00, 45), -- A15: Skin Fade (24h reminder mock, rescheduled)
+    ('b1c2d3e4-1234-4a5b-8c9d-0e1f2a3b4c15', '3d4c9ce3-31e5-4825-8fa4-cbfae2b7f341', 180.00, 30), -- A16: Hot Towel Shave (4h reminder mock, rescheduled)
+    ('b1c2d3e4-1234-4a5b-8c9d-0e1f2a3b4c15', '208bea03-e5d3-490a-9f43-54a1ee0decca', 150.00, 30); -- A16: Classic Haircut
 
 -- ---------- AI recommendation history ----------
 
