@@ -18,6 +18,7 @@ import { toClientDetailResponse } from '../utils/userMapper.js';
 import { isUserSessionValid } from '../utils/userSession.js';
 import { canCreateClient } from './userPermissions.js';
 import type { ClientWithUser } from '../repositories/clientRepository.js';
+import { deleteUserPhoto } from './bucketService.js';
 
 export interface CreateClientDTO {
     firstName: string;
@@ -205,6 +206,7 @@ export const deleteClient = async (id: string, token: string): Promise<void> => 
         throw new ApiError(ApiErrorCode.CONFLICT, 'Cannot delete a client with pending appointments');
     }
 
+    await deleteUserPhoto(id);
     await deleteClientById(id);
 };
 
