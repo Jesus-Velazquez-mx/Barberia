@@ -1,6 +1,12 @@
 import type { PresignedPost } from '@aws-sdk/s3-presigned-post';
 import type { Response } from 'express';
-import { generateHaircutImageURL, generatePresignedURL, type HaircutImageURL } from '../services/bucketService.js';
+import {
+    generateHaircutImageURL,
+    generatePresignedURL,
+    type HaircutImageURL,
+    type PresignedUploadTarget,
+} from '../services/bucketService.js';
+import { HAIRCUT_IMAGE_CONTENT_TYPES, type HaircutImageContentType } from '../utils/photoKey.js';
 import {
     type ApiHandler,
     sendFail,
@@ -16,6 +22,32 @@ import { CredentialsProviderError } from '@smithy/property-provider';
 const haircutIdParamsSchema = z.object({
     haircutId: z.uuid('Invalid haircut ID format'),
 });
+
+const haircutContentTypes = Object.keys(HAIRCUT_IMAGE_CONTENT_TYPES) as [
+    HaircutImageContentType,
+    ...HaircutImageContentType[],
+];
+
+/*
+ * ?target=user (por defecto) sube la foto del cliente; ?target=haircut&haircutId=...&contentType=... sube la
+ * foto de catálogo de un corte.
+ */
+const presignedTargetQuerySchema = z.discriminatedUnion('target', [
+    z.object({ target: z.literal('user') }),
+    z.object({
+        target: z.literal('haircut'),
+        haircutId: z.uuid('Invalid haircut ID format'),
+        contentType: z.enum(haircutContentTypes, 'contentType must be image/jpeg, image/png or image/webp'),
+    }),
+]);
+
+const parsePresignedTarget = (query: Record<string, unknown>): PresignedUploadTarget => {
+    const parsed = presignedTargetQuerySchema.parse({ ...query, target: query.target ?? 'user' });
+
+    return parsed.target === 'haircut'
+        ? { type: 'haircut', haircutId: parsed.haircutId, contentType: parsed.contentType }
+        : { type: 'user' };
+};
 
 const handleBucketError = (res: Response, error: unknown): void => {
     if (error instanceof ZodError) {
@@ -39,7 +71,8 @@ const handleBucketError = (res: Response, error: unknown): void => {
 export const getBucketPresignedURL: ApiHandler<PresignedPost> = async (req, res) => {
     try {
         const token = extractBearerFromHeader(req);
-        const presignedURL = await generatePresignedURL(token);
+        const target = parsePresignedTarget(req.query);
+        const presignedURL = await generatePresignedURL(token, target);
         sendSuccess({ res, message: 'Presigned URL generated successfully', data: presignedURL });
     } catch (error) {
         handleBucketError(res, error);

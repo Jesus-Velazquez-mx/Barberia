@@ -20,6 +20,8 @@ class FakeCommand {
 }
 class HeadObjectCommand extends FakeCommand {}
 class GetObjectCommand extends FakeCommand {}
+class CopyObjectCommand extends FakeCommand {}
+class DeleteObjectCommand extends FakeCommand {}
 
 jest.unstable_mockModule('@aws-sdk/client-s3', () => ({
     S3Client: class {
@@ -27,6 +29,8 @@ jest.unstable_mockModule('@aws-sdk/client-s3', () => ({
     },
     HeadObjectCommand,
     GetObjectCommand,
+    CopyObjectCommand,
+    DeleteObjectCommand,
 }));
 jest.unstable_mockModule('@aws-sdk/credential-providers', () => ({ fromEnv: jest.fn() }));
 jest.unstable_mockModule('@aws-sdk/s3-presigned-post', () => ({ createPresignedPost }));
@@ -43,7 +47,8 @@ jest.unstable_mockModule('../src/repositories/clientRepository.js', () => ({ cle
 jest.unstable_mockModule('../src/repositories/haircutRepository.js', () => ({ getHaircutStyleById }));
 jest.unstable_mockModule('../src/utils/userSession.js', () => ({ isUserSessionValid }));
 
-const { generatePresignedURL, generateHaircutImageURL } = await import('../src/services/bucketService.js');
+const { generatePresignedURL, generateHaircutImageURL, moveHaircutPhoto } =
+    await import('../src/services/bucketService.js');
 const { ApiError, ApiErrorCode } = await import('../src/errors/ApiError.js');
 
 const presignedPost = { url: 'https://s3.example.com', fields: { key: `${KEY_PREFIX}user-1` } };
@@ -146,5 +151,132 @@ describe('generateHaircutImageURL', () => {
 
         expect(send).toHaveBeenCalledTimes(1);
         expect(getSignedUrl).not.toHaveBeenCalled();
+    });
+});
+
+const notFoundError = () =>
+    Object.assign(new Error('Not Found'), { name: 'NotFound', $metadata: { httpStatusCode: 404 } });
+const sentCommands = () => send.mock.calls.map(([command]) => command as FakeCommand);
+
+describe('generatePresignedURL con target haircut', () => {
+    const target = { type: 'haircut' as const, haircutId: 'haircut-1', contentType: 'image/png' as const };
+
+    beforeEach(() => {
+        isUserSessionValid.mockResolvedValue({ id: 'manager-1', role: 'manager' });
+        getHaircutStyleById.mockResolvedValue({ id: 'haircut-1', name: 'Wolf Cut' });
+        send.mockResolvedValue({});
+    });
+
+    test('firma la key del corte con su extensión y exige el Content-Type exacto', async () => {
+        await expect(generatePresignedURL('token', target)).resolves.toEqual(presignedPost);
+
+        const [, options] = createPresignedPost.mock.calls[0]!;
+        expect(options).toEqual({
+            Bucket: 'bucket',
+            Key: 'haircuts/wolf_cut.png',
+            Conditions: [
+                ['eq', '$Content-Type', 'image/png'],
+                ['content-length-range', 0, 5 * 1024 * 1024],
+            ],
+            Expires: 120,
+        });
+    });
+
+    test('elimina las fotos del corte con otra extensión para que la nueva sea la única', async () => {
+        await generatePresignedURL('token', target);
+
+        const commands = sentCommands();
+        expect(commands.every((command) => command instanceof DeleteObjectCommand)).toBe(true);
+        expect(commands.map((command) => command.input.Key)).toEqual([
+            'haircuts/wolf_cut.jpg',
+            'haircuts/wolf_cut.webp',
+        ]);
+    });
+
+    test('ignora que la foto con otra extensión no exista', async () => {
+        send.mockRejectedValue(notFoundError());
+
+        await expect(generatePresignedURL('token', target)).resolves.toEqual(presignedPost);
+    });
+
+    test('no descarta la estructura facial de nadie', async () => {
+        await generatePresignedURL('token', target);
+
+        expect(clearClientFacialStructure).not.toHaveBeenCalled();
+    });
+
+    test.each(['client', 'receptionist'])('rechaza al rol %s con 403', async (role) => {
+        isUserSessionValid.mockResolvedValue({ id: 'user-1', role });
+
+        await expect(generatePresignedURL('token', target)).rejects.toMatchObject({ code: ApiErrorCode.FORBIDDEN });
+
+        expect(getHaircutStyleById).not.toHaveBeenCalled();
+        expect(createPresignedPost).not.toHaveBeenCalled();
+    });
+
+    test('responde 404 si el corte no existe, sin tocar S3', async () => {
+        getHaircutStyleById.mockResolvedValue(null);
+
+        await expect(generatePresignedURL('token', target)).rejects.toMatchObject({
+            code: ApiErrorCode.NOT_FOUND,
+            message: 'Haircut not found',
+        });
+
+        expect(send).not.toHaveBeenCalled();
+        expect(createPresignedPost).not.toHaveBeenCalled();
+    });
+
+    test('un manager no puede pedir el formulario de la foto de cliente', async () => {
+        await expect(generatePresignedURL('token', { type: 'user' })).rejects.toMatchObject({
+            code: ApiErrorCode.FORBIDDEN,
+        });
+    });
+});
+
+describe('moveHaircutPhoto', () => {
+    test('copia la foto existente a la key del nombre nuevo y borra la anterior', async () => {
+        // HeadObject: solo existe la versión png
+        send.mockImplementation(async (command: any) => {
+            if (command instanceof HeadObjectCommand) {
+                if (command.input.Key === 'haircuts/wolf_cut.png') return {};
+                throw notFoundError();
+            }
+            return {};
+        });
+
+        await moveHaircutPhoto('Wolf Cut', 'Wolf Cut Largo');
+
+        const copy = sentCommands().find((command) => command instanceof CopyObjectCommand)!;
+        expect(copy.input).toEqual({
+            Bucket: 'bucket',
+            CopySource: `bucket/${encodeURIComponent('haircuts/wolf_cut.png')}`,
+            Key: 'haircuts/wolf_cut_largo.png',
+        });
+        const deletes = sentCommands().filter((command) => command instanceof DeleteObjectCommand);
+        expect(deletes.map((command) => command.input.Key)).toEqual(['haircuts/wolf_cut.png']);
+    });
+
+    test('no hace nada si el corte no tiene foto', async () => {
+        send.mockRejectedValue(notFoundError());
+
+        await moveHaircutPhoto('Wolf Cut', 'Mullet');
+
+        expect(sentCommands().every((command) => command instanceof HeadObjectCommand)).toBe(true);
+        expect(send).toHaveBeenCalledTimes(3);
+    });
+
+    test('no hace nada si el nombre nuevo genera la misma key', async () => {
+        await moveHaircutPhoto('Wolf Cut', 'wolf-cut');
+
+        expect(send).not.toHaveBeenCalled();
+    });
+
+    test('propaga los errores de S3 al copiar', async () => {
+        send.mockImplementation(async (command: any) => {
+            if (command instanceof CopyObjectCommand) throw new Error('Access Denied');
+            return {};
+        });
+
+        await expect(moveHaircutPhoto('Wolf Cut', 'Mullet')).rejects.toThrow('Access Denied');
     });
 });

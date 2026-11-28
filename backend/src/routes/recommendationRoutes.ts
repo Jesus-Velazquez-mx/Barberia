@@ -214,9 +214,33 @@ router.get('/recommendations', getClientRecommendationHistory);
  *   get:
  *     summary: Genera un formulario presignado para subir una imagen
  *     tags: [Storage]
- *     description: Genera una URL y los campos necesarios para subir una imagen directamente a S3. La carga debe enviarse como multipart/form-data, incluir todos los campos retornados y declarar un Content-Type que comience con image/. El archivo no puede superar los 5 MB.
+ *     description: >-
+ *       Genera una URL y los campos necesarios para subir una imagen directamente a S3. La carga debe enviarse
+ *       como multipart/form-data, incluir todos los campos retornados y declarar el Content-Type como campo del
+ *       formulario. El archivo no puede superar los 5 MB y el formulario caduca en 2 minutos.
+ *
+ *       - `target=user` (por defecto): foto del cliente autenticado (solo clientes), guardada en
+ *         `<AWS_BUCKET_KEY_PREFIX_USER><id del usuario>`. El Content-Type debe comenzar con `image/`. Al pedir
+ *         el formulario se descarta la estructura facial guardada del cliente.
+ *       - `target=haircut`: foto de catálogo de un estilo de corte (solo managers), guardada en
+ *         `<AWS_BUCKET_KEY_PREFIX_HAIRCUTS><nombre en snake_case>.<jpg|png|webp>`. El Content-Type subido debe
+ *         ser exactamente `contentType`. Reemplaza la foto anterior del corte: las versiones con otra extensión
+ *         se eliminan al pedir el formulario.
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: target
+ *         schema: { type: string, enum: [user, haircut], default: user }
+ *         description: Destino de la foto.
+ *       - in: query
+ *         name: haircutId
+ *         schema: { type: string, format: uuid }
+ *         description: Requerido con `target=haircut`. ID del estilo de corte.
+ *       - in: query
+ *         name: contentType
+ *         schema: { type: string, enum: [image/jpeg, image/png, image/webp] }
+ *         description: Requerido con `target=haircut`. Tipo de la imagen que se va a subir.
  *     responses:
  *       200:
  *         description: Formulario presignado generado exitosamente.
@@ -242,8 +266,16 @@ router.get('/recommendations', getClientRecommendationHistory);
  *                 message:
  *                   type: string
  *                   example: Presigned URL generated successfully
+ *       400:
+ *         description: "`target` inválido, o con `target=haircut` falta `haircutId`/`contentType` o no son válidos."
  *       401:
- *         description: Token ausente, inválido o el usuario no es un cliente.
+ *         description: Token ausente o inválido.
+ *       403:
+ *         description: >-
+ *           La cuenta está desactivada, o el rol no corresponde al destino (`user` solo clientes, `haircut`
+ *           solo managers).
+ *       404:
+ *         description: Con `target=haircut`, el corte no existe.
  *       502:
  *         description: No se pudieron resolver las credenciales de AWS.
  *       500:

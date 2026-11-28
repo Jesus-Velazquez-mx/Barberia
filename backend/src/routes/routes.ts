@@ -18,6 +18,7 @@ import clientRoutes from './clientRoutes.js';
 import notificationLogRoutes from './notificationLogRoutes.js';
 import businessTimezoneRoutes from './businessTimezoneRoutes.js';
 import reportRoutes from './reportRoutes.js';
+import styleRoutes from './styleRoutes.js';
 
 const router = Router();
 
@@ -39,6 +40,7 @@ router.use(serviceCategoryRoutes);
 router.use(notificationLogRoutes);
 router.use(businessTimezoneRoutes);
 router.use(reportRoutes);
+router.use(styleRoutes);
 
 router.get('/health', health);
 

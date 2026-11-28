@@ -4,7 +4,7 @@ import request from 'supertest';
 import type { PresignedPost } from '@aws-sdk/s3-presigned-post';
 import { ApiError, ApiErrorCode } from '../src/errors/ApiError.js';
 
-const generatePresignedURL = jest.fn<(token: string) => Promise<PresignedPost>>();
+const generatePresignedURL = jest.fn<(token: string, target: unknown) => Promise<PresignedPost>>();
 const generateHaircutImageURL = jest.fn<(haircutId: string) => Promise<{ url: string; expiresIn: number }>>();
 
 jest.unstable_mockModule('../src/services/bucketService.js', () => ({
@@ -42,7 +42,41 @@ describe('GET /api/presigned-url', () => {
             data: presignedPost,
             message: 'Presigned URL generated successfully',
         });
-        expect(generatePresignedURL).toHaveBeenCalledWith('valid-token');
+        expect(generatePresignedURL).toHaveBeenCalledWith('valid-token', { type: 'user' });
+    });
+
+    test('forwards the haircut target when target=haircut', async () => {
+        const haircutId = '10000000-0000-4000-8000-000000000021';
+        const response = await request(app)
+            .get('/api/presigned-url')
+            .query({ target: 'haircut', haircutId, contentType: 'image/webp' })
+            .set('Authorization', 'Bearer manager-token');
+
+        expect(response.status).toBe(200);
+        expect(generatePresignedURL).toHaveBeenCalledWith('manager-token', {
+            type: 'haircut',
+            haircutId,
+            contentType: 'image/webp',
+        });
+    });
+
+    test.each([
+        ['an unknown target', { target: 'avatar' }],
+        ['target=haircut without haircutId', { target: 'haircut', contentType: 'image/png' }],
+        ['an invalid haircutId', { target: 'haircut', haircutId: 'abc', contentType: 'image/png' }],
+        [
+            'an unsupported contentType',
+            { target: 'haircut', haircutId: '10000000-0000-4000-8000-000000000021', contentType: 'image/gif' },
+        ],
+    ])('returns 400 for %s', async (_label, query) => {
+        const response = await request(app)
+            .get('/api/presigned-url')
+            .query(query)
+            .set('Authorization', 'Bearer manager-token');
+
+        expect(response.status).toBe(400);
+        expect(response.body).toMatchObject({ message: 'Validation error' });
+        expect(generatePresignedURL).not.toHaveBeenCalled();
     });
 
     test('returns 401 when the authorization header is missing', async () => {

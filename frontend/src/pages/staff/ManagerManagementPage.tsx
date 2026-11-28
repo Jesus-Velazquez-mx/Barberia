@@ -1,4 +1,4 @@
-import { Clock, Scissors, Store, Tags } from 'lucide-react';
+import { Clock, Scissors, ScissorsLineDashed, Store, Tags } from 'lucide-react';
 import { ManagerPageHeader } from '../../components/dashboard/ManagerPageHeaderComponent';
 import { ManagementMenu } from '../../components/dashboard/ManagementMenuComponent';
 import type { ManagementMenuItem } from '../../components/dashboard/ManagementMenuComponent';
@@ -27,6 +27,12 @@ const MANAGEMENT_ITEMS: ManagementMenuItem[] = [
     title: 'Categorías de servicios',
     description: 'Organiza los servicios por categoría.',
     icon: <Tags size={24} aria-hidden="true" />
+  },
+  {
+    to: '/manager/management/haircuts',
+    title: 'Estilos de corte',
+    description: 'Administra el catálogo de cortes y sus estructuras faciales.',
+    icon: <ScissorsLineDashed size={24} aria-hidden="true" />
   }
 ];
 
