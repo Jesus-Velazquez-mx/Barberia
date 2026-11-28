@@ -1,8 +1,10 @@
+import type { ReactNode } from 'react';
 import type { User, UserRole } from '../../types/auth';
 import { Button } from '../common/ButtonComponent';
 
 interface UserProfileProps {
   user: User;
+  loyaltySection?: ReactNode;
   onEdit: () => void;
   onChangePassword: () => void;
   onDeleteAccount: () => void;
@@ -43,7 +45,14 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function UserProfile({ user, onEdit, onChangePassword, onDeleteAccount, onLogout }: UserProfileProps) {
+export function UserProfile({
+  user,
+  loyaltySection,
+  onEdit,
+  onChangePassword,
+  onDeleteAccount,
+  onLogout
+}: UserProfileProps) {
   const initials = `${user.firstName[0] ?? ''}${user.lastName[0] ?? ''}`.toUpperCase();
 
   return (
@@ -90,6 +99,8 @@ export function UserProfile({ user, onEdit, onChangePassword, onDeleteAccount, o
           </Button>
         </div>
       </section>
+
+      {loyaltySection}
 
       <section className="flex flex-col gap-4 rounded-xl border border-white/10 bg-[#1E1E1E] px-8 py-6 md:flex-row md:items-center md:justify-between">
         <div>
