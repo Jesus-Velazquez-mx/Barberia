@@ -28,3 +28,15 @@ export const toSnakeCase = (name: string): string =>
 /** Key de la foto de catálogo de un corte: `<prefijo de cortes><nombre en snake_case>.<extensión>`. */
 export const getHaircutPhotoKey = (haircutName: string, extension: HaircutImageExtension): string =>
     `${globalConfig.AWS_BUCKET_KEY_PREFIX_HAIRCUTS}${toSnakeCase(haircutName)}.${extension}`;
+
+/** Content-Types aceptados para la foto de catálogo de un corte y la extensión con la que se guarda cada uno. */
+export const HAIRCUT_IMAGE_CONTENT_TYPES = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+} as const satisfies Record<string, HaircutImageExtension>;
+export type HaircutImageContentType = keyof typeof HAIRCUT_IMAGE_CONTENT_TYPES;
+
+/** Extensión con la que se guarda una foto de corte del Content-Type dado. */
+export const getHaircutImageExtension = (contentType: HaircutImageContentType): HaircutImageExtension =>
+    HAIRCUT_IMAGE_CONTENT_TYPES[contentType];

@@ -73,7 +73,7 @@ export const canManageShops = (performer: UserIdentity): boolean => performer.ro
 /**
  * /shops: Solo los usuarios con el rol de 'receptionist' o 'manager0' pueden consultar sucursales inactivas.
  */
-export const canViewInactiveShops = (performer: UserIdentity): boolean => 
+export const canViewInactiveShops = (performer: UserIdentity): boolean =>
     performer.role === 'manager' || performer.role === 'receptionist';
 
 /**
@@ -264,3 +264,8 @@ export const canGenerateReports = (performer: UserIdentity): boolean => performe
  */
 export const canGenerateShopReports = (shopId: string, managedShopIds: string[]): boolean =>
     managedShopIds.includes(shopId);
+
+/**
+ * /haircuts: Solo los usuarios con rol 'manager' pueden administrar el catálogo de estilos de corte.
+ */
+export const canManageHaircutStyles = (performer: UserIdentity): boolean => performer.role === 'manager';
