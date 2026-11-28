@@ -43,5 +43,6 @@ DROP FUNCTION IF EXISTS set_appointment_client_email() CASCADE;
 DROP FUNCTION IF EXISTS set_original_appointment_start() CASCADE;
 DROP FUNCTION IF EXISTS check_reward_redemption_insert() CASCADE;
 DROP FUNCTION IF EXISTS prevent_reward_redemption_change() CASCADE;
+DROP FUNCTION IF EXISTS reset_client_loyalty_count_on_no_show() CASCADE;
 
 COMMIT;
