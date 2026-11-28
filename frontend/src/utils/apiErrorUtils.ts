@@ -60,7 +60,9 @@ const SERVER_MESSAGE_TRANSLATIONS: Record<string, string> = {
         'No tienes permiso para registrar servicios sin cita en esta sucursal.',
     'Receptionist is not assigned to a shop': 'No tienes una sucursal asignada.',
     'Only staff can search clients': 'Solo el personal puede buscar clientes.',
-    'Only staff can list clients': 'Solo el personal puede consultar clientes.'
+    'Only staff can list clients': 'Solo el personal puede consultar clientes.',
+    'You do not have permission to view this client loyalty status':
+        'No tienes permiso para ver el progreso de lealtad de este cliente.'
 };
 
 /* Algunos mensajes (backend de reportes, mocks) ya vienen en español: se muestran tal cual. */

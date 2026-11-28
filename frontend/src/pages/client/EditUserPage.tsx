@@ -5,6 +5,7 @@ import { ChangePasswordModalContainer } from '../../containers/ChangePasswordMod
 import { DeleteAccountModalContainer } from '../../containers/DeleteAccountModalContainer';
 import { LogoutConfirmModal } from '../../components/auth/LogoutConfirmModalComponent';
 import { UserProfile } from '../../components/profile/UserProfileComponent';
+import { ClientLoyaltyContainer } from '../../containers/ClientLoyaltyContainer';
 import type { User } from '../../types/auth';
 import { useAuth } from '../../context/AuthContext';
 
@@ -48,6 +49,7 @@ function EditUserPage() {
     <div className="flex min-h-full w-full max-w-300">
       <UserProfile
         user={authUser}
+        loyaltySection={authUser.role === 'client' ? <ClientLoyaltyContainer /> : undefined}
         onEdit={() => setIsModalOpen(true)}
         onChangePassword={() => setIsPasswordModalOpen(true)}
         onDeleteAccount={() => setIsDeleteModalOpen(true)}
