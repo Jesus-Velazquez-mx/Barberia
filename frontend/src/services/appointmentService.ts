@@ -5,6 +5,7 @@ import type {
     AppointmentRecord,
     AppointmentStatus,
     CancelAppointmentPayload,
+    RewardDiscount,
     UpdateAppointmentPayload
 } from '../types/appointmentType';
 import { getShops, getActiveBarbersByShop, getOfferedServices } from './shopService';
@@ -43,6 +44,8 @@ interface AppointmentApi {
     cancellationReason: string | null;
     notes: string | null;
     isRewardRedemption: boolean;
+    rewardDiscount: RewardDiscount | null;
+    amountDue: number;
     services: { serviceId: string; priceAtBooking: number; durationMinutesAtBooking: number }[];
     createdAt: string;
     updatedAt: string;
@@ -187,6 +190,10 @@ function toRecord(a: AppointmentApi, catalogs: Catalogs, client?: AppointmentCli
         cancellationReason: a.cancellationReason,
         notes: a.notes,
         isRewardRedemption: a.isRewardRedemption,
+        rewardDiscount: a.rewardDiscount
+            ? { serviceId: a.rewardDiscount.serviceId, amount: Number(a.rewardDiscount.amount) }
+            : null,
+        amountDue: Number(a.amountDue),
         services: a.services.map((s) => ({
             serviceId: s.serviceId,
             name: catalogs.services.get(s.serviceId) ?? 'Servicio',

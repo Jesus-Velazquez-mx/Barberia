@@ -3,6 +3,7 @@ import type {
     AppointmentFilterValues,
     AppointmentRecord,
     AppointmentStatus,
+    RewardDiscount,
     SortDirection
 } from '../types/appointmentType';
 import { ApiError } from '../types/api';
@@ -61,7 +62,12 @@ export const toBusinessDate = (isoDateTime: string): string =>
 /* "2026-10-21T16:00:00.000Z" -> "21 oct 2026" */
 export const formatAppointmentDate = (isoDateTime: string): string =>
     new Date(isoDateTime)
-        .toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric', timeZone: getBusinessTimezone() })
+        .toLocaleDateString('es-MX', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            timeZone: getBusinessTimezone()
+        })
         .replace(/\./g, '');
 
 /* "2026-10-21T16:00:00.000Z" -> "09:00" */
@@ -158,6 +164,36 @@ export const getAppointmentTotal = (appointment: AppointmentRecord): number =>
 
 export const getAppointmentDuration = (appointment: AppointmentRecord): number =>
     appointment.services.reduce((sum, service) => sum + service.durationMinutesAtBooking, 0);
+
+/* ---------- Recompensa de lealtad ---------- */
+
+/* Los montos se operan en centavos enteros, igual que en el backend, para no arrastrar residuos de punto flotante. */
+const toCents = (amount: number): number => Math.round(amount * 100);
+
+/* Vista previa de la recompensa para los servicios seleccionados: es gratis el más barato y, en empate,
+    el de menor serviceId.*/
+export const getRewardPreview = (
+    services: { serviceId: string; price: number }[]
+): { rewardDiscount: RewardDiscount | null; amountDue: number } => {
+    let cheapest: { serviceId: string; price: number } | null = null;
+    let totalCents = 0;
+
+    for (const service of services) {
+        totalCents += toCents(service.price);
+
+        const difference = cheapest ? service.price - cheapest.price : -1;
+        if (!cheapest || difference < 0 || (difference === 0 && service.serviceId < cheapest.serviceId)) {
+            cheapest = service;
+        }
+    }
+
+    if (!cheapest) return { rewardDiscount: null, amountDue: 0 };
+
+    return {
+        rewardDiscount: { serviceId: cheapest.serviceId, amount: cheapest.price },
+        amountDue: (totalCents - toCents(cheapest.price)) / 100
+    };
+};
 
 /* ---------- Filtros y orden ---------- */
 

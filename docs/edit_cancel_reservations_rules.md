@@ -36,6 +36,8 @@ Resumen de las reglas de negocio definidas para editar y cancelar citas. Para el
 
 - Si una cita con **canje de recompensa** se cancela (ya sea por el cliente o por el personal), el cliente **conserva la recompensa** y se le aplica automáticamente en la siguiente cita que agende.
 - La recompensa **solo se pierde cuando la cita se marca como no-show** (el cliente no se presentó).
+- **Editar nunca agrega ni quita la recompensa.** La recompensa se decide solo al crear la cita; reprogramar, cambiar de barbero o editar las notas la conserva, y la petición de edición no puede definirla (`PUT /api/appointments/:id` con `isRewardRedemption` responde `400`).
+- Si se cambian los servicios de una cita con recompensa, **se recalcula el servicio gratis**: siempre es el de menor precio de los que quede (en un empate, el de menor `service_id`). Los servicios que se conservan mantienen el precio con el que se agendaron.
 
 ## 4. Barberos y citas pendientes
 

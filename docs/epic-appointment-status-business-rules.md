@@ -16,7 +16,7 @@ Documento autocontenido con **todas** las reglas de negocio definidas para la ep
 **Fuera de la epic**
 - Cliente Android: la app móvil es **solo para clientes**. Check-in y walk-ins son exclusivos de la web.
 - Notificaciones o recordatorios (incluido avisar al cliente de un `no_show`).
-- Canje de recompensa desde una ruta (el flag `is_reward_redemption` aún no tiene endpoint que lo establezca).
+- Aplicación de la recompensa al agendar (no fue parte de esta epic; se implementó después, en #281: ver R-LO-7 a R-LO-11).
 - Penalizaciones por no-show distintas de perder la recompensa canjeada, listas de espera y auditoría de cambios.
 
 ## 2. Glosario
@@ -113,10 +113,20 @@ Regla de producto: cada 6 citas completadas, la siguiente cita que agenda el cli
 
 - **R-LO-1** Cada cita que pasa a `completed` con cliente registrado y **sin** canje (`is_reward_redemption = false`) suma 1 al contador. Ya lo hace el trigger `update_client_loyalty_count()`; se dispara solo en la transición a `completed`, de modo que no hay doble conteo.
 - **R-LO-2 [Actualizada]** Una cita `completed` con `is_reward_redemption = true` **resta 6** al contador, sin bajar de 0 (el cliente usó su servicio gratis) y conserva el progreso que exceda 6; por ejemplo, 8 pasa a 2. Implementado en el trigger `update_client_loyalty_count()` (antes reiniciaba a 0).
-- **R-LO-3 [Aprobada]** Una cita con `is_reward_redemption = true` que pasa a `no_show` reinicia el contador a 0 (el cliente pierde la recompensa y también cualquier progreso que excediera 6; es intencional, como incentivo para no faltar). **Es lógica nueva:** requiere un trigger `AFTER UPDATE` al transicionar a `no_show`.
+- **R-LO-3 [Aprobada]** Una cita con `is_reward_redemption = true` que pasa a `no_show` reinicia el contador a 0 (el cliente pierde la recompensa y también cualquier progreso que excediera 6; es intencional, como incentivo para no faltar). Implementado en el trigger `trg_appointments_reward_no_show`, que se dispara `AFTER UPDATE` al transicionar a `no_show`.
 - **R-LO-4** Un `no_show` en una cita **sin** canje no modifica el contador.
 - **R-LO-5** Cancelar una cita (incluso con canje) no modifica el contador: el cliente conserva la recompensa y se le aplica automáticamente en la siguiente cita que agende.
 - **R-LO-6** Citas de invitados y de clientes cuya cuenta fue eliminada (`client_id IS NULL`) nunca modifican ningún contador.
+
+### Aplicación de la recompensa al agendar
+
+Implementada en `POST /api/appointments` (#286).
+
+- **R-LO-7 [Aprobada]** La recompensa es automática: nadie la solicita, la elige, la confirma ni puede rechazarla. Se aplica cuando un cliente registrado con contador ≥ 6 y sin otra cita de recompensa abierta (`scheduled`, `rescheduled` o `checked_in`) agenda, lo haga él o el staff en su nombre, también en walk-ins. Los invitados nunca la reciben. Quien no califica obtiene una cita normal, sin error. La petición no tiene un campo para la recompensa; si el cuerpo incluye `isRewardRedemption`, se ignora.
+- **R-LO-8 [Aprobada]** La recompensa cubre un solo servicio: el de menor precio de la cita (en un empate, el de menor `service_id`). Con un único servicio, la cita completa es gratis. Los precios guardados de la cita siguen siendo los del catálogo; el servicio gratis y el monto a pagar se calculan al responder (`rewardDiscount`, `amountDue`).
+- **R-LO-9 [Aprobada]** La elegibilidad se evalúa solo al crear la cita, sin efecto retroactivo. Editar nunca agrega ni quita la recompensa; si cambian los servicios, se recalcula cuál es el gratis.
+- **R-LO-10 [Implementación]** La decisión se toma dentro de la transacción de agendado, con candado `FOR UPDATE` sobre la fila del barbero y después la del cliente. Dos reservas simultáneas del mismo cliente producen exactamente una cita con recompensa.
+- **R-LO-11 [Implementación]** Como red de seguridad, la base de datos rechaza una cita de recompensa sin cliente registrado, con contador < 6 o con otra de recompensa abierta, y no permite cambiar `is_reward_redemption` después de crear la cita.
 
 Matriz resumen del efecto sobre `completed_services_count` (solo cliente registrado):
 
